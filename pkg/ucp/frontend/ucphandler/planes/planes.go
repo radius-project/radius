@@ -24,6 +24,13 @@ import (
 
 const (
 	PlanesPath = "/planes"
+
+	// Referer is the full URI that the client connected to (which will be different than the RP URI,
+	// since it will have the public hostname instead of the RP hostname). This value can be used
+	// in generating FQDN for Location headers or other requests since RPs should not reference
+	// their endpoint name.
+	// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#proxy-request-header-modifications
+	RefererHeaderKey = "Referer"
 )
 
 //go:generate mockgen -destination=./mock_planes_ucphandler.go -package=planes -self_package github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes PlanesUCPHandler
@@ -258,18 +265,28 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
-	url, err := url.Parse(incomingURL.Path)
+	uri, err := url.Parse(incomingURL.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Preserving the query strings on the incoming url on the newly constructed url
-	url.RawQuery = incomingURL.Query().Encode()
-	r.URL = url
+	uri.RawQuery = incomingURL.Query().Encode()
+	r.URL = uri
 	r.Header.Set("X-Forwarded-Proto", httpScheme)
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
+
+	// Set Referer header
+	refererURL := url.URL{
+		Scheme:   httpScheme,
+		Host:     r.Host,
+		Path:     ucp.options.BasePath + incomingURL.Path,
+		RawQuery: uri.RawQuery,
+	}
+	r.Header.Set(RefererHeaderKey, refererURL.String())
+	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
 
 	sender.ServeHTTP(w, r.WithContext(ctx))
 

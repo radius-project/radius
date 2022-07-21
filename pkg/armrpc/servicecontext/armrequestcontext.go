@@ -16,6 +16,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -53,11 +54,6 @@ var (
 
 	// HostHeader is the standard http header Host used to indicate the target host name.
 	HostHeader = "Host"
-
-	// RefererHeader is the full URI that the client connected to (which will be different than the RP URI, since it will have the public
-	// hostname instead of the RP hostname). This value can be used in generating FQDN for Location headers or other requests since RPs
-	// should not reference their endpoint name.
-	RefererHeader = "Referer"
 
 	// ContentTypeHeader is the standard http header Content-Type.
 	ContentTypeHeader = "Content-Type"
@@ -164,6 +160,10 @@ type ARMRequestContext struct {
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
+
+	refererUri := r.Header.Get(middleware.RefererHeader)
+	// RawResourcePath := r.Header.Get(middleware.XRawResourcePathHeader)
+
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
 	azID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
@@ -193,7 +193,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 
 		APIVersion:        r.URL.Query().Get(APIVersionParameterName),
 		AcceptLanguage:    r.Header.Get(AcceptLanguageHeader),
-		ClientReferer:     r.Header.Get(RefererHeader),
+		ClientReferer:     refererUri,
 		UserAgent:         r.UserAgent(),
 		RawSystemMetadata: r.Header.Get(ARMResourceSystemDataHeader),
 

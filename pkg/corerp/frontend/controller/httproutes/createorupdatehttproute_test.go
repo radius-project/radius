@@ -8,13 +8,12 @@ package httproutes
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -88,7 +87,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			httprouteInput, httprouteDataModel, _ := getTestModels20220315privatepreview()
+			httprouteInput, _, _ := getTestModels20220315privatepreview()
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, httprouteInput)
@@ -96,6 +95,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+			sCtx.OperationID = uuid.New()
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{}, tt.getErr).
@@ -136,13 +136,8 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationResults", req)
-				require.NotNil(t, w.Header().Get("Location"))
-				require.Equal(t, locationHeader, w.Header().Get("Location"))
-
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationStatuses", req)
-				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
-				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, "https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/locations/West%20US/operationResults/"+sCtx.OperationID.String()+"?api-version=2022-03-15-privatepreview", w.Header().Get("Location"))
+				require.Equal(t, "https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/locations/West%20US/operationStatuses/"+sCtx.OperationID.String()+"?api-version=2022-03-15-privatepreview", w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
@@ -213,6 +208,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+			sCtx.OperationID = uuid.New()
 
 			so := &store.Object{
 				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
@@ -258,39 +254,9 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationResults", req)
-				require.NotNil(t, w.Header().Get("Location"))
-				require.Equal(t, locationHeader, w.Header().Get("Location"))
-
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationStatuses", req)
-				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
-				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
+				require.Equal(t, "https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/locations/West%20US/operationResults/"+sCtx.OperationID.String()+"?api-version=2022-03-15-privatepreview", w.Header().Get("Location"))
+				require.Equal(t, "https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/providers/applications.core/locations/West%20US/operationStatuses/"+sCtx.OperationID.String()+"?api-version=2022-03-15-privatepreview", w.Header().Get("Azure-AsyncOperation"))
 			}
 		})
 	}
-}
-
-func getAsyncLocationPath(sCtx *servicecontext.ARMRequestContext, location string, resourceType string, req *http.Request) string {
-	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
-			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
-	}
-
-	query := url.Values{}
-	query.Add("api-version", sCtx.APIVersion)
-	dest.RawQuery = query.Encode()
-
-	// In production this is the header we get from app service for the 'real' protocol
-	protocol := req.Header.Get("X-Forwarded-Proto")
-	if protocol != "" {
-		dest.Scheme = protocol
-	}
-
-	if dest.Scheme == "" {
-		dest.Scheme = "http"
-	}
-
-	return dest.String()
 }

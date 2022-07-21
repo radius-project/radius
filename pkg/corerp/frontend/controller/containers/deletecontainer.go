@@ -71,6 +71,5 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 
 	existingContainer.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
-	return rest.NewAsyncOperationResponse(existingContainer, existingContainer.TrackedResource.Location, http.StatusAccepted,
-		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
+	return rest.NewAsyncOperationResponse(existingContainer, existingContainer.TrackedResource.Location, http.StatusAccepted, serviceCtx.OperationID), nil
 }
