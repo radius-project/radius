@@ -6,6 +6,8 @@ param environment string
 
 param location string = resourceGroup().location
 
+param resourceIdentifier string = newGuid()
+
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb'
   location: 'global'
@@ -46,7 +48,7 @@ resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = 
 }
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${guid(resourceGroup().name)}'
+  name: 'account-${resourceIdentifier}'
   location: location
   kind: 'MongoDB'
   tags: {
