@@ -7,7 +7,9 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -17,9 +19,11 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/queue/inmemory"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/atomic"
@@ -515,7 +519,14 @@ func TestRunOperation_Timeout(t *testing.T) {
 	// set up mocks
 	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
-	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
+	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *armerrors.ErrorDetails) error {
+			if state == v1.ProvisioningStateCanceled && strings.HasPrefix(opError.Message, "Operation timed out. Type: APPLICATIONS.CORE/ENVIRONMENTS|PUT, Timeout duration: ") &&
+				strings.HasPrefix(opError.Target, "/subscriptions/00000000-0000-0000-0000-000000000000") {
+				return nil
+			}
+			return errors.New("!!! failed to update status !!!")
+		}).Times(1)
 
 	testMessage := genTestMessage(uuid.New(), 10*time.Millisecond)
 	err := tCtx.testQueue.Enqueue(tCtx.ctx, testMessage)
