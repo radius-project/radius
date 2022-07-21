@@ -160,7 +160,7 @@ type ARMRequestContext struct {
 func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
 	refererUri := r.Header.Get(middleware.RefererHeader)
-	resourcePath := r.Header.Get(middleware.XRawResourcePathHeader)
+	resourcePath := r.URL.Path
 	log.Info("##### Referer URL in RP: " + refererUri)
 	rID, err := resources.ParseByMethod(resourcePath, r.Method)
 	if err != nil {
