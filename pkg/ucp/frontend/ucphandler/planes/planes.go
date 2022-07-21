@@ -263,26 +263,26 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
-	// Referer
-	refererURL := url.URL{
-		Host:     r.URL.Host,
-		Scheme:   httpScheme,
-		Path:     r.URL.Path,
-		RawQuery: r.URL.Query().Encode(),
-	}
-
-	r.Header.Set(RefererHeaderKey, refererURL.String())
-	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
-
-	url, err := url.Parse(incomingURL.Path)
+	uri, err := url.Parse(incomingURL.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Preserving the query strings on the incoming url on the newly constructed url
-	url.RawQuery = incomingURL.Query().Encode()
-	r.URL = url
+	uri.RawQuery = incomingURL.Query().Encode()
+	r.URL = uri
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
+
+	// Set Referer header
+	refererURL := url.URL{
+		Scheme:   httpScheme,
+		Host:     r.Host,
+		Path:     ucp.options.BasePath + incomingURL.Path,
+		RawQuery: uri.RawQuery,
+	}
+	r.Header.Set(RefererHeaderKey, refererURL.String())
+	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
+
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
 	sender.ServeHTTP(w, r.WithContext(ctx))

@@ -251,10 +251,12 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
 	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
 	if err == nil {
+		fmt.Printf("###### location: %s", locationHeader)
 		w.Header().Add("Location", locationHeader)
 	}
 	azureAsyncOpHeader, err := r.getAsyncLocationPath(req, "operationStatuses")
 	if err == nil {
+		fmt.Printf("###### azureAsyncOpHeader: %s", azureAsyncOpHeader)
 		w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
 	}
 
