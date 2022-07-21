@@ -263,6 +263,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		UCPHost: r.Host + ucp.options.BasePath,
 	}
 
+	// Referer
 	refererURL := url.URL{
 		Host:     r.URL.Host,
 		Scheme:   httpScheme,
@@ -271,6 +272,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	r.Header.Set(RefererHeaderKey, refererURL.String())
+	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
 
 	url, err := url.Parse(incomingURL.Path)
 	if err != nil {

@@ -170,6 +170,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 	if refererUri == "" || err != nil {
 		refererURL = r.URL
 	}
+	log.Info("##### Referer URL in RP: " + refererUri)
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
