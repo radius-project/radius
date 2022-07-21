@@ -12,13 +12,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
-func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) error {
+func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) (bool, error) {
 	step := output.BeginStep("Installing Radius...")
-	err := helm.InstallOnCluster(ctx, clusterOptions, kubeContext)
+	foundExisting, err := helm.InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
-		return err
+		return foundExisting, err
 	}
 
 	output.CompleteStep(step)
-	return nil
+	return foundExisting, nil
 }

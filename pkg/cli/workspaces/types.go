@@ -5,8 +5,6 @@
 
 package workspaces
 
-import "github.com/project-radius/radius/pkg/cli/azure"
-
 // Workspace represents a single workspace entry in config.
 type Workspace struct {
 	// Name is the name of the workspace. The name is not stored as part of the workspace entry but is populated
@@ -37,7 +35,12 @@ type Workspace struct {
 // ProviderConfig represents the configuration for IAC providers used during deployment.
 type ProviderConfig struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
-	Azure *azure.Provider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
+	Azure *Provider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
+}
+
+type Provider struct {
+	SubscriptionID string
+	ResourceGroup  string
 }
 
 // Registry represent the configuration for a container registry.

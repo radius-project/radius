@@ -9,7 +9,7 @@ package azure
 type Provider struct {
 	SubscriptionID      string
 	ResourceGroup       string
-	ServicePrincipal    *ServicePrincipal
+	ServicePrincipal    *ServicePrincipal `json:"spn,omitempty"`
 	PodIdentitySelector *string
 
 	AKS *AKSConfig

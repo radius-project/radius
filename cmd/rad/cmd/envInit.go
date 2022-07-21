@@ -17,6 +17,7 @@ import (
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
@@ -184,19 +185,24 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	// We're going to update the workspace in place if it's compatible. We only need to
 	// report an error if it's not (eg: different connection type or different kubecontext.)
-	foundExisting, err := cli.HasWorkspace(config, workspaceName)
+	foundExistingWorkspace, err := cli.HasWorkspace(config, workspaceName)
 	if err != nil {
 		return err
 	}
 
+	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall && foundExistingWorkspace {
+		return fmt.Errorf("chart arg / provider config is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
+	}
+
 	var workspace *workspaces.Workspace
-	if foundExisting {
+	if foundExistingWorkspace {
 		workspace, err = cli.GetWorkspace(config, workspaceName)
 		if err != nil {
 			return err
 		}
 	}
-	if foundExisting && !force && !workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
+
+	if foundExistingWorkspace && !force && !workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
 		return fmt.Errorf("the workspace %q already exists. Specify '--force' to overwrite", workspaceName)
 	}
 
@@ -206,9 +212,28 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	err = setup.Install(cmd.Context(), clusterOptions, contextName)
+	foundExistingRadius, err := setup.Install(cmd.Context(), clusterOptions, contextName)
 	if err != nil {
 		return err
+	}
+
+	//If existing radius control plane, retrieve az provider subscription and resourcegroup, and use that unless a --reinstall is specified
+	var azProviderFromInstall *azure.Provider
+	if foundExistingRadius {
+		azProviderFromInstall, err = helm.GetAzProvider(cliOptions.Radius, contextName)
+		if err != nil {
+			return err
+		}
+		azProviderFromInstall.ServicePrincipal.ClientID = "*****"
+		azProviderFromInstall.ServicePrincipal.ClientSecret = "*****"
+		azProviderFromInstall.ServicePrincipal.TenantID = "*****"
+
+	}
+
+	// we dont have a workspace, but looks like a az provider has been previously configured through rad install kubernetes. Are we trying to key in new azprovider?
+	//log info suggesting we need a --reinstall if we want to use the new spn
+	if (azureProvider != nil) && !chartArgs.Reinstall && (azProviderFromInstall != nil) {
+		output.LogInfo("provider config is not empty but radius already has an one configured. Rerun rad env init with '--reinstall' for the new provider config to take effect, otherwise radius will use the existing config")
 	}
 
 	// Steps:
@@ -216,43 +241,48 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// 1. Create workspace & resource groups
 	// 2. Create environment resource
 	// 3. Update workspace
-	if workspace == nil {
-		step := output.BeginStep("Creating Workspace...")
+	step := output.BeginStep("Creating Workspace...")
 
-		// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
-		//
-		// We'll flesh this out more when we add explicit commands for managing resource groups.
-		id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
-		if err != nil {
-			return err
-		}
-
-		workspace = &workspaces.Workspace{
-			Connection: map[string]interface{}{
-				"kind":    "kubernetes",
-				"context": contextName,
-			},
-			Scope:    id,
-			Registry: registry,
-		}
-
-		if azureProvider != nil {
-			workspace.ProviderConfig.Azure = azureProvider
-		}
-
-		err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
-			section.Default = workspaceName
-			section.Items[strings.ToLower(workspaceName)] = *workspace
-			return nil
-		})
-		if err != nil {
-			return err
-		}
-
-		output.LogInfo("Set %q as current workspace", workspaceName)
-		output.CompleteStep(step)
-
+	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
+	//
+	// We'll flesh this out more when we add explicit commands for managing resource groups.
+	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
+	if err != nil {
+		return err
 	}
+
+	workspace = &workspaces.Workspace{
+		Connection: map[string]interface{}{
+			"kind":    "kubernetes",
+			"context": contextName,
+		},
+		Scope:    id,
+		Registry: registry,
+	}
+
+	if azureProvider != nil {
+		workspace.ProviderConfig.Azure = &workspaces.Provider{
+			SubscriptionID: azureProvider.SubscriptionID,
+			ResourceGroup:  azureProvider.ResourceGroup,
+		}
+	} else if azProviderFromInstall != nil {
+		workspace.ProviderConfig.Azure = &workspaces.Provider{
+			SubscriptionID: azProviderFromInstall.SubscriptionID,
+			ResourceGroup:  azProviderFromInstall.ResourceGroup,
+		}
+	}
+
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		section.Default = workspaceName
+		section.Items[strings.ToLower(workspaceName)] = *workspace
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	output.LogInfo("Set %q as current workspace", workspaceName)
+	output.CompleteStep(step)
 
 	// Reload config so we can see the updates
 	config, err = cli.LoadConfig(config.ConfigFileUsed())
@@ -260,14 +290,14 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	step := output.BeginStep("Creating Environment...")
+	step = output.BeginStep("Creating Environment...")
 
-	id, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.Parse(workspace.Scope)
 	if err != nil {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, id.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
 	if err != nil {
 		return err
 	}
@@ -389,4 +419,9 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		}
 	}
 	return val, nil
+}
+
+func isEmpty(chartArgs *setup.ChartArgs) bool {
+	var emptyChartArgs setup.ChartArgs
+	return (chartArgs == nil || *chartArgs == emptyChartArgs)
 }

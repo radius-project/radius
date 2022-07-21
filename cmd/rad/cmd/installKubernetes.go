@@ -66,7 +66,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
-	err = setup.Install(cmd.Context(), clusterOptions, kubeContext)
+	_, err = setup.Install(cmd.Context(), clusterOptions, kubeContext)
 	if err != nil {
 		return err
 	}
