@@ -15,6 +15,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -130,14 +131,22 @@ func ConfigureDefaultHandlers(
 func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
-
+	var code string
+	message := err.Error()
+	errRenderer, ok := err.(*renderers.ErrRenderer)
+	if ok {
+		if errRenderer.StatusCode == http.StatusBadRequest {
+			code = armerrors.Invalid
+			message = errRenderer.Message
+		}
+	}
 	// Try to use the ARM format to send back the error info
 	body := armerrors.ErrorResponse{
 		Error: armerrors.ErrorDetails{
-			Message: err.Error(),
+			Code:    code,
+			Message: message,
 		},
 	}
-
 	response := rest.NewInternalServerErrorARMResponse(body)
 	err = response.Apply(ctx, w, req)
 	if err != nil {

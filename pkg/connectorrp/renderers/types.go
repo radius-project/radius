@@ -8,6 +8,7 @@ package renderers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -37,7 +38,6 @@ var ErrResourceMissingForResource = errors.New("the 'resource' field is required
 type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
-
 type RenderOptions struct {
 	Namespace string
 }
@@ -104,4 +104,13 @@ type SecretValueTransformer interface {
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient
 type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
+}
+
+type ErrRenderer struct {
+	StatusCode int
+	Message    string
+}
+
+func (r *ErrRenderer) Error() string {
+	return fmt.Sprintf("status %d: err %v", r.StatusCode, r.Message)
 }

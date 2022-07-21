@@ -6,8 +6,7 @@
 package daprpubsubbrokers
 
 import (
-	"errors"
-	"fmt"
+	"net/http"
 
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
@@ -32,11 +31,11 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
 	azureServiceBusNamespaceID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "the 'resource' field must be a valid resource id"}
 	}
 	err = azureServiceBusNamespaceID.ValidateResourceType(NamespaceResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a ServiceBus Namespace")
+		return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "the 'resource' field must refer to a ServiceBus Namespace"}
 	}
 
 	serviceBusNamespaceName := azureServiceBusNamespaceID.TypeSegments()[0].Name
