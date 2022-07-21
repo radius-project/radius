@@ -21,9 +21,10 @@ func DaprSecretStoreBinding(envParams map[string]string) BindingStatus {
 	}
 	defer client.Close()
 	ctx := context.Background()
-	if _, err := client.GetSecret(ctx, secretName, "SOME_SECRET", nil); err != nil {
+	if _, err := client.GetSecret(ctx, secretName, "mysecret", nil); err != nil {
 		log.Println("failed to get the secret from Dapr secret store - ", secretName, " error - ", err.Error())
 		return BindingStatus{false, "failed to get secret from Dapr"}
 	}
+	log.Println("successfully got the secret from the secret store - ", secretName)
 	return BindingStatus{true, "secrets accessed"}
 }

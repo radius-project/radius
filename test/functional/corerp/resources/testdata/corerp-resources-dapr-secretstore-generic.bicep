@@ -49,7 +49,7 @@ resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-private
     environment: environment
     application: app.id
     kind: 'generic'
-    type: 'secretstores.azure.keyvault'
+    type: 'secretstores.kubernetes'
     metadata: {
       vaultName: 'test'
     }

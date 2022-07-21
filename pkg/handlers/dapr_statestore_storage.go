@@ -157,7 +157,7 @@ func (handler *daprStateStoreAzureStorageHandler) DeleteDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
 			},
 		},
 	}

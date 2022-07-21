@@ -135,7 +135,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"name":      kubernetes.MakeResourceName(properties[ApplicationName].(string), properties[ResourceName].(string)),
 			},
 		},
 	}

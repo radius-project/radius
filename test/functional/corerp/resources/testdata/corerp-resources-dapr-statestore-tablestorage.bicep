@@ -44,7 +44,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+resource account 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   name: 'dapr${resourceIdentifier}'
   location: location
   sku: {
@@ -60,10 +60,8 @@ resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
     
     resource table 'tables' = {
       name: 'mytable'
-    }
-    
+    } 
   }
-  
 }
 
 resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {

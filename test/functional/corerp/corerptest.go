@@ -26,6 +26,8 @@ import (
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	memory "k8s.io/client-go/discovery/cached"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 var radiusControllerLogSync sync.Once
@@ -97,6 +99,51 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 			return fmt.Errorf("failed to create %q resource %#v:  %w", mapping.Resource.String(), r, err)
 		}
 	}
+
+	return nil
+}
+
+// TODO: This should be added per test with a flag or a list of secrets through TestOptions.
+func (ct CoreRPTest) AddDummySecret(ctx context.Context) error {
+	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+	}
+
+	data := make(map[string][]byte)
+	data["mysecret"] = []byte("test-secret")
+
+	_, err = ct.Options.K8sClient.CoreV1().
+		Secrets("default").
+		Create(ctx, &corev1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: data,
+		}, v1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create dummy secret %s", err.Error())
+	}
+
+	return nil
+}
+
+func (ct CoreRPTest) DeleteDummySecret(ctx context.Context) error {
+	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
+	if err != nil {
+		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
+	}
+
+	data := make(map[string][]byte)
+	data["mysecret"] = []byte("test-secret")
+
+	err = ct.Options.K8sClient.CoreV1().
+		Secrets("default").
+		Delete(ctx, "mysecret", v1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete dummy secret %s", err.Error())
+	}
+
 	return nil
 }
 
@@ -145,6 +192,12 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	if err != nil {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
+
+	// t.Logf("Creating a dummy secret")
+	// err = ct.AddDummySecret(ctx)
+	// if err != nil {
+	// 	t.Errorf("failed to create dummy secret %v", err)
+	// }
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -215,6 +268,12 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			}
 		}
 	}
+
+	// t.Logf("Deleting the dummy secret")
+	// err = ct.DeleteDummySecret(ctx)
+	// if err != nil {
+	// 	t.Errorf("failed to delete dummy secret %v", err)
+	// }
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {
