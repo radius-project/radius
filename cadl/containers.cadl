@@ -17,7 +17,7 @@ namespace Containers;
 @doc("Specifies a listening port for the container")
 model ContainerPort {
   @doc("The listening port number")
-  containerPort: int16;
+  containerPort: int32;
 
   @doc("Protocol in use by the port")
   protocol?: PortProtocol;
@@ -44,7 +44,7 @@ model HttpGetHealthProbeProperties extends HealthProbeProperties {
   kind: "httpGet";
 
   @doc("The listening port number")
-  containerPort: int16;
+  containerPort: int32;
 
   @doc("The route to make the HTTP request on")
   path: string;
@@ -58,7 +58,7 @@ model TcpHealthProbeProperties extends HealthProbeProperties {
   kind: "tcp";
 
   @doc("The listening port number")
-  containerPort: int16;
+  containerPort: int32;
 }
 
 @doc("Specifies the properties for readiness/liveness probe using an executable")
@@ -104,7 +104,7 @@ model ManualScalingExtension extends Extension {
   kind: "manualScaling";
 
   @doc("Replica count.")
-  replicas: int16;
+  replicas: int32;
 }
 
 @doc("Specifies the resource should have a Dapr sidecar injected")
@@ -112,7 +112,7 @@ model DaprSidecarExtension extends Extension {
   kind: "daprSidecar";
 
   @doc("The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ")
-  appPort?: int16;
+  appPort?: int32;
 
   @doc("The Dapr appId. Specifies the identifier used by Dapr for service invocation.")
   appId: string;
