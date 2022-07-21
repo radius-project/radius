@@ -6,6 +6,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -24,6 +25,7 @@ func LowercaseURLPath(next http.Handler) http.Handler {
 			r.Header.Set(refererHeader, r.URL.String())
 		}
 		r.URL.Path = strings.ToLower(r.URL.Path)
+		fmt.Printf("!!!!! incoming url: %s \n", r.URL.String())
 		next.ServeHTTP(w, r)
 	}
 	return http.HandlerFunc(fn)
