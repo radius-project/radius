@@ -107,12 +107,18 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
+<<<<<<< HEAD
 func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
+=======
+// TODO: This should be added per test with a flag or a list of secrets through TestOptions.
+func (ct CoreRPTest) AddDummySecret(ctx context.Context) error {
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
+<<<<<<< HEAD
 	for objectName := range ct.Secrets {
 		for key, value := range ct.Secrets[objectName] {
 			data := make(map[string][]byte)
@@ -130,17 +136,37 @@ func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
 				return fmt.Errorf("failed to create secret %s", err.Error())
 			}
 		}
+=======
+	data := make(map[string][]byte)
+	data["mysecret"] = []byte("test-secret")
+
+	_, err = ct.Options.K8sClient.CoreV1().
+		Secrets("default").
+		Create(ctx, &corev1.Secret{
+			ObjectMeta: v1.ObjectMeta{
+				Name: "mysecret",
+			},
+			Data: data,
+		}, v1.CreateOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create dummy secret %s", err.Error())
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 	}
 
 	return nil
 }
 
+<<<<<<< HEAD
 func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
+=======
+func (ct CoreRPTest) DeleteDummySecret(ctx context.Context) error {
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
+<<<<<<< HEAD
 	for objectName := range ct.Secrets {
 		err = ct.Options.K8sClient.CoreV1().
 			Secrets("default").
@@ -148,6 +174,16 @@ func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("failed to delete secret %s", err.Error())
 		}
+=======
+	data := make(map[string][]byte)
+	data["mysecret"] = []byte("test-secret")
+
+	err = ct.Options.K8sClient.CoreV1().
+		Secrets("default").
+		Delete(ctx, "mysecret", v1.DeleteOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to delete dummy secret %s", err.Error())
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 	}
 
 	return nil
@@ -199,11 +235,19 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
+<<<<<<< HEAD
 	t.Logf("Creating secrets if provided")
 	err = ct.CreateSecrets(ctx)
 	if err != nil {
 		t.Errorf("failed to create secrets %v", err)
 	}
+=======
+	// t.Logf("Creating a dummy secret")
+	// err = ct.AddDummySecret(ctx)
+	// if err != nil {
+	// 	t.Errorf("failed to create dummy secret %v", err)
+	// }
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -275,11 +319,19 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	}
 
+<<<<<<< HEAD
 	t.Logf("Deleting secrets")
 	err = ct.DeleteSecrets(ctx)
 	if err != nil {
 		t.Errorf("failed to delete secrets %v", err)
 	}
+=======
+	// t.Logf("Deleting the dummy secret")
+	// err = ct.DeleteDummySecret(ctx)
+	// if err != nil {
+	// 	t.Errorf("failed to delete dummy secret %v", err)
+	// }
+>>>>>>> 541b94c7 (Enabling test for Dapr state store table storage)
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {
