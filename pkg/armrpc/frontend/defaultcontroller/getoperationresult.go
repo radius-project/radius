@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -34,6 +35,8 @@ func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
 // Run returns the response with necessary headers about the async operation.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	log.Info("##### OperationResultBegin")
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	id, err := getOperationStatusResourceID(serviceCtx.ResourceID.String())

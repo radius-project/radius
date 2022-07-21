@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/go-logr/logr"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
@@ -32,6 +33,9 @@ func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 // Run returns the async operation status.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+	log := logr.FromContextOrDiscard(ctx)
+	log.Info("##### OperationStatusesBegin")
+
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
 	// TODO: Add additional validation
