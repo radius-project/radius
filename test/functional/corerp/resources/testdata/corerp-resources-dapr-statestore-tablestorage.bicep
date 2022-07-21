@@ -35,14 +35,14 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'ts-sts-ctnr'
+        appId: 'ts-sts'
         appPort: 3000
       }
     ]
   }
 }
 
-resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
+resource account 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
   location: location
   sku: {
@@ -58,10 +58,8 @@ resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
     
     resource table 'tables' = {
       name: 'mytable'
-    }
-    
+    } 
   }
-  
 }
 
 resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {

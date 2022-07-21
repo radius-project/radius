@@ -65,7 +65,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 
 				handlers.ResourceIDKey:         azuretableStorageID.String(),
 				handlers.StorageAccountNameKey: azuretableStorageID.TypeSegments()[0].Name,
-				handlers.ResourceName:          azuretableStorageID.TypeSegments()[2].Name,
+				handlers.ResourceName:          resource.Name,
 			},
 		},
 	}

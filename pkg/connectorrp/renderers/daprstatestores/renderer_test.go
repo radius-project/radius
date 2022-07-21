@@ -68,7 +68,7 @@ func Test_Render_Success(t *testing.T) {
 		handlers.ApplicationName:         applicationName,
 		handlers.ResourceIDKey:           "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		handlers.StorageAccountNameKey:   "test-account",
-		handlers.ResourceName:            "mytable",
+		handlers.ResourceName:            "test-state-store",
 	}
 	require.Equal(t, expected, output.Resource)
 }

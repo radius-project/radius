@@ -32,6 +32,13 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         path: '/healthz'
       }
     }
+    extensions: [
+      {
+        kind: 'daprSidecar'
+        appId: 'gnrc-sts'
+        appPort: 3000
+      }
+    ]
   }
 }
 
@@ -45,6 +52,7 @@ resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepr
     type: 'state.zookeeper'
     metadata: {
       servers: 'zookeeper.default.svc.cluster.local:2181'
+      authRequired: false
     }
     version: 'v1'     
   }
