@@ -139,6 +139,9 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
+	if len(rel) == 0 {
+		return nil, nil
+	}
 	cfg := rel[0].Config
 
 	_, ok := cfg["global"]
