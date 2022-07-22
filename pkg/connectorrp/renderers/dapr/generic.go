@@ -6,6 +6,8 @@
 package dapr
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
@@ -28,7 +30,7 @@ func (daprGeneric DaprGeneric) Validate() error {
 	}
 
 	if daprGeneric.Metadata == nil || len(daprGeneric.Metadata) == 0 {
-		return &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "No metadata specified for Dapr component of type %s" + *daprGeneric.Type}
+		return &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type)}
 	}
 
 	return nil

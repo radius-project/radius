@@ -7,7 +7,6 @@ package sqldatabases
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
@@ -16,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -43,7 +43,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	if resource.Properties.Resource == "" {
 		if properties.Server == "" || properties.Database == "" {
-			return renderers.RendererOutput{}, renderers.ErrorResourceOrServerNameMissingFromResource
+			return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: renderers.ErrorResourceOrServerNameMissingFromResource.Error()}
 		}
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
@@ -74,12 +74,12 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	databaseID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must be a valid resource id"}
 	}
 	// Validate resource type matches the expected Azure SQL DB resource type
 	err = databaseID.ValidateResourceType(AzureSQLResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "SQL Database")
+		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("the 'resource' field must refer to a %s", "SQL Database")}
 	}
 
 	// Build output resources

@@ -15,6 +15,7 @@ import (
 	connectorrprenderer "github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -93,7 +94,8 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }
 
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
@@ -114,7 +116,8 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {
@@ -137,7 +140,8 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -216,7 +220,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -242,7 +247,8 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -269,5 +275,6 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClinetRenderer).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*connectorrprenderer.ErrClinetRenderer).Message)
 }

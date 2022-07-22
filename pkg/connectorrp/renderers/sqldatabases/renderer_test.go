@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -108,7 +109,8 @@ func Test_Render_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
+	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*renderers.ErrClinetRenderer).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -129,5 +131,6 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.(*renderers.ErrClinetRenderer).Message)
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
@@ -191,7 +192,8 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*renderers.ErrClinetRenderer).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -215,5 +217,6 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.(*renderers.ErrClinetRenderer).Message)
 }

@@ -25,7 +25,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	var output outputresource.OutputResource
 
 	if properties.Resource == "" {
-		return renderers.RendererOutput{}, renderers.ErrResourceMissingForResource
+		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: renderers.ErrResourceMissingForResource.Error()}
 	}
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
 	azureServiceBusNamespaceID, err := resources.Parse(properties.Resource)
