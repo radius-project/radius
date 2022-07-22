@@ -133,7 +133,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
 	log := ucplog.GetLogger(ctx)
 	if err != nil {
-		log.Error(err, fmt.Sprint("Failed to list resources for application %s", applicationName))
+		log.Error(err, fmt.Sprint("Failed to list resources for application", applicationName))
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
