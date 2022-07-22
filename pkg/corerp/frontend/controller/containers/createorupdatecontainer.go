@@ -25,7 +25,7 @@ var _ ctrl.Controller = (*CreateOrUpdateContainer)(nil)
 
 var (
 	// AsyncPutContainerOperationTimeout is the default timeout duration of async put container operation.
-	AsyncPutContainerOperationTimeout = time.Duration(120) * time.Second
+	AsyncPutContainerOperationTimeout = time.Duration(5) * time.Minute
 )
 
 // CreateOrUpdateContainer is the controller implementation to create or update a container resource.
