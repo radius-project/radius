@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -135,12 +136,19 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	var response rest.Response
 	// Try to use the ARM format to send back the error info
 	// if the error is due to api conversion failure return bad resquest
-	switch err.(type) {
+	switch v := err.(type) {
 	case *conv.ErrModelConversion:
 		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
+			},
+		})
+	case *renderers.ErrClientRenderer:
+		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    v.Code,
+				Message: v.Message,
 			},
 		})
 	default:
@@ -164,6 +172,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	if err != nil {
 		body := armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
 				Message: err.Error(),
 			},
 		}
