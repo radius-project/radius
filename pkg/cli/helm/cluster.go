@@ -53,6 +53,8 @@ func NewDefaultClusterOptions() ClusterOptions {
 		Radius: RadiusOptions{
 			ChartVersion: chartVersion,
 			Tag:          tag,
+			AppCoreTag:   tag,
+			UCPTag:       tag,
 		},
 	}
 }

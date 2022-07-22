@@ -25,6 +25,8 @@ func Test_CanSetCLIOptions(t *testing.T) {
 	require.Equal(t, "chartpath", clusterOptions.Radius.ChartPath)
 	require.Equal(t, "image", clusterOptions.Radius.Image)
 	require.Equal(t, "tag", clusterOptions.Radius.Tag)
+	require.Equal(t, "tag", clusterOptions.Radius.UCPTag)
+	require.Equal(t, "tag", clusterOptions.Radius.AppCoreTag)
 }
 
 func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
