@@ -46,7 +46,7 @@ spec:
         - name: ASPNETCORE_URLS
           value: http://+:5000
         image: {{ .Values.global.extensibility.image }}:{{ .Values.global.extensibility.tag }}
-        name: bicep-de-extensibility
+        name: bicep-extensibility
         ports:
         - containerPort: 5000
           name: bicep-de-ext
@@ -108,7 +108,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: bicep-de-extensibility
+  name: bicep-extensibility
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
