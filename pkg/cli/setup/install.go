@@ -16,7 +16,7 @@ func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContex
 	step := output.BeginStep("Installing Radius...")
 	foundExisting, err := helm.InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
-		return foundExisting, err
+		return false, err
 	}
 
 	output.CompleteStep(step)
