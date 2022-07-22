@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -15,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -129,8 +131,9 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
+	log := ucplog.GetLogger(ctx)
 	if err != nil {
-		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		log.Error(err, fmt.Sprint("Failed to list resources for application %s", applicationName))
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
