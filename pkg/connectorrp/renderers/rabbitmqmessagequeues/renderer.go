@@ -7,8 +7,6 @@ package rabbitmqmessagequeues
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -31,13 +29,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	properties := resource.Properties
 
 	if properties.Secrets == (datamodel.RabbitMQSecrets{}) || properties.Secrets.ConnectionString == "" {
-		return renderers.RendererOutput{}, errors.New("secrets must be specified")
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("secrets must be specified")
 	}
 
 	// queue name must be specified by the user
 	queueName := properties.Queue
 	if queueName == "" {
-		return renderers.RendererOutput{}, fmt.Errorf("queue name must be specified")
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("queue name must be specified")
 	}
 	values := map[string]renderers.ComputedValueReference{
 		QueueNameKey: {

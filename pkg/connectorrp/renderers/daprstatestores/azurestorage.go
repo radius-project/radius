@@ -6,9 +6,6 @@
 package daprstatestores
 
 import (
-	"errors"
-	"fmt"
-
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
@@ -24,29 +21,29 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
 		properties := resource.Properties.DaprStateStoreAzureTableStorage
 		if properties.Resource == "" {
-			return nil, renderers.ErrResourceMissingForResource
+			return nil, renderers.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
 		azuretableStorageID, err = resources.Parse(properties.Resource)
 		if err != nil {
-			return []outputresource.OutputResource{}, errors.New("the 'resource' field must be a valid resource id")
+			return []outputresource.OutputResource{}, renderers.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 		}
 
 	}
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindStateSqlServer {
 		properties := resource.Properties.DaprStateStoreSQLServer
 		if properties.Resource == "" {
-			return nil, renderers.ErrResourceMissingForResource
+			return nil, renderers.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
 		azuretableStorageID, err = resources.Parse(properties.Resource)
 		if err != nil {
-			return []outputresource.OutputResource{}, errors.New("the 'resource' field must be a valid resource id")
+			return []outputresource.OutputResource{}, renderers.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 		}
 	}
 	err = azuretableStorageID.ValidateResourceType(StorageAccountResourceType)
 	if err != nil {
-		return []outputresource.OutputResource{}, fmt.Errorf("the 'resource' field must refer to a Storage Table")
+		return []outputresource.OutputResource{}, renderers.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")
 	}
 	// generate data we can use to connect to a Storage Account
 	outputResources = []outputresource.OutputResource{

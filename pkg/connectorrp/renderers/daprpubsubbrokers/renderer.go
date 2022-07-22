@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -43,7 +44,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	if resource.Properties.Kind == "" {
-		return renderers.RendererOutput{}, errors.New("Resource kind not specified for Dapr Pub/Sub component")
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("Resource kind not specified for Dapr Pub/Sub component")
 	}
 
 	if r.PubSubs == nil {
@@ -53,17 +54,30 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	kind := string(resource.Properties.Kind)
 	pubSubFunc, ok := r.PubSubs[kind]
 	if !ok {
-		return renderers.RendererOutput{}, fmt.Errorf("Renderer not found for kind: %s", kind)
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", kind, getAlphabeticallySortedKeys(r.PubSubs)))
 	}
 
 	var applicationName string
 	if resource.Properties.Application != "" {
 		applicationID, err := resources.Parse(resource.Properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, errors.New("the 'application' field must be a valid resource id")
+			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
 		}
 		applicationName = applicationID.Name()
 	}
 
 	return pubSubFunc(*resource, applicationName, options.Namespace)
+}
+
+func getAlphabeticallySortedKeys(store map[string]PubSubFunc) []string {
+	keys := make([]string, len(store))
+
+	i := 0
+	for k := range store {
+		keys[i] = k
+		i++
+	}
+
+	sort.Strings(keys)
+	return keys
 }

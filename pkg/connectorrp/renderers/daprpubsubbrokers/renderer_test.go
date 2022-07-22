@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
@@ -111,7 +112,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.(*renderers.ErrClientRenderer).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -137,7 +139,8 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*renderers.ErrClientRenderer).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -163,7 +166,8 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*renderers.ErrClientRenderer).Message)
 }
 
 func Test_ConstructDaprPubSubGeneric(t *testing.T) {
@@ -312,5 +316,6 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.(*renderers.ErrClientRenderer).Message)
 }

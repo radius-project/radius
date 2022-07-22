@@ -15,6 +15,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -130,17 +131,30 @@ func ConfigureDefaultHandlers(
 func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
-
-	// Try to use the ARM format to send back the error info
-	body := armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Message: err.Error(),
-		},
+	var response rest.Response
+	switch v := err.(type) {
+	case *renderers.ErrClientRenderer:
+		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    v.Code,
+				Message: v.Message,
+			},
+		})
+	default:
+		response = rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+			},
+		})
 	}
-
-	response := rest.NewInternalServerErrorARMResponse(body)
 	err = response.Apply(ctx, w, req)
 	if err != nil {
+		body := armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Message: err.Error(),
+			},
+		}
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
