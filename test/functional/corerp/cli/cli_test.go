@@ -27,6 +27,8 @@ func Test_CLI(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -57,7 +59,7 @@ func Test_CLI(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -70,6 +72,8 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	parameterFile := "testdata/corerp-kubernetes-cli-parameters.parameters.json"
 	name := "kubernetes-cli-params"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
@@ -100,7 +104,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

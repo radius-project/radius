@@ -17,6 +17,8 @@ func Test_Container(t *testing.T) {
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -40,7 +42,7 @@ func Test_Container(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -48,6 +50,8 @@ func Test_Container(t *testing.T) {
 func Test_ContainerHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -77,7 +81,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

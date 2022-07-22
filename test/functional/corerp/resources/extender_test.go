@@ -17,6 +17,8 @@ func Test_Extender(t *testing.T) {
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -44,7 +46,7 @@ func Test_Extender(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

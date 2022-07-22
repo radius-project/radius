@@ -17,6 +17,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -44,7 +46,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -52,6 +54,8 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 func Test_DaprStateStoreTableStorage(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -80,7 +84,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

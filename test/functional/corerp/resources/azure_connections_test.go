@@ -19,6 +19,8 @@ func Test_AzureConnections(t *testing.T) {
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -38,7 +40,7 @@ func Test_AzureConnections(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

@@ -20,6 +20,8 @@ func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -65,7 +67,7 @@ func Test_Gateway(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

@@ -22,6 +22,8 @@ func Test_SQL(t *testing.T) {
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -59,7 +61,7 @@ func Test_SQL(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

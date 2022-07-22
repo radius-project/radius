@@ -55,6 +55,9 @@ type CoreRPTest struct {
 	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
+
+	// Object Name => map of secret keys and values
+	Secrets map[string]map[string]string
 }
 
 type TestOptions struct {
@@ -66,12 +69,13 @@ func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
-func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) CoreRPTest {
+func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
 		Options:     NewCoreRPTestOptions(t),
 		Name:        name,
 		Description: name,
 		Steps:       steps,
+		Secrets:     secrets,
 	}
 }
 
@@ -103,45 +107,47 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
-// TODO: This should be added per test with a flag or a list of secrets through TestOptions.
-func (ct CoreRPTest) AddDummySecret(ctx context.Context) error {
+func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
 	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
-	data := make(map[string][]byte)
-	data["mysecret"] = []byte("test-secret")
+	for objectName := range ct.Secrets {
+		for key, value := range ct.Secrets[objectName] {
+			data := make(map[string][]byte)
+			data[key] = []byte(value)
 
-	_, err = ct.Options.K8sClient.CoreV1().
-		Secrets("default").
-		Create(ctx, &corev1.Secret{
-			ObjectMeta: v1.ObjectMeta{
-				Name: "mysecret",
-			},
-			Data: data,
-		}, v1.CreateOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to create dummy secret %s", err.Error())
+			_, err = ct.Options.K8sClient.CoreV1().
+				Secrets("default").
+				Create(ctx, &corev1.Secret{
+					ObjectMeta: v1.ObjectMeta{
+						Name: objectName,
+					},
+					Data: data,
+				}, v1.CreateOptions{})
+			if err != nil {
+				return fmt.Errorf("failed to create secret %s", err.Error())
+			}
+		}
 	}
 
 	return nil
 }
 
-func (ct CoreRPTest) DeleteDummySecret(ctx context.Context) error {
+func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
 	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
 	if err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
-	data := make(map[string][]byte)
-	data["mysecret"] = []byte("test-secret")
-
-	err = ct.Options.K8sClient.CoreV1().
-		Secrets("default").
-		Delete(ctx, "mysecret", v1.DeleteOptions{})
-	if err != nil {
-		return fmt.Errorf("failed to delete dummy secret %s", err.Error())
+	for objectName := range ct.Secrets {
+		err = ct.Options.K8sClient.CoreV1().
+			Secrets("default").
+			Delete(ctx, objectName, v1.DeleteOptions{})
+		if err != nil {
+			return fmt.Errorf("failed to delete secret %s", err.Error())
+		}
 	}
 
 	return nil
@@ -193,11 +199,11 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		t.Errorf("failed to capture logs from radius pods %v", err)
 	}
 
-	// t.Logf("Creating a dummy secret")
-	// err = ct.AddDummySecret(ctx)
-	// if err != nil {
-	// 	t.Errorf("failed to create dummy secret %v", err)
-	// }
+	t.Logf("Creating secrets if provided")
+	err = ct.CreateSecrets(ctx)
+	if err != nil {
+		t.Errorf("failed to create secrets %v", err)
+	}
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
@@ -269,11 +275,11 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	}
 
-	// t.Logf("Deleting the dummy secret")
-	// err = ct.DeleteDummySecret(ctx)
-	// if err != nil {
-	// 	t.Errorf("failed to delete dummy secret %v", err)
-	// }
+	t.Logf("Deleting secrets")
+	err = ct.DeleteSecrets(ctx)
+	if err != nil {
+		t.Errorf("failed to delete secrets %v", err)
+	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions
 	if ct.PostDeleteVerify != nil {

@@ -25,6 +25,8 @@ func Test_NestedModules(t *testing.T) {
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -42,7 +44,7 @@ func Test_NestedModules(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -50,6 +52,8 @@ func Test_NestedModules(t *testing.T) {
 func Test_RedeployWithAnotherResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -104,7 +108,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -112,6 +116,8 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -174,13 +180,15 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 				require.Equal(t, "updated", envVar.Value, "expected env var to be updated")
 			},
 		},
-	})
+	}, requiredSecrets)
 	test.Test(t)
 }
 
 func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -235,7 +243,7 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -243,6 +251,8 @@ func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
 func Test_CommunicationCycle(t *testing.T) {
 	name := "corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -284,7 +294,7 @@ func Test_CommunicationCycle(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

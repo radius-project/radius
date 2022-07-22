@@ -6,8 +6,6 @@ param environment string
 
 param location string = resourceGroup().location
 
-param resourceIdentifier string = newGuid()
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-statestore-tablestorage'
   location: location
@@ -45,7 +43,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource account 'Microsoft.Storage/storageAccounts@2021-09-01' = {
-  name: 'dapr${resourceIdentifier}'
+  name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
   location: location
   sku: {
     name: 'Standard_LRS'
