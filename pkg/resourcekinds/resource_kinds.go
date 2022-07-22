@@ -35,4 +35,5 @@ const (
 	AzureFileShare                   = "azure.fileshare"
 	AzureFileShareStorageAccount     = "azure.fileshare.account"
 	TrafficSplit                     = "TrafficSplit"
+	HTTPRouteGroup                   = "HTTPRouteGroup"
 )

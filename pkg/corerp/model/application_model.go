@@ -181,6 +181,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.HTTPRouteGroup,
+				Provider: providers.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
+		},
 	}
 	/* 	azureOutputResourceModel := []OutputResourceModel{
 	   		{
