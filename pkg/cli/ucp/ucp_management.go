@@ -7,6 +7,7 @@ package ucp
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
@@ -15,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/sync/errgroup"
 )
 
