@@ -55,6 +55,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 			Tag:          tag,
 			AppCoreTag:   tag,
 			UCPTag:       tag,
+			DETag:        tag,
 		},
 	}
 }
