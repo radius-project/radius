@@ -109,8 +109,8 @@ func Test_Render_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
-	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*renderers.ErrClinetRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*renderers.ErrClientRenderer).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -131,6 +131,6 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
-	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.(*renderers.ErrClinetRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure SQL Database", err.(*renderers.ErrClientRenderer).Message)
 }

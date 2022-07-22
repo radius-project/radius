@@ -88,6 +88,6 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 	}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
-	require.Equal(t, "queue name must be specified", err.(*renderers.ErrClinetRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "queue name must be specified", err.(*renderers.ErrClientRenderer).Message)
 }

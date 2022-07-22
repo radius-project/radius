@@ -192,8 +192,8 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*renderers.ErrClinetRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*renderers.ErrClientRenderer).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -217,6 +217,6 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClinetRenderer).Code)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.(*renderers.ErrClinetRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure CosmosDB Mongo Database resource", err.(*renderers.ErrClientRenderer).Message)
 }

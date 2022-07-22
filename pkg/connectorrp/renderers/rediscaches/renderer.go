@@ -7,7 +7,6 @@ package rediscaches
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -67,12 +66,12 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must be a valid resource id"}
+		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must be a valid resource id"}
 	}
 	// Validate resource type matches the expected Redis Cache resource type
 	err = redisCacheID.ValidateResourceType(RedisResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("the 'resource' field must refer to a %s", "Redis Cache")}
+		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must refer to an Azure Redis Cache"}
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{

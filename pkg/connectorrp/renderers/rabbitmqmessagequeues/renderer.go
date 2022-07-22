@@ -30,13 +30,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	properties := resource.Properties
 
 	if properties.Secrets == (datamodel.RabbitMQSecrets{}) || properties.Secrets.ConnectionString == "" {
-		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "secrets must be specified"}
+		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "secrets must be specified"}
 	}
 
 	// queue name must be specified by the user
 	queueName := properties.Queue
 	if queueName == "" {
-		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "queue name must be specified"}
+		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "queue name must be specified"}
 	}
 	values := map[string]renderers.ComputedValueReference{
 		QueueNameKey: {

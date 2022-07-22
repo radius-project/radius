@@ -22,15 +22,15 @@ type DaprGeneric struct {
 
 func (daprGeneric DaprGeneric) Validate() error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
-		return &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "No type specified for generic Dapr component"}
+		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "No type specified for generic Dapr component"}
 	}
 
 	if daprGeneric.Version == nil || *daprGeneric.Version == "" {
-		return &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "No Dapr component version specified for generic Dapr component"}
+		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "No Dapr component version specified for generic Dapr component"}
 	}
 
 	if daprGeneric.Metadata == nil || len(daprGeneric.Metadata) == 0 {
-		return &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type)}
+		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type)}
 	}
 
 	return nil

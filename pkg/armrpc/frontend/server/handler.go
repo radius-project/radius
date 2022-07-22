@@ -133,7 +133,7 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
 	var response rest.Response
 	switch v := err.(type) {
-	case *renderers.ErrClinetRenderer:
+	case *renderers.ErrClientRenderer:
 		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    v.Code,
