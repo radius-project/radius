@@ -106,11 +106,11 @@ type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
 
-type ErrRenderer struct {
-	StatusCode int
-	Message    string
+type ErrClinetRenderer struct {
+	Code    string
+	Message string
 }
 
-func (r *ErrRenderer) Error() string {
-	return fmt.Sprintf("status %d: err %v", r.StatusCode, r.Message)
+func (r *ErrClinetRenderer) Error() string {
+	return fmt.Sprintf("status %v: err %v", r.Code, r.Message)
 }

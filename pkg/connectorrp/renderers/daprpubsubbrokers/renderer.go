@@ -7,11 +7,13 @@ package daprpubsubbrokers
 
 import (
 	"context"
-	"net/http"
+	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -42,24 +44,24 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	if resource.Properties.Kind == "" {
-		return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "Resource kind not specified for Dapr Pub/Sub component"}
+		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "Resource kind not specified for Dapr Pub/Sub component"}
 	}
 
 	if r.PubSubs == nil {
-		return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "must support either kubernetes or ARM"}
+		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
 
 	kind := string(resource.Properties.Kind)
 	pubSubFunc, ok := r.PubSubs[kind]
 	if !ok {
-		return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "Renderer not found for kind:" + kind}
+		return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("%s is not supported", kind)}
 	}
 
 	var applicationName string
 	if resource.Properties.Application != "" {
 		applicationID, err := resources.Parse(resource.Properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, &renderers.ErrRenderer{StatusCode: http.StatusBadRequest, Message: "the 'application' field must be a valid resource id"}
+			return renderers.RendererOutput{}, &renderers.ErrClinetRenderer{Code: armerrors.Invalid, Message: "the 'application' field must be a valid resource id"}
 		}
 		applicationName = applicationID.Name()
 	}

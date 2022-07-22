@@ -131,25 +131,30 @@ func ConfigureDefaultHandlers(
 func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
-	var code string
-	message := err.Error()
-	errRenderer, ok := err.(*renderers.ErrRenderer)
-	if ok {
-		if errRenderer.StatusCode == http.StatusBadRequest {
-			code = armerrors.Invalid
-			message = errRenderer.Message
-		}
+	var response rest.Response
+	switch v := err.(type) {
+	case *renderers.ErrClinetRenderer:
+		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    v.Code,
+				Message: v.Message,
+			},
+		})
+	default:
+		response = rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+			},
+		})
 	}
-	// Try to use the ARM format to send back the error info
-	body := armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Code:    code,
-			Message: message,
-		},
-	}
-	response := rest.NewInternalServerErrorARMResponse(body)
 	err = response.Apply(ctx, w, req)
 	if err != nil {
+		body := armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Message: err.Error(),
+			},
+		}
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
