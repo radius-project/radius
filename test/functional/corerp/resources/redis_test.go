@@ -20,6 +20,8 @@ func Test_Redis(t *testing.T) {
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -57,7 +59,7 @@ func Test_Redis(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional/corerp"
@@ -13,10 +14,15 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// FIXME: Test passes but containers are unhealthy.
 func Test_SQL(t *testing.T) {
+	// https://github.com/microsoft/mssql-docker/issues/668
+	if runtime.GOARCH == "arm64" {
+		t.Skip()
+	}
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -55,7 +61,7 @@ func Test_SQL(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

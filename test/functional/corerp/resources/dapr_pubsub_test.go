@@ -17,6 +17,8 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -44,7 +46,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -52,6 +54,8 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 func Test_DaprPubSubServiceBus(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -80,7 +84,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

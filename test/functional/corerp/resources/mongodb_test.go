@@ -29,6 +29,8 @@ func Test_MongoDB(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 
+	requiredSecrets := map[string]map[string]string{}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -58,7 +60,7 @@ func Test_MongoDB(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }
@@ -66,6 +68,8 @@ func Test_MongoDB(t *testing.T) {
 func Test_MongoDBUserSecrets(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
+
+	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -104,7 +108,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 				},
 			},
 		},
-	})
+	}, requiredSecrets)
 
 	test.Test(t)
 }

@@ -6,8 +6,6 @@ param environment string
 
 param location string = resourceGroup().location
 
-param resourceIdentifier string = newGuid()
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-statestore-tablestorage'
   location: location
@@ -44,8 +42,8 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
-  name: 'dapr${resourceIdentifier}'
+resource account 'Microsoft.Storage/storageAccounts@2021-09-01' = {
+  name: 'dapr${uniqueString(resourceGroup().id, deployment().name)}'
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -60,10 +58,8 @@ resource account 'Microsoft.Storage/storageAccounts@2019-06-01' = {
     
     resource table 'tables' = {
       name: 'mytable'
-    }
-    
+    } 
   }
-  
 }
 
 resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
