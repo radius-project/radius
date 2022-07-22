@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/stretchr/testify/require"
 )
@@ -19,7 +20,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
-		AzProvider:          &Provider{},
+		AzProvider:          &workspaces.Provider{},
 	}
 
 	var expectedConfig providers.ProviderConfig
@@ -47,7 +48,7 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
-		AzProvider: &Provider{
+		AzProvider: &workspaces.Provider{
 			SubscriptionID: "dummy",
 			ResourceGroup:  "azrg",
 		},

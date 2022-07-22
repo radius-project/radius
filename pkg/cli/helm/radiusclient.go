@@ -111,7 +111,6 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	} else if err == nil {
 		alreadyInstalled = true
 		output.LogInfo("Found existing Radius installation. Use '--reinstall' to force reinstallation.")
-		return true, err
 	}
 	return alreadyInstalled, err
 }
