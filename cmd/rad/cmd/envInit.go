@@ -260,17 +260,15 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		Registry: registry,
 	}
 
+	provider := workspaces.Provider{}
 	if azureProvider != nil {
-		workspace.ProviderConfig.Azure = &workspaces.Provider{
-			SubscriptionID: azureProvider.SubscriptionID,
-			ResourceGroup:  azureProvider.ResourceGroup,
-		}
+		provider.SubscriptionID = azureProvider.SubscriptionID
+		provider.ResourceGroup = azureProvider.ResourceGroup
 	} else if azProviderFromInstall != nil {
-		workspace.ProviderConfig.Azure = &workspaces.Provider{
-			SubscriptionID: azProviderFromInstall.SubscriptionID,
-			ResourceGroup:  azProviderFromInstall.ResourceGroup,
-		}
+		provider.SubscriptionID = azProviderFromInstall.SubscriptionID
+		provider.ResourceGroup = azProviderFromInstall.ResourceGroup
 	}
+	workspace.ProviderConfig.Azure = &provider
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
