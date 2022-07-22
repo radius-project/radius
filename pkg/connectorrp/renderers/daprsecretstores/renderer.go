@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -45,13 +44,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	properties := resource.Properties
 	secretStoreFunc := r.SecretStores[string(properties.Kind)]
 	if secretStoreFunc == nil {
-		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores))}
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores)))
 	}
 	var applicationName string
 	if resource.Properties.Application != "" {
 		applicationID, err := resources.Parse(resource.Properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'application' field must be a valid resource id"}
+			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
 		}
 		applicationName = applicationID.Name()
 	}

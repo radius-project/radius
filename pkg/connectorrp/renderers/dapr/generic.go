@@ -10,7 +10,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -22,15 +21,15 @@ type DaprGeneric struct {
 
 func (daprGeneric DaprGeneric) Validate() error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
-		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "No type specified for generic Dapr component"}
+		return renderers.NewClientErrInvalidRequest("No type specified for generic Dapr component")
 	}
 
 	if daprGeneric.Version == nil || *daprGeneric.Version == "" {
-		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "No Dapr component version specified for generic Dapr component"}
+		return renderers.NewClientErrInvalidRequest("No Dapr component version specified for generic Dapr component")
 	}
 
 	if daprGeneric.Metadata == nil || len(daprGeneric.Metadata) == 0 {
-		return &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type)}
+		return renderers.NewClientErrInvalidRequest(fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type))
 	}
 
 	return nil

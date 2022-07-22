@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -45,7 +44,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	if resource.Properties.Kind == "" {
-		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "Resource kind not specified for Dapr Pub/Sub component"}
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("Resource kind not specified for Dapr Pub/Sub component")
 	}
 
 	if r.PubSubs == nil {
@@ -55,14 +54,14 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	kind := string(resource.Properties.Kind)
 	pubSubFunc, ok := r.PubSubs[kind]
 	if !ok {
-		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: fmt.Sprintf("%s is not supported. Supported kind values: %s", kind, getAlphabeticallySortedKeys(r.PubSubs))}
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", kind, getAlphabeticallySortedKeys(r.PubSubs)))
 	}
 
 	var applicationName string
 	if resource.Properties.Application != "" {
 		applicationID, err := resources.Parse(resource.Properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'application' field must be a valid resource id"}
+			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
 		}
 		applicationName = applicationID.Name()
 	}

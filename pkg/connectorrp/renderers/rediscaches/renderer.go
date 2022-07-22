@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -66,12 +65,12 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must be a valid resource id"}
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Redis Cache resource type
 	err = redisCacheID.ValidateResourceType(RedisResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, &renderers.ErrClientRenderer{Code: armerrors.Invalid, Message: "the 'resource' field must refer to an Azure Redis Cache"}
+		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{
