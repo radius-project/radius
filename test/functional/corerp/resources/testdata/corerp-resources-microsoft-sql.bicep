@@ -1,7 +1,7 @@
 import radius as radius
 
 @description('Specifies the location for resources.')
-param location string = resourceGroup().location
+param location string = 'East US'
 
 @description('Specifies the image for the container resource.')
 param magpieImage string = 'radiusdev.azurecr.io/magpiego:latest'
