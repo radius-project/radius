@@ -13,6 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
@@ -187,6 +188,28 @@ func buildFetchSecretsInput() ResourceData {
 	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
 }
 
+func buildEnvironmentResource() store.Object {
+	environment := corerpDatamodel.Environment{
+		TrackedResource: v1.TrackedResource{
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+		},
+		Properties: corerpDatamodel.EnvironmentProperties{
+			Compute: corerpDatamodel.EnvironmentCompute{
+				KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
+					Namespace: "radius-test",
+				},
+			},
+		},
+	}
+	er := store.Object{
+		Metadata: store.Metadata{
+			ID: environment.ID,
+		},
+		Data: environment,
+	}
+	return er
+}
+
 type SharedMocks struct {
 	model              model.ApplicationModel
 	db                 *store.MockStorageClient
@@ -259,7 +282,7 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_Success(t *testing.T) {
+func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 
@@ -269,24 +292,7 @@ func Test_Render_Success(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		environment := corerpDatamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-			Properties: corerpDatamodel.EnvironmentProperties{
-				Compute: corerpDatamodel.EnvironmentCompute{
-					KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
+		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -299,24 +305,7 @@ func Test_Render_Success(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		environment := corerpDatamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-			Properties: corerpDatamodel.EnvironmentProperties{
-				Compute: corerpDatamodel.EnvironmentCompute{
-					KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
+		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -324,27 +313,31 @@ func Test_Render_Success(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
 
-	t.Run("verify render error", func(t *testing.T) {
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		environment := corerpDatamodel.Environment{
+	t.Run("verify render error: invalid environment id", func(t *testing.T) {
+		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+		resourceID := getResourceID(id)
+		resource := datamodel.MongoDatabase{
 			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				ID:   id,
+				Name: "mongo0",
+				Type: "Applications.Connector/MongoDatabases",
 			},
-			Properties: corerpDatamodel.EnvironmentProperties{
-				Compute: corerpDatamodel.EnvironmentCompute{
-					KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
+			Properties: datamodel.MongoDatabaseProperties{
+				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+					Environment: "invalid-id",
 				},
 			},
 		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
+
+		_, err := dp.Render(ctx, resourceID, &resource)
+		require.Error(t, err)
+		require.Equal(t, connector.NewClientErrInvalidRequest("provided environment id \"invalid-id\" is not a valid id."), err)
+	})
+
+	t.Run("verify render error", func(t *testing.T) {
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		resourceID, testResource, _ := buildTestMongoResource()
@@ -383,24 +376,7 @@ func Test_Render_Success(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		environment := corerpDatamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-			Properties: corerpDatamodel.EnvironmentProperties{
-				Compute: corerpDatamodel.EnvironmentCompute{
-					KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
+		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
@@ -408,33 +384,54 @@ func Test_Render_Success(t *testing.T) {
 	})
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
-		resourceID, testResource, testRendererOutput := buildTestMongoResource()
-		testRendererOutput.Resources[0].ResourceType.Provider = "unknown"
-
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		environment := corerpDatamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-			Properties: corerpDatamodel.EnvironmentProperties{
-				Compute: corerpDatamodel.EnvironmentCompute{
-					KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
+		resourceID, testResource, _ := buildTestMongoResource()
+		rendererOutput := renderers.RendererOutput{
+			Resources: []outputresource.OutputResource{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+					ResourceType: resourcemodel.ResourceType{
+						Type:     resourcekinds.AzureCosmosAccount,
+						Provider: "unknown",
 					},
 				},
 			},
 		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account")
+	})
+
+	t.Run("Azure provider unsupported", func(t *testing.T) {
+		testModel := model.NewModel(
+			[]model.RadiusResourceModel{
+				{
+					ResourceType: mongodatabases.ResourceType,
+					Renderer:     mocks.renderer,
+				},
+			},
+			[]model.OutputResourceModel{},
+			map[string]bool{
+				providers.ProviderKubernetes: true,
+				providers.ProviderAzure:      false,
+			},
+		)
+
+		mockdp := deploymentProcessor{testModel, mocks.dbProvider, mocks.secretsValueClient, nil}
+		resourceID, testResource, testRendererOutput := buildTestMongoResource()
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource()
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		_, err := mockdp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, connector.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type azure.cosmosdb.account"), err)
 	})
 }
 

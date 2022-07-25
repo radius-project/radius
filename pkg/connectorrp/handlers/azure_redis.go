@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/redis/mgmt/redis"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -52,6 +53,9 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	redisClient := clients.NewRedisClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 	cache, err := redisClient.Get(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[RedisNameKey])
 	if err != nil {
+		if clients.Is404Error(err) {
+			return resourcemodel.ResourceIdentity{}, nil, connector.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Redis Cache resource %q does not exist", properties[RedisResourceIdKey]))
+		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get redis cache: %w", err)
 	}
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *cache.ID, clients.GetAPIVersionFromUserAgent(redis.UserAgent()))

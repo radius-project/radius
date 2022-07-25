@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -59,6 +60,9 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	sac := clients.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 	account, err := sac.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], storage.AccountExpand(""))
 	if err != nil {
+		if clients.Is404Error(err) {
+			return resourcemodel.ResourceIdentity{}, nil, connector.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", properties[StorageAccountNameKey]))
+		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
@@ -137,6 +141,9 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 
 	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, accountName, "")
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, connector.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", accountName))
+		}
 		return nil, fmt.Errorf("failed to access keys of storage account: %w", err)
 	}
 

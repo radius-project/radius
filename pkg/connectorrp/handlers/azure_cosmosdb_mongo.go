@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -46,6 +47,9 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, resource *out
 	mongoClient := clients.NewMongoDBResourcesClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 	database, err := mongoClient.GetMongoDBDatabase(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[CosmosDBAccountNameKey], properties[CosmosDBDatabaseNameKey])
 	if err != nil {
+		if clients.Is404Error(err) {
+			return resourcemodel.ResourceIdentity{}, nil, connector.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure CosmosDB Mongo resource %q does not exist", properties[CosmosDBDatabaseIDKey]))
+		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get CosmosDB Mongo Database: %w", err)
 	}
 
