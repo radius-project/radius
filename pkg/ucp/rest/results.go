@@ -35,9 +35,6 @@ func NewOKResponse(body interface{}) Response {
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), ucplog.LogHTTPStatusCode, http.StatusOK)
-
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -66,7 +63,7 @@ func NewCreatedResponse(body interface{}) Response {
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -98,7 +95,7 @@ func NewCreatedAsyncResponse(body interface{}, location string, scheme string) R
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -147,7 +144,7 @@ func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) 
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.LogHTTPStatusCode, http.StatusAccepted)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusAccepted), ucplog.LogHTTPStatusCode, http.StatusAccepted)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -224,7 +221,7 @@ func NewBadRequestARMResponse(body ErrorResponse) Response {
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.LogHTTPStatusCode, http.StatusBadRequest)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusBadRequest), ucplog.LogHTTPStatusCode, http.StatusBadRequest)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -261,9 +258,6 @@ func NewNotFoundResponse(id string) Response {
 }
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.LogHTTPStatusCode, http.StatusNotFound)
-
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -299,7 +293,7 @@ func NewConflictResponse(message string) Response {
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), ucplog.LogHTTPStatusCode, http.StatusConflict)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusConflict), ucplog.LogHTTPStatusCode, http.StatusConflict)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
@@ -328,7 +322,7 @@ func NewInternalServerErrorARMResponse(body ErrorResponse) Response {
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), ucplog.LogHTTPStatusCode, http.StatusInternalServerError)
+	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusInternalServerError), ucplog.LogHTTPStatusCode, http.StatusInternalServerError)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {

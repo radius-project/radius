@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -52,6 +53,7 @@ type ucpHandler struct {
 }
 
 func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClient, body []byte, path string) (rest.Response, error) {
+	logger := ucplog.GetLogger(ctx)
 	var plane rest.Plane
 	err := json.Unmarshal(body, &plane)
 	if err != nil {
@@ -88,6 +90,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false
+			logger.Info("No existing plane %s found in db", ID)
 		} else {
 			return nil, err
 		}
@@ -99,16 +102,20 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	var restResp rest.Response
 	if planeExists {
 		restResp = rest.NewOKResponse(plane)
+		logger.Info(fmt.Sprintf("Updated plane %s successfully", plane.ID))
 	} else {
 		restResp = rest.NewCreatedResponse(plane)
+		logger.Info(fmt.Sprintf("Created plane %s successfully", plane.ID))
 	}
 	return restResp, nil
 }
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	logger := ucplog.GetLogger(ctx)
 	var query store.Query
 	query.RootScope = path
 	query.IsScopeQuery = true
+	logger.Info("Listing planes")
 	listOfPlanes, err := planesdb.GetScope(ctx, db, query)
 	if err != nil {
 		return nil, err
@@ -118,6 +125,7 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 }
 
 func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	logger := ucplog.GetLogger(ctx)
 	id := strings.ToLower(path)
 	resourceId, err := resources.Parse(id)
 	if err != nil {
@@ -125,10 +133,12 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 			return rest.NewBadRequestResponse(err.Error()), nil
 		}
 	}
+	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
 	plane, err := planesdb.GetByID(ctx, db, resourceId)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := rest.NewNotFoundResponse(path)
+			logger.Info(fmt.Sprintf("Plane %s not found in db", resourceId))
 			return restResponse, nil
 		}
 		return nil, err
@@ -138,6 +148,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 }
 
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.Parse(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -155,6 +166,7 @@ func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, p
 		return nil, err
 	}
 	restResponse := rest.NewNoContentResponse()
+	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
 }
 
