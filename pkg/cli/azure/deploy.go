@@ -31,7 +31,7 @@ type ResouceDeploymentClient struct {
 	Client              azclients.ResourceDeploymentClient
 	OperationsClient    azclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
-	AzProvider          *workspaces.Provider
+	AzProvider          *workspaces.AzureProvider
 }
 
 var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)

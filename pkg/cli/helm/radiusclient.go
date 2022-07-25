@@ -127,7 +127,6 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 
 	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
-		fmt.Printf("failed to get helm config, err: %s, helm output: %s", err.Error(), helmOutput.String())
 		return nil, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
 
@@ -135,7 +134,6 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	histClient.Max = 1 // Only need to check if at least 1 exists
 	rel, err := histClient.Run(radiusReleaseName)
 	if err != nil {
-		fmt.Printf("failed to get helm release, err %s", err.Error())
 		return nil, fmt.Errorf("failed to get helm config, err: %w", err)
 	}
 
@@ -171,11 +169,6 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	var azProvider azure.Provider
 	azProvider.SubscriptionID = azureProvider["subscriptionId"].(string)
 	azProvider.ResourceGroup = azureProvider["resourceGroup"].(string)
-	azProvider.ServicePrincipal = &azure.ServicePrincipal{
-		ClientID:     "****",
-		TenantID:     "****",
-		ClientSecret: "****",
-	}
 	return &azProvider, nil
 
 }

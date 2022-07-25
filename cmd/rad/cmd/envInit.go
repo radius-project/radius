@@ -224,10 +224,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		if err != nil {
 			return err
 		}
-		azProviderFromInstall.ServicePrincipal.ClientID = "*****"
-		azProviderFromInstall.ServicePrincipal.ClientSecret = "*****"
-		azProviderFromInstall.ServicePrincipal.TenantID = "*****"
-
 	}
 
 	// we dont have a workspace, but looks like a az provider has been previously configured through rad install kubernetes. Are we trying to key in new azprovider?
@@ -260,7 +256,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		Registry: registry,
 	}
 
-	provider := workspaces.Provider{}
+	provider := workspaces.AzureProvider{}
 	if azureProvider != nil {
 		provider.SubscriptionID = azureProvider.SubscriptionID
 		provider.ResourceGroup = azureProvider.ResourceGroup

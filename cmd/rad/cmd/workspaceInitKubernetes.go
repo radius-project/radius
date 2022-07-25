@@ -123,7 +123,7 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 		}
 
 		if azureProvider != nil {
-			workspace.ProviderConfig.Azure = &workspaces.Provider{
+			workspace.ProviderConfig.Azure = &workspaces.AzureProvider{
 				SubscriptionID: azureProvider.SubscriptionID,
 				ResourceGroup:  azureProvider.ResourceGroup,
 			}

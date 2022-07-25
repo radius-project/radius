@@ -20,7 +20,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
-		AzProvider:          &workspaces.Provider{},
+		AzProvider:          &workspaces.AzureProvider{},
 	}
 
 	var expectedConfig providers.ProviderConfig
@@ -48,7 +48,7 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
-		AzProvider: &workspaces.Provider{
+		AzProvider: &workspaces.AzureProvider{
 			SubscriptionID: "dummy",
 			ResourceGroup:  "azrg",
 		},
