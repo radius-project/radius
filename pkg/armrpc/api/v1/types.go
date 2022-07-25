@@ -148,7 +148,7 @@ type BasicResourceProperties struct {
 	Application string `json:"application,omitempty"`
 
 	// Status represents the resource status.
-	Status *ResourceStatus `json:"status,omitempty"`
+	Status ResourceStatus `json:"status,omitempty"`
 }
 
 type ResourceStatus struct {
