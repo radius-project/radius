@@ -190,7 +190,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall && foundExistingWorkspace {
+	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall {
 		return fmt.Errorf("chart arg / provider config is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
 	}
 
@@ -224,12 +224,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	// we dont have a workspace, but looks like a az provider has been previously configured through rad install kubernetes. Are we trying to key in new azprovider?
-	//log info suggesting we need a --reinstall if we want to use the new spn
-	if (azureProvider != nil) && !chartArgs.Reinstall && (azProviderFromInstall != nil) {
-		output.LogInfo("provider config is not empty but radius already has an one configured. Rerun rad env init with '--reinstall' for the new provider config to take effect, otherwise radius will use the existing config")
 	}
 
 	// Steps:
