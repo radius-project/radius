@@ -37,6 +37,8 @@ type RadiusOptions struct {
 	AppCoreTag             string
 	UCPImage               string
 	UCPTag                 string
+	DEImage                string
+	DETag                  string
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
 }
@@ -177,8 +179,6 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 		appcorerp["tag"] = options.AppCoreTag
 	}
 
-	// Set feature flags in chart
-
 	_, ok = global["ucp"]
 	if !ok {
 		global["ucp"] = make(map[string]interface{})
@@ -189,6 +189,19 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	if options.UCPTag != "" {
 		ucp["tag"] = options.UCPTag
+	}
+
+	_, ok = global["engine"]
+	if !ok {
+		global["engine"] = make(map[string]interface{})
+	}
+
+	de := global["engine"].(map[string]interface{})
+	if options.DEImage != "" {
+		de["image"] = options.DEImage
+	}
+	if options.DETag != "" {
+		de["tag"] = options.DETag
 	}
 
 	return nil

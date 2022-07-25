@@ -27,6 +27,20 @@ func Test_CanSetCLIOptions(t *testing.T) {
 	require.Equal(t, "tag", clusterOptions.Radius.Tag)
 }
 
+func Test_DefaultTags(t *testing.T) {
+	clusterOptions := NewDefaultClusterOptions()
+	tag := version.Channel()
+	if version.IsEdgeChannel() {
+		tag = "latest"
+	}
+
+	require.Equal(t, tag, clusterOptions.Radius.Tag)
+	require.Equal(t, tag, clusterOptions.Radius.AppCoreTag)
+	require.Equal(t, tag, clusterOptions.Radius.UCPTag)
+	require.Equal(t, tag, clusterOptions.Radius.DETag)
+
+}
+
 func Test_DefaultsToHelmChartVersionValue(t *testing.T) {
 	clusterOptions := PopulateDefaultClusterOptions(CLIClusterOptions{})
 
