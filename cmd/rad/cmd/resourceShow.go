@@ -6,7 +6,10 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -50,10 +53,16 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceList, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
+	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
 	if err != nil {
 		return err
 	}
 
-	return printOutput(cmd, resourceList, false)
+	b, err := yaml.Marshal(resourceDetails)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(b))
+
+	return nil
 }
