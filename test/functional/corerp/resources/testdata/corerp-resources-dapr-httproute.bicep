@@ -60,7 +60,7 @@ resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
     extensions: [
       {
         kind: 'daprSidecar'
-        appId: 'backend'
+        appId: daprBackend.properties.appId
         appPort: 3000
         provides: daprBackend.id
       }

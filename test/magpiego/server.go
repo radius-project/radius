@@ -86,6 +86,7 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
+	log.Println("backend call response")
 	writeResponse(res, 200, []byte("backend call response"))
 }
 
