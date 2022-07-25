@@ -50,8 +50,6 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 type RedisCacheResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
-	Application       string               `json:"application,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`

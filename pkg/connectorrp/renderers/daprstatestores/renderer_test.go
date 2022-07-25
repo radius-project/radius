@@ -43,9 +43,11 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        datamodel.DaprStateStoreKindAzureTableStorage,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 			},
@@ -83,9 +85,11 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "state.azure.tablestorage",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
@@ -107,8 +111,10 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application:                     applicationID,
-			Environment:                     environmentID,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
 			Kind:                            "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{},
 		},
@@ -129,9 +135,11 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "state.azure.cosmosdb",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "state.azure.cosmosdb",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
@@ -153,9 +161,11 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        datamodel.DaprStateStoreKindGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindGeneric,
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Type:    stateStoreType,
 				Version: daprStateStoreVersion,
@@ -207,9 +217,11 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Type:     stateStoreType,
 				Metadata: map[string]interface{}{},
@@ -233,9 +245,11 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
@@ -260,9 +274,11 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",

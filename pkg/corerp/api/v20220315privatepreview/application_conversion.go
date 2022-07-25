@@ -26,8 +26,10 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ApplicationProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,

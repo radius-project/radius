@@ -24,9 +24,11 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			Resource:          to.String(src.Properties.Resource),
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
@@ -59,9 +61,11 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: to.String(src.Properties.Environment),
+					Application: to.String(src.Properties.Application),
+				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-				Environment:       to.String(src.Properties.Environment),
-				Application:       to.String(src.Properties.Application),
 				Resource:          to.String(src.Properties.Resource),
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),

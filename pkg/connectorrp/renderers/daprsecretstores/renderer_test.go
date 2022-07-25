@@ -53,10 +53,12 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        ResourceType,
-			Kind:        "azure.keyvault",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type: ResourceType,
+			Kind: "azure.keyvault",
 		},
 	}
 
@@ -76,11 +78,13 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        ResourceType,
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type:    ResourceType,
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -136,12 +140,14 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        "secretstores.kubernetes",
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
-			Metadata:    map[string]interface{}{},
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type:     "secretstores.kubernetes",
+			Kind:     resourcekinds.DaprGeneric,
+			Version:  daprSecretStoreVersion,
+			Metadata: map[string]interface{}{},
 		},
 	}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
@@ -160,10 +166,12 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -186,10 +194,12 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        "secretstores.kubernetes",
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type: "secretstores.kubernetes",
+			Kind: resourcekinds.DaprGeneric,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},

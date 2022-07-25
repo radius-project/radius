@@ -46,10 +46,12 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.GatewayProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Application:       to.String(src.Properties.Application),
-			Hostname:          hostname,
-			Routes:            routes,
-			URL:               to.String(src.Properties.URL),
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: to.String(src.Properties.Application),
+			},
+			Hostname: hostname,
+			Routes:   routes,
+			URL:      to.String(src.Properties.URL),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,

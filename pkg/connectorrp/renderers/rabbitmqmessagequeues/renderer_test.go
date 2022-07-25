@@ -40,9 +40,11 @@ func Test_Render_User_Secrets(t *testing.T) {
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Queue:       "abc",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Queue: "abc",
 			},
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
@@ -80,8 +82,10 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
 			},
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},

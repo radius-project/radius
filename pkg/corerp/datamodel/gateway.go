@@ -48,7 +48,6 @@ func (g *Gateway) OutputResources() []outputresource.OutputResource {
 type GatewayProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState       `json:"provisioningState,omitempty"`
-	Application       string                     `json:"application,omitempty"`
 	Internal          bool                       `json:"internal,omitempty"`
 	Hostname          *GatewayPropertiesHostname `json:"hostname,omitempty"`
 	Routes            []GatewayRoute             `json:"routes,omitempty"`

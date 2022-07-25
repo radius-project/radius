@@ -37,11 +37,13 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-				Host:        "hello.com",
-				Port:        1234,
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+				Host:     "hello.com",
+				Port:     1234,
 			},
 		},
 	}
@@ -91,10 +93,12 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Host:        "hello.com",
-				Port:        1234,
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Host: "hello.com",
+				Port: 1234,
 			},
 			Secrets: datamodel.RedisCacheSecrets{
 				Password:         password,
@@ -139,8 +143,10 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
 			},
 		},
 	}
@@ -161,9 +167,11 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			Type: "Applications.Connector/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 		},
 	}
 
@@ -184,9 +192,11 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/Microsoft.Cache/Redis/testCache",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/Microsoft.Cache/Redis/testCache",
 			},
 		},
 	}
@@ -209,9 +219,11 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.SomethingElse/Redis/testCache",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.SomethingElse/Redis/testCache",
 			},
 		},
 	}

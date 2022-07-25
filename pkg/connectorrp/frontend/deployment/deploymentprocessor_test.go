@@ -42,9 +42,11 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
@@ -106,9 +108,11 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
@@ -359,9 +363,11 @@ func Test_Render_Success(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+					BasicResourceProperties: v1.BasicResourceProperties{
+						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					},
+					Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 				},
 			},
 		}

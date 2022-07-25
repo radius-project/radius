@@ -28,6 +28,6 @@ func (e Application) ResourceTypeName() string {
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
+	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
 }

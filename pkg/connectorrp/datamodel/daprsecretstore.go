@@ -37,8 +37,6 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 type DaprSecretStoreProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Environment       string                 `json:"environment"`
-	Application       string                 `json:"application,omitempty"`
 	Kind              DaprSecretStoreKind    `json:"kind"`
 	Type              string                 `json:"type"`
 	Version           string                 `json:"version"`

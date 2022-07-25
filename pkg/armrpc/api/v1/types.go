@@ -140,8 +140,15 @@ type InternalMetadata struct {
 	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
 }
 
+// BasicResourceProperties is the basic resource model for radius resources.
 type BasicResourceProperties struct {
-	Status ResourceStatus `json:"status,omitempty"`
+	// Environment represents the id of environment resource.
+	Environment string `json:"environment,omitempty"`
+	// Application represents the id of application resource.
+	Application string `json:"application,omitempty"`
+
+	// Status represents the resource status.
+	Status *ResourceStatus `json:"status,omitempty"`
 }
 
 type ResourceStatus struct {

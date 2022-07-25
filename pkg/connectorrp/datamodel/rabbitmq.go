@@ -46,8 +46,6 @@ func (rabbitmq RabbitMQMessageQueueResponse) ResourceTypeName() string {
 type RabbitMQMessageQueueResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
-	Application       string               `json:"application,omitempty"`
 	Queue             string               `json:"queue"`
 }
 

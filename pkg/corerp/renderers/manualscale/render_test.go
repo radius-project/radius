@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -85,7 +86,9 @@ func Test_Render_NoExtension(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -118,7 +121,9 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 
 func makeProperties(t *testing.T, replicas *int32) datamodel.ContainerProperties {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},

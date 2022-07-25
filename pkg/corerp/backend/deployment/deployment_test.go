@@ -190,7 +190,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -224,7 +226,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{
@@ -242,7 +246,9 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: connectorrp_dm.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
-					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+					BasicResourceProperties: v1.BasicResourceProperties{
+						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+					},
 				},
 			},
 		}
@@ -284,7 +290,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -318,7 +326,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{
@@ -358,7 +368,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -392,7 +404,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{
@@ -430,7 +444,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -464,7 +480,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{
@@ -514,7 +532,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -548,7 +568,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{
@@ -587,7 +609,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 			},
 			Properties: datamodel.ApplicationProperties{
-				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		}
 		ar := store.Object{
@@ -621,7 +645,9 @@ func Test_Render(t *testing.T) {
 				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 		}
 		nr := store.Object{

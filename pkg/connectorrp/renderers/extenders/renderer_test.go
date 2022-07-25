@@ -37,8 +37,10 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
 				AdditionalProperties: map[string]interface{}{
 					"foo": "bar",
 				},
