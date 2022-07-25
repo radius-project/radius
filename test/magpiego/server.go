@@ -86,7 +86,7 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
-	log.Println("backend call response")
+	log.Printf("backend call responded with %d for request - %+v", http.StatusOK, req)
 	writeResponse(res, 200, []byte("backend call response"))
 }
 

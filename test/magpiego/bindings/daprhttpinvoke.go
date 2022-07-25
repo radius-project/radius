@@ -9,7 +9,7 @@ import (
 	dapr "github.com/dapr/go-sdk/client"
 )
 
-// Use this with a values like:
+// requires both the value to be set as env variables
 // - CONNECTION_DAPRHTTPROUTE_APPID
 // - DAPR_GRPC_PORT
 func DaprHttpRouteBinding(envParams map[string]string) BindingStatus {
