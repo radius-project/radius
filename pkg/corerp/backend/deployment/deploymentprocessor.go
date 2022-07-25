@@ -104,7 +104,6 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	namespace, err := dp.getEnvironmentNamespace(ctx, environment)
 	if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch info for environment: %s and deployment namespace for resource: %s with error: %w", environment, resourceID, err)
-
 	}
 
 	// Get resources that the resource being deployed has connection with.
