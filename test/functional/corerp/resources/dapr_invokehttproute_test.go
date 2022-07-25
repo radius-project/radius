@@ -47,6 +47,7 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
 						validation.NewK8sPodForResource(name, "dapr-frontend"),
+						validation.NewK8sPodForResource(name, "dapr-backend"),
 					},
 				},
 			},
