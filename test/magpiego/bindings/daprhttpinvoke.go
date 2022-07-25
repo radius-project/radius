@@ -31,6 +31,6 @@ func DaprHttpRouteBinding(envParams map[string]string) BindingStatus {
 		log.Println("Error invoking dapr InvokeMethod - ", err)
 		return BindingStatus{false, fmt.Sprintf("Error invoking dapr InvokeMethod  - %s", err.Error())}
 	}
-	log.Printf("successfully invoked dapr InvokeMethod %s", string(result))
+	log.Printf("successfully invoked dapr InvokeMethod. Response: %s", string(result))
 	return BindingStatus{true, "invoked dapr InvokeMethod"}
 }
