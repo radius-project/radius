@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-logr/logr"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
@@ -74,7 +75,9 @@ func Test_Render_WithNoHostname(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -100,7 +103,9 @@ func Test_Render_WithPrefix(t *testing.T) {
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			Prefix: prefix,
 		},
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -127,7 +132,9 @@ func Test_Render_WithFQHostname(t *testing.T) {
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			FullyQualifiedHostname: expectedHostname,
 		},
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -153,7 +160,9 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 			Prefix:                 prefix,
 			FullyQualifiedHostname: expectedHostname,
 		},
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -174,7 +183,9 @@ func Test_Render_DevEnvironment(t *testing.T) {
 	publicIP := "http://localhost:32323"
 	expectedFqdn := "localhost"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -201,7 +212,9 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 	publicIP := "http://www.contoso.com:32323"
 	expectedFqdn := "www.contoso.com"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -226,7 +239,9 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	})
 	resource := makeResource(t, properties)
 	appId, err := resources.Parse(resource.Properties.Application)
@@ -254,7 +269,9 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 	r := &Renderer{}
 
 	properties := datamodel.GatewayProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -272,8 +289,10 @@ func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 	r := &Renderer{}
 
 	properties := datamodel.GatewayProperties{
-		Hostname:    &datamodel.GatewayPropertiesHostname{},
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Hostname: &datamodel.GatewayPropertiesHostname{},
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -300,8 +319,10 @@ func Test_Render_Single_Route(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		Routes:      routes,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -351,8 +372,10 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	routes = append(routes, routeA)
 	routes = append(routes, routeB)
 	properties := datamodel.GatewayProperties{
-		Routes:      routes,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -405,8 +428,10 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		Routes:      routes,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -480,8 +505,10 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 	routes = append(routes, routeC)
 	routes = append(routes, routeD)
 	properties := datamodel.GatewayProperties{
-		Routes:      routes,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
@@ -565,8 +592,10 @@ func Test_Render_WithDependencies(t *testing.T) {
 	}
 	routes = append(routes, route)
 	properties := datamodel.GatewayProperties{
-		Routes:      routes,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
@@ -609,8 +638,10 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := datamodel.HTTPRouteProperties{
-		Port:        port,
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Port: port,
 	}
 	resource := makeDependentResource(t, properties)
 
@@ -740,11 +771,13 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 	}
 
 	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: config.Application,
+		},
 		Hostname: config.Hostname,
 		Routes: []datamodel.GatewayRoute{
 			defaultRoute,
 		},
-		Application: config.Application,
 	}
 
 	return properties, includes

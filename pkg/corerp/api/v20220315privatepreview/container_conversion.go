@@ -90,8 +90,10 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.ContainerProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Application:       to.String(src.Properties.Application),
-			Connections:       connections,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: to.String(src.Properties.Application),
+			},
+			Connections: connections,
 			Container: datamodel.Container{
 				Image:          to.String(src.Properties.Container.Image),
 				Env:            to.StringMap(src.Properties.Container.Env),

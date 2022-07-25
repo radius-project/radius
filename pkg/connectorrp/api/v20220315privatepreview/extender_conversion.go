@@ -25,9 +25,11 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: to.String(src.Properties.Environment),
+					Application: to.String(src.Properties.Application),
+				},
 				ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
-				Environment:          to.String(src.Properties.Environment),
-				Application:          to.String(src.Properties.Application),
 				AdditionalProperties: src.Properties.AdditionalProperties,
 			},
 			Secrets: src.Properties.Secrets,
@@ -50,9 +52,11 @@ func (src *ExtenderResponseResource) ConvertTo() (conv.DataModelInterface, error
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ExtenderResponseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:          to.String(src.Properties.Environment),
-			Application:          to.String(src.Properties.Application),
 			AdditionalProperties: src.Properties.AdditionalProperties,
 		},
 		InternalMetadata: v1.InternalMetadata{

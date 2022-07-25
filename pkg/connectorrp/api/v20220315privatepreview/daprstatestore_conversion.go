@@ -13,9 +13,11 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
+			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
+		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
-		Environment:       to.String(src.Properties.GetDaprStateStoreProperties().Environment),
-		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
 		StateStoreName:    to.String(src.Properties.GetDaprStateStoreProperties().StateStoreName),
 	}

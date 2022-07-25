@@ -46,9 +46,11 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
@@ -100,9 +102,11 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
@@ -125,9 +129,11 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
@@ -152,9 +158,11 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
 			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
@@ -222,10 +230,12 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Topic:       "test-topic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind:  resourcekinds.DaprPubSubTopicAzureServiceBus,
+			Topic: "test-topic",
 			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
 				Resource: serviceBusResourceID,
 			},
@@ -264,9 +274,11 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprPubSubTopicAzureServiceBus,
 			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
 				Resource: serviceBusResourceID,
 			},
@@ -305,9 +317,11 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprPubSubTopicAzureServiceBus,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprPubSubTopicAzureServiceBus,
 			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 			},

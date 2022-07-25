@@ -53,6 +53,4 @@ type ExtenderResponseProperties struct {
 	v1.BasicResourceProperties
 	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
 	ProvisioningState    v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Environment          string                 `json:"environment"`
-	Application          string                 `json:"application,omitempty"`
 }

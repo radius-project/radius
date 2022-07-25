@@ -32,9 +32,11 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: to.String(src.Properties.Environment),
+					Application: to.String(src.Properties.Application),
+				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-				Environment:       to.String(src.Properties.Environment),
-				Application:       to.String(src.Properties.Application),
 				Resource:          to.String(src.Properties.Resource),
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
@@ -60,9 +62,11 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RedisCacheResponseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			Resource:          to.String(src.Properties.Resource),
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
