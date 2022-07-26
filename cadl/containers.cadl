@@ -12,7 +12,7 @@ using Azure.ResourceManager;
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
 @doc("REST API for Applications.Core Container Resource")
-namespace Containers;
+namespace Applications.Core;
 
 @doc("Specifies a listening port for the container")
 model ContainerPort {
@@ -41,6 +41,7 @@ model HealthProbeProperties {
 
 @doc("Specifies the properties for readiness/liveness probe using HTTP Get")
 model HttpGetHealthProbeProperties extends HealthProbeProperties {
+  @doc("The HealthProbeProperties kind")
   kind: "httpGet";
 
   @doc("The listening port number")
@@ -55,6 +56,7 @@ model HttpGetHealthProbeProperties extends HealthProbeProperties {
 
 @doc("Specifies the properties for readiness/liveness probe using TCP")
 model TcpHealthProbeProperties extends HealthProbeProperties {
+  @doc("The HealthProbeProperties kind")
   kind: "tcp";
 
   @doc("The listening port number")
@@ -63,6 +65,7 @@ model TcpHealthProbeProperties extends HealthProbeProperties {
 
 @doc("Specifies the properties for readiness/liveness probe using an executable")
 model ExecHealthProbeProperties extends HealthProbeProperties {
+  @doc("The HealthProbeProperties kind")
   kind: "exec";
 
   @doc("Command to execute to probe readiness/liveness")
@@ -78,6 +81,7 @@ model Volume {
 
 @doc("Specifies an ephemeral volume for a container")
 model EphemeralVolume extends Volume {
+  @doc("The Volume kind")
   kind: "ephemeral";
 
   @doc("Backing store for the ephemeral volume")
@@ -86,6 +90,7 @@ model EphemeralVolume extends Volume {
 
 @doc("Specifies a persistent volume for a container")
 model PersistentVolume extends Volume {
+  @doc("The Volume kind")
   kind: "persistent";
 
   @doc("Container read/write access to the volume")
@@ -101,6 +106,7 @@ model Extension {}
 
 @doc("ManualScaling Extension")
 model ManualScalingExtension extends Extension {
+  @doc("Specifies the extension of the resource")
   kind: "manualScaling";
 
   @doc("Replica count.")
@@ -109,6 +115,7 @@ model ManualScalingExtension extends Extension {
 
 @doc("Specifies the resource should have a Dapr sidecar injected")
 model DaprSidecarExtension extends Extension {
+  @doc("Specifies the extension of the resource")
   kind: "daprSidecar";
 
   @doc("The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar. ")
@@ -140,7 +147,11 @@ model IamProperties {
 model ConnectionProperties {
   @doc("The source of the connection")
   source: string;
+
+  @doc("default environment variable override")
   disableDefaultEnvVars?: boolean = false;
+
+  @doc("iam properties")
   iam?: IamProperties;
 }
 
@@ -148,10 +159,20 @@ model ConnectionProperties {
 model Container {
   @doc("The registry and image to download and run in your container")
   image: string;
+
+  @doc("environment")
   env?: Map<string, string>;
+
+  @doc("container ports")
   ports?: Map<string, ContainerPort>;
+
+  @doc("readiness probe properties")
   readinessProbe?: HealthProbeProperties;
+
+  @doc("liveness probe properties")
   livenessProbe?: HealthProbeProperties;
+
+  @doc("container volumes")
   volumes?: Map<string, Volume>;
 }
 
