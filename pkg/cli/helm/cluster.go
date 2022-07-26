@@ -134,21 +134,12 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext s
 		return false, err
 	}
 
-<<<<<<< HEAD
-	return foundExisting, err
-=======
-	err = ApplyDaprHelmChart(options.Dapr.Version)
-	if err != nil {
-		return err
-	}
-
 	err = ApplyOSMHelmChart(options.OSM)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return err
->>>>>>> 5ee26425 (Install Open Service Mesh as part of rad env init kubernetes (#2364))
+	return foundExisting, err
 }
 
 func UninstallOnCluster(kubeContext string) error {
