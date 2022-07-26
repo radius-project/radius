@@ -9,9 +9,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -52,31 +54,36 @@ func getDataModel(id resources.ID) (conv.DataModelInterface, error) {
 func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
+	}
+
+	opType, _ := v1.ParseOperationType(request.OperationType)
+	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
+		return ctrl.Result{}, err
 	}
 
 	id, err := resources.Parse(request.ResourceID)
 	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
 	}
 
 	dataModel, err := getDataModel(id)
 	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
 	}
 
 	if err = obj.As(dataModel); err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
 	}
 
 	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
 	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
 	}
 
 	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
 	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.Result{}, err
 	}
 
 	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
@@ -86,9 +93,16 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
 
-	_, err = c.SaveResource(ctx, request.ResourceID, deploymentDataModel, obj.ETag)
-	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+	nr := &store.Object{
+		Metadata: store.Metadata{
+			ID: request.ResourceID,
+		},
+		Data: deploymentDataModel,
 	}
+	err = c.StorageClient().Save(ctx, nr, store.WithETag(obj.ETag))
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, err
 }
