@@ -6,13 +6,12 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v3"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // resourceShowCmd command to show details of a resource
@@ -48,21 +47,25 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceType, err := cli.RequireResourceType(args)
+	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
 	if err != nil {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
+	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType, resourceName)
 	if err != nil {
 		return err
 	}
 
-	b, err := yaml.Marshal(resourceDetails)
+	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(b))
+
+	err = output.Write(format, resourceDetails, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
