@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Core Management APIs",
     "version": "0000-00-00",
-    "description": "REST API for Applications.Core Container Resource",
+    "description": "REST API for Applications.Core Environment Resource",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -40,7 +40,7 @@
   },
   "tags": [
     {
-      "name": "Containers"
+      "name": "Environment"
     },
     {
       "name": "Operations"
@@ -116,10 +116,10 @@
       },
       "put": {
         "tags": [
-          "Containers"
+          "Environment"
         ],
-        "operationId": "Containers_CreateOrUpdate",
-        "description": "Create a ContainerResource",
+        "operationId": "Environment_CreateOrUpdate",
+        "description": "Create a EnvironmentResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -136,7 +136,7 @@
             "required": true,
             "description": "Resource create parameters.",
             "schema": {
-              "$ref": "#/definitions/ContainerResource"
+              "$ref": "#/definitions/EnvironmentResource"
             }
           }
         ],
@@ -144,7 +144,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/ContainerResource"
+              "$ref": "#/definitions/EnvironmentResource"
             }
           },
           "201": {
@@ -157,7 +157,7 @@
               }
             },
             "schema": {
-              "$ref": "#/definitions/ContainerResource"
+              "$ref": "#/definitions/EnvironmentResource"
             }
           },
           "default": {
@@ -174,10 +174,10 @@
       },
       "patch": {
         "tags": [
-          "Containers"
+          "Environment"
         ],
-        "operationId": "Containers_Update",
-        "description": "Update a ContainerResource",
+        "operationId": "Environment_Update",
+        "description": "Update a EnvironmentResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -194,7 +194,7 @@
             "required": true,
             "description": "The resource properties to be updated.",
             "schema": {
-              "$ref": "#/definitions/ContainerResourceUpdate"
+              "$ref": "#/definitions/EnvironmentResourceUpdate"
             }
           }
         ],
@@ -202,7 +202,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/ContainerResource"
+              "$ref": "#/definitions/EnvironmentResource"
             }
           },
           "default": {
@@ -215,10 +215,10 @@
       },
       "delete": {
         "tags": [
-          "Containers"
+          "Environment"
         ],
-        "operationId": "Containers_Delete",
-        "description": "Delete a ContainerResource",
+        "operationId": "Environment_Delete",
+        "description": "Delete a EnvironmentResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -330,11 +330,11 @@
         "compute"
       ]
     },
-    "ContainerResource": {
+    "EnvironmentResource": {
       "type": "object",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/ContainerProperties",
+          "$ref": "#/definitions/EnvironmentProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-mutability": [
             "read",
@@ -353,13 +353,13 @@
         }
       ]
     },
-    "ContainerResourceListResult": {
+    "EnvironmentResourceListResult": {
       "type": "object",
       "properties": {
         "value": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ContainerResource"
+            "$ref": "#/definitions/EnvironmentResource"
           },
           "x-cadl-name": "EnvironmentResource[]",
           "description": "The EnvironmentResource items on this page"
@@ -369,12 +369,12 @@
           "description": "The link to the next page of items"
         }
       },
-      "description": "The response of a ContainerResource list operation.",
+      "description": "The response of a EnvironmentResource list operation.",
       "required": [
         "value"
       ]
     },
-    "ContainerResourceUpdate": {
+    "EnvironmentResourceUpdate": {
       "type": "object",
       "properties": {
         "tags": {
@@ -385,12 +385,12 @@
           "description": "Resource tags."
         },
         "properties": {
-          "$ref": "#/definitions/ContainerResourceUpdateProperties"
+          "$ref": "#/definitions/EnvironmentResourceUpdateProperties"
         }
       },
-      "description": "The type used for update operations of the ContainerResource."
+      "description": "The type used for update operations of the EnvironmentResource."
     },
-    "ContainerResourceUpdateProperties": {
+    "EnvironmentResourceUpdateProperties": {
       "type": "object",
       "properties": {
         "compute": {
@@ -434,60 +434,11 @@
         "name": "ProvisioningState",
         "modelAsString": true
       }
-    },
-    "TcpHealthProbeProperties": {
-      "type": "object",
-      "properties": {
-        "containerPort": {
-          "type": "integer",
-          "format": "int32",
-          "description": "The listening port number"
-        }
-      },
-      "description": "Specifies the properties for readiness/liveness probe using TCP",
-      "required": [
-        "containerPort"
-      ],
-      "allOf": [
-        {
-          "$ref": "#/definitions/HealthProbeProperties"
-        }
-      ],
-      "x-ms-discriminator-value": "tcp"
-    },
-    "Volume": {
-      "type": "object",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Discriminator property for Volume."
-        },
-        "mountPath": {
-          "type": "string",
-          "description": "The path where the volume is mounted"
-        }
-      },
-      "description": "Specifies a volume for a container",
-      "discriminator": "kind",
-      "required": [
-        "kind"
-      ]
-    },
-    "VolumeRbac": {
-      "type": "string",
-      "enum": [
-        "read",
-        "write"
-      ],
-      "x-ms-enum": {
-        "name": "VolumeRbac",
-        "modelAsString": true
-      }
     }
   },
   "parameters": {
-    "ContainerResource.containerName": {
-      "name": "containerName",
+    "EnvironmentResource.environmentName": {
+      "name": "environmentName",
       "in": "path",
       "required": true,
       "description": "environment name",
