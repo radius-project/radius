@@ -239,7 +239,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), httprouteInput)
 
 			httprouteDataModel := &datamodel.HTTPRoute{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), httprouteDataModel)
+			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), httprouteDataModel)
 
 			httprouteDataModel.Properties.ProvisioningState = tt.curState
 
