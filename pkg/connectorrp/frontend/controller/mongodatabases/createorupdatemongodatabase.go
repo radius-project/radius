@@ -92,7 +92,13 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	versioned, err := converter.MongoDatabaseDataModelToVersioned(newResource, serviceCtx.APIVersion, true)
+	mongoResponse := &datamodel.MongoDatabaseResponse{}
+	err = savedResource.As(mongoResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	versioned, err := converter.MongoDatabaseDataModelToVersioned(mongoResponse, serviceCtx.APIVersion, false)
 	if err != nil {
 		return nil, err
 	}
