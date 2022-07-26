@@ -14,6 +14,17 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
+// UCP Logging context fields
+const (
+	LogFieldPlaneID       string = "PlaneID"
+	LogFieldPlaneKind     string = "PlaneKind"
+	LogFieldRequestPath   string = "Path"
+	LogFieldHTTPScheme    string = "HTTPScheme"
+	LogFieldPlaneURL      string = "ProxyURL"
+	LogFieldProvider      string = "Provider"
+	LogFieldResourceGroup string = "ResourceGroup"
+)
+
 func NewLogger() logr.Logger {
 	config := zap.NewDevelopmentConfig()
 	config.EncoderConfig.CallerKey = zapcore.OmitKey
@@ -28,6 +39,13 @@ func NewLogger() logr.Logger {
 
 func GetLogger(ctx context.Context) logr.Logger {
 	return logr.FromContextOrDiscard(ctx)
+}
+
+func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
+	logger := logr.FromContextOrDiscard(ctx)
+
+	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))
+	return ctx
 }
 
 func Unwrap(logger logr.Logger) *zap.Logger {

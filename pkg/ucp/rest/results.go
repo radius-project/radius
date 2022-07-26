@@ -13,7 +13,6 @@ import (
 	"net/textproto"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -35,6 +34,11 @@ func NewOKResponse(body interface{}) Response {
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := ucplog.GetLogger(ctx)
+	basePath, ok := ctx.Value(BaseRequestPath).(string)
+	if ok && req.URL.Path != basePath {
+		logger.Info(fmt.Sprintf("basePath: %s, URL: %s. Responding with status code: %d", basePath, req.URL.Path, http.StatusOK), ucplog.LogHTTPStatusCode, http.StatusOK)
+	}
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -62,7 +66,7 @@ func NewCreatedResponse(body interface{}) Response {
 }
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -94,7 +98,7 @@ func NewCreatedAsyncResponse(body interface{}, location string, scheme string) R
 }
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -143,7 +147,7 @@ func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) 
 }
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusAccepted), ucplog.LogHTTPStatusCode, http.StatusAccepted)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -220,7 +224,7 @@ func NewBadRequestARMResponse(body ErrorResponse) Response {
 }
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusBadRequest), ucplog.LogHTTPStatusCode, http.StatusBadRequest)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -292,7 +296,7 @@ func NewConflictResponse(message string) Response {
 }
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusConflict), ucplog.LogHTTPStatusCode, http.StatusConflict)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -321,7 +325,7 @@ func NewInternalServerErrorARMResponse(body ErrorResponse) Response {
 }
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("URL: %s. Responding with status code: %d", req.URL.Path, http.StatusInternalServerError), ucplog.LogHTTPStatusCode, http.StatusInternalServerError)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")

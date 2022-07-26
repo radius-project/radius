@@ -45,6 +45,7 @@ type ucpHandler struct {
 }
 
 func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body []byte, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	logger := ucplog.GetLogger(ctx)
 	var rg rest.ResourceGroup
 	err := json.Unmarshal(body, &rg)
@@ -60,7 +61,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	// TODO: Validate resource group name
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, rg.ID)
 
 	_, err = resourcegroupsdb.GetByID(ctx, db, ID)
 	if err != nil {
@@ -90,6 +91,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 }
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	logger := ucplog.GetLogger(ctx)
 	var query store.Query
 	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
@@ -99,7 +101,7 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 	query.RootScope = resources.SegmentSeparator + resources.PlanesSegment + resources.SegmentSeparator + planeType + resources.SegmentSeparator + planeName
 	query.IsScopeQuery = true
 	query.ResourceType = "resourcegroups"
-	logger.Info("Listing resource groups")
+	logger.Info(fmt.Sprintf("Listing resource groups in scope %s", query.RootScope))
 	listOfResourceGroups, err := resourcegroupsdb.GetScope(ctx, db, query)
 	if err != nil {
 		return nil, err
@@ -109,6 +111,7 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 }
 
 func (ucp *ucpHandler) listResources(ctx context.Context, db store.StorageClient, path string) (rest.ResourceList, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var query store.Query
 	query.RootScope = path
 	query.ScopeRecursive = true
@@ -121,6 +124,7 @@ func (ucp *ucpHandler) listResources(ctx context.Context, db store.StorageClient
 }
 
 func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	logger := ucplog.GetLogger(ctx)
 	id := strings.ToLower(path)
 	resourceID, err := resources.Parse(id)
@@ -144,6 +148,7 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 }
 
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string, request *http.Request) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	logger := ucplog.GetLogger(ctx)
 	resourceID, err := resources.Parse(path)
 	if err != nil {
@@ -169,7 +174,7 @@ func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, p
 		for _, r := range listOfResources.Value {
 			resources += r.ID + "\n"
 		}
-		logger.Info(fmt.Sprintf("Found resources in resource group %s:\n%s", resourceID, resources))
+		logger.Info(fmt.Sprintf("Found %d resources in resource group %s:\n%s", len(listOfResources.Value), resourceID, resources))
 		return rest.NewConflictResponse("Resource group is not empty and cannot be deleted"), nil
 	}
 
