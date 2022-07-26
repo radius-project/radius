@@ -80,11 +80,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		},
 	}
 	var portNum int
-	fmt.Println("about to render trafficsplit")
 	if len(route.Properties.Routes) > 0 {
-		fmt.Println("calling makeTrafficSplit")
 		trafficsplit, pNum, err := r.makeTrafficSplit(route, options, applicationName)
-		fmt.Println("trafficsplit made")
 		if err != nil {
 			return renderers.RendererOutput{
 				Resources:      outputResources,
@@ -94,11 +91,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		outputResources = append(outputResources, trafficsplit)
 		portNum = pNum
 	}
-	fmt.Println("what is the container port?", route.Properties.ContainerPort)
 	if route.Properties.ContainerPort != 0 {
 		portNum = int(route.Properties.ContainerPort)
 	}
-	fmt.Println("what is the portNum", route.Properties.ContainerPort)
 	service, err := r.makeService(route, options, portNum)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -128,8 +123,6 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 	} else {
 		target = intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + route.Name))
 	}
-	fmt.Println("type of target is", target.Type)
-	fmt.Println("value of target is", target.IntVal)
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Service",
@@ -182,20 +175,13 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 	portNum := -1
 	var err error
 	for i := 0; i < numBackends; i++ {
-		fmt.Println("making destination")
 		destination := route.Properties.Routes[i].Destination
-		fmt.Println("made destination", destination)
 		if _, ok := dependencies[destination].ComputedValues["port"]; ok {
-			fmt.Println("have computed value", dependencies[destination].ComputedValues["port"])
 			floatPort := (dependencies[destination].ComputedValues["port"].(float64))
 			if ok {
-				fmt.Println("float 64????", floatPort)
-
 				destPort := int(floatPort)
 				if portNum != -1 && destPort != portNum {
-					err = fmt.Errorf("backend services have different port values")
 				}
-				fmt.Println("got dest port", destPort)
 				portNum = destPort
 			}
 		}
@@ -209,6 +195,5 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 	if portNum == -1 {
 		err = fmt.Errorf("backend services have invalid port values")
 	}
-	fmt.Println("making traffic split")
 	return outputresource.NewKubernetesOutputResource(resourcekinds.TrafficSplit, outputresource.LocalIDTrafficSplit, trafficsplit, trafficsplit.ObjectMeta), portNum, err
 }
