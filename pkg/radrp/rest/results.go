@@ -323,13 +323,13 @@ func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicR
 	if resourceProp.Environment != "" {
 		details = append(details, armerrors.ErrorDetails{
 			Code:    armerrors.InvalidProperties,
-			Message: "environment must be " + resourceProp.Environment,
+			Message: fmt.Sprintf("environment must be '%s'.", resourceProp.Environment),
 		})
 	}
 	if resourceProp.Application != "" {
 		details = append(details, armerrors.ErrorDetails{
 			Code:    armerrors.InvalidProperties,
-			Message: "application must be " + resourceProp.Application,
+			Message: fmt.Sprintf("application must be '%s'.", resourceProp.Application),
 		})
 	}
 
