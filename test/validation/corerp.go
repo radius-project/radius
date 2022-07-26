@@ -29,6 +29,7 @@ const (
 	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
 	DaprSecretStoreResource       = "applications.connector/daprSecretStores"
 	DaprStateStoreResource        = "applications.connector/daprStateStores"
+	DaprInvokeHttpRoute           = "applications.connector/daprInvokeHttpRoutes"
 )
 
 type CoreRPResource struct {
