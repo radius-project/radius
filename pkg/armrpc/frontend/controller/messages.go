@@ -6,5 +6,6 @@
 package controller
 
 const (
-	OngoingAsyncOperationOnResourceMessage = "the source or target resource group is locked (e.g. move already in progress, resource group is being deleted)"
+	// InProgressStateMessageFormat represents the message when resource is in progress state.
+	InProgressStateMessageFormat = "The target resource is in progress state: %s."
 )

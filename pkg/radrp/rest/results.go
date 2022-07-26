@@ -317,6 +317,34 @@ type BadRequestResponse struct {
 	Body armerrors.ErrorResponse
 }
 
+// NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
+func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicResourceProperties) Response {
+	details := []armerrors.ErrorDetails{}
+	if resourceProp.Environment != "" {
+		details = append(details, armerrors.ErrorDetails{
+			Code:    armerrors.InvalidProperties,
+			Message: fmt.Sprintf("environment must be '%s'.", resourceProp.Environment),
+		})
+	}
+	if resourceProp.Application != "" {
+		details = append(details, armerrors.ErrorDetails{
+			Code:    armerrors.InvalidProperties,
+			Message: fmt.Sprintf("application must be '%s'.", resourceProp.Application),
+		})
+	}
+
+	return &BadRequestResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: "Resource update failed because environment and application properties are read-only. The provided environment and application do not match the resource's existing environment and application values. Please use the correct values to update this resource or use a different resource name to create a new resource.",
+				Target:  target,
+				Details: details,
+			},
+		},
+	}
+}
+
 func NewBadRequestResponse(message string) Response {
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
