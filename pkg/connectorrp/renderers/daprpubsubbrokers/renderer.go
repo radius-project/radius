@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -42,10 +41,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-	err := renderers.ValidateApplicationID(resource.Properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
+
 	if resource.Properties.Kind == "" {
 		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("Resource kind not specified for Dapr Pub/Sub component")
 	}
@@ -62,9 +58,9 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	var applicationName string
 	if resource.Properties.Application != "" {
-		applicationID, err := resources.Parse(resource.Properties.Application)
+		applicationID, err := renderers.ValidateApplicationID(resource.Properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
+			return renderers.RendererOutput{}, err
 		}
 		applicationName = applicationID.Name()
 	}

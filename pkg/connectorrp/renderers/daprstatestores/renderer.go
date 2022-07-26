@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
@@ -42,10 +41,6 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	properties := resource.Properties
 
-	err := renderers.ValidateApplicationID(properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
 	if r.StateStores == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
@@ -56,10 +51,10 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	var applicationName string
-	if resource.Properties.Application != "" {
-		applicationID, err := resources.Parse(resource.Properties.Application)
+	if properties.Application != "" {
+		applicationID, err := renderers.ValidateApplicationID(properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
+			return renderers.RendererOutput{}, err
 		}
 		applicationName = applicationID.Name()
 	}

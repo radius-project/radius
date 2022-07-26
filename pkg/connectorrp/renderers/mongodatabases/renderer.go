@@ -39,7 +39,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
 
-	err := renderers.ValidateApplicationID(properties.Application)
+	_, err := renderers.ValidateApplicationID(properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

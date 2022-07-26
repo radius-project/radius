@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 )
@@ -67,4 +68,34 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 	require.Equal(t, expectedSecrets, result.SecretValues)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := createContext(t)
+	resource := datamodel.Extender{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			Name: "test-secret-store",
+			Type: "Applications.Connector/daprSecretStores",
+		},
+		Properties: datamodel.ExtenderProperties{
+			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "invalid-app-id",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				AdditionalProperties: map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+			Secrets: map[string]interface{}{
+				"secretname": "secretvalue",
+			},
+		},
+	}
+	renderer := Renderer{}
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*renderers.ErrClientRenderer).Message)
 }

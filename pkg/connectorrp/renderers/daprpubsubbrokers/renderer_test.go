@@ -333,3 +333,33 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.(*renderers.ErrClientRenderer).Message)
 }
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
+			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+				Type:    "pubsub.kafka",
+				Version: "v1",
+				Metadata: map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	renderer.PubSubs = SupportedPubSubKindValues
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*renderers.ErrClientRenderer).Message)
+}

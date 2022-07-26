@@ -7,7 +7,9 @@ package renderers
 
 import (
 	"fmt"
+	"strings"
 
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -23,12 +25,17 @@ func NewClientErrInvalidRequest(message string) *ErrClientRenderer {
 	return err
 }
 
-func ValidateApplicationID(application string) error {
+func ValidateApplicationID(application string) (resources.ID, error) {
+	app := &coreDatamodel.Application{}
 	if application != "" {
-		_, err := resources.Parse(application)
+		appId, err := resources.Parse(application)
 		if err != nil {
-			return NewClientErrInvalidRequest(fmt.Sprintf("failed to parse application from the property: %s ", err.Error()))
+			return resources.ID{}, NewClientErrInvalidRequest(fmt.Sprintf("failed to parse application from the property: %s", err.Error()))
 		}
+		if !strings.EqualFold(appId.Type(), app.ResourceTypeName()) {
+			return resources.ID{}, NewClientErrInvalidRequest(fmt.Sprintf("provided application id type %q is not a valid type.", appId.Type()))
+		}
+		return appId, nil
 	}
-	return nil
+	return resources.ID{}, nil
 }

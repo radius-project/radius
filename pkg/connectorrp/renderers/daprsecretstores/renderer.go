@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
@@ -42,19 +41,15 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	properties := resource.Properties
-	err := renderers.ValidateApplicationID(properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
 	secretStoreFunc := r.SecretStores[string(properties.Kind)]
 	if secretStoreFunc == nil {
 		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores)))
 	}
 	var applicationName string
-	if resource.Properties.Application != "" {
-		applicationID, err := resources.Parse(resource.Properties.Application)
+	if properties.Application != "" {
+		applicationID, err := renderers.ValidateApplicationID(properties.Application)
 		if err != nil {
-			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'application' field must be a valid resource id")
+			return renderers.RendererOutput{}, err
 		}
 		applicationName = applicationID.Name()
 	}
