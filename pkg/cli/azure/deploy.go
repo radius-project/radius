@@ -236,6 +236,10 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 				next = clients.StatusCompleted
 			} else if rest.IsTeminalStatus(provisioningState) {
 				next = clients.StatusFailed
+			} else if rest.CreatedStatus == provisioningState {
+				if operation.Properties.StatusCode != nil && *operation.Properties.StatusCode == "InternalServerError" {
+					next = clients.StatusFailing
+				}
 			}
 
 			if current != next && progressChan != nil {

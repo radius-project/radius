@@ -143,8 +143,9 @@ func (listener *InteractiveListener) Run() {
 		switch update.Status {
 		case clients.StatusFailed:
 			listener.updateEntry(line, output.ProgressFailed, output.FormatResourceForProgressDisplay(update.Resource))
-
 		case clients.StatusCompleted:
+			listener.updateEntry(line, output.ProgressCompleted, output.FormatResourceForProgressDisplay(update.Resource))
+		case clients.StatusFailing:
 			listener.updateEntry(line, output.ProgressCompleted, output.FormatResourceForProgressDisplay(update.Resource))
 		}
 	}

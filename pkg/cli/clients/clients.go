@@ -53,6 +53,7 @@ type ResourceStatus string
 const (
 	StatusStarted   ResourceStatus = "Started"
 	StatusFailed    ResourceStatus = "Failed"
+	StatusFailing   ResourceStatus = "Failing"
 	StatusCompleted ResourceStatus = "Completed"
 )
 

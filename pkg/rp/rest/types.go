@@ -90,6 +90,7 @@ const (
 	SuccededStatus OperationStatus = "Succeeded"
 	FailedStatus   OperationStatus = "Failed"
 	CanceledStatus OperationStatus = "Canceled"
+	CreatedStatus  OperationStatus = "Created"
 
 	// RP-defined statuses are used for non-terminal states
 	DeployingStatus OperationStatus = "Deploying"
