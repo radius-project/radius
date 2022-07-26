@@ -337,7 +337,7 @@ func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicR
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: "environment and application properties are readonly once the resource is created.",
+				Message: "environment and application properties are readonly once the resource is created. The provided environment and application IDs do not match the resource's existing environment and application values.",
 				Target:  target,
 				Details: details,
 			},
