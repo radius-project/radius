@@ -96,20 +96,26 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		desc               string
 		headerKey          string
 		headerValue        string
+		inputFile          string
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "resource-etag", 200, false},
-		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", 200, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", 200, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", 412, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", 412, true},
+		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", 200, false},
+		{"update-resource-with-diff-env", "If-Match", "", "application20220315privatepreview_input_diff_env.json", "resource-etag", 400, true},
+		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", 200, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", 200, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", 412, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", 412, true},
 	}
 
 	for _, tt := range updateExistingResourceCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
+			if tt.inputFile != "" {
+				appInput = &v20220315privatepreview.ApplicationResource{}
+				_ = json.Unmarshal(radiustesting.ReadFixture(tt.inputFile), appInput)
+			}
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
