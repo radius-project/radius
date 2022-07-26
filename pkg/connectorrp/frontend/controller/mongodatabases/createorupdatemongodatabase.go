@@ -82,7 +82,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
 		if !old.Properties.BasicResourceProperties.EqualParentResource(prop) {
-			return rest.NewBadRequestResponse(fmt.Sprintf(ctrl.MismatchedParentResourceMessageFormat, prop.Application, prop.Environment)), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf(ctrl.UpdateParentResourceErrorFormat, serviceCtx.ResourceID.String())), nil
 		}
 	}
 

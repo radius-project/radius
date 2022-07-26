@@ -9,6 +9,6 @@ const (
 	// InProgressStateMessageFormat represents the message when resource is in progress state.
 	InProgressStateMessageFormat = "The target resource is in progress state: %s."
 
-	// MismatchedParentResourceMessageFormat represents the message when application and environment ids are mismatched.
-	MismatchedParentResourceMessageFormat = "application id (%s) and environment id (%s) are mismatched."
+	// UpdateParentResourceErrorFormat represents the message when you update application id and environment id.
+	UpdateParentResourceErrorFormat = "Updating environment id or application id of '%s' is disallowed."
 )
