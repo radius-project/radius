@@ -13,7 +13,6 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -105,7 +104,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			return renderers.RendererOutput{}, connector.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -347,12 +346,12 @@ func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, 
 func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
 	envId, err := resources.Parse(environmentID)
 	if err != nil {
-		return "", connector.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
 	}
 
 	env := &coreDatamodel.Environment{}
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", connector.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
 	}
 
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
@@ -362,7 +361,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	res, err := sc.Get(ctx, environmentID)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", connector.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
 		}
 		return
 	}

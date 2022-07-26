@@ -12,8 +12,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	connector "github.com/project-radius/radius/pkg/connectorrp"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
@@ -22,6 +22,7 @@ import (
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -324,14 +325,17 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					Environment: "invalid-id",
+					BasicResourceProperties: v1.BasicResourceProperties{
+						Environment: "invalid-id",
+					},
 				},
 			},
 		}
 
 		_, err := dp.Render(ctx, resourceID, &resource)
 		require.Error(t, err)
-		require.Equal(t, connector.NewClientErrInvalidRequest("provided environment id \"invalid-id\" is not a valid id."), err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "provided environment id \"invalid-id\" is not a valid id.", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
@@ -431,7 +435,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := mockdp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, connector.NewClientErrInvalidRequest("provider azure is not configured. Cannot support resource type azure.cosmosdb.account"), err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
 	})
 }
 
