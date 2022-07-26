@@ -8,6 +8,7 @@ package httproutes
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -15,7 +16,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -40,8 +40,8 @@ func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.HTTPRoute{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old := &datamodel.HTTPRoute{}
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), old)
 	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
 		return nil, err
 	}
@@ -50,8 +50,8 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
+	if !old.Properties.ProvisioningState.IsTerminal() {
+		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -61,16 +61,15 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 
 	err = e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout)
 	if err != nil {
-		existingResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), existingResource, etag)
+		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
+		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
 		if rbErr != nil {
 			return nil, rbErr
 		}
 		return nil, err
 	}
 
-	existingResource.Properties.ProvisioningState = v1.ProvisioningStateDeleting
+	old.Properties.ProvisioningState = v1.ProvisioningStateDeleting
 
-	return rest.NewAsyncOperationResponse(existingResource, existingResource.TrackedResource.Location, http.StatusAccepted,
-		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
+	return rest.NewAsyncOperationResponse(old, old.TrackedResource.Location, http.StatusAccepted, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 }

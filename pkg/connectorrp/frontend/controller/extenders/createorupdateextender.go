@@ -8,6 +8,7 @@ package extenders
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -53,10 +54,17 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, req *http.Reque
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
 	// Read existing resource info from the data store
-	existingResource := &datamodel.Extender{}
-	etag, err := extender.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if req.Method == http.MethodPatch && err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+	old := &datamodel.Extender{}
+	isNewResource := false
+	etag, err := extender.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	if errors.Is(&store.ErrNotFound{}, err) {
+		isNewResource = true
+	}
+	if err != nil && !isNewResource {
 		return nil, err
+	}
+	if req.Method == http.MethodPatch && isNewResource {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -64,12 +72,14 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, req *http.Reque
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	// Add system metadata to requested resource
-	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
-	if existingResource.CreatedAPIVersion != "" {
-		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
+	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
+	if !isNewResource {
+		newResource.CreatedAPIVersion = old.CreatedAPIVersion
+		prop := newResource.Properties.BasicResourceProperties
+		if !old.Properties.BasicResourceProperties.EqualParentResource(prop) {
+			return rest.NewBadRequestResponse(fmt.Sprintf(ctrl.MismatchedParentResourceMessageFormat, prop.Application, prop.Environment)), nil
+		}
 	}
-	newResource.TenantID = serviceCtx.HomeTenantID
 
 	// Add/update resource in the data store
 	savedResource, err := extender.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
@@ -103,6 +113,8 @@ func (extender *CreateOrUpdateExtender) Validate(ctx context.Context, req *http.
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
+	dm.TenantID = serviceCtx.HomeTenantID
+	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
 
 	return dm, nil
 }
