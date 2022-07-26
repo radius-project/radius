@@ -467,8 +467,8 @@
       "ResourceGroupName": {
         "type": "string",
         "description": "The name of the resource group",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63
       },
       "ErrorDetail": {
         "description": "The error detail.",
@@ -547,8 +547,8 @@
         "required": true,
         "type": "string",
         "description": "The type of the plane",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128,
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
         "x-ms-parameter-location": "method"
       },
       "PlaneNameParameter": {
@@ -557,8 +557,8 @@
           "required": true,
           "type": "string",
           "description": "The name of the plane",
-          "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-          "maxLength": 128,
+          "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+          "maxLength": 63,
           "x-ms-parameter-location": "method"
       },
       "ResourceGroupNameParameter": {
@@ -567,8 +567,8 @@
         "required": true,
         "type": "string",
         "description": "The name of the resource group",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128,
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
         "x-ms-parameter-location": "method"
       }
     }
