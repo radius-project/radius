@@ -21,11 +21,15 @@ import (
 )
 
 const (
-	envRoute     = "/providers/applications.core/environments/{environmentName}"
-	armIDUrl     = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	ucpIDUrl     = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
-	longarmIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
-	longucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	envRoute           = "/providers/applications.core/environments/{environmentName}"
+	armIDUrl           = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	ucpIDUrl           = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+	longarmIDUrl       = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	longucpIDUrl       = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130"
+	underscorearmIDUrl = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	underscoreucpIDUrl = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/env_name0"
+	digitarmIDUrl      = "http://localhost:8080/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
+	digitucpIDUrl      = "http://localhost:8080/planes/radius/local/resourceGroups/radius-test-rg/providers/applications.core/environments/0env"
 
 	operationGetRoute    = "/providers/applications.core/operations"
 	subscriptionPUTRoute = "/subscriptions/{subscriptions}/resourceGroups/{resourceGroup}"
@@ -303,6 +307,98 @@ func runTest(t *testing.T, resourceIDUrl string) {
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should be at most 63 chars long",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "underscore not allowed in name",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             underscorearmIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/env_name0",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "underscore not allowed in name",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             underscoreucpIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/env_name0",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "name cannot start with digit",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             digitarmIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/0env",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+						},
+					},
+				},
+			},
+		},
+		{
+			desc:            "name cannot start with digit",
+			method:          http.MethodPut,
+			rootScope:       "/{rootScope:.*}",
+			route:           envRoute,
+			apiVersion:      "2022-03-15-privatepreview",
+			contentFilePath: "put-environments-valid.json",
+			url:             digitucpIDUrl,
+			responseCode:    400,
+			validationErr: &armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    "HttpRequestPayloadAPISpecValidationFailed",
+					Target:  "applications.core/environments/0env",
+					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
+					Details: []armerrors.ErrorDetails{
+						{
+							Code:    "InvalidRequestContent",
+							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
 						},
 					},
 				},
