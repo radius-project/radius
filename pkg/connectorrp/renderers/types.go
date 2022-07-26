@@ -8,10 +8,8 @@ package renderers
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -112,13 +110,13 @@ type ErrClientRenderer struct {
 	Message string
 }
 
-func (r *ErrClientRenderer) Error() string {
-	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
-}
+// func (r *ErrClientRenderer) Error() string {
+// 	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
+// }
 
-func NewClientErrInvalidRequest(message string) *ErrClientRenderer {
-	err := new(ErrClientRenderer)
-	err.Message = message
-	err.Code = armerrors.Invalid
-	return err
-}
+// func NewClientErrInvalidRequest(message string) *ErrClientRenderer {
+// 	err := new(ErrClientRenderer)
+// 	err.Message = message
+// 	err.Code = armerrors.Invalid
+// 	return err
+// }

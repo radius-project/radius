@@ -25,6 +25,10 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	properties := resource.Properties
+	err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {

@@ -42,6 +42,10 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	properties := resource.Properties
+	err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	secretStoreFunc := r.SecretStores[string(properties.Kind)]
 	if secretStoreFunc == nil {
 		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores)))

@@ -36,9 +36,12 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-
 	properties := resource.Properties
 
+	err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	if resource.Properties.Resource == "" {
 		if properties.Server == "" || properties.Database == "" {
 			return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(renderers.ErrorResourceOrServerNameMissingFromResource.Error())
