@@ -186,11 +186,7 @@
             "$ref": "#/parameters/RootScopeParam"
           },
           {
-<<<<<<< HEAD:cadl/cadl-output/environment.json
-            "$ref": "#/parameters/EnvironmentResource.environmentName"
-=======
             "$ref": "#/parameters/ContainerResource.containerName"
->>>>>>> e4c0e21b (Add rootScope to Cadl models):cadl/cadl-output/openapi.json
           },
           {
             "name": "properties",
@@ -365,13 +361,8 @@
           "items": {
             "$ref": "#/definitions/ContainerResource"
           },
-<<<<<<< HEAD:cadl/cadl-output/environment.json
-          "x-cadl-name": "EnvironmentResource[]",
-          "description": "The EnvironmentResource items on this page"
-=======
           "x-cadl-name": "ContainerResource[]",
           "description": "The items on this page"
->>>>>>> e4c0e21b (Add rootScope to Cadl models):cadl/cadl-output/openapi.json
         },
         "nextLink": {
           "type": "string",
