@@ -134,7 +134,6 @@ stages:
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
           --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
-          --reinstall
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
