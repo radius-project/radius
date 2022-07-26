@@ -318,7 +318,7 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(rid string, resourceProp *v1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicResourceProperties) Response {
 	details := []armerrors.ErrorDetails{}
 	if resourceProp.Environment != "" {
 		details = append(details, armerrors.ErrorDetails{
@@ -338,7 +338,7 @@ func NewLinkedResourceUpdateErrorResponse(rid string, resourceProp *v1.BasicReso
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
 				Message: "environment and application properties are readonly once the resource is created.",
-				Target:  rid,
+				Target:  target,
 				Details: details,
 			},
 		},
