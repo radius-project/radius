@@ -73,8 +73,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualParentResource(prop) {
-			return rest.NewBadRequestResponse(fmt.Sprintf(ctrl.UpdateParentResourceErrorFormat, serviceCtx.ResourceID.String())), nil
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
 		}
 	}
 

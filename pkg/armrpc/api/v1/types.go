@@ -151,8 +151,8 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
-// EqualParentResource returns true if the resource belongs to the same environment and application.
-func (b BasicResourceProperties) EqualParentResource(prop BasicResourceProperties) bool {
+// EqualLinkedResource returns true if the resource belongs to the same environment and application.
+func (b BasicResourceProperties) EqualLinkedResource(prop BasicResourceProperties) bool {
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 

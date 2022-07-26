@@ -61,7 +61,7 @@ func TestOperationType_ParseOperationType(t *testing.T) {
 	}
 }
 
-func TestEqualParentResource(t *testing.T) {
+func TestEqualLinkedResource(t *testing.T) {
 	parentResourceTests := []struct {
 		propA BasicResourceProperties
 		propB BasicResourceProperties
@@ -132,6 +132,6 @@ func TestEqualParentResource(t *testing.T) {
 	}
 
 	for _, tt := range parentResourceTests {
-		require.Equal(t, tt.propA.EqualParentResource(tt.propB), tt.eq)
+		require.Equal(t, tt.propA.EqualLinkedResource(tt.propB), tt.eq)
 	}
 }

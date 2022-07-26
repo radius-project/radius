@@ -317,6 +317,18 @@ type BadRequestResponse struct {
 	Body armerrors.ErrorResponse
 }
 
+// NewLinkedResourceUpdateErrorResponse represents a HTTP 500 with an error message when user updates environment id and application id.
+func NewLinkedResourceUpdateErrorResponse(rid string, resourceProp *v1.BasicResourceProperties) Response {
+	return &BadRequestResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: fmt.Sprintf("Updating environment id or application id of '%s' is disallowed. Please ensure that environment and application of the resource are '%s' and '%s' respectively.", rid, resourceProp.Environment, resourceProp.Application),
+			},
+		},
+	}
+}
+
 func NewBadRequestResponse(message string) Response {
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{

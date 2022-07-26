@@ -8,7 +8,6 @@ package mongodatabases
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -81,8 +80,8 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualParentResource(prop) {
-			return rest.NewBadRequestResponse(fmt.Sprintf(ctrl.UpdateParentResourceErrorFormat, serviceCtx.ResourceID.String())), nil
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
 		}
 	}
 
