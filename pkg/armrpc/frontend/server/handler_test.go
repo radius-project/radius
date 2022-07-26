@@ -8,6 +8,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -38,4 +39,51 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 	e = json.Unmarshal(bodyBytes, &armerr)
 	require.NoError(t, e)
 	require.Equal(t, armerrors.HTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
+	require.Equal(t, armerr.Error.Message, "namespace must be 63 characters or less.")
+}
+
+func Test_HandlerErrInvalidModelConversion(t *testing.T) {
+	var handlerTest = struct {
+		url    string
+		method string
+	}{
+		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		method: http.MethodGet,
+	}
+
+	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
+	responseWriter := httptest.NewRecorder()
+	err := errors.New("invalid model conversion")
+	handleError(context.Background(), responseWriter, req, err)
+
+	bodyBytes, e := io.ReadAll(responseWriter.Body)
+	require.NoError(t, e)
+	armerr := armerrors.ErrorResponse{}
+	e = json.Unmarshal(bodyBytes, &armerr)
+	require.NoError(t, e)
+	require.Equal(t, armerrors.HTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
+	require.Equal(t, armerr.Error.Message, "invalid model conversion")
+}
+
+func Test_HandlerErrInternal(t *testing.T) {
+	var handlerTest = struct {
+		url    string
+		method string
+	}{
+		url:    "/resourcegroups/testrg/providers/applications.core/environments?api-version=2022-03-15-privatepreview",
+		method: http.MethodGet,
+	}
+
+	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
+	responseWriter := httptest.NewRecorder()
+	err := errors.New("Internal error")
+	handleError(context.Background(), responseWriter, req, err)
+
+	bodyBytes, e := io.ReadAll(responseWriter.Body)
+	require.NoError(t, e)
+	armerr := armerrors.ErrorResponse{}
+	e = json.Unmarshal(bodyBytes, &armerr)
+	require.NoError(t, e)
+	require.Equal(t, armerrors.Internal, armerr.Error.Code)
+	require.Equal(t, armerr.Error.Message, "Internal error")
 }
