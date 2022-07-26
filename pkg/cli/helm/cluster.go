@@ -107,28 +107,28 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
-func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) error {
+func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) (bool, error) {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
 	// The RPs and other resources are all deployed to the
 	// 'radius-system' namespace. The namespace passed in will be
 	// where pods/services/deployments will be put for rad deploy.
-	err := ApplyRadiusHelmChart(options.Radius, kubeContext)
+	foundExisting, err := ApplyRadiusHelmChart(options.Radius, kubeContext)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = ApplyContourHelmChart(options.Contour, kubeContext)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	err = ApplyDaprHelmChart(options.Dapr.Version, kubeContext)
 	if err != nil {
-		return err
+		return false, err
 	}
 
-	return err
+	return foundExisting, err
 }
 
 func UninstallOnCluster(kubeContext string) error {

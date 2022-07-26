@@ -53,7 +53,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		return nil, err
 	}
 	if !addAzureSPN {
-		return &azure.Provider{}, nil
+		return nil, nil
 	}
 
 	subscription, err := selectSubscription(cmd.Context(), authorizer)
