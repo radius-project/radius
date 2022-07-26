@@ -60,6 +60,12 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 @armResourceOperations
 interface Environment
   extends Radius.RootScopeResourceOperations<EnvironmentResource, EnvironmentProperties, RootScopeParam> {}
+<<<<<<< HEAD
+=======
+// @armResourceOperations
+// interface Environment
+//   extends ResourceOperations<EnvironmentResource, EnvironmentProperties> {}
+>>>>>>> e4c0e21b (Add rootScope to Cadl models)
 
 @knownValues(ProvisioningStateKV)
 model ProvisioningState is string {}
