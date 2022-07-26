@@ -6,6 +6,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -22,13 +23,64 @@ type Handler struct {
 	ucp ucphandler.UCPHandler
 }
 
-func (h *Handler) GetSwaggerDoc(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) GetDiscoveryDoc(w http.ResponseWriter, req *http.Request) {
 	// Required for the K8s scenario, we are required to respond to a request
-	// to /apis/api.ucp.dev/v1alpha3 with a 200 OK response.
+	// to /apis/api.ucp.dev/v1alpha3 with a 200 OK response and the following
+	// format.
+	//
+	// This tells the API Server we don't serve any CRDs (empty list).
 	ctx := req.Context()
-	response := rest.NewOKResponse([]byte{})
 
-	err := response.Apply(ctx, w, req)
+	// We avoid using the rest package here so we can avoid logging every request.
+	// This endpoint is called ..... A ... LOT.
+	b, err := json.Marshal(map[string]interface{}{
+		"kind":         "APIResourceList",
+		"apiVersion":   "v1alpha3",
+		"groupVersion": "api.ucp.dev/v1alpha3",
+		"resources":    []interface{}{},
+	})
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Header().Add("Content-Type", "application/json")
+
+	_, err = w.Write(b)
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+}
+
+func (h *Handler) GetOpenAPIv2Doc(w http.ResponseWriter, req *http.Request) {
+	// Required for the K8s scenario, we are required to respond to a request
+	// to /apis/api.ucp.dev/v1alpha3/openapi/v2 with a 200 OK response and a swagger (openapi v2)
+	// doc.
+	//
+	// We don't need this for any functionality, but it will make the API server happy.
+	ctx := req.Context()
+
+	// We avoid using the rest package here so we can avoid logging every request.
+	// This endpoint is called ..... A ... LOT.
+	b, err := json.Marshal(map[string]interface{}{
+		"swagger": "2.0",
+		"info": map[string]interface{}{
+			"title":   "Radius APIService",
+			"version": "v1alpha3",
+		},
+		"paths": map[string]interface{}{},
+	})
+	if err != nil {
+		internalServerError(ctx, w, req, err)
+		return
+	}
+
+	w.WriteHeader(200)
+	w.Header().Add("Content-Type", "application/json")
+
+	_, err = w.Write(b)
 	if err != nil {
 		internalServerError(ctx, w, req, err)
 		return
