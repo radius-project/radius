@@ -51,6 +51,9 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
+			if pager.Err() != nil {
+				return nil, pager.Err()
+			}
 			resourceList := pager.PageResponse().GenericResourcesList.Value
 			for _, resource := range resourceList {
 				isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
@@ -85,6 +88,9 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
 	pager := client.ListByScope(nil)
 	for pager.NextPage(ctx) {
+		if pager.Err() != nil {
+			return nil, pager.Err()
+		}
 		applicationList := pager.PageResponse().ApplicationResourceList.Value
 		for _, application := range applicationList {
 			results = append(results, *application)
