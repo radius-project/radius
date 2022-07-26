@@ -317,13 +317,29 @@ type BadRequestResponse struct {
 	Body armerrors.ErrorResponse
 }
 
-// NewLinkedResourceUpdateErrorResponse represents a HTTP 500 with an error message when user updates environment id and application id.
+// NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
 func NewLinkedResourceUpdateErrorResponse(rid string, resourceProp *v1.BasicResourceProperties) Response {
+	details := []armerrors.ErrorDetails{}
+	if resourceProp.Environment != "" {
+		details = append(details, armerrors.ErrorDetails{
+			Code:    armerrors.InvalidProperties,
+			Message: "environment must be " + resourceProp.Environment,
+		})
+	}
+	if resourceProp.Application != "" {
+		details = append(details, armerrors.ErrorDetails{
+			Code:    armerrors.InvalidProperties,
+			Message: "application must be " + resourceProp.Application,
+		})
+	}
+
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: fmt.Sprintf("Updating environment id or application id of '%s' is disallowed. Please ensure that environment and application of the resource are '%s' and '%s' respectively.", rid, resourceProp.Environment, resourceProp.Application),
+				Message: "environment and application properties are readonly once the resource is created.",
+				Target:  rid,
+				Details: details,
 			},
 		},
 	}
