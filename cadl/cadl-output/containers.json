@@ -451,7 +451,7 @@
             "$ref": "#/definitions/ContainerResource"
           },
           "x-cadl-name": "ContainerResource[]",
-          "description": "The items on this page"
+          "description": "The ContainerResource items on this page"
         },
         "nextLink": {
           "type": "string",
