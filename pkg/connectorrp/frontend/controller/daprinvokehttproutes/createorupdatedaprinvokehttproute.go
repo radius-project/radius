@@ -56,11 +56,12 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 	old := &datamodel.DaprInvokeHttpRoute{}
 	isNewResource := false
 	etag, err := daprHttpRoute.GetResource(ctx, serviceCtx.ResourceID.String(), old)
-	if errors.Is(&store.ErrNotFound{}, err) {
-		isNewResource = true
-	}
-	if err != nil && !isNewResource {
-		return nil, err
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
 	}
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil

@@ -51,11 +51,12 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	isNewResource := false
 	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), old)
-	if errors.Is(&store.ErrNotFound{}, err) {
-		isNewResource = true
-	}
-	if err != nil && !isNewResource {
-		return nil, err
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
 	}
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil

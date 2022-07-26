@@ -67,11 +67,12 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 	old := &datamodel.RedisCache{}
 	isNewResource := false
 	etag, err := redis.GetResource(ctx, serviceCtx.ResourceID.String(), old)
-	if errors.Is(&store.ErrNotFound{}, err) {
-		isNewResource = true
-	}
-	if err != nil && !isNewResource {
-		return nil, err
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
 	}
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
