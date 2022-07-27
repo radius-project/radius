@@ -76,7 +76,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath, functional.GetMagpieImage()),
+		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
