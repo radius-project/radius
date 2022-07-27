@@ -128,7 +128,7 @@ func ConfigureDefaultHandlers(
 	return nil
 }
 
-// Responds with an HTTP 500
+// handles error to be rendered as armerrors.
 func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
@@ -170,14 +170,22 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	}
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		body := armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
-				Message: err.Error(),
-			},
-		}
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
-		w.WriteHeader(http.StatusInternalServerError)
-		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
+		internalServerError(ctx, w, req, err)
 	}
+}
+
+func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
+	logger := radlogger.GetLogger(ctx)
+	logger.V(radlogger.Debug).Error(err, "unhandled error")
+	body := armerrors.ErrorResponse{
+		Error: armerrors.ErrorDetails{
+			Code:    armerrors.Internal,
+			Message: err.Error(),
+		},
+	}
+	// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
+	w.WriteHeader(http.StatusInternalServerError)
+	logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))
+
 }
