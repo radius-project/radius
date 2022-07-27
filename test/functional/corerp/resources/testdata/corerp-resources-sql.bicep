@@ -12,7 +12,7 @@ param magpiePort int = 3000
 @description('Specifies the environment for resources.')
 param environment string = 'test'
 
-@description('Specifies the image for the container resource.')
+@description('Specifies the image for the sql container resource.')
 param sqlImage string = 'mcr.microsoft.com/mssql/server:2019-latest'
 
 @description('Specifies the port for the container resource.')
