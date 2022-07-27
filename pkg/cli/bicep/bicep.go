@@ -50,7 +50,6 @@ func DeleteBicep() error {
 
 // DownloadBicep updates our local copy of bicep
 func DownloadBicep() error {
-
 	dirPrefix := "bicep-traffic-extensibility"
 	// Placeholders are for: channel, platform, filename
 	downloadURIFmt := fmt.Sprint("https://radiuspublic.blob.core.windows.net/tools/", dirPrefix, "/%s/%s/%s")
