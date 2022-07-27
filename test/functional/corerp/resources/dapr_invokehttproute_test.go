@@ -15,7 +15,6 @@ import (
 )
 
 func Test_DaprInvokeHttpRoute(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-dapr-httproute.bicep"
 	name := "dapr-invokehttproute"
 

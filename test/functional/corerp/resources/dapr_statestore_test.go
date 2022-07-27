@@ -15,7 +15,6 @@ import (
 )
 
 func Test_DaprStateStoreGeneric(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
@@ -55,7 +54,6 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 }
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
