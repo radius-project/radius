@@ -28,7 +28,7 @@ func (daprGeneric DaprGeneric) Validate() error {
 		return conv.NewClientErrInvalidRequest("No Dapr component version specified for generic Dapr component")
 	}
 
-	if daprGeneric.Metadata == nil || len(daprGeneric.Metadata) == 0 {
+	if daprGeneric.Metadata == nil {
 		return conv.NewClientErrInvalidRequest(fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type))
 	}
 

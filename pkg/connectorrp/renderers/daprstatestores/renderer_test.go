@@ -223,9 +223,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			},
 			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Type:     stateStoreType,
-				Metadata: map[string]interface{}{},
-				Version:  daprStateStoreVersion,
+				Type:    stateStoreType,
+				Version: daprStateStoreVersion,
 			},
 		},
 	}
