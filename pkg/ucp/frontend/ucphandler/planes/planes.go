@@ -179,7 +179,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, incomingURL)
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(incomingURL.Path)
 	if err != nil {
-		return rest.InternalServerError(err), err
+		return nil, err
 	}
 
 	// Lookup the plane
@@ -187,15 +187,15 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	planeID, err := resources.Parse(planePath)
 	if err != nil {
 		if err != nil {
-			return rest.InternalServerError(err), err
+			return nil, err
 		}
 	}
 	plane, err := planesdb.GetByID(ctx, db, planeID)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
-			return rest.NewNotFoundResponse(planePath), err
+			return rest.NewNotFoundResponse(planePath), nil
 		}
-		return rest.InternalServerError(err), err
+		return nil, err
 	}
 
 	ctx = ucplog.WrapLogContext(ctx,
@@ -205,7 +205,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		// Check if the resource group exists
 		id, err := resources.Parse(incomingURL.Path)
 		if err != nil {
-			return rest.InternalServerError(err), err
+			return nil, err
 		}
 		rgPath := id.RootScope()
 		rgID, err := resources.Parse(rgPath)
@@ -215,7 +215,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		_, err = resourcegroupsdb.GetByID(ctx, db, rgID)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
-				return rest.NewNotFoundResponse(rgID.String()), err
+				return rest.NewNotFoundResponse(rgID.String()), nil
 			}
 			return nil, err
 		}
@@ -224,7 +224,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	// Get the resource provider
 	resourceID, err := resources.Parse(incomingURL.Path)
 	if err != nil {
-		return rest.InternalServerError(err), err
+		return nil, err
 	}
 
 	if resourceID.ProviderNamespace() == "" {
@@ -242,7 +242,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		proxyURL = plane.LookupResourceProvider(resourceID.ProviderNamespace())
 		if proxyURL == "" {
 			err = fmt.Errorf("Provider %s not configured", resourceID.ProviderNamespace())
-			return rest.InternalServerError(err), err
+			return nil, err
 		}
 		ctx = ucplog.WrapLogContext(ctx,
 			ucplog.LogFieldPlaneURL, proxyURL,
@@ -256,7 +256,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 
 	downstream, err := url.Parse(proxyURL)
 	if err != nil {
-		return rest.InternalServerError(err), err
+		return nil, err
 	}
 
 	options := proxy.ReverseProxyOptions{
@@ -301,5 +301,5 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	logger.Info(fmt.Sprintf("Proxying request to target %s", proxyURL))
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
-	return nil, nil
+	return rest.NewNoContentResponse(), nil
 }
