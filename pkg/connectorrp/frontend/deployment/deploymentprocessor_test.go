@@ -346,7 +346,8 @@ func Test_Render(t *testing.T) {
 
 		resourceID, testResource, _ := buildTestMongoResource()
 		_, err := dp.Render(ctx, resourceID, &testResource)
-		require.Error(t, err, "failed to render the resource")
+		require.Error(t, err)
+		require.Equal(t, "failed to render the resource", err.Error())
 	})
 
 	t.Run("Invalid resource type", func(t *testing.T) {
@@ -370,8 +371,45 @@ func Test_Render(t *testing.T) {
 		}
 
 		_, err := dp.Render(ctx, parsedID, &testInvalidResource)
-		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
+		require.Error(t, err)
+		require.Equal(t, "radius resource type 'Applications.foo/foo' is unsupported", err.Error())
+	})
 
+	t.Run("Invalid environment type", func(t *testing.T) {
+		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+		resourceID := getResourceID(id)
+		resource := datamodel.MongoDatabase{
+			TrackedResource: v1.TrackedResource{
+				ID:   id,
+				Name: "mongo0",
+				Type: "Applications.Connector/MongoDatabases",
+			},
+			Properties: datamodel.MongoDatabaseProperties{
+				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+					BasicResourceProperties: v1.BasicResourceProperties{
+						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
+					},
+				},
+			},
+		}
+
+		_, err := dp.Render(ctx, resourceID, &resource)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "provided environment id type \"Applications.Core/env\" is not a valid type.", err.(*conv.ErrClientRP).Message)
+
+	})
+
+	t.Run("Non existing environment", func(t *testing.T) {
+		resourceID, testResource, _ := buildTestMongoResource()
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, &store.ErrNotFound{})
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "environment \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0\" does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
@@ -384,7 +422,8 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
-		require.Error(t, err, "output resource \"AzureCosmosAccount\" does not have a provider specified")
+		require.Error(t, err)
+		require.Equal(t, "output resource \"AzureCosmosAccount\" does not have a provider specified", err.Error())
 	})
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
@@ -407,7 +446,9 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
-		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account")
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Azure provider unsupported", func(t *testing.T) {

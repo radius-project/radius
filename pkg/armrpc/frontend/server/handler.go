@@ -143,7 +143,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 				Message: err.Error(),
 			},
 		})
-	case *renderers.ErrClientRenderer:
+	case *conv.ErrClientRP:
 		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    v.Code,
