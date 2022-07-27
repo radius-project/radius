@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -123,8 +124,8 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
 	resourceList, err := amc.ListAllResourcesInScope(ctx)
 
-	//This handles errors received from server
-	if err != nil {
+	//This handles errors received from server and ignores 404 related to scope
+	if err != nil && !azclient.Is404Error(err) {
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 
@@ -156,7 +157,11 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
 	}
 	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
-	return client.Delete(ctx, applicationName, nil)
+	response, err := client.Delete(ctx, applicationName, nil)
+	if err != nil && !azclient.Is404Error(err) {
+		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+	}
+	return response, nil
 }
 
 func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
