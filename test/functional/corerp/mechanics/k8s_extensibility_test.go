@@ -29,9 +29,9 @@ func Test_Kubernetes_Extensibility(t *testing.T) {
 		{
 			Executor:           step.NewDeployExecutor(template),
 			CoreRPResources:    &validation.CoreRPResourceSet{},
-			K8sOutputResources: loadResources("testdata/k8s-extensibility", ".output.yaml"),
+			K8sOutputResources: loadResources("./testdata/k8s-extensibility", ".output.yaml"),
 		},
-	}, requiredSecrets, loadResources("testdata/k8s-extensibility", ".input.yaml")...)
+	}, requiredSecrets, loadResources("./testdata/k8s-extensibility", ".input.yaml")...)
 
 	test.Test(t)
 }

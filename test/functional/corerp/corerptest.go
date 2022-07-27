@@ -71,11 +71,12 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
-		Options:     NewCoreRPTestOptions(t),
-		Name:        name,
-		Description: name,
-		Steps:       steps,
-		Secrets:     secrets,
+		Options:          NewCoreRPTestOptions(t),
+		Name:             name,
+		Description:      name,
+		Steps:            steps,
+		Secrets:          secrets,
+		InitialResources: initialResources,
 	}
 }
 
@@ -228,7 +229,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 			if step.SkipResourceValidation {
 				t.Logf("skipping validation of resources...")
-			} else if step.CoreRPResources == nil || len(step.CoreRPResources.Resources) == 0 {
+			} else if step.CoreRPResources == nil {
 				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				// Validate that all expected output resources are created
