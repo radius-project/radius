@@ -181,6 +181,7 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 			if ok {
 				destPort := int(floatPort)
 				if portNum != -1 && destPort != portNum {
+					err = fmt.Errorf("inconsistent port values in the route %s", routeName)
 				}
 				portNum = destPort
 			}
