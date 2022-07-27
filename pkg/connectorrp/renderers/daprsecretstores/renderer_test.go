@@ -144,10 +144,9 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Type:     "secretstores.kubernetes",
-			Kind:     resourcekinds.DaprGeneric,
-			Version:  daprSecretStoreVersion,
-			Metadata: map[string]interface{}{},
+			Type:    "secretstores.kubernetes",
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 		},
 	}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
