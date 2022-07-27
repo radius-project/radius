@@ -54,7 +54,6 @@ type ucpHandler struct {
 
 func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClient, body []byte, path string) (rest.Response, error) {
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
-	logger := ucplog.GetLogger(ctx)
 	var plane rest.Plane
 	err := json.Unmarshal(body, &plane)
 	if err != nil {
@@ -75,6 +74,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, plane.Properties.Kind)
+	logger := ucplog.GetLogger(ctx)
 	// At least one provider needs to be configured
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		if plane.Properties.ResourceProviders == nil || len(plane.Properties.ResourceProviders) == 0 {
@@ -104,10 +104,10 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	var restResp rest.Response
 	if planeExists {
 		restResp = rest.NewOKResponse(plane)
-		logger.Info(fmt.Sprintf("Updated plane %s successfully", plane.ID))
+		logger.Info(fmt.Sprintf("Updated plane %s successfully", plane.Name))
 	} else {
 		restResp = rest.NewCreatedResponse(plane)
-		logger.Info(fmt.Sprintf("Created plane %s successfully", plane.ID))
+		logger.Info(fmt.Sprintf("Created plane %s successfully", plane.Name))
 	}
 	return restResp, nil
 }
@@ -228,7 +228,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	if resourceID.ProviderNamespace() == "" {
-		err = fmt.Errorf("Invalid resourceID specified with no provider.")
+		err = fmt.Errorf("Invalid resourceID specified with no provider")
 		return rest.NewBadRequestResponse(err.Error()), err
 	}
 
@@ -297,6 +297,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Proxying request to target %s", proxyURL))
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
 	return nil, nil

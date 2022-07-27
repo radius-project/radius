@@ -23,6 +23,10 @@ const (
 	LogFieldPlaneURL      string = "ProxyURL"
 	LogFieldProvider      string = "Provider"
 	LogFieldResourceGroup string = "ResourceGroup"
+	LogFieldHTTPMethod    string = "HttpMethod"
+	LogFieldRequestURL    string = "RequestURL"
+	LogFieldContentLength string = "ContentLength"
+	LogFieldUCPHost       string = "UCPHost"
 )
 
 func NewLogger() logr.Logger {

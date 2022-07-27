@@ -46,7 +46,6 @@ type ucpHandler struct {
 
 func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body []byte, path string) (rest.Response, error) {
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
-	logger := ucplog.GetLogger(ctx)
 	var rg rest.ResourceGroup
 	err := json.Unmarshal(body, &rg)
 	if err != nil {
@@ -62,6 +61,7 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, rg.ID)
+	logger := ucplog.GetLogger(ctx)
 
 	_, err = resourcegroupsdb.GetByID(ctx, db, ID)
 	if err != nil {
@@ -82,10 +82,10 @@ func (ucp *ucpHandler) Create(ctx context.Context, db store.StorageClient, body 
 	var restResp rest.Response
 	if rgExists {
 		restResp = rest.NewOKResponse(rg)
-		logger.Info(fmt.Sprintf("Updated resource group %s successfully", rg.ID))
+		logger.Info(fmt.Sprintf("Updated resource group %s successfully", rg.Name))
 	} else {
 		restResp = rest.NewCreatedResponse(rg)
-		logger.Info(fmt.Sprintf("Created resource group %s successfully", rg.ID))
+		logger.Info(fmt.Sprintf("Created resource group %s successfully", rg.Name))
 	}
 	return restResp, nil
 }

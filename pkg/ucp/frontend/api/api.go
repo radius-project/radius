@@ -46,7 +46,7 @@ func Register(ctx context.Context, router *mux.Router, client store.StorageClien
 		router.Path(baseURL).Methods("GET").HandlerFunc(h.GetDiscoveryDoc)
 	}
 	logger := ucplog.GetLogger(ctx)
-	logger.Info("UCP base path", baseURL)
+	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
 	if err != nil {
