@@ -49,9 +49,6 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
 		for pager.NextPage(ctx) {
-			if pager.Err() != nil {
-				return nil, pager.Err()
-			}
 			resourceList := pager.PageResponse().GenericResourcesList.Value
 			for _, resource := range resourceList {
 				isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
@@ -124,12 +121,22 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
-	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
+	resourceList, err := amc.ListAllResourcesInScope(ctx)
 
-	// In case of resource not found scenario we get an empty list with errors
-	// ignore resource not found errors and continue to app deletion
-	if err != nil && len(resourcesWithApplication) > 0 {
+	//This handles errors received from server
+	if err != nil {
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+	}
+
+	// check if each resource belongs to an application
+	resourcesWithApplication := []generated.GenericResource{}
+	for _, resource := range resourceList {
+		// ignore resource doesn't exist errors and move onto deleting other resources and application
+		isResourceWithApplication, _ := isResourceWithApplication(ctx, resource, applicationName)
+
+		if isResourceWithApplication {
+			resourcesWithApplication = append(resourcesWithApplication, resource)
+		}
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
