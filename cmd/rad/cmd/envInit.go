@@ -392,7 +392,12 @@ func selectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (s
 func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
 	var val string
 	var err error
-	if interactive {
+
+	val, err = cmd.Flags().GetString("environment")
+	if err != nil {
+		return "", err
+	}
+	if interactive && val == "" {
 		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
 		val, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
 		if err != nil {
@@ -400,7 +405,6 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		}
 		fmt.Printf("Using %s as environment name\n", val)
 	} else {
-		val, _ = cmd.Flags().GetString("environment")
 		if val == "" {
 			output.LogInfo("No environment name provided, using: %v", defaultVal)
 			val = defaultVal
