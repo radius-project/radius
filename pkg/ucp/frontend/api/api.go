@@ -30,21 +30,29 @@ var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, client store.StorageClient, ucp ucphandler.UCPHandler) error {
 	baseURL := ucp.Options.BasePath
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
-	if err != nil {
-		return err
-	}
-	subrouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
-	subrouter.Use(validator.APIValidatorUCP(specLoader))
 
 	h := Handler{
 		db:  client,
 		ucp: ucp,
 	}
+
+	// If we're in Kubernetes we have some required routes to implement.
 	if baseURL != "" {
-		router.Path(baseURL).Methods("GET").HandlerFunc(h.GetSwaggerDoc)
+		// NOTE: the Kubernetes API Server does not include the gvr (base path) in 
+		// the URL for swagger routes.
+		router.Path("/openapi/v2").Methods("GET").HandlerFunc(h.GetOpenAPIv2Doc)
+
+		router.Path(baseURL).Methods("GET").HandlerFunc(h.GetDiscoveryDoc)
 	}
 
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
+	if err != nil {
+		return err
+	}
+
+	subrouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
+	subrouter.Use(validator.APIValidatorUCP(specLoader))
+	
 	// TODO: Handle trailing slashes for matching routes
 	// https://github.com/project-radius/radius/issues/2303
 	p := fmt.Sprintf("%s%s", baseURL, planeCollectionPath)

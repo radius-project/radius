@@ -141,6 +141,10 @@ func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
+	if ct.Secrets == nil {
+		return nil
+	}
+
 	for objectName := range ct.Secrets {
 		err = ct.Options.K8sClient.CoreV1().
 			Secrets("default").
@@ -259,6 +263,9 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
+		if step.CoreRPResources == nil && step.SkipResourceValidation {
+			continue
+		}
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
