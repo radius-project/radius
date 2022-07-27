@@ -259,12 +259,19 @@
 ## HttpRouteProperties
 ### Properties
 * **application**: string (Required): The resource id of the application linked to HTTP Route resource.
+* **containerPort**: int: Targetport of the root service. Used for TrafficSplit only
 * **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **routes**: [HttpRoutePropertiesRoutesItem](#httproutepropertiesroutesitem)[]: Can be used to configure traffic-splitting between various HttpRoutes. Accepts an array of JSON objects that each only have two keys: destination and weight
 * **scheme**: string: The scheme used for traffic. Readonly.
 * **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
+
+## HttpRoutePropertiesRoutesItem
+### Properties
+* **destination**: string (Required)
+* **weight**: int (Required)
 
 ## TrackedResourceTags
 ### Properties
