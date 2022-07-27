@@ -27,7 +27,6 @@ var Providers = map[string]bindings.BindingProvider{
 	"DAPRSTATESTORE":  bindings.DaprStateStoreBinding,
 	"RABBITMQ":        bindings.RabbitMQBinding,
 	"DAPRSECRETSTORE": bindings.DaprSecretStoreBinding,
-	"DAPRHTTPROUTE":   bindings.DaprHttpRouteBinding,
 }
 
 func startMagpieServer() error {
@@ -86,7 +85,6 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 }
 
 func backendHandler(res http.ResponseWriter, req *http.Request) {
-	log.Printf("backend call responded with %d for request - %+v", http.StatusOK, req)
 	writeResponse(res, 200, []byte("backend call response"))
 }
 
