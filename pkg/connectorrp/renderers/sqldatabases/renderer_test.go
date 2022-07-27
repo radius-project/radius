@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -113,8 +114,8 @@ func Test_Render_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -137,8 +138,8 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, "the 'resource' field must refer to an Azure SQL Database", err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure SQL Database", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -161,6 +162,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

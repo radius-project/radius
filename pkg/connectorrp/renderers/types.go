@@ -104,19 +104,3 @@ type SecretValueTransformer interface {
 type SecretValueClient interface {
 	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
-
-type ErrClientRenderer struct {
-	Code    string
-	Message string
-}
-
-// func (r *ErrClientRenderer) Error() string {
-// 	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
-// }
-
-// func NewClientErrInvalidRequest(message string) *ErrClientRenderer {
-// 	err := new(ErrClientRenderer)
-// 	err.Message = message
-// 	err.Code = armerrors.Invalid
-// 	return err
-// }

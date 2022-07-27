@@ -10,14 +10,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	connectorrprenderer "github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -54,7 +54,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -96,10 +96,10 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
@@ -120,10 +120,10 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {
@@ -146,10 +146,10 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -176,7 +176,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -230,10 +230,10 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -259,10 +259,10 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, "No type specified for generic Dapr component", err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -288,11 +288,11 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -315,8 +315,8 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource, connectorrprenderer.RenderOptions{Namespace: "radius-test"})
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*connectorrprenderer.ErrClientRenderer).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*connectorrprenderer.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

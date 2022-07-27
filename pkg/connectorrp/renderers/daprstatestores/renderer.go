@@ -47,7 +47,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	stateStoreFunc := r.StateStores[string(properties.Kind)]
 	if stateStoreFunc == nil {
-		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores)))
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores)))
 	}
 
 	var applicationName string

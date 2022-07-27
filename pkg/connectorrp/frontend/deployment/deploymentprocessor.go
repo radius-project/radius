@@ -104,8 +104,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
-			return renderers.RendererOutput{}, err
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -115,6 +114,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
 	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.Type()) // Lookup using resource type
 	if err != nil {
+		// Internal error: A resource type with unsupported app model shouldn't have reached here
 		return nil, err
 	}
 
@@ -306,7 +306,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 // getEnvironmetIDFromResource returns the environment id from the resource for looking up the namespace
 func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
 	resourceType := strings.ToLower(resourceID.Type())
-	var err error
 	var envId string
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
@@ -337,28 +336,33 @@ func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, 
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
 		envId = obj.Properties.Environment
 	default:
-		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
+		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
+		return "", fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
-	return envId, err
+	return envId, nil
 }
 
 // getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
 func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
-	var res *store.Object
-	var sc store.StorageClient
-
 	envId, err := resources.Parse(environmentID)
 	if err != nil {
-		return
-	}
-	sc, err = dp.sp.GetStorageClient(ctx, envId.Type())
-	if err != nil {
-		return
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
 	}
 
 	env := &coreDatamodel.Environment{}
-	res, err = sc.Get(ctx, environmentID)
+	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
+	}
+
+	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
 	if err != nil {
+		return
+	}
+	res, err := sc.Get(ctx, environmentID)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
+		}
 		return
 	}
 	err = res.As(env)
