@@ -18,6 +18,7 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "hostname": "foo.example.com",
         "port": 8080,
+        "containerPort": 0,
         "scheme": "https",
         "url": "https://foo.example.com"
     },
