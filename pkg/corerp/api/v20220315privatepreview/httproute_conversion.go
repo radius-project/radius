@@ -84,5 +84,8 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 		Routes:            routes,
 		ContainerPort:     to.Int32Ptr(route.Properties.ContainerPort),
 	}
+	if route.Properties.ContainerPort == 0 {
+		dst.Properties.ContainerPort = nil
+	}
 	return nil
 }
