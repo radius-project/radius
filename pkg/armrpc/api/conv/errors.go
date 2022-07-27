@@ -8,6 +8,8 @@ package conv
 import (
 	"errors"
 	"fmt"
+
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 )
 
 var (
@@ -32,4 +34,20 @@ func (e *ErrModelConversion) Is(target error) bool {
 	}
 
 	return (e.PropertyName == t.PropertyName && e.ValidValue == t.ValidValue)
+}
+
+type ErrClientRP struct {
+	Code    string
+	Message string
+}
+
+func (r *ErrClientRP) Error() string {
+	return fmt.Sprintf("code %v: err %v", r.Code, r.Message)
+}
+
+func NewClientErrInvalidRequest(message string) *ErrClientRP {
+	err := new(ErrClientRP)
+	err.Message = message
+	err.Code = armerrors.Invalid
+	return err
 }

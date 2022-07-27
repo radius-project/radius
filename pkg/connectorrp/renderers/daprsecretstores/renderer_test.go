@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -64,8 +65,8 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -151,8 +152,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -179,8 +180,8 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, "No type specified for generic Dapr component", err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -208,6 +209,6 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*renderers.ErrClientRenderer).Code)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*renderers.ErrClientRenderer).Message)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
