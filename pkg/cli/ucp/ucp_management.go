@@ -49,13 +49,13 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 	for _, resourceType := range ResourceTypesList {
 		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 		pager := client.ListByRootScope(nil)
+		if pager.Err() != nil {
+			return nil, pager.Err()
+		}
 		for pager.NextPage(ctx) {
 			resourceList := pager.PageResponse().GenericResourcesList.Value
 			for _, resource := range resourceList {
-				isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
-				if err != nil {
-					return nil, err
-				}
+				isResourceWithApplication := isResourceWithApplication(ctx, *resource, applicationName)
 				if isResourceWithApplication {
 					results = append(results, *resource)
 				}
@@ -122,22 +122,11 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
-	resourceList, err := amc.ListAllResourcesInScope(ctx)
+	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
 
 	//This handles errors received from server and ignores 404 related to scope
 	if err != nil && !azclient.Is404Error(err) {
 		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
-	}
-
-	// check if each resource belongs to an application
-	resourcesWithApplication := []generated.GenericResource{}
-	for _, resource := range resourceList {
-		// ignore resource doesn't exist errors and move onto deleting other resources and application
-		isResourceWithApplication, _ := isResourceWithApplication(ctx, resource, applicationName)
-
-		if isResourceWithApplication {
-			resourcesWithApplication = append(resourcesWithApplication, resource)
-		}
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
@@ -164,25 +153,25 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return response, nil
 }
 
-func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) (bool, error) {
+func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
-		return false, nil
+		return false
 	}
 	associatedAppId, ok := obj.(string)
 	if !ok || associatedAppId == "" {
-		return false, nil
+		return false
 	}
 	idParsed, err := resources.Parse(associatedAppId)
 	if err != nil {
-		return false, err
+		return false
 	}
 
 	if strings.EqualFold(idParsed.Name(), applicationName) {
-		return true, nil
+		return true
 	}
-	return false, nil
+	return false
 }
 
 func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
