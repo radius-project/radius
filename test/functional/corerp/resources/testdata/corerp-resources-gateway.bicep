@@ -10,7 +10,7 @@ param environment string
 param port int = 3000
 
 @description('Specifies the image for the container resource.')
-param image string = 'radiusdev.azurecr.io/magpiego:latest'
+param image string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-gateway'

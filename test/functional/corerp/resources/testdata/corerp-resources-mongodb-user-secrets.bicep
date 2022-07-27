@@ -9,7 +9,7 @@ param password string = newGuid()
 
 param environment string
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb-user-secrets'
