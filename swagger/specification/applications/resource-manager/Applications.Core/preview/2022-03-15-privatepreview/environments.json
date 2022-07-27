@@ -374,8 +374,8 @@
         "required": true,
         "type": "string",
         "description": "The name of the environment",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128,
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
         "x-ms-parameter-location": "method"
       }
     }

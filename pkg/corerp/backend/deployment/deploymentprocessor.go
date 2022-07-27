@@ -93,17 +93,17 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	// 1. fetch the resource from the DB and get the application info
 	res, err := dp.getResourceDataByID(ctx, resourceID)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource to get the namespace %w", err)
+		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource info and deployment namespace for resource %s with error: %w", resourceID, err)
 	}
 	// 2. fetch the application resource from the DB to get the environment info
 	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch application resource to get the namespace %w", err)
+		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch info for application: %s and deployment namespace for resource: %s with error: %w", res.AppID, resourceID, err)
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
 	namespace, err := dp.getEnvironmentNamespace(ctx, environment)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch environment resource to get the namespace %w", err)
+		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch info for environment: %s and deployment namespace for resource: %s with error: %w", environment, resourceID, err)
 	}
 
 	// Get resources that the resource being deployed has connection with.

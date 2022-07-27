@@ -184,7 +184,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_RedeployWitTwoSeparateResourcesKeepsResource(t *testing.T) {
+func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
 
@@ -293,6 +293,30 @@ func Test_CommunicationCycle(t *testing.T) {
 					},
 				},
 			},
+		},
+	}, requiredSecrets)
+
+	test.Test(t)
+}
+
+func Test_InvalidResourceIDs(t *testing.T) {
+	name := "corerp-mechanics-invalid-resourceids"
+	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployErrorExecutor(template),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-mechanics-invalid-resourceids",
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{},
 		},
 	}, requiredSecrets)
 

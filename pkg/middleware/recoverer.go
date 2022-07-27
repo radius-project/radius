@@ -26,6 +26,7 @@ func Recoverer(h http.Handler) http.Handler {
 
 				resp := rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
 					Error: armerrors.ErrorDetails{
+						Code:    armerrors.Internal,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},
 				})

@@ -8,7 +8,6 @@ package servicecontext
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/rest"
@@ -22,7 +21,7 @@ func ARMRequestCtx(pathBase string) func(h http.Handler) http.Handler {
 			if err != nil {
 				resp := rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
 					Error: armerrors.ErrorDetails{
-						Code:    strconv.Itoa(http.StatusBadRequest),
+						Code:    armerrors.Invalid,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},
 				})

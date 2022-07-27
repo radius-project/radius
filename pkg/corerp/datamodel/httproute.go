@@ -31,7 +31,10 @@ func (h *HTTPRoute) ResourceTypeName() string {
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
-	h.Properties.Status.OutputResources = do.DeployedOutputResources
+	if h.Properties != nil {
+		h.Properties.Status.OutputResources = do.DeployedOutputResources
+	}
+
 	h.InternalMetadata.ComputedValues = do.ComputedValues
 	h.InternalMetadata.SecretValues = do.SecretValues
 

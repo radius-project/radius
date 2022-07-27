@@ -113,8 +113,12 @@ stages:
     - script: az account set --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
       displayName: az account set 
     - script: |
+        export RANID=$(date +%s%N)
+        arr=("westeurope" "northeurope" "australiaeast")
+        index=$(expr $RANID % 3)
+        export LOCATION=${arr[$index]}
         az group create \
-          --location westus \
+          --location $LOCATION \
           --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME) \
           --subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}  
         while [ $(az group exists --name $(INTEGRATION_TEST_RESOURCE_GROUP_NAME)) = false ]; do sleep 2; done
@@ -133,7 +137,9 @@ stages:
           --provider-azure-client-id $INTEGRATION_TEST_SP_APP_ID \
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
-          --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }}
+          --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --reinstall
+
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
