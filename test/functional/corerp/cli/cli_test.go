@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional/corerp"
-	"github.com/project-radius/radius/test/functional/kubernetes"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
@@ -113,7 +112,7 @@ func Test_CLI_version(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
-	options := kubernetes.NewTestOptions(t)
+	options := corerp.NewTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	output, err := cli.Version(ctx)
