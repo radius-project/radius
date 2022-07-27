@@ -294,3 +294,29 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprStateStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			Name: resourceName,
+			Type: "Applications.Connector/daprStateStores",
+		},
+		Properties: datamodel.DaprStateStoreProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
+			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
+			},
+		},
+	}
+	renderer.StateStores = SupportedStateStoreKindValues
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}

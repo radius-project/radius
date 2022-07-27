@@ -32,6 +32,10 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	properties := resource.Properties
 
+	_, err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	computedValues, secretValues := MakeSecretsAndValues(resource.Name, properties)
 
 	return renderers.RendererOutput{

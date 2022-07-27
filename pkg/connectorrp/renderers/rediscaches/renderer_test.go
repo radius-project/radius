@@ -234,3 +234,30 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to an Azure Redis Cache", err.(*conv.ErrClientRP).Message)
 }
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			Name: "redis0",
+			Type: "Applications.Connector/redisCaches",
+		},
+		Properties: datamodel.RedisCacheProperties{
+			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "invalid-app-id",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}
