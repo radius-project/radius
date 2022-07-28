@@ -30,11 +30,11 @@ Do not start the release until the following scenarios are validated:
 
 ## Performing a release
 
-1. In the Bicep fork: `radius-compiler` branch at the time of writing
+1. In the Bicep fork: `bicep-extensibility` branch at the time of writing
 
    ```bash
-   # replace v0.1.0 with the release version
-   git tag v0.1.0
+   # replace v0.12.0 with the release version
+   git tag v0.12.0
    git push --tags
    ```
 
@@ -46,25 +46,41 @@ Do not start the release until the following scenarios are validated:
    az storage blob directory list -c tools -d bicep --account-name radiuspublic --output table
    az storage blob directory list -c tools -d vscode --account-name radiuspublic --output table
    ```
+2. In the project-radius/deployment-engine repo:
 
-2. In the azure/radius repo:
-
-   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.10`.
-
-
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   
    ```bash
-   # replace v0.1.0 with the release version
-   git tag v0.1.0
+   git checkout main
+   git pull origin main
+   git checkout -b release/0.12
+   git tag v0.12.0
    git push --tags
    ```
 
-   Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
+
+
+2. In the project-radius/radius repo:
+
+   Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
+   
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b release/0.12
+   git tag v0.12.0
+   git push --tags
+   ```
+
+   Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
 
    Next, check the timestamps in the `environment` container of the storage account. There should be new copies of our environment setup assets that correspond to the channel.  Look at the path `environment/<channel>/`. These should reflect the new build.
 
    ```bash
    az storage blob directory list -c environment -d <channel> --account-name radiuspublic --output table
    ```
+
 3. Updating Helm chart
 
    Helm charts upload is automatic after v0.10.0. If the tools command mentioned in step 1 & 2 return the current version then skip the manual steps below:
@@ -74,7 +90,7 @@ Do not start the release until the following scenarios are validated:
    # Replace version: 0.X.0 with this release version in Chart.yaml
    # Replace tag: 0.X with this release version in values.yaml
    helm package .
-   az acr helm push -n radius radius-0.9.0.tgz --force
+   az acr helm push -n radius radius-0.12.0.tgz --force
    # To verify upload worked
    az acr helm list -n radius
    ```
@@ -90,16 +106,74 @@ Do not start the release until the following scenarios are validated:
    You can find this file in the storage account under `version/stable.txt`.
 
 5. Update the project-radius/docs repository
+
+   TODO confirm this process with PM team as of 0.12. Currently they use v0.X as their branch name, would like for these to be consistent.
    
-   1. Within GitHub delete the branch for the prior Radius release, *e.g. `release/0.1`*.
-   1. Create a new branch named `release/X.Y` from `main`, using the release version number.
+   1. Create a new branch named `v0.12` from `main`, using the release version number.
    1. Update the branch information for the docs. Example: https://github.com/project-radius/radius/commit/f4b81b8881d590fbf077280db6a05482ed44188b
    1. Within `docs/config.toml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
-   1. Within `.github/workflows/website.yml` update the branch to be the new `release\X.Y` branch you created above.
+   1. Within `.github/workflows/website.yml` update the branch to be the new `v0.12` branch you created above.
    1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` and "edge-radius" to "radius".
    1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number, and delete commands for unstable/version commands, including all sub-headers.
-   1. Commit and push updates to be the new `release\vX.Y` branch you created above.
+   1. Commit and push updates to be the new `v0.12` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
+
+
+### Post release verification
+
+After creating a release, it's good to sanity check that the release works in some small mainline scenarios and has the right versions for each container.
+
+1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.12.0-rc3), you can use the following URL format:
+
+
+   ```sh
+   Windows:
+   $script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
+
+   MacOS:
+   curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
+
+   Direct binary downloads
+   https://radiuspublic.blob.core.windows.net/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
+   ```
+
+   Note: if you download the direct binary, execute `rad bicep download` to also download the corresponding bicep compiler binary. The scripts above will download the bicep compiler by default.
+
+2. Confirm that the version of `rad` aligns with what is expected by running:
+
+   ```sh
+   rad version
+   RELEASE     VERSION      BICEP     COMMIT
+   0.12.0-rc3  v0.12.0-rc3  0.7.14    4f8a3ef96ea537a2e9252e0c6a6bcc7a1f3ce782
+   ```
+
+3. Install radius on a kubernetes cluster by executing `rad install kubernetes`
+
+   ```
+   rad install kubernetes
+   ```
+
+   Verify this command completes successfully 
+
+4. Verify that each pod running in the radius-system namespace uses the right image and tag for each of the containers.
+
+   ```
+   kubectl describe pods -n radius-system -l control-plane=appcore-rp
+   kubectl describe pods -n radius-system -l control-plane=de
+   kubectl describe pods -n radius-system -l control-plane=ucp
+   ```
+
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.12 for the 0.12 release for the appcore-rp image.
+
+5. Execute `rad deploy` to confirm a simple deployment works
+
+   ```
+   rad env init kubernetes
+   rad deploy <simple bicep>
+   ```
+
+   Confirm the bicep file deploys successfully.
+
 
 ## How releases work
 
