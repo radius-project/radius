@@ -33,7 +33,7 @@ Do not start the release until the following scenarios are validated:
 1. In the Bicep fork: `bicep-extensibility` branch at the time of writing
 
    ```bash
-   # replace v0.1.0 with the release version
+   # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
    ```
