@@ -25,11 +25,11 @@ import (
 )
 
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-	options := kubernetes.NewTestOptions(t)
+	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := "kubernetes-cli"
 
-	t.Run("Validate rad applicationV3 show", func(t *testing.T) {
+	t.Run("Validate rad application show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
 		expected := regexp.MustCompile(`RESOURCE        TYPE\nkubernetes-cli  applications.core/applications\n`)
@@ -37,14 +37,27 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Equal(t, true, match)
 	})
 
-	// t.Run("Validate rad resource list", func(t *testing.T) {
-	// 	output, err := cli.ResourceList(ctx, appName)
-	// 	require.NoError(t, err)
+	t.Run("Validate rad resource list", func(t *testing.T) {
+		output, err := cli.ResourceList(ctx, appName)
+		require.NoError(t, err)
 
-	// 	// Resource ordering can vary so we don't assert exact output.
-	// 	require.Regexp(t, `a\s+Container`, output)
-	// 	require.Regexp(t, `b\s+Container`, output)
-	// })
+		// Resource ordering can vary so we don't assert exact output.
+		require.Regexp(t, `containera`, output)
+		require.Regexp(t, `containerb`, output)
+	})
+
+// 	t.Run("Validate rad resource show", func(t *testing.T) {
+// 		output, err := cli.ResourceShow(ctx, appName, "Container", "a")
+// 		require.NoError(t, err)
+// 		// We are more interested in the content and less about the formatting, which
+// 		// is already covered by unit tests. The spaces change depending on the input
+// 		// and it takes very long to get a feedback from CI.
+// 		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
+// a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
+// `)
+// 		match := expected.MatchString(output)
+// 		require.Equal(t, true, match)
+// 	})
 }
 
 func Test_CLI(t *testing.T) {
