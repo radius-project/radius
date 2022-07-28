@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -58,6 +59,7 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
+			PostStepVerify: verifyCLIBasics,
 		},
 	}, requiredSecrets)
 
@@ -128,4 +130,14 @@ func Test_CLI_version(t *testing.T) {
 	matcher := fmt.Sprintf(`RELEASE\s+VERSION\s+BICEP\s+COMMIT\s*([a-zA-Z0-9-\.]+)\s+([a-zA-Z0-9-\.]+)\s+(%s)\s+([a-z0-9]+)`, bicep.SemanticVersionRegex)
 	expected := regexp.MustCompile(matcher)
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
+}
+
+func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+	options := kubernetes.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	appName := "kubernetes-cli-params"
+
+	application, err := cli.ApplicationShow(ctx, appName)
+	require.NoError(t, err)
+	require.NotEmpty(t, application)
 }
