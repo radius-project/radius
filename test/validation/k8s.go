@@ -179,9 +179,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 
 			// Only start one log capture per pod
 			_, ok = pods[pod.Name]
-			if pod.Status.Phase != corev1.PodRunning || ok {
-				continue
-			}
+
 			pods[pod.Name] = true
 
 			for _, container := range pod.Spec.Containers {
