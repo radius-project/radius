@@ -6,8 +6,6 @@
 package resource_test
 
 import (
-	"context"
-	"os/exec"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -17,14 +15,12 @@ import (
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
-	//t.Skip("https://github.com/project-radius/radius/issues/3182")
-
 	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
 	name := "corerp-resources-dapr-secretstore-generic"
 
 	requiredSecrets := map[string]map[string]string{
-		"newsecret": {
-			"newsecret": "newsecret",
+		"mysecret": {
+			"mysecret": "mysecret",
 		},
 	}
 
@@ -47,15 +43,12 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					},
 				},
 			},
-			// K8sObjects: &validation.K8sObjectSet{
-			// 	Namespaces: map[string][]validation.K8sObject{
-			// 		"default": {
-			// 			validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
-			// 		},
-			// 	},
-			// },
-			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				exec.Command("kubectl", "describe", "components")
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
+					},
+				},
 			},
 		},
 	}, requiredSecrets)

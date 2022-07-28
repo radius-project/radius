@@ -14,7 +14,6 @@ import (
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-app-env.bicep"
 	name := "corerp-resources-app-env"
 

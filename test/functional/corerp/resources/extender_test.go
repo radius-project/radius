@@ -15,7 +15,6 @@ import (
 )
 
 func Test_Extender(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
 

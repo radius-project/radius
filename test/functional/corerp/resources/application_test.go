@@ -14,7 +14,6 @@ import (
 )
 
 func Test_Application(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
 
