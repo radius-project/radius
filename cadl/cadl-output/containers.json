@@ -843,8 +843,8 @@
       "in": "path",
       "required": true,
       "description": "Container name",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "type": "string",
       "x-ms-parameter-location": "method"
     },
