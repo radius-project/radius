@@ -167,8 +167,18 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	azureProvider := provider["azure"].(map[string]interface{})
 
 	var azProvider azure.Provider
-	azProvider.SubscriptionID = azureProvider["subscriptionId"].(string)
-	azProvider.ResourceGroup = azureProvider["resourceGroup"].(string)
+
+	subscriptionId, ok := azureProvider["subscriptionId"]
+	if !ok {
+		return nil, nil
+	}
+	resourceGroup, ok := azureProvider["resourceGroup"]
+	if !ok {
+		return nil, nil
+	}
+
+	azProvider.SubscriptionID = subscriptionId.(string)
+	azProvider.ResourceGroup = resourceGroup.(string)
 	return &azProvider, nil
 
 }
