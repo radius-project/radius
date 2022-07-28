@@ -205,7 +205,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	t.Logf("Creating secrets if provided")
 	err = ct.CreateSecrets(ctx)
-	require.NoErrorf(t, err, "failed to create k8s  secrets %s", ct.Secrets)
+	require.NoErrorf(t, err, "failed to create k8s secrets %s", ct.Secrets)
 
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.

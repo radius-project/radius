@@ -18,6 +18,7 @@ import (
 // failed to connect with redis instance at corerp-resources-redis-user-secrets-redis-route:80 -
 // dial tcp 10.96.251.170:80: connect: connection refused
 func Test_Redis(t *testing.T) {
+	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
 

@@ -18,6 +18,7 @@ import (
 // 2022/07/16 22:38:39 no provider could be found for binding of type -  <nil>
 // 2022/07/16 22:38:47 no provider could be found for binding of type -  <nil>
 func Test_Gateway(t *testing.T) {
+	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 

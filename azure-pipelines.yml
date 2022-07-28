@@ -17,7 +17,7 @@ variables:
 - name: DOCKER_REGISTRY
   value: radiusdev.azurecr.io
 - name: K8S_FUNCTIONALTEST_TIMEOUT
-  value: 20m
+  value: 8m
 - name: AZURE_FUNCTIONALTEST_TIMEOUT
   value: 20m
 - name: REL_CHANNEL
@@ -155,6 +155,10 @@ stages:
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-corerp
       displayName: run functional corerp tests
+        - script: |
+        kubectl describe components
+      condition: always()
+      continueOnError: 'true'
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
