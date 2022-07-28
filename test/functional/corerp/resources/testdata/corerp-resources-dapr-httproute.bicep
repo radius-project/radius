@@ -2,12 +2,8 @@ import radius as radius
 
 param location string = resourceGroup().location
 param environment string
-<<<<<<< HEAD
 param magpieimage string
 
-=======
-param image string = 'radiusdev.azurecr.io/magpiego:latest'
->>>>>>> a461aeb8 (update the image tag for magpiego)
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'dapr-invokehttproute'
