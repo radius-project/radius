@@ -156,7 +156,8 @@ stages:
         make test-functional-corerp
       displayName: run functional corerp tests
     - script: |
-        kubectl describe components
+        kubectl get pods -n radius-system
+        kubectl describe pods -n radius-system
       condition: always()
       continueOnError: 'true'
     - script: |
