@@ -24,6 +24,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+	options := kubernetes.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	appName := "kubernetes-cli"
+
+	t.Run("Validate rad applicationV3 show", func(t *testing.T) {
+		output, err := cli.ApplicationShow(ctx, appName)
+		require.NoError(t, err)
+		expected := regexp.MustCompile(`RESOURCE        TYPE\nkubernetes-cli  applications.core/applications\n`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
+	})
+
+	// t.Run("Validate rad resource list", func(t *testing.T) {
+	// 	output, err := cli.ResourceList(ctx, appName)
+	// 	require.NoError(t, err)
+
+	// 	// Resource ordering can vary so we don't assert exact output.
+	// 	require.Regexp(t, `a\s+Container`, output)
+	// 	require.Regexp(t, `b\s+Container`, output)
+	// })
+}
+
 func Test_CLI(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
@@ -130,14 +153,4 @@ func Test_CLI_version(t *testing.T) {
 	matcher := fmt.Sprintf(`RELEASE\s+VERSION\s+BICEP\s+COMMIT\s*([a-zA-Z0-9-\.]+)\s+([a-zA-Z0-9-\.]+)\s+(%s)\s+([a-z0-9]+)`, bicep.SemanticVersionRegex)
 	expected := regexp.MustCompile(matcher)
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
-}
-
-func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-	options := kubernetes.NewTestOptions(t)
-	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	appName := "kubernetes-cli-params"
-
-	application, err := cli.ApplicationShow(ctx, appName)
-	require.NoError(t, err)
-	require.NotEmpty(t, application)
 }
