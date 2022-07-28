@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'global'
 
 @description('Specifies the image of the container resource.')
-param image string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 @description('Specifies the port of the container resource.')
 param port int = 3000
@@ -26,7 +26,7 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     container: {
-      image: image
+      image: magpieimage
       ports: {
         web: {
           containerPort: port
