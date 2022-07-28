@@ -7,7 +7,7 @@ param location string = 'global'
 param environment string = 'test'
 
 @description('Specifies the image to be deployed.')
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-mechanics-invalid-resourceids'
