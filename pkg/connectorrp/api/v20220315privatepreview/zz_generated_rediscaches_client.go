@@ -75,7 +75,7 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *RedisCachesClient) createOrUpdateHandleResponse(resp *http.Response) (RedisCachesCreateOrUpdateResponse, error) {
 	result := RedisCachesCreateOrUpdateResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResponseResource); err != nil {
 		return RedisCachesCreateOrUpdateResponse{}, err
 	}
 	return result, nil

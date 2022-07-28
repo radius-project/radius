@@ -91,7 +91,13 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 		return nil, err
 	}
 
-	versioned, err := converter.RabbitMQMessageQueueDataModelToVersioned(newResource, serviceCtx.APIVersion, true)
+	rmqResponse := &datamodel.RabbitMQMessageQueueResponse{}
+	err = savedResource.As(rmqResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	versioned, err := converter.RabbitMQMessageQueueDataModelToVersioned(rmqResponse, serviceCtx.APIVersion, false)
 	if err != nil {
 		return nil, err
 	}

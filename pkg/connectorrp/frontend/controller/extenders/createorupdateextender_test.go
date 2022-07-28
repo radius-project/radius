@@ -77,7 +77,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
@@ -91,6 +91,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				})
 			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -100,6 +101,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						// First time created objects should have the same lastModifiedAt and createdAt
+						dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
 						obj.ETag = "new-resource-etag"
 						obj.Data = dataModel
 						return nil
@@ -122,7 +125,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.ExtenderResource{}
+				actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -153,7 +156,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm, mDeploymentProcessor, rendererOutput, deploymentOutput := setupTest(t)
 			defer teardownTest(t)
 
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			if testcase.inputFile != "" {
 				input = &v20220315privatepreview.ExtenderResource{}
 				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
@@ -203,7 +206,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.ExtenderResource{}
+				actualOutput := &v20220315privatepreview.ExtenderResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

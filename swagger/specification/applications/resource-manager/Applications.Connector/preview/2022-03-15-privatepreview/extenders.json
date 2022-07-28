@@ -156,13 +156,13 @@
             "200": {
               "description": "The request was successful; response contains the extender resource",
               "schema": {
-                "$ref": "#/definitions/ExtenderResource"
+                "$ref": "#/definitions/ExtenderResponseResource"
               }
             },
             "201": {
               "description": "The request was successful, resource will be updated asynchronously",
               "schema": {
-                "$ref": "#/definitions/ExtenderResource"
+                "$ref": "#/definitions/ExtenderResponseResource"
               }
             },
             "default": {
