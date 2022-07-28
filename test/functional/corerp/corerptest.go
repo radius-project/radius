@@ -233,7 +233,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 			if step.SkipResourceValidation {
 				t.Logf("skipping validation of resources...")
-			} else if step.CoreRPResources == nil {
+			} else if step.CoreRPResources == nil || len(step.CoreRPResources.Resources) == 0 {
 				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
 			} else {
 				// Validate that all expected output resources are created
