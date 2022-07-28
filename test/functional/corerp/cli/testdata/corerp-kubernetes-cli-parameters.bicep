@@ -9,8 +9,6 @@ param environment string = 'test'
 @description('Specifies the tag of the image to be deployed.')
 param magpietag string = 'latest'
 
-
-
 @description('Specifies the registry of the image to be deployed.')
 param registry string
 
