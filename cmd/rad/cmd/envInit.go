@@ -165,6 +165,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// - passed via flag
 	// - default value (config)
 	// - environment name
+
+	var workspaceSpecified bool
 	workspaceName, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return err
@@ -177,10 +179,14 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 
 		workspaceName = section.Default
+		workspaceSpecified = false
+	} else {
+		workspaceSpecified = true
 	}
 
 	if workspaceName == "" {
 		workspaceName = environmentName
+		workspaceSpecified = false
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -198,8 +204,19 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 	}
 
-	if foundExistingWorkspace && !force && !workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
-		return fmt.Errorf("the workspace %q already exists. Specify '--force' to overwrite", workspaceName)
+	isSameConn := true
+	if foundExistingWorkspace {
+		isSameConn = workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName})
+	}
+	if foundExistingWorkspace && workspaceSpecified && !force && !isSameConn {
+		return fmt.Errorf("the cat workspace %q already exists. Specify '--force' to overwrite", workspaceName)
+	}
+
+	//if workspace exists, but was not explicitly specified ( default?), and on a different context
+	if foundExistingWorkspace && !workspaceSpecified && !isSameConn {
+		workspaceName = environmentName
+		foundExistingWorkspace = false
+		workspace = nil
 	}
 
 	// Make sure namespace for applications exists
