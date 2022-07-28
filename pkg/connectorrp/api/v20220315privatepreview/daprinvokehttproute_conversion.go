@@ -24,9 +24,11 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			AppId:             to.String(src.Properties.AppID),
 		},
 		InternalMetadata: v1.InternalMetadata{

@@ -1,7 +1,6 @@
 import radius as radius
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest' 
-
+param magpieimage string
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
@@ -13,9 +12,8 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'todoapp'
+  name: 'rds-app-ctnr'
   location: 'global'
-
   properties: {
     application: app.id
     container: {
@@ -24,8 +22,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         DBCONNECTION: redis.connectionString()
       }
       readinessProbe:{
-        kind:'httpGet'
-        containerPort:3000
+        kind: 'httpGet'
+        containerPort: 3000
         path: '/healthz'
       }
     }
@@ -38,9 +36,8 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'redis'
+  name: 'rds-ctnr'
   location: 'global'
-
   properties: {
     application: app.id
     container: {
@@ -57,21 +54,19 @@ resource redisContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 }
 
 resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'redis-route'
+  name: 'rds-rte'
   location: 'global'
-
   properties: {
     application: app.id
-    port: 80
   }
 }
 
 resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
-  name: 'redis'
+  name: 'rds-rds'
   location: 'global'
-
   properties: {
     environment: environment
+    application: app.id
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {

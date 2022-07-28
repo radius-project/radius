@@ -14,9 +14,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -25,11 +27,11 @@ import (
 const OperationPollInterval time.Duration = time.Second * 5
 
 type ResouceDeploymentClient struct {
-	SubscriptionID   string
-	ResourceGroup    string
-	Client           azclients.ResourceDeploymentClient
-	OperationsClient azclients.ResourceDeploymentOperationsClient
-	Tags             map[string]*string
+	RadiusResourceGroup string
+	Client              azclients.ResourceDeploymentClient
+	OperationsClient    azclients.ResourceDeploymentOperationsClient
+	Tags                map[string]*string
+	AzProvider          *workspaces.AzureProvider
 }
 
 var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
@@ -74,20 +76,23 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
-		{Type: "planes", Name: "deployments/local"},
-		{Type: "resourcegroups", Name: dc.ResourceGroup},
+		{Type: "deployments", Name: "local"},
+		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
 	types := []ucpresources.TypeSegment{
 		{Type: "Microsoft.Resources/deployments", Name: name},
 	}
 
-	resourceId = ucpresources.MakeRelativeID(scopes, types...)
+	resourceId = ucpresources.MakeUCPID(scopes, types...)
 
-	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, resources.Deployment{
-		Properties: &resources.DeploymentProperties{
-			Template:   options.Template,
-			Parameters: options.Parameters,
-			Mode:       resources.DeploymentModeIncremental,
+	providerConfig := dc.GetProviderConfigs()
+
+	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, providers.Deployment{
+		Properties: &providers.DeploymentProperties{
+			Template:       options.Template,
+			Parameters:     options.Parameters,
+			ProviderConfig: providerConfig,
+			Mode:           resources.DeploymentModeIncremental,
 		},
 		Tags: dc.Tags,
 	})
@@ -95,8 +100,42 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 	if err != nil {
 		return nil, err
 	}
-
 	return &future, nil
+}
+
+func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig {
+	var providerConfigs providers.ProviderConfig
+	if dc.AzProvider != nil {
+		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
+			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
+			providerConfigs.Az = &providers.Az{
+				Type: "AzureResourceManager",
+				Value: providers.Value{
+					Scope: scope,
+				},
+			}
+		}
+	}
+
+	if dc.RadiusResourceGroup != "" {
+		scope := "/planes/radius/local/resourceGroups/" + dc.RadiusResourceGroup
+		providerConfigs.Radius = &providers.Radius{
+			Type: "Radius",
+			Value: providers.Value{
+				Scope: scope,
+			},
+		}
+
+		scope = "/planes/deployments/local/resourceGroups/" + dc.RadiusResourceGroup
+		providerConfigs.Deployments = &providers.Deployments{
+			Type: "Microsoft.Resources",
+			Value: providers.Value{
+				Scope: scope,
+			},
+		}
+	}
+
+	return providerConfigs
 }
 
 func (dc *ResouceDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
@@ -104,13 +143,13 @@ func (dc *ResouceDeploymentClient) createSummary(deployment resources.Deployment
 		return clients.DeploymentResult{}, nil
 	}
 
-	resources := []azresources.ResourceID{}
+	resources := []ucpresources.ID{}
 	for _, resource := range *deployment.Properties.OutputResources {
 		if resource.ID == nil {
 			continue
 		}
 
-		id, err := azresources.Parse(*resource.ID)
+		id, err := ucpresources.Parse(*resource.ID)
 		if err != nil {
 			return clients.DeploymentResult{}, err
 		}
@@ -186,12 +225,12 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 			}
 
 			provisioningState := rest.OperationStatus(*operation.Properties.ProvisioningState)
-			id, err := azresources.Parse(*operation.Properties.TargetResource.ID)
+			id, err := ucpresources.Parse(*operation.Properties.TargetResource.ID)
 			if err != nil {
 				return err
 			}
+			current := status[id.String()]
 
-			current := status[id.ID]
 			next := clients.StatusStarted
 			if rest.SuccededStatus == provisioningState {
 				next = clients.StatusCompleted
@@ -200,7 +239,7 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 			}
 
 			if current != next && progressChan != nil {
-				status[id.ID] = next
+				status[id.String()] = next
 				progressChan <- clients.ResourceProgress{
 					Resource: id,
 					Status:   next,
@@ -217,11 +256,14 @@ func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name stri
 
 	// No providers section, hence all segments are part of scopes
 	scopes := []ucpresources.ScopeSegment{
-		{Type: "planes", Name: "deployments/local"},
-		{Type: "resourcegroups", Name: dc.ResourceGroup},
-		{Type: "deployments", Name: name + "/operations"},
+		{Type: "deployments", Name: "local"},
+		{Type: "resourcegroups", Name: dc.RadiusResourceGroup},
 	}
-	resourceId = ucpresources.MakeRelativeID(scopes)
+	types := ucpresources.TypeSegment{
+		Type: "Microsoft.Resources/deployments",
+		Name: name,
+	}
+	resourceId = ucpresources.MakeUCPID(scopes, types)
 
 	operationList, err := dc.OperationsClient.List(ctx, resourceId, nil)
 	if err != nil {

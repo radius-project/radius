@@ -6,5 +6,5 @@
 package gateway
 
 const (
-	ResourceType = "Application.Core/gateways"
+	ResourceType = "Applications.Core/gateways"
 )

@@ -26,8 +26,10 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: &datamodel.HTTPRouteProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Application:       to.String(src.Properties.Application),
 			Hostname:          to.String(src.Properties.Hostname),
 			Port:              to.Int32(src.Properties.Port),
 			Scheme:            to.String(src.Properties.Scheme),

@@ -51,21 +51,22 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     chartArgs.Reinstall,
-			ChartPath:     chartArgs.ChartPath,
-			Image:         chartArgs.Image,
-			Tag:           chartArgs.Tag,
-			UCPImage:      chartArgs.UcpImage,
-			UCPTag:        chartArgs.UcpTag,
-			AppCoreImage:  chartArgs.AppCoreImage,
-			AppCoreTag:    chartArgs.AppCoreTag,
-			AzureProvider: azureProvider,
+			Reinstall:              chartArgs.Reinstall,
+			ChartPath:              chartArgs.ChartPath,
+			Image:                  chartArgs.Image,
+			Tag:                    chartArgs.Tag,
+			UCPImage:               chartArgs.UcpImage,
+			UCPTag:                 chartArgs.UcpTag,
+			AppCoreImage:           chartArgs.AppCoreImage,
+			AppCoreTag:             chartArgs.AppCoreTag,
+			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
+			AzureProvider:          azureProvider,
 		},
 	}
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
-	err = setup.Install(cmd.Context(), clusterOptions, kubeContext)
+	_, err = setup.Install(cmd.Context(), clusterOptions, kubeContext)
 	if err != nil {
 		return err
 	}

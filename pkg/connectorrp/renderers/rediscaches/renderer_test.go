@@ -9,10 +9,12 @@ import (
 	"context"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
@@ -36,16 +38,18 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-				Host:        "hello.com",
-				Port:        1234,
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+				Host:     "hello.com",
+				Port:     1234,
 			},
 		},
 	}
 
-	output, err := renderer.Render(ctx, &redisResource)
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 1)
@@ -72,6 +76,7 @@ func Test_Render_Success(t *testing.T) {
 			Value: int32(1234),
 		},
 	}
+
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, "/primaryKey", output.SecretValues[renderers.PasswordStringHolder].ValueSelector)
 	require.Equal(t, "listKeys", output.SecretValues[renderers.PasswordStringHolder].Action)
@@ -89,10 +94,12 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Host:        "hello.com",
-				Port:        1234,
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Host: "hello.com",
+				Port: 1234,
 			},
 			Secrets: datamodel.RedisCacheSecrets{
 				Password:         password,
@@ -101,7 +108,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, &redisResource)
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 0)
 
@@ -137,13 +144,15 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
 			},
 		},
 	}
 
-	output, err := renderer.Render(ctx, &redisResource)
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(output.Resources))
 }
@@ -159,13 +168,15 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			Type: "Applications.Connector/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 		},
 	}
 
-	_, err := renderer.Render(ctx, redisResource)
+	_, err := renderer.Render(ctx, redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, "invalid model conversion", err.Error())
 }
@@ -182,16 +193,19 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/Microsoft.Cache/Redis/testCache",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/Microsoft.Cache/Redis/testCache",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &redisResource)
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -206,14 +220,44 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.SomethingElse/Redis/testCache",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.SomethingElse/Redis/testCache",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &redisResource)
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a Redis Cache", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure Redis Cache", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	redisResource := datamodel.RedisCache{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			Name: "redis0",
+			Type: "Applications.Connector/redisCaches",
+		},
+		Properties: datamodel.RedisCacheProperties{
+			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+					Application: "invalid-app-id",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

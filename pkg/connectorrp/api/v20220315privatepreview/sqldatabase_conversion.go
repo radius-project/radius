@@ -24,9 +24,11 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.SqlDatabaseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			Resource:          to.String(src.Properties.Resource),
 			Database:          to.String(src.Properties.Database),
 			Server:            to.String(src.Properties.Server),

@@ -8,6 +8,7 @@ package containers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -16,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/frontend/controller"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -25,7 +25,7 @@ var _ ctrl.Controller = (*CreateOrUpdateContainer)(nil)
 
 var (
 	// AsyncPutContainerOperationTimeout is the default timeout duration of async put container operation.
-	AsyncPutContainerOperationTimeout = time.Duration(120) * time.Second
+	AsyncPutContainerOperationTimeout = time.Duration(5) * time.Minute
 )
 
 // CreateOrUpdateContainer is the controller implementation to create or update a container resource.
@@ -47,23 +47,22 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	existingResource := &datamodel.ContainerResource{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return nil, err
-	}
+	old := &datamodel.ContainerResource{}
 
-	exists := true
-	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
-		exists = false
+	isNewResource := false
+	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
 	}
-
-	if req.Method == http.MethodPatch && !exists {
+	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
-
-	if exists && !existingResource.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(controller.OngoingAsyncOperationOnResourceMessage), nil
+	if !isNewResource && !old.Properties.ProvisioningState.IsTerminal() {
+		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -71,7 +70,14 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	enrichMetadata(ctx, existingResource, newResource)
+	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
+	if !isNewResource {
+		newResource.CreatedAPIVersion = old.CreatedAPIVersion
+		prop := newResource.Properties.BasicResourceProperties
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
+		}
+	}
 
 	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -93,7 +99,8 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		respCode = http.StatusAccepted
 	}
 
-	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID), nil
+	return rest.NewAsyncOperationResponse(newResource, newResource.TrackedResource.Location, respCode,
+		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 }
 
 // Validate extracts versioned resource from request and validate the properties.
@@ -112,21 +119,8 @@ func (e *CreateOrUpdateContainer) Validate(ctx context.Context, req *http.Reques
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-
+	dm.Properties.ProvisioningState = v1.ProvisioningStateAccepted
+	dm.TenantID = serviceCtx.HomeTenantID
+	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
 	return dm, err
-}
-
-// enrichMetadata updates necessary metadata of the resource.
-func enrichMetadata(ctx context.Context, er *datamodel.ContainerResource, nr *datamodel.ContainerResource) {
-	sc := servicecontext.ARMRequestContextFromContext(ctx)
-
-	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
-
-	if er.CreatedAPIVersion != "" {
-		nr.CreatedAPIVersion = er.CreatedAPIVersion
-	}
-
-	nr.TenantID = sc.HomeTenantID
-
-	nr.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 }

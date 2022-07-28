@@ -11,20 +11,22 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/builders"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 type Options struct {
-	Environment   environments.Environment
-	BaseDirectory string
-	Manifest      radyaml.Manifest
-	FinalStage    string
-	Profile       string
-	Stdout        io.Writer
-	Stderr        io.Writer
-	Builders      map[string]builders.Builder
-	Parameters    clients.DeploymentParameters
+	Workspace         workspaces.Workspace
+	ConnectionFactory connections.Factory
+	BaseDirectory     string
+	Manifest          radyaml.Manifest
+	FinalStage        string
+	Profile           string
+	Stdout            io.Writer
+	Stderr            io.Writer
+	Builders          map[string]builders.Builder
+	Parameters        clients.DeploymentParameters
 
 	// BicepBuildFunc supports overriding the build build process for testing.
 	BicepBuildFunc func(ctx context.Context, deployFile string) (map[string]interface{}, error)

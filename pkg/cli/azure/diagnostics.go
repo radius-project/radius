@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"io"
 	"io/ioutil"
@@ -32,42 +32,47 @@ import (
 )
 
 type ARMDiagnosticsClient struct {
-	K8sTypedClient   *k8s.Clientset
-	RestConfig       *rest.Config
-	K8sRuntimeClient client.Client
-
-	// If set, the value of this field will be used to find replicas. Otherwise the application name will be used.
-	Namespace      string
-	ResourceClient radclient.RadiusResourceClient
-	ResourceGroup  string
-	SubscriptionID string
+	K8sTypedClient    *k8s.Clientset
+	RestConfig        *rest.Config
+	K8sRuntimeClient  client.Client
+	ApplicationClient generated.GenericResourcesClient
+	ContainerClient   generated.GenericResourcesClient
+	EnvironmentClient generated.GenericResourcesClient
+	GatewayClient     generated.GenericResourcesClient
 }
 
 var _ clients.DiagnosticsClient = (*ARMDiagnosticsClient)(nil)
 
 func (dc *ARMDiagnosticsClient) GetPublicEndpoint(ctx context.Context, options clients.EndpointOptions) (*string, error) {
-	if len(options.ResourceID.Types) != 3 || !strings.EqualFold(options.ResourceID.Types[2].Type, resourcekinds.Gateway) {
+	if !strings.EqualFold("Applications.Core/gateways", options.ResourceID.Type()) {
 		return nil, nil
 	}
 
-	response, err := dc.ResourceClient.Get(ctx, dc.ResourceGroup, options.ResourceID.Types[1].Name, options.ResourceID.Types[2].Type, options.ResourceID.Types[2].Name, nil)
+	response, err := dc.GatewayClient.Get(ctx, options.ResourceID.Name(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	hostname := fmt.Sprint(response.RadiusResourceGetResult.RadiusResource.Properties["url"])
+	obj, ok := response.Properties["url"]
+	if !ok {
+		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
+	}
 
-	return &hostname, nil
+	url, ok := obj.(string)
+	if !ok {
+		return nil, fmt.Errorf("could not find URL for gateway %q", options.ResourceID.Name())
+	}
+
+	return &url, nil
 }
 
 func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.ExposeOptions) (failed chan error, stop chan struct{}, signals chan os.Signal, err error) {
-	namespace := dc.Namespace
-	if namespace == "" {
-		namespace = options.Application
+	namespace, err := dc.findNamespaceOfContainer(ctx, options.Resource)
+	if err != nil {
+		return
 	}
 
 	var replica *corev1.Pod
-
 	if options.Replica != "" {
 		replica, err = getSpecificReplica(ctx, dc.K8sTypedClient, namespace, options.Resource, options.Replica)
 	} else {
@@ -95,13 +100,12 @@ func (dc *ARMDiagnosticsClient) Expose(ctx context.Context, options clients.Expo
 }
 
 func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOptions) ([]clients.LogStream, error) {
-	namespace := dc.Namespace
-	if namespace == "" {
-		namespace = options.Application
+	namespace, err := dc.findNamespaceOfContainer(ctx, options.Resource)
+	if err != nil {
+		return nil, nil
 	}
 
 	var replicas []corev1.Pod
-	var err error
 
 	if options.Replica != "" {
 		replica, err := getSpecificReplica(ctx, dc.K8sTypedClient, namespace, options.Resource, options.Replica)
@@ -127,6 +131,75 @@ func (dc *ARMDiagnosticsClient) Logs(ctx context.Context, options clients.LogsOp
 	}
 
 	return streams, err
+}
+
+func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, resourceName string) (string, error) {
+	containerResponse, err := dc.ContainerClient.Get(ctx, resourceName, nil)
+	if err != nil {
+		return "", fmt.Errorf("could not find container %q:%w", resourceName, err)
+	}
+
+	obj, ok := containerResponse.Properties["application"]
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	application, ok := obj.(string)
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	id, err := resources.Parse(application)
+	if err != nil {
+		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
+	}
+
+	applicationResponse, err := dc.ApplicationClient.Get(ctx, id.Name(), nil)
+	if err != nil {
+		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
+	}
+
+	obj, ok = applicationResponse.Properties["environment"]
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	environment, ok := obj.(string)
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	id, err = resources.Parse(environment)
+	if err != nil {
+		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
+	}
+
+	environmentResponse, err := dc.EnvironmentClient.Get(ctx, id.Name(), nil)
+	if err != nil {
+		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
+	}
+
+	obj, ok = environmentResponse.Properties["compute"]
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	compute, ok := obj.(map[string]interface{})
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	obj, ok = compute["namespace"]
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	namespace, ok := obj.(string)
+	if !ok {
+		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	}
+
+	return namespace, nil
 }
 
 // Note: If an error is returned, any streams that were created before the error will also be returned.

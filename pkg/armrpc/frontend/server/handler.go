@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
@@ -51,12 +52,12 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 
 		response, err := ctrl.Run(hctx, req)
 		if err != nil {
-			internalServerError(hctx, w, req, err)
+			handleError(hctx, w, req, err)
 			return
 		}
 		err = response.Apply(hctx, w, req)
 		if err != nil {
-			internalServerError(hctx, w, req, err)
+			handleError(hctx, w, req, err)
 			return
 		}
 	}
@@ -127,20 +128,53 @@ func ConfigureDefaultHandlers(
 }
 
 // Responds with an HTTP 500
-func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
+func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.V(radlogger.Debug).Error(err, "unhandled error")
 
+	var response rest.Response
 	// Try to use the ARM format to send back the error info
-	body := armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Message: err.Error(),
-		},
+	// if the error is due to api conversion failure return bad resquest
+	switch v := err.(type) {
+	case *conv.ErrModelConversion:
+		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+				Message: err.Error(),
+			},
+		})
+	case *conv.ErrClientRP:
+		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    v.Code,
+				Message: v.Message,
+			},
+		})
+	default:
+		if err.Error() == conv.ErrInvalidModelConversion.Error() {
+			response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+					Message: err.Error(),
+				},
+			})
+		} else {
+			response = rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
+				Error: armerrors.ErrorDetails{
+					Code:    armerrors.Internal,
+					Message: err.Error(),
+				},
+			})
+		}
 	}
-
-	response := rest.NewInternalServerErrorARMResponse(body)
 	err = response.Apply(ctx, w, req)
 	if err != nil {
+		body := armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Internal,
+				Message: err.Error(),
+			},
+		}
 		// There's no way to recover if we fail writing here, we likly partially wrote to the response stream.
 		w.WriteHeader(http.StatusInternalServerError)
 		logger.Error(err, fmt.Sprintf("error writing marshaled %T bytes to output", body))

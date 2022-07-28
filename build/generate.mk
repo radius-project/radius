@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-radclient generate-genericcliclient generate-rad-corerp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-radclient generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -69,6 +69,11 @@ generate-rad-corerp-client: generate-node-installed generate-autorest-installed 
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
 
+.PHONY: generate-rad-connectorrp-client
+generate-rad-connectorrp-client: generate-node-installed generate-autorest-installed ## Generates the connectorrp client SDK (Autorest).
+	@echo "$(AUTOREST_MODULE_VERSION) is module version"
+	autorest pkg/connectorrp/api/README.md --tag=connector-2022-03-15-privatepreview
+
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:
 	@echo "$(ARROW) Detecting mockgen..."
@@ -83,16 +88,12 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 .PHONY: generate-bicep-types
 generate-bicep-types: generate-node-installed generate-openapi-specs ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
-ifneq (, $(shell which autorest))
-	@echo "$(ARROW) Remove outdated autorest extensions and download latest version of autorest-core..."
-	autorest --reset
-endif
 	@echo "$(ARROW) Build autorest.bicep..."
 	cd hack/bicep-types-radius/src/autorest.bicep; \
 	npm ci && npm run build; \
 	cd ../generator; \
 	echo "Run generator from hack/bicep-types-radius/src/generator dir"; \
-	npm ci && npm run generate -- --specs-dir ../../../../swagger
+	npm ci && npm run generate -- --specs-dir ../../../../swagger --verbose
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
 PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))/..

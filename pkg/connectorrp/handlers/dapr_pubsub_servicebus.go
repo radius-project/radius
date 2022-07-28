@@ -11,19 +11,19 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	ServiceBusNamespaceIDKey   = "servicebusid"
-	ServiceBusTopicIDKey       = "servicebustopicid"
 	RootManageSharedAccessKey  = "RootManageSharedAccessKey"
 	ServiceBusTopicNameKey     = "servicebustopic"
 	ServiceBusNamespaceNameKey = "servicebusnamespace"
@@ -53,7 +53,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	}
 
 	// This assertion is important so we don't start creating/modifying a resource
-	err = ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey, ServiceBusTopicIDKey)
+	err = ValidateResourceIDsForResource(properties, ServiceBusNamespaceIDKey)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -66,16 +66,8 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	var topic *servicebus.SBTopic
-
-	// This is mostly called for the side-effect of verifying that the servicebus queue exists.
-	topic, err = handler.GetTopicByID(ctx, properties[ServiceBusTopicIDKey])
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
-
-	// Use the identity of the topic as the thing to monitor.
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *topic.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	// Use the identity of the namespace as the thing to monitor.
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
 	if err != nil {
@@ -91,7 +83,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]string)
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
@@ -137,14 +129,14 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 	return nil
 }
 
-func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]string) error {
+func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]interface{}) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      properties[ResourceName],
+				"name":      kubernetes.MakeResourceName(properties[ApplicationName].(string), properties[ResourceName].(string)),
 			},
 		},
 	}
@@ -158,36 +150,23 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := azresources.Parse(id)
+	parsed, err := resources.Parse(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.SubscriptionID, handler.arm.Auth)
+	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
 	// Check if a service bus namespace exists in the resource group for this application
-	namespace, err := sbc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name)
+	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus namespace: '%s':%w", *namespace.Name, err)
+		if clients.Is404Error(err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", id))
+		}
+		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
 	}
 
 	return &namespace, nil
-}
-
-func (handler *daprPubSubServiceBusBaseHandler) GetTopicByID(ctx context.Context, id string) (*servicebus.SBTopic, error) {
-	parsed, err := azresources.Parse(id)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse servicebus resource id: %w", err)
-	}
-
-	tc := clients.NewTopicsClient(handler.arm.SubscriptionID, handler.arm.Auth)
-
-	topic, err := tc.Get(ctx, parsed.ResourceGroup, parsed.Types[0].Name, parsed.Types[1].Name)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get servicebus queue: %w", err)
-	}
-
-	return &topic, nil
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, namespaceName string) (*string, error) {
@@ -195,6 +174,9 @@ func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.
 
 	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, RootManageSharedAccessKey)
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", namespaceName))
+		}
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
 	}
 

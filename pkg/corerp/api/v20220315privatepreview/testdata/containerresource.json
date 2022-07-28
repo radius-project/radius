@@ -19,6 +19,7 @@
     "connections": {
       "inventory": {
         "source": "inventory_route_id",
+        "disableDefaultEnvVars": true,
         "iam": {
           "kind": "azure",
           "roles": [

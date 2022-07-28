@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/providers"
@@ -30,7 +31,7 @@ import (
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
 	output := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAzureServiceBusTopic,
+		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Provider: providers.ProviderAzure,
@@ -43,23 +44,21 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 
 			// Truncate the topic part of the ID to make an ID for the namespace
 			handlers.ServiceBusNamespaceIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace",
-			handlers.ServiceBusTopicIDKey:       "test-namespace",
-			handlers.ServiceBusNamespaceNameKey: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
+			handlers.ServiceBusNamespaceNameKey: "test-namespace",
 			handlers.ServiceBusTopicNameKey:     "test-topic",
 		},
 	}
 	values := map[string]renderers.ComputedValueReference{
-		"namespace": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+		daprpubsubbrokers.NamespaceNameKey: {
+			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ServiceBusNamespaceNameKey,
 		},
-		"pubSubName": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
+		daprpubsubbrokers.PubSubNameKey: {
+			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
-		"topic": {
-			LocalID:           outputresource.LocalIDAzureServiceBusTopic,
-			PropertyReference: handlers.ServiceBusTopicNameKey,
+		daprpubsubbrokers.TopicNameKey: {
+			Value: "test-topic",
 		},
 	}
 	rendererOutput := renderers.RendererOutput{
@@ -71,17 +70,21 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	deploymentOutput := deployment.DeploymentOutput{
 		Resources: []outputresource.OutputResource{
 			{
-				LocalID: outputresource.LocalIDAzureServiceBusTopic,
+				LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 					Provider: providers.ProviderAzure,
 				},
 			},
 		},
+		ComputedValues: map[string]interface{}{
+			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
+		},
 	}
 
 	return rendererOutput, deploymentOutput
 }
+
 func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
@@ -166,20 +169,26 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 		desc               string
 		headerKey          string
 		headerValue        string
+		inputFile          string
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
+		{"create-new-resource-with-diff-envid", "If-Match", "", "20220315privatepreview_input_diff_env.json", "", http.StatusBadRequest, true},
+		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", http.StatusPreconditionFailed, true},
 	}
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			if testcase.inputFile != "" {
+				input = &v20220315privatepreview.DaprPubSubBrokerResource{}
+				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+			}
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
 			req.Header.Set(testcase.headerKey, testcase.headerValue)

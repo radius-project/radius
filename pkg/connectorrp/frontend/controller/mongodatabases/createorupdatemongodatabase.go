@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -53,11 +54,22 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
 	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
 
+	if database, ok := deploymentOutput.ComputedValues[renderers.DatabaseNameValue].(string); ok {
+		newResource.Properties.Database = database
+	}
 	// Read existing resource info from the data store
-	existingResource := &datamodel.MongoDatabase{}
-	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if req.Method == http.MethodPatch && err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return nil, err
+	old := &datamodel.MongoDatabase{}
+	isNewResource := false
+	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
+	}
+	if req.Method == http.MethodPatch && isNewResource {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -65,12 +77,14 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	// Add system metadata to requested resource
-	newResource.SystemData = ctrl.UpdateSystemData(existingResource.SystemData, *serviceCtx.SystemData())
-	if existingResource.CreatedAPIVersion != "" {
-		newResource.CreatedAPIVersion = existingResource.CreatedAPIVersion
+	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
+	if !isNewResource {
+		newResource.CreatedAPIVersion = old.CreatedAPIVersion
+		prop := newResource.Properties.BasicResourceProperties
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
+		}
 	}
-	newResource.TenantID = serviceCtx.HomeTenantID
 
 	// Add/update resource in the data store
 	savedResource, err := mongo.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
@@ -78,7 +92,13 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 		return nil, err
 	}
 
-	versioned, err := converter.MongoDatabaseDataModelToVersioned(newResource, serviceCtx.APIVersion, true)
+	mongoResponse := &datamodel.MongoDatabaseResponse{}
+	err = savedResource.As(mongoResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	versioned, err := converter.MongoDatabaseDataModelToVersioned(mongoResponse, serviceCtx.APIVersion, false)
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +124,8 @@ func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *htt
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
+	dm.TenantID = serviceCtx.HomeTenantID
+	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
 
 	return dm, nil
 }

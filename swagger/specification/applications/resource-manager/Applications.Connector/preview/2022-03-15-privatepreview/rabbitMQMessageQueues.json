@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the rabbitMQMessageQueue resource",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
             }
           },
           "default": {
@@ -388,8 +388,8 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }

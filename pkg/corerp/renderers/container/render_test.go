@@ -83,7 +83,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "HttpRoute", "A").String(),
@@ -223,7 +225,9 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 // If you add minor features, add them here.
 func Test_Render_Basic(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]string{
@@ -275,7 +279,9 @@ func Test_Render_Basic(t *testing.T) {
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Ports: map[string]datamodel.ContainerPort{
@@ -317,14 +323,16 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Ports: map[string]datamodel.ContainerPort{
 				"web": {
 					ContainerPort: 5000,
 					Protocol:      datamodel.ProtocolTCP,
-					Provides:      makeResourceID(t, "HttpRoute", "A").String(),
+					Provides:      makeResourceID(t, "httpRoutes", "A").String(),
 				},
 			},
 		},
@@ -340,7 +348,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 
 	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
-	podLabels["radius.dev/route-http-a"] = "true"
+	podLabels["radius.dev/route-httproutes-a"] = "true"
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)
@@ -359,7 +367,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		routeID := makeResourceID(t, "HttpRoute", "A")
 
 		expected := v1.ContainerPort{
-			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "HttpRoute" + routeID.Name()),
+			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "httpRoutes" + routeID.Name()),
 			ContainerPort: 5000,
 			Protocol:      v1.ProtocolTCP,
 		}
@@ -370,7 +378,9 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 
 func Test_Render_Connections(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "ResourceType", "A").String(),
@@ -400,7 +410,7 @@ func Test_Render_Connections(t *testing.T) {
 	}
 
 	renderer := Renderer{}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
@@ -455,7 +465,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, outputResource, expectedOutputResource)
 
 		require.Equal(t, resourceName, secret.Name)
-		require.Equal(t, applicationName, secret.Namespace)
+		require.Equal(t, "default", secret.Namespace)
 		require.Equal(t, labels, secret.Labels)
 		require.Empty(t, secret.Annotations)
 
@@ -467,9 +477,59 @@ func Test_Render_Connections(t *testing.T) {
 	require.Len(t, output.Resources, 2)
 }
 
+func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
+		Connections: map[string]datamodel.ConnectionProperties{
+			"A": {
+				Source:                makeResourceID(t, "ResourceType", "A").String(),
+				DisableDefaultEnvVars: to.BoolPtr(true),
+				IAM: datamodel.IAMProperties{
+					Kind: datamodel.KindHTTP,
+				},
+			},
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	require.NoError(t, err)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+	container := deployment.Spec.Template.Spec.Containers[0]
+	require.Equal(t, resourceName, container.Name)
+	require.Equal(t, properties.Container.Image, container.Image)
+	require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
+
+	expectedEnv := []v1.EnvVar{}
+	require.Equal(t, expectedEnv, container.Env)
+}
+
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source: makeResourceID(t, "ResourceType", "A").String(),
@@ -620,7 +680,9 @@ func Test_Render_AzureConnection(t *testing.T) {
 	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
 	expectedRole := "administrator"
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
@@ -687,7 +749,9 @@ func Test_Render_AzureConnection(t *testing.T) {
 func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
 	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"testAzureResourceConnection": {
 				Source: testARMID,
@@ -716,7 +780,9 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	const tempVolName = "TempVolume"
 	const tempVolMountPath = "/tmpfs"
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]string{
@@ -791,7 +857,9 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	testResourceID := fmt.Sprintf("/subscriptions/%s/resourceGroups/test/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/share/%s", uuid.New(), testShareName)
 
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
@@ -826,9 +894,23 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Lenf(t, renderOutput.Resources, 2, "expected 2 output resource, instead got %+v", len(renderOutput.Resources))
 
+	deploymentResource := outputresource.OutputResource{}
+	secretResource := outputresource.OutputResource{}
+	for _, resource := range renderOutput.Resources {
+		if resource.LocalID == outputresource.LocalIDDeployment {
+			deploymentResource = resource
+		}
+
+		if resource.LocalID == outputresource.LocalIDSecret {
+			secretResource = resource
+		}
+	}
+
+	require.NotEmpty(t, deploymentResource)
+	require.NotEmpty(t, secretResource)
+
 	// Verify deployment
-	require.Equal(t, outputresource.LocalIDDeployment, renderOutput.Resources[0].LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
-	volumes := renderOutput.Resources[0].Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
+	volumes := deploymentResource.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
 	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
 	require.Equal(t, tempVolName, volumes[0].Name)
 	require.NotNil(t, volumes[0].VolumeSource.AzureFile, "expected volumesource azurefile to be not nil")
@@ -836,8 +918,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	require.Equal(t, volumes[0].VolumeSource.AzureFile.ShareName, testShareName)
 
 	// Verify Kubernetes secret
-	require.Equal(t, outputresource.LocalIDSecret, renderOutput.Resources[1].LocalID, "expected output resource of kind secret instead got :%v", renderOutput.Resources[0].LocalID)
-	secret := renderOutput.Resources[1].Resource.(*corev1.Secret)
+	secret := secretResource.Resource.(*corev1.Secret)
 	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
 	require.NoError(t, err)
 }
@@ -848,7 +929,10 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	testResourceID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
 
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
+
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
@@ -947,7 +1031,9 @@ func outputResourcesToKindMap(resources []outputresource.OutputResource) map[str
 
 func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]string{
@@ -1022,7 +1108,9 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 
 func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]string{
@@ -1088,7 +1176,9 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 
 func Test_Render_LivenessProbeExec(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Env: map[string]string{
@@ -1154,7 +1244,9 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 
 func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	properties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			LivenessProbe: datamodel.HealthProbeProperties{

@@ -21,7 +21,7 @@ import (
 )
 
 func (p *processor) ProcessBuild(ctx context.Context, stage radyaml.BuildStage) error {
-	registry := p.Options.Environment.GetContainerRegistry()
+	registry := p.Options.Workspace.Registry
 
 	// We'll run the build in parallel - each output gets its own output stream.
 	group, ctx := errgroup.WithContext(ctx)
@@ -151,11 +151,12 @@ func (p *processor) ProcessDeploy(ctx context.Context, stage radyaml.BicepStage)
 	completionText := fmt.Sprintf("Deployed stage %s: %d of %d", p.CurrentStage.Name, p.CurrentStage.DisplayIndex, p.CurrentStage.TotalCount)
 
 	result, err := deploy.DeployWithProgress(ctx, deploy.Options{
-		Environment:    p.Environment,
-		Template:       template,
-		Parameters:     parameters,
-		ProgressText:   progressText,
-		CompletionText: completionText,
+		Workspace:         p.Workspace,
+		ConnectionFactory: p.ConnectionFactory,
+		Template:          template,
+		Parameters:        parameters,
+		ProgressText:      progressText,
+		CompletionText:    completionText,
 	})
 	if err != nil {
 		return err

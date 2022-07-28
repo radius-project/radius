@@ -111,20 +111,26 @@ func TestCreateOrUpdateDaprStateStore_20220315PrivatePreview(t *testing.T) {
 		desc               string
 		headerKey          string
 		headerValue        string
+		inputFile          string
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
+		{"update-resource-with-diff-app", "If-Match", "", "20220315privatepreview_input_diff_app.json", "resource-etag", http.StatusBadRequest, true},
+		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", http.StatusPreconditionFailed, true},
 	}
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			if testcase.inputFile != "" {
+				input = &v20220315privatepreview.DaprStateStoreResource{}
+				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+			}
 			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
@@ -208,6 +214,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Provider: providers.ProviderKubernetes,
 				},
 			},
+		},
+		ComputedValues: map[string]interface{}{
+			"stateStoreName": rendererOutput.ComputedValues["stateStoreName"].Value,
 		},
 	}
 

@@ -39,8 +39,7 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState               v1.ProvisioningState                              `json:"provisioningState,omitempty"`
-	Environment                     string                                            `json:"environment"`
-	Application                     string                                            `json:"application,omitempty"`
+	StateStoreName                  string                                            `json:"stateStoreName"`
 	Kind                            DaprStateStoreKind                                `json:"kind"`
 	DaprStateStoreSQLServer         DaprStateStoreSQLServerResourceProperties         `json:"daprStateStoreSQLServer"`
 	DaprStateStoreAzureTableStorage DaprStateStoreAzureTableStorageResourceProperties `json:"daprStateStoreAzureTableStorage"`

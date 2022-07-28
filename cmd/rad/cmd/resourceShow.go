@@ -9,7 +9,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/output"
 )
 
 // resourceShowCmd command to show details of a resource
@@ -30,30 +32,40 @@ func init() {
 
 func showResource(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplication(cmd, env)
+	applicationName, err := cli.RequireApplication(cmd, *workspace)
 	if err != nil {
 		return err
 	}
 
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
 
-	resourceType, err := cli.RequireResourceType(args)
+	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
 	if err != nil {
 		return err
 	}
 
-	resourceList, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType)
+	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType, resourceName)
 	if err != nil {
 		return err
 	}
 
-	return printOutput(cmd, resourceList, false)
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = output.Write(format, resourceDetails, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

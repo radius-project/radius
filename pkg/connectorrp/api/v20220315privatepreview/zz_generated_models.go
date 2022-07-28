@@ -82,8 +82,8 @@ type DaprInvokeHTTPRouteProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -269,8 +269,11 @@ type DaprPubSubBrokerProperties struct {
 	// REQUIRED; The DaprPubSubProperties kind
 	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -295,6 +298,7 @@ func (d DaprPubSubBrokerProperties) marshalInternal(objectMap map[string]interfa
 	d.Kind = &discValue
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "topic", d.Topic)
 }
 
 func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -312,6 +316,9 @@ func (d *DaprPubSubBrokerProperties) unmarshalInternal(rawMsg map[string]json.Ra
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "topic":
+				err = unpopulate(val, &d.Topic)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -475,11 +482,14 @@ type DaprSecretStoreProperties struct {
 	// REQUIRED; Dapr component version
 	Version *string `json:"version,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the Dapr Secret Store.
+	SecretStoreName *string `json:"secretStoreName,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type DaprSecretStoreProperties.
@@ -491,6 +501,7 @@ func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", d.Kind)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "secretStoreName", d.SecretStoreName)
 	populate(objectMap, "type", d.Type)
 	populate(objectMap, "version", d.Version)
 	return json.Marshal(objectMap)
@@ -519,6 +530,9 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "secretStoreName":
+				err = unpopulate(val, &d.SecretStoreName)
 				delete(rawMsg, key)
 		case "type":
 				err = unpopulate(val, &d.Type)
@@ -726,11 +740,14 @@ type DaprStateStoreProperties struct {
 	// REQUIRED; The Dapr StateStore kind
 	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the Dapr State Store
+	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 }
 
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreProperties.
@@ -752,6 +769,7 @@ func (d DaprStateStoreProperties) marshalInternal(objectMap map[string]interface
 	d.Kind = &discValue
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "stateStoreName", d.StateStoreName)
 }
 
 func (d *DaprStateStoreProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -769,6 +787,9 @@ func (d *DaprStateStoreProperties) unmarshalInternal(rawMsg map[string]json.RawM
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "stateStoreName":
+				err = unpopulate(val, &d.StateStoreName)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1045,8 +1066,8 @@ type ExtenderResponseProperties struct {
 	// OPTIONAL; Contains additional key/value pairs not defined in the schema.
 	AdditionalProperties map[string]interface{}
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1295,6 +1316,9 @@ type MongoDatabaseResponseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -1304,8 +1328,8 @@ type MongoDatabaseResponseProperties struct {
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1330,6 +1354,7 @@ func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
 func (m MongoDatabaseResponseProperties) marshalInternal(objectMap map[string]interface{}) {
 	m.BasicResourceProperties.marshalInternal(objectMap)
 	populate(objectMap, "application", m.Application)
+	populate(objectMap, "database", m.Database)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "port", m.Port)
@@ -1343,6 +1368,9 @@ func (m *MongoDatabaseResponseProperties) unmarshalInternal(rawMsg map[string]js
 		switch key {
 		case "application":
 				err = unpopulate(val, &m.Application)
+				delete(rawMsg, key)
+		case "database":
+				err = unpopulate(val, &m.Database)
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, &m.Environment)
@@ -1561,8 +1589,8 @@ type RabbitMQMessageQueueResponseProperties struct {
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1801,6 +1829,9 @@ type RedisCacheResponseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// The host name of the target redis cache
 	Host *string `json:"host,omitempty"`
 
@@ -1810,11 +1841,11 @@ type RedisCacheResponseProperties struct {
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
-	// READ-ONLY; Fully qualified resource ID for the application that the connector is consumed by
-	Application *string `json:"application,omitempty" azure:"ro"`
-
 	// READ-ONLY; Provisioning state of the redis cache connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; The username for redis
+	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheResponseProperties.
@@ -1841,6 +1872,7 @@ func (r RedisCacheResponseProperties) marshalInternal(objectMap map[string]inter
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
+	populate(objectMap, "username", r.Username)
 }
 
 func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.RawMessage) error {
@@ -1864,6 +1896,9 @@ func (r *RedisCacheResponseProperties) unmarshalInternal(rawMsg map[string]json.
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, &r.Resource)
+				delete(rawMsg, key)
+		case "username":
+				err = unpopulate(val, &r.Username)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2045,6 +2080,9 @@ type SQLDatabaseProperties struct {
 	// REQUIRED; The resource id of the environment linked to the sqlDatabase connector
 	Environment *string `json:"environment,omitempty"`
 
+	// Fully qualified resource ID for the environment that the connector is linked to
+	Application *string `json:"application,omitempty"`
+
 	// The name of the SQL database.
 	Database *string `json:"database,omitempty"`
 
@@ -2053,9 +2091,6 @@ type SQLDatabaseProperties struct {
 
 	// The fully qualified domain name of the SQL database.
 	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the environment that the connector is linked to
-	Application *string `json:"application,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the SQL database connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

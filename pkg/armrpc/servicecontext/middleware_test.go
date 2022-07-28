@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/gorilla/mux"
@@ -22,12 +21,12 @@ import (
 func TestARMRequestCtx(t *testing.T) {
 
 	outOfBoundsTopParamError := armerrors.ErrorDetails{
-		Code:    strconv.Itoa(http.StatusBadRequest),
+		Code:    armerrors.Invalid,
 		Message: fmt.Sprintf("unexpected error: %v", ErrTopQueryParamOutOfBounds),
 	}
 
 	invalidTopParamError := armerrors.ErrorDetails{
-		Code:    strconv.Itoa(http.StatusBadRequest),
+		Code:    armerrors.Invalid,
 		Message: "unexpected error: strconv.Atoi: parsing \"xyz\": invalid syntax",
 	}
 

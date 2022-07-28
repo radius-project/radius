@@ -11,12 +11,14 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -43,13 +45,15 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
 		},
 	}
 
-	output, err := renderer.Render(ctx, &resource)
+	output, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
@@ -101,14 +105,17 @@ func Test_Render_MissingResource(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -121,13 +128,40 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/sqlDatabases/test-database",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/sqlDatabases/test-database",
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a SQL Database", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure SQL Database", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{}
+	resource := datamodel.SqlDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/sqlDatabases/sql0",
+			Name: "sql0",
+			Type: "Applications.Connector/sqlDatabases",
+		},
+		Properties: datamodel.SqlDatabaseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "invalid-app-id",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
+		},
+	}
+
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

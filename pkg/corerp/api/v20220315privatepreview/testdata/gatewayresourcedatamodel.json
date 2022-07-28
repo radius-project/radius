@@ -33,6 +33,7 @@
             "path": "mypath",
             "replacePrefix": "myreplaceprefix"
         }
-        ]
+        ],
+        "url": "http://myprefix.myapp.mydomain.com"
     }
 }

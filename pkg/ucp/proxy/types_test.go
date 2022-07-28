@@ -131,7 +131,7 @@ func Test_ConvertHeaderToUCPIDs(t *testing.T) {
 		ctx := createTestContext(context.Background(), datum.planeURL, datum.planeID, datum.planeKind, datum.httpScheme, datum.ucpHost)
 		err := convertHeaderToUCPIDs(ctx, datum.name, datum.header, &response)
 		require.Error(t, err, "%q should have have failed", datum)
-		require.Equal(t, fmt.Sprintf("PlaneURL: %s received in the request context does not match the url found in %s header", datum.planeURL, datum.name), err.Error())
+		require.Equal(t, fmt.Sprintf("PlaneURL: %s received in the request context does not match the url found in %s header: %s", datum.planeURL, datum.name, datum.header[0]), err.Error())
 	}
 }
 

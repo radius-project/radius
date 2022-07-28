@@ -40,14 +40,19 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 	}
 
 	// Read existing application resource info from the data store
-	existingResource := &datamodel.Application{}
-
-	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if req.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	old := &datamodel.Application{}
+	isNewResource := false
+	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
 	}
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
-		return nil, err
+
+	if req.Method == http.MethodPatch && isNewResource {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
 	err = ctrl.ValidateETag(*serviceCtx, etag)
@@ -55,7 +60,14 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	UpdateExistingResourceData(ctx, existingResource, newResource)
+	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
+	if !isNewResource {
+		newResource.CreatedAPIVersion = old.CreatedAPIVersion
+		prop := newResource.Properties.BasicResourceProperties
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
+		}
+	}
 
 	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
@@ -88,15 +100,7 @@ func (a *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Requ
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
 	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
+	dm.TenantID = serviceCtx.HomeTenantID
+	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
 	return dm, nil
-}
-
-// UpdateExistingResourceData updates the application resource before it is saved to the DB.
-func UpdateExistingResourceData(ctx context.Context, er *datamodel.Application, nr *datamodel.Application) {
-	sc := servicecontext.ARMRequestContextFromContext(ctx)
-	nr.SystemData = ctrl.UpdateSystemData(er.SystemData, *sc.SystemData())
-	if er.InternalMetadata.CreatedAPIVersion != "" {
-		nr.InternalMetadata.CreatedAPIVersion = er.InternalMetadata.CreatedAPIVersion
-	}
-	nr.InternalMetadata.TenantID = sc.HomeTenantID
 }

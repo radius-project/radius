@@ -6,11 +6,10 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -28,38 +27,23 @@ func init() {
 }
 
 func showEnvironment(cmd *cobra.Command, args []string) error {
-
 	config := ConfigFromContext(cmd.Context())
-
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	envName, err := cmd.Flags().GetString("environment")
+	environmentName, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	envconfig, err := cli.ReadEnvironmentSection(config)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
 
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
-	if err != nil {
-		return err
-	}
-
-	if envName == "" && envconfig.Default == "" {
-		return errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
-	}
-
-	if envName == "" {
-		envName = envconfig.Default
-	}
-
-	envResource, err := client.GetEnvDetails(cmd.Context(), envName)
+	envResource, err := client.GetEnvDetails(cmd.Context(), environmentName)
 	if err != nil {
 		return err
 	}

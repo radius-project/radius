@@ -134,7 +134,7 @@
           ],
           "parameters": [
             {
-              "$ref": "./global.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
@@ -189,7 +189,7 @@
           ],
           "parameters": [
             {
-              "$ref": "./global.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
@@ -244,7 +244,7 @@
           ],
           "parameters": [
             {
-              "$ref": "./global.json#/parameters/RootScopeParameter"
+              "$ref": "global.json#/parameters/RootScopeParameter"
             },
             {
               "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
@@ -374,8 +374,8 @@
         "required": true,
         "type": "string",
         "description": "The name of the environment",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128,
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
         "x-ms-parameter-location": "method"
       }
     }

@@ -30,8 +30,6 @@ func (sql SqlDatabase) ResourceTypeName() string {
 type SqlDatabaseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
-	Application       string               `json:"application,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Database          string               `json:"database,omitempty"`
 	Server            string               `json:"server,omitempty"`

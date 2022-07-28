@@ -48,9 +48,8 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 type DaprPubSubBrokerProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState         v1.ProvisioningState                        `json:"provisioningState,omitempty"`
-	Environment               string                                      `json:"environment"`
-	Application               string                                      `json:"application,omitempty"`
 	Kind                      DaprPubSubBrokerKind                        `json:"kind"`
+	Topic                     string                                      `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	DaprPubSubGeneric         DaprPubSubGenericResourceProperties         `json:"daprPubSubGeneric"`
 	DaprPubSubAzureServiceBus DaprPubSubAzureServiceBusResourceProperties `json:"daprPubSubAzureServiceBus"`
 }

@@ -6,10 +6,11 @@
 package cmd
 
 import (
-	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 )
 
@@ -26,47 +27,52 @@ func init() {
 
 func switchEnv(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	section, err := cli.ReadEnvironmentSection(config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	if len(section.Items) == 0 {
-		fmt.Println("No environments found. Use 'rad env init' to initialize.")
+	environmentName, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	if err != nil {
+		return err
+	}
+
+	// TODO: for right now we assume the environment is in the default resource group.
+	scope, err := resources.Parse(workspace.Scope)
+	if err != nil {
+		return err
+	}
+
+	id := scope.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: environmentName})
+
+	// HEY YOU: Keep the logic below here in sync with `rad app switch`
+	if strings.EqualFold(workspace.Environment, id.String()) {
+		output.LogInfo("Default environment is already set to %v", environmentName)
 		return nil
 	}
 
-	envName, err := cli.RequireEnvironmentNameArgs(cmd, args)
-	if err != nil {
-		return err
-	}
-
-	_, ok := section.Items[envName]
-	if !ok {
-		fmt.Printf("Could not find environment %v\n", envName)
-		return nil
-	}
-
-	// Retrieve associated resource group and subscription id
-	env, err := cli.ValidateNamedEnvironment(config, envName)
-	if err != nil {
-		return err
-	}
-
-	status := env.GetStatusLink()
-	var text string
-	if status == "" {
-		text = fmt.Sprintf("Default environment is now: %v\n", envName)
+	if workspace.Environment == "" {
+		output.LogInfo("Switching default environment to %v", environmentName)
 	} else {
-		text = fmt.Sprintf("Default environment is now: %v\n\n"+
-			"%v environment is available at:\n%v\n", envName, envName, status)
+		// Parse the environment ID to get the name
+		existing, err := resources.Parse(workspace.Environment)
+		if err != nil {
+			return err
+		}
+
+		output.LogInfo("Switching default environment from %v to %v", existing.Name(), environmentName)
 	}
 
-	output.LogInfo(text)
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		workspace, err := section.GetWorkspace(workspace.Name)
+		if err != nil {
+			return err
+		}
 
-	section.Default = envName
-
-	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(section, cli.MergeSwitchEnvConfig(envName)))
+		workspace.Environment = id.String()
+		section.Items[strings.ToLower(workspace.Name)] = *workspace
+		return nil
+	})
 	if err != nil {
 		return err
 	}

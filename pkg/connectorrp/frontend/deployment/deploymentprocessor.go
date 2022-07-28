@@ -9,17 +9,30 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -68,7 +81,18 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource)
+	// fetch the environment ID from the resource
+	env, err := dp.getEnvironmetIDFromResource(ctx, id, resource)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	// fetch the environment namespace by doing a db lookup
+	namespace, err := dp.getEnvironmentNamespace(ctx, env)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Namespace: namespace})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -80,8 +104,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
-			return renderers.RendererOutput{}, err
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -91,6 +114,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.Renderer, error) {
 	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(id.Type()) // Lookup using resource type
 	if err != nil {
+		// Internal error: A resource type with unsupported app model shouldn't have reached here
 		return nil, err
 	}
 
@@ -111,7 +135,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	}
 
 	updatedOutputResources := []outputresource.OutputResource{}
-	var computedValues map[string]interface{}
+	computedValues := make(map[string]interface{})
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
@@ -119,7 +143,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 
 		updatedOutputResources = append(updatedOutputResources, outputResource)
-		computedValues = deployedComputedValues
+
+		for k, computedValue := range deployedComputedValues {
+			if computedValue != nil {
+				computedValues[k] = computedValue
+			}
+		}
 	}
 
 	// Update static values for connections
@@ -216,6 +245,17 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error) {
 	secretValues := map[string]interface{}{}
+
+	computedValues := map[string]interface{}{}
+	for k, v := range resourceData.ComputedValues {
+		computedValues[k] = v
+	}
+
+	rendererDependency := renderers.RendererDependency{
+		ResourceID:     resourceData.ID,
+		ComputedValues: computedValues,
+	}
+
 	for k, secretReference := range resourceData.SecretValues {
 		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
 		if err != nil {
@@ -230,7 +270,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, resourceData.Resource, secret)
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 			}
@@ -261,4 +301,80 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	}
 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
+}
+
+// getEnvironmetIDFromResource returns the environment id from the resource for looking up the namespace
+func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
+	resourceType := strings.ToLower(resourceID.Type())
+	var envId string
+	switch resourceType {
+	case strings.ToLower(mongodatabases.ResourceType):
+		obj := resource.(*datamodel.MongoDatabase)
+		envId = obj.Properties.Environment
+	case strings.ToLower(sqldatabases.ResourceType):
+		obj := resource.(*datamodel.SqlDatabase)
+		envId = obj.Properties.Environment
+	case strings.ToLower(rediscaches.ResourceType):
+		obj := resource.(*datamodel.RedisCache)
+		envId = obj.Properties.Environment
+	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
+		obj := resource.(*datamodel.RabbitMQMessageQueue)
+		envId = obj.Properties.Environment
+	case strings.ToLower(extenders.ResourceType):
+		obj := resource.(*datamodel.Extender)
+		envId = obj.Properties.Environment
+	case strings.ToLower(daprstatestores.ResourceType):
+		obj := resource.(*datamodel.DaprStateStore)
+		envId = obj.Properties.Environment
+	case strings.ToLower(daprsecretstores.ResourceType):
+		obj := resource.(*datamodel.DaprSecretStore)
+		envId = obj.Properties.Environment
+	case strings.ToLower(daprpubsubbrokers.ResourceType):
+		obj := resource.(*datamodel.DaprPubSubBroker)
+		envId = obj.Properties.Environment
+	case strings.ToLower(daprinvokehttproutes.ResourceType):
+		obj := resource.(*datamodel.DaprInvokeHttpRoute)
+		envId = obj.Properties.Environment
+	default:
+		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
+		return "", fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+	}
+	return envId, nil
+}
+
+// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
+	envId, err := resources.Parse(environmentID)
+	if err != nil {
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
+	}
+
+	env := &coreDatamodel.Environment{}
+	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
+	}
+
+	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
+	if err != nil {
+		return
+	}
+	res, err := sc.Get(ctx, environmentID)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
+		}
+		return
+	}
+	err = res.As(env)
+	if err != nil {
+		return
+	}
+
+	if env.Properties != (coreDatamodel.EnvironmentProperties{}) && env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
+		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+	} else {
+		err = fmt.Errorf("cannot find namespace in the environment resource")
+	}
+
+	return
 }

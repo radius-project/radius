@@ -334,6 +334,10 @@
           "description": "The DaprPubSubProperties kind",
           "type": "string",
           "enum": ["pubsub.azure.servicebus","generic"]
+        },
+        "topic": {
+          "description": "Topic name of the Azure ServiceBus resource",
+          "type": "string"
         }
       },
       "required": [
@@ -349,8 +353,8 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }

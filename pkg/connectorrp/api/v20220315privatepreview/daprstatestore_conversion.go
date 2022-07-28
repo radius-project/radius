@@ -13,10 +13,13 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
+			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
+		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
-		Environment:       to.String(src.Properties.GetDaprStateStoreProperties().Environment),
-		Application:       to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
+		StateStoreName:    to.String(src.Properties.GetDaprStateStoreProperties().StateStoreName),
 	}
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
@@ -77,6 +80,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 		Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 		Application:       to.StringPtr(daprStateStore.Properties.Application),
 		Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+		StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
 	}
 	switch daprStateStore.Properties.Kind {
 	case datamodel.DaprStateStoreKindAzureTableStorage:

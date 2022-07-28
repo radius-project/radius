@@ -7,8 +7,6 @@ package sqldatabases
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -33,17 +31,20 @@ type Renderer struct {
 }
 
 // Render creates the output resource for the sqlDatabase resource.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.SqlDatabase)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-
 	properties := resource.Properties
 
+	_, err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	if resource.Properties.Resource == "" {
 		if properties.Server == "" || properties.Database == "" {
-			return renderers.RendererOutput{}, renderers.ErrorResourceOrServerNameMissingFromResource
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(renderers.ErrorResourceOrServerNameMissingFromResource.Error())
 		}
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
@@ -74,12 +75,12 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	databaseID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Azure SQL DB resource type
 	err = databaseID.ValidateResourceType(AzureSQLResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "SQL Database")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure SQL Database")
 	}
 
 	// Build output resources

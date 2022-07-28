@@ -24,13 +24,16 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			Kind:              toDaprSecretStoreKindDataModel(src.Properties.Kind),
 			Type:              to.String(src.Properties.Type),
 			Version:           to.String(src.Properties.Version),
 			Metadata:          src.Properties.Metadata,
+			SecretStoreName:   to.String(src.Properties.SecretStoreName),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -65,6 +68,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 		Type:              to.StringPtr(daprSecretStore.Properties.Type),
 		Version:           to.StringPtr(daprSecretStore.Properties.Version),
 		Metadata:          daprSecretStore.Properties.Metadata,
+		SecretStoreName:   to.StringPtr(daprSecretStore.Properties.SecretStoreName),
 	}
 	return nil
 }

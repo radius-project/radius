@@ -7,8 +7,6 @@ package rediscaches
 
 import (
 	"context"
-	"errors"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -27,7 +25,7 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.RedisCache)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
@@ -35,6 +33,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (rende
 
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
+
+	_, err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 
 	if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
@@ -67,12 +70,12 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, errors.New("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Redis Cache resource type
 	err = redisCacheID.ValidateResourceType(RedisResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("the 'resource' field must refer to a %s", "Redis Cache")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{

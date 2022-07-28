@@ -20,18 +20,46 @@ import (
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
-	"github.com/mitchellh/mapstructure"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
 )
 
 // EnvironmentKey is the key used for the environment section
 const (
-	EnvironmentKey string = "environment"
 	ApplicationKey string = "application"
+	WorkspacesKey  string = "workspaces"
 )
+
+type WorkspaceSection struct {
+	Default string                          `json:"default" mapstructure:"default" yaml:"default"`
+	Items   map[string]workspaces.Workspace `json:"items" mapstructure:"items" yaml:"items" validate:"dive"`
+}
+
+// HasWorkspace returns true if the specified workspace already exists. This function ignores the default workspace.
+func (ws WorkspaceSection) HasWorkspace(name string) bool {
+	_, ok := ws.Items[cases.Fold().String(name)]
+	return ok
+}
+
+// GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
+func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
+	if name == "" && ws.Default == "" {
+		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace.")
+	}
+
+	if name == "" {
+		name = ws.Default
+	}
+
+	result, ok := ws.Items[cases.Fold().String(name)]
+	if !ok {
+		return nil, fmt.Errorf("the workspace '%v' could not be found in the list of workspace. use `rad workspace list` to list workspaces", name)
+	}
+
+	return &result, nil
+}
 
 // EnvironmentSection is the representation of the environment section of radius config.
 type EnvironmentSection struct {
@@ -43,72 +71,61 @@ type ApplicationSection struct {
 	Default string `mapstructure:"default" yaml:"default"`
 }
 
-func GetEnvironment(v *viper.Viper, name string) (environments.Environment, error) {
-	section, err := ReadEnvironmentSection(v)
-	if err != nil {
-		return nil, err
-	}
-
-	return section.GetEnvironment(name)
-}
-
-// ReadEnvironmentSection reads the EnvironmentSection from radius config.
-func ReadEnvironmentSection(v *viper.Viper) (EnvironmentSection, error) {
-	s := v.Sub(EnvironmentKey)
+// ReadWorkspaceSection reads the WorkspaceSection from radius config.
+func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
+	s := v.Sub(WorkspacesKey)
 	if s == nil {
-		return EnvironmentSection{
-			Items: map[string]map[string]interface{}{},
-		}, nil
+		return WorkspaceSection{Items: map[string]workspaces.Workspace{}}, nil
 	}
 
-	section := EnvironmentSection{}
+	section := WorkspaceSection{}
 	err := s.UnmarshalExact(&section)
 	if err != nil {
-		return EnvironmentSection{}, nil
+		return WorkspaceSection{}, err
 	}
 
 	// if items is not present it will be nil
 	if section.Items == nil {
-		section.Items = map[string]map[string]interface{}{}
+		section.Items = map[string]workspaces.Workspace{}
+	}
+
+	// Fixup names for easier access.
+	for name, ws := range section.Items {
+		copy := ws
+		copy.Name = name
+		section.Items[name] = copy
+	}
+
+	err = validate(section)
+	if err != nil {
+		return WorkspaceSection{}, err
 	}
 
 	return section, nil
 }
 
-// Required to be called while holding the exclusive lock on config.yaml.lock file.
-func UpdateEnvironmentWithLatestConfig(env EnvironmentSection, mergeConfigs func(EnvironmentSection, EnvironmentSection) EnvironmentSection) func(*viper.Viper) error {
-	return func(config *viper.Viper) error {
-
-		latestConfig, err := LoadConfigNoLock(GetConfigFilePath(config))
-		if err != nil {
-			return err
-		}
-		updatedEnv, err := ReadEnvironmentSection(latestConfig)
-		if err != nil {
-			return err
-		}
-		updatedEnv = mergeConfigs(env, updatedEnv)
-		UpdateEnvironmentSection(config, updatedEnv)
-		return nil
-	}
+func UpdateWorkspaceSection(v *viper.Viper, section WorkspaceSection) {
+	v.Set(WorkspacesKey, section)
 }
 
-// UpdateEnvironmentSection updates the EnvironmentSection in radius config.
-func UpdateEnvironmentSection(v *viper.Viper, env EnvironmentSection) {
-	v.Set(EnvironmentKey, env)
+// HasWorkspace returns true if the specified workspace already exists. This function ignores the default workspace.
+func HasWorkspace(v *viper.Viper, name string) (bool, error) {
+	section, err := ReadWorkspaceSection(v)
+	if err != nil {
+		return false, err
+	}
+
+	return section.HasWorkspace(name), nil
 }
 
-// GetEnvironment returns the specified environment or the default environment if 'name' is empty.
-func (env EnvironmentSection) GetEnvironment(name string) (environments.Environment, error) {
-	if name == "" && env.Default == "" {
-		return nil, errors.New("the default environment is not configured. use `rad env switch` to change the selected environment.")
+// GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
+func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
+	section, err := ReadWorkspaceSection(v)
+	if err != nil {
+		return nil, err
 	}
 
-	if name == "" {
-		name = env.Default
-	}
-
-	return env.decodeEnvironmentSection(name)
+	return section.GetWorkspace(name)
 }
 
 func getConfig(configFilePath string) *viper.Viper {
@@ -224,40 +241,36 @@ func GetConfigFilePath(v *viper.Viper) string {
 	return configFilePath
 }
 
-func MergeInitEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
-	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
-		latestEnvironment.Default = envName
-		latestEnvironment.Items[envName] = currentEnvironment.Items[envName]
-		return latestEnvironment
-	}
-}
-
-func MergeDeleteEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
-	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
-		delete(latestEnvironment.Items, envName)
-		latestEnvironment.Default = currentEnvironment.Default
-		return latestEnvironment
-	}
-}
-
-func MergeSwitchEnvConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
-	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
-		latestEnvironment.Default = currentEnvironment.Default
-		return latestEnvironment
-	}
-}
-
-func MergeWithLatestConfig(envName string) func(EnvironmentSection, EnvironmentSection) EnvironmentSection {
-	return func(currentEnvironment EnvironmentSection, latestEnvironment EnvironmentSection) EnvironmentSection {
-		for k, v := range currentEnvironment.Items {
-			if _, ok := latestEnvironment.Items[k]; ok {
-				for k1, v1 := range v {
-					latestEnvironment.Items[k][k1] = v1
-				}
-			}
+// Required to be called while holding the exclusive lock on config.yaml.lock file.
+func EditWorkspaces(ctx context.Context, config *viper.Viper, editor func(section *WorkspaceSection) error) error {
+	return SaveConfigOnLock(ctx, config, func(v *viper.Viper) error {
+		section, err := ReadWorkspaceSection(v)
+		if err != nil {
+			return err
 		}
-		return latestEnvironment
-	}
+
+		err = editor(&section)
+		if err != nil {
+			return err
+		}
+
+		// We need to check the workspaces for case-invariance. Viper stores everything as lowercase but it's
+		// possible for us to introduce bugs by creating duplicates. This section is only here so that we can easily identify a bug
+		// in the code that's calling EditWorkspaces.
+		names := map[string]bool{}
+		for name := range section.Items {
+			name = strings.ToLower(name)
+			_, ok := names[name]
+			if ok {
+				return fmt.Errorf("usage of name %q with different casings found. This is a bug in rad, the caller needs to lowercase the name before storage", name)
+			}
+
+			names[name] = true
+		}
+
+		UpdateWorkspaceSection(v, section)
+		return nil
+	})
 }
 
 // Save Config with exclusive lock on the config file
@@ -301,85 +314,6 @@ func SaveConfig(v *viper.Viper) error {
 	fmt.Printf("Successfully wrote configuration to %v\n", configFilePath)
 
 	return nil
-}
-
-func (env EnvironmentSection) decodeEnvironmentSection(name string) (environments.Environment, error) {
-	raw, ok := env.Items[cases.Fold().String(name)]
-
-	if !ok {
-		return nil, fmt.Errorf("the environment '%v' could not be found in the list of environments. use `rad env list` to list environments", name)
-	}
-
-	obj, ok := raw["kind"]
-	if !ok {
-		return nil, fmt.Errorf("the environment entry '%v' must contain required field 'kind'", name)
-	}
-
-	kind, ok := obj.(string)
-	if !ok {
-		return nil, fmt.Errorf("the 'kind' field for environment entry '%v' must be a string", name)
-	}
-
-	if kind == environments.KindAzureCloud {
-		decoded := &environments.AzureCloudEnvironment{}
-		err := mapstructure.Decode(raw, decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
-		}
-
-		decoded.Name = name
-
-		err = validate(decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
-		}
-
-		return decoded, nil
-	} else if kind == environments.KindDev {
-		decoded := &environments.LocalEnvironment{}
-		err := mapstructure.Decode(raw, decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
-		}
-
-		decoded.Name = name
-
-		err = validate(decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
-		}
-
-		return decoded, nil
-	} else if kind == environments.KindKubernetes {
-		decoded := &environments.KubernetesEnvironment{}
-		err := mapstructure.Decode(raw, decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
-		}
-
-		decoded.Name = name
-		err = validate(decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
-		}
-
-		return decoded, nil
-	} else {
-		decoded := &environments.GenericEnvironment{}
-		err := mapstructure.Decode(raw, decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("failed to decode environment entry '%v': %w", name, err)
-		}
-
-		decoded.Name = name
-
-		err = validate(decoded)
-		if err != nil {
-			return decoded, fmt.Errorf("the environment entry '%v' is invalid: %w", name, err)
-		}
-
-		return decoded, nil
-	}
 }
 
 func validate(value interface{}) error {

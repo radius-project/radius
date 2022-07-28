@@ -6,14 +6,11 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
-	"golang.org/x/text/cases"
 )
 
 // appSwitchCmd command to switch applications
@@ -29,59 +26,42 @@ func init() {
 }
 
 func switchApplications(cmd *cobra.Command, args []string) error {
-	applicationName, err := cmd.Flags().GetString("application")
-	if err != nil {
-		return err
-	}
-
-	environmentName, err := cmd.Flags().GetString("environment")
-	if err != nil {
-		return err
-	}
-
-	if len(args) > 0 {
-		if applicationName != "" {
-			return fmt.Errorf("cannot specify application name via both arguments and `-a`")
-		}
-		applicationName = args[0]
-	}
-
-	if applicationName == "" {
-		return fmt.Errorf("no application specified")
-	}
-
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.ReadEnvironmentSection(config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	if environmentName == "" {
-		environmentName = env.Default
-	}
-
-	if environmentName == "" {
-		return errors.New("no environment set, run 'rad env switch'")
-	}
-
-	e, err := env.GetEnvironment(environmentName)
+	applicationName, err := cli.ReadApplicationNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	if e.GetDefaultApplication() == applicationName {
+	// HEY YOU: Keep the logic below here in sync with `rad env switch``
+	if strings.EqualFold(workspace.DefaultApplication, applicationName) {
 		output.LogInfo("Default application is already set to %v", applicationName)
 		return nil
 	}
 
-	if e.GetDefaultApplication() != "" {
-		output.LogInfo("Switching default application from %v to %v", e.GetDefaultApplication(), applicationName)
-	} else {
+	if workspace.DefaultApplication == "" {
 		output.LogInfo("Switching default application to %v", applicationName)
+	} else {
+		output.LogInfo("Switching default application from %v to %v", workspace.DefaultApplication, applicationName)
 	}
 
-	env.Items[cases.Fold().String(environmentName)][environments.EnvironmentKeyDefaultApplication] = applicationName
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		workspace, err := section.GetWorkspace(workspace.Name)
+		if err != nil {
+			return err
+		}
 
-	err = cli.SaveConfigOnLock(cmd.Context(), config, cli.UpdateEnvironmentWithLatestConfig(env, cli.MergeWithLatestConfig(environmentName)))
-	return err
+		workspace.DefaultApplication = applicationName
+		section.Items[strings.ToLower(workspace.Name)] = *workspace
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

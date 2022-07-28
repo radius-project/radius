@@ -20,7 +20,8 @@
           "password": "testPassword",
           "connectionString": "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
         },
-        "provisioningState": "Succeeded"
+        "provisioningState": "Succeeded",
+        "database": "db"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

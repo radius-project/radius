@@ -6,8 +6,6 @@
 package objectformats
 
 import (
-	"strings"
-
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
@@ -30,35 +28,31 @@ func GetApplicationTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetResourceTableFormatOld() output.FormatterOptions {
+func GetApplicationStatusTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
 			{
-				Heading:  "RESOURCE",
-				JSONPath: "{ .name }",
+				Heading:  "APPLICATION",
+				JSONPath: "{ .Name }",
 			},
 			{
-				Heading:  "TYPE",
-				JSONPath: "{ .type }",
-				Transformer: func(t string) string {
-					tokens := strings.Split(t, "/")
-					// For Radius resource types only show last part of the resource type. Example: mongo.com.MongoDatabase instead of Microsoft.CustomProviders/mongo.com.MongoDatabase
-					// For non-Radius resources types, show full resource type, Microsoft.ServiceBus/namespaces for example.
-					// TODO: "Microsoft.CustomProviders" should be updated to reflect Radius RP name once we move out of custom RP mode:
-					// https://github.com/project-radius/radius/issues/1534
-					if tokens[0] == "Microsoft.CustomProviders" {
-						return tokens[len(tokens)-1]
-					}
-					return t
-				},
+				Heading:  "RESOURCES",
+				JSONPath: "{ .ResourceCount }",
+			},
+		},
+	}
+}
+
+func GetApplicationGatewaysTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "GATEWAY",
+				JSONPath: "{ .Name }",
 			},
 			{
-				Heading:  "PROVISIONING_STATE",
-				JSONPath: "{ .properties.status.provisioningState }",
-			},
-			{
-				Heading:  "HEALTH_STATE",
-				JSONPath: "{ .properties.status.healthState }",
+				Heading:  "ENDPOINT",
+				JSONPath: "{ .Endpoint }",
 			},
 		},
 	}
@@ -100,6 +94,25 @@ func GetGenericEnvErrorTableFormat() output.FormatterOptions {
 			{
 				Heading:  "errors:",
 				JSONPath: "{ .Errors }",
+			},
+		},
+	}
+}
+
+func GetWorkspaceTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "WORKSPACE",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Connection.kind }",
+			},
+			{
+				Heading:  "ENVIRONMENT",
+				JSONPath: "{ .Environment }",
 			},
 		},
 	}

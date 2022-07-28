@@ -7,6 +7,7 @@ package resources
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 )
 
@@ -97,7 +98,7 @@ func (ri ID) String() string {
 // FindScope function gets the scope type and returns the name for that scope if it exists.
 func (ri ID) FindScope(scopeType string) string {
 	for _, t := range ri.scopeSegments {
-		if t.Type == scopeType {
+		if strings.EqualFold(t.Type, scopeType) {
 			return t.Name
 		}
 	}
@@ -328,6 +329,22 @@ func (ri ID) Truncate() ID {
 
 		return result
 	}
+}
+
+// ParseByMethod is a helper function to extract the custom actions from the id.
+// If there is a custom action in the request, then the method will be POST. To be able
+// to get the proper type, we need to remove the custom action from the id.
+func ParseByMethod(id string, method string) (ID, error) {
+	parsedID, err := Parse(id)
+	if err != nil {
+		return ID{}, err
+	}
+
+	if method == http.MethodPost {
+		parsedID = parsedID.Truncate()
+	}
+
+	return parsedID, nil
 }
 
 // Parse parses a resource ID.

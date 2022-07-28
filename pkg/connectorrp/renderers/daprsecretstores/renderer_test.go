@@ -11,11 +11,13 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
@@ -52,16 +54,19 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        ResourceType,
-			Kind:        "azure.keyvault",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type: ResourceType,
+			Kind: "azure.keyvault",
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -74,18 +79,20 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        ResourceType,
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type:    ResourceType,
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
 		},
 	}
 
-	result, err := renderer.Render(ctx, &resource)
+	result, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -95,7 +102,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		"secretStoreName": {
-			Value: "test-secret-store",
+			Value: "test-app-test-secret-store",
 		},
 	}
 	require.Equal(t, expectedComputedValues, result.ComputedValues)
@@ -105,7 +112,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": applicationName,
+				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
@@ -134,17 +141,19 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        "secretstores.kubernetes",
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
-			Metadata:    map[string]interface{}{},
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type:    "secretstores.kubernetes",
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 		},
 	}
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type secretstores.kubernetes", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -157,19 +166,22 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        resourcekinds.DaprGeneric,
-			Version:     daprSecretStoreVersion,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -182,18 +194,50 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Type:        "secretstores.kubernetes",
-			Kind:        resourcekinds.DaprGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type: "secretstores.kubernetes",
+			Kind: resourcekinds.DaprGeneric,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource)
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedSecretStoreKindValues}
+	resource := datamodel.DaprSecretStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			Name: resourceName,
+			Type: "Applications.Connector/daprSecretStores",
+		},
+		Properties: datamodel.DaprSecretStoreProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: environmentID,
+			},
+			Type:    ResourceType,
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
+			Metadata: map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

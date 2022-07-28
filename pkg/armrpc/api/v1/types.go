@@ -140,8 +140,20 @@ type InternalMetadata struct {
 	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
 }
 
+// BasicResourceProperties is the basic resource model for radius resources.
 type BasicResourceProperties struct {
+	// Environment represents the id of environment resource.
+	Environment string `json:"environment,omitempty"`
+	// Application represents the id of application resource.
+	Application string `json:"application,omitempty"`
+
+	// Status represents the resource status.
 	Status ResourceStatus `json:"status,omitempty"`
+}
+
+// EqualLinkedResource returns true if the resource belongs to the same environment and application.
+func (b BasicResourceProperties) EqualLinkedResource(prop BasicResourceProperties) bool {
+	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 
 type ResourceStatus struct {

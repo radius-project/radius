@@ -51,7 +51,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
@@ -77,6 +77,8 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						// First time created objects should have the same lastModifiedAt and createdAt
+						dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
 						obj.ETag = "new-resource-etag"
 						obj.Data = dataModel
 						return nil
@@ -98,7 +100,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.MongoDatabaseResource{}
+				actualOutput := &v20220315privatepreview.MongoDatabaseResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -111,20 +113,26 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 		desc               string
 		headerKey          string
 		headerValue        string
+		inputFile          string
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-*-if-match", "If-Match", "*", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
+		{"update-resource-with-diff-app", "If-Match", "", "20220315privatepreview_input_diff_app.json", "resource-etag", http.StatusBadRequest, true},
+		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", http.StatusPreconditionFailed, true},
 	}
 
 	for _, testcase := range updateExistingResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
-			input, dataModel, expectedOutput := getTestModels20220315privatepreview()
+			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
+			if testcase.inputFile != "" {
+				input = &v20220315privatepreview.MongoDatabaseResource{}
+				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
+			}
 			rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)
@@ -169,7 +177,7 @@ func TestCreateOrUpdateMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.MongoDatabaseResource{}
+				actualOutput := &v20220315privatepreview.MongoDatabaseResponseResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -212,6 +220,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 					Provider: providers.ProviderAzure,
 				},
 			},
+		},
+		ComputedValues: map[string]interface{}{
+			"database": rendererOutput.ComputedValues["database"].Value,
 		},
 	}
 

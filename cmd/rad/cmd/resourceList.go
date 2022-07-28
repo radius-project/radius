@@ -7,7 +7,7 @@ package cmd
 
 import (
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
@@ -27,26 +27,17 @@ func init() {
 
 func listResources(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	err = listResourcesUCP(cmd, args, env)
+	applicationName, err := cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func listResourcesUCP(cmd *cobra.Command, args []string, env environments.Environment) error {
-	applicationName, err := cli.RequireApplicationArgs(cmd, args, env)
-	if err != nil {
-		return err
-	}
-
-	client, err := environments.CreateApplicationsManagementClient(cmd.Context(), env)
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
 	}
@@ -63,13 +54,8 @@ func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
 	if err != nil {
 		return err
 	}
-	var formatterOptions output.FormatterOptions
-	if !isLegacy {
-		formatterOptions = objectformats.GetResourceTableFormat()
-	} else {
-		formatterOptions = objectformats.GetResourceTableFormatOld()
-	}
-	err = output.Write(format, obj, cmd.OutOrStdout(), formatterOptions)
+
+	err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
 	if err != nil {
 		return err
 	}

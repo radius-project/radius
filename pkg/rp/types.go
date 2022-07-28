@@ -79,4 +79,6 @@ type DeploymentDataModel interface {
 	conv.DataModelInterface
 
 	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+
+	OutputResources() []outputresource.OutputResource
 }

@@ -10,10 +10,12 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
@@ -38,14 +40,16 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
 
-	output, err := renderer.Render(ctx, &mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 
 	require.Len(t, output.Resources, 2)
@@ -95,8 +99,10 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Secrets: datamodel.MongoDatabaseSecrets{
 				Username:         userName,
@@ -106,7 +112,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, &mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 0)
 
@@ -137,13 +143,15 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
 			},
 		},
 	}
 
-	output, err := renderer.Render(ctx, &mongoDBResource)
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.NoError(t, err)
 	require.Equal(t, 0, len(output.Resources))
 }
@@ -159,13 +167,15 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			Type: "Applications.Connector/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-			Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 		},
 	}
 
-	_, err := renderer.Render(ctx, &mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, "invalid model conversion", err.Error())
 }
@@ -182,16 +192,19 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -206,14 +219,44 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				Resource:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
 
-	_, err := renderer.Render(ctx, &mongoDBResource)
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a CosmosDB Mongo Database", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure CosmosDB Mongo Database resource", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			Name: "mongo0",
+			Type: "Applications.Connector/mongoDatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "invalid-app-id",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

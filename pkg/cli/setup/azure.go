@@ -53,7 +53,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		return nil, err
 	}
 	if !addAzureSPN {
-		return &azure.Provider{}, nil
+		return nil, nil
 	}
 
 	subscription, err := selectSubscription(cmd.Context(), authorizer)
@@ -141,19 +141,19 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 	if err != nil {
 		return nil, err
 	}
-	if isValid, _ := prompt.UUIDv4Validator(subscriptionID); !isValid {
+	if isValid, _, _ := prompt.UUIDv4Validator(subscriptionID); !isValid {
 		return nil, fmt.Errorf("--provider-azure-subscription is required to configure Azure provider for cloud resources")
 	}
 	if resourceGroup == "" {
 		return nil, fmt.Errorf("--provider-azure-resource-group is required to configure Azure provider for cloud resources")
 	}
-	if isValid, _ := prompt.UUIDv4Validator(clientID); !isValid {
+	if isValid, _, _ := prompt.UUIDv4Validator(clientID); !isValid {
 		return nil, errors.New("--provider-azure-client-id parameter is required to configure Azure provider for cloud resources")
 	}
 	if clientSecret == "" {
 		return nil, errors.New("--provider-azure-client-secret parameter is required to configure Azure provider for cloud resources")
 	}
-	if isValid, _ := prompt.UUIDv4Validator(tenantID); !isValid {
+	if isValid, _, _ := prompt.UUIDv4Validator(tenantID); !isValid {
 		return nil, errors.New("--provider-azure-tenant-id parameter is required to configure Azure provider for cloud resources")
 	}
 	if (subscriptionID != "") != (resourceGroup != "") {

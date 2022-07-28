@@ -1,0 +1,51 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package step
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/radcli"
+)
+
+var _ Executor = (*DeployErrorExecutor)(nil)
+
+type DeployErrorExecutor struct {
+	Description string
+	Template    string
+	Parameters  []string
+}
+
+func NewDeployErrorExecutor(template string, parameters ...string) *DeployErrorExecutor {
+	return &DeployErrorExecutor{
+		Description: fmt.Sprintf("deploy %s", template),
+		Template:    template,
+		Parameters:  parameters,
+	}
+}
+
+func (d *DeployErrorExecutor) GetDescription() string {
+	return d.Description
+}
+
+func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options test.TestOptions) {
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	templateFilePath := filepath.Join(cwd, d.Template)
+	t.Logf("deploying %s from file %s", d.Description, d.Template)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
+	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
+}

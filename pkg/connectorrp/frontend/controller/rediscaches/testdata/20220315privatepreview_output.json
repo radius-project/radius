@@ -19,7 +19,8 @@
           "password": "testPassword",
           "connectionString": "test-connection-string"
         },
-        "provisioningState": "Succeeded"
+        "provisioningState": "Succeeded",
+        "username": "redisusername"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

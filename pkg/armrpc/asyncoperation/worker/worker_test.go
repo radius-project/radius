@@ -16,6 +16,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultOptions(t *testing.T) {
+	worker := New(Options{}, nil, nil, nil)
+	require.Equal(t, defaultDeduplicationDuration, worker.options.DeduplicationDuration)
+	require.Equal(t, defaultMaxOperationRetryCount, worker.options.MaxOperationRetryCount)
+	require.Equal(t, defaultMessageExtendMargin, worker.options.MessageExtendMargin)
+	require.Equal(t, defaultMinMessageLockDuration, worker.options.MinMessageLockDuration)
+	require.Equal(t, defaultMaxOperationConcurrency, worker.options.MaxOperationConcurrency)
+}
+
 func TestUpdateResourceState(t *testing.T) {
 	updateStates := []struct {
 		tc          string
@@ -111,19 +120,20 @@ func TestGetMessageExtendDuration(t *testing.T) {
 		out time.Duration
 	}{
 		{
-			in:  time.Now().Add(messageExtendMargin),
-			out: minMessageLockDuration,
+			in:  time.Now().Add(defaultMessageExtendMargin),
+			out: defaultMinMessageLockDuration,
 		}, {
-			in:  time.Now().Add(-messageExtendMargin),
-			out: minMessageLockDuration,
+			in:  time.Now().Add(-defaultMessageExtendMargin),
+			out: defaultMinMessageLockDuration,
 		}, {
 			in:  time.Now().Add(time.Duration(180) * time.Second),
-			out: time.Duration(180)*time.Second - messageExtendMargin,
+			out: time.Duration(180)*time.Second - defaultMessageExtendMargin,
 		},
 	}
 
 	for _, tt := range tests {
-		d := getMessageExtendDuration(tt.in)
+		worker := New(Options{}, nil, nil, nil)
+		d := worker.getMessageExtendDuration(tt.in)
 		require.Equal(t, tt.out, d.Round(time.Second))
 	}
 }

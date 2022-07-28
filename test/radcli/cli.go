@@ -138,7 +138,7 @@ func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 		"env",
 		"delete",
 		"--yes",
-		"-a", environmentName,
+		"-e", environmentName,
 	}
 	_, err := cli.RunCommand(ctx, args)
 	return err
@@ -184,6 +184,13 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 		"--remote-port", fmt.Sprintf("%d", remotePort),
 		"Container",
 		resourceName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) Version(ctx context.Context) (string, error) {
+	args := []string{
+		"version",
 	}
 	return cli.RunCommand(ctx, args)
 }

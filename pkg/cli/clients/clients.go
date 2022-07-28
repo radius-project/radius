@@ -10,12 +10,12 @@ import (
 	"io"
 	"os"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // NOTE: parameters in the template engine follow the structure:
@@ -57,7 +57,7 @@ const (
 )
 
 type ResourceProgress struct {
-	Resource azresources.ResourceID
+	Resource ucpresources.ID
 	Status   ResourceStatus
 }
 
@@ -67,7 +67,7 @@ type DeploymentOutput struct {
 }
 
 type DeploymentResult struct {
-	Resources []azresources.ResourceID
+	Resources []ucpresources.ID
 	Outputs   map[string]DeploymentOutput
 }
 
@@ -83,8 +83,19 @@ type DiagnosticsClient interface {
 	GetPublicEndpoint(ctx context.Context, options EndpointOptions) (*string, error)
 }
 
+type ApplicationStatus struct {
+	Name          string
+	ResourceCount int
+	Gateways      []GatewayStatus
+}
+
+type GatewayStatus struct {
+	Name     string
+	Endpoint string
+}
+
 type EndpointOptions struct {
-	ResourceID azresources.ResourceID
+	ResourceID ucpresources.ID
 }
 
 type ExposeOptions struct {
@@ -121,7 +132,7 @@ type LegacyManagementClient interface {
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
-	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
+	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error)
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
 	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)

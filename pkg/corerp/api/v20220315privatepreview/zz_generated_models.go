@@ -743,17 +743,20 @@ type GatewayProperties struct {
 	// REQUIRED; The resource id of the application linked to Gateway resource.
 	Application *string `json:"application,omitempty"`
 
+	// REQUIRED; Routes attached to this Gateway
+	Routes []*GatewayRoute `json:"routes,omitempty"`
+
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
 
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
 
-	// Routes attached to this Gateway
-	Routes []*GatewayRoute `json:"routes,omitempty"`
-
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; URL of the gateway resource. Readonly.
+	URL *string `json:"url,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type GatewayProperties.
@@ -765,6 +768,7 @@ func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "internal", g.Internal)
 	populate(objectMap, "provisioningState", g.ProvisioningState)
 	populate(objectMap, "routes", g.Routes)
+	populate(objectMap, "url", g.URL)
 	return json.Marshal(objectMap)
 }
 
@@ -791,6 +795,9 @@ func (g *GatewayProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "routes":
 				err = unpopulate(val, &g.Routes)
+				delete(rawMsg, key)
+		case "url":
+				err = unpopulate(val, &g.URL)
 				delete(rawMsg, key)
 		}
 		if err != nil {

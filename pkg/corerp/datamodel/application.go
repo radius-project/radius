@@ -19,7 +19,7 @@ type Application struct {
 	Properties ApplicationProperties `json:"properties"`
 
 	// InternalMetadata is the internal metadata which is used for conversion.
-	InternalMetadata v1.InternalMetadata `json:"internalMetadata"`
+	v1.InternalMetadata
 }
 
 func (e Application) ResourceTypeName() string {
@@ -28,6 +28,6 @@ func (e Application) ResourceTypeName() string {
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
+	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
 }

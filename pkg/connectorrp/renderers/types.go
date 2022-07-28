@@ -13,11 +13,15 @@ import (
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
+	SecretStoreName       = "secretStoreName"
+	StateStoreName        = "stateStoreName"
+	DatabaseName          = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
@@ -31,7 +35,10 @@ var ErrResourceMissingForResource = errors.New("the 'resource' field is required
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/connectorrp/renderers Renderer
 type Renderer interface {
-	Render(ctx context.Context, resource conv.DataModelInterface) (RendererOutput, error)
+	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
+}
+type RenderOptions struct {
+	Namespace string
 }
 
 type RendererOutput struct {
@@ -67,6 +74,21 @@ type ComputedValueReference struct {
 	JSONPointer string
 }
 
+// Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
+type RendererDependency struct {
+	// ResourceID is the resource ID of the Radius resource that is the dependency.
+	ResourceID resources.ID
+
+	// Definition is the definition (`properties` node) of the dependency.
+	Definition map[string]interface{}
+
+	// ComputedValues is a map of the computed values and secrets of the dependency.
+	ComputedValues map[string]interface{}
+
+	// OutputResources is a map of the output resource identities of the dependency. The map is keyed on the LocalID of the output resource.
+	OutputResources map[string]resourcemodel.ResourceIdentity
+}
+
 // SecretValueTransformer allows transforming a secret value before passing it on to a Resource
 // that wants to access it.
 //
@@ -75,7 +97,7 @@ type ComputedValueReference struct {
 // string that application code consumes will include a database name or queue name, etc. Or the different
 // libraries involved might support different connection string formats, and the user has to choose on.
 type SecretValueTransformer interface {
-	Transform(ctx context.Context, resource conv.DataModelInterface, value interface{}) (interface{}, error)
+	Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error)
 }
 
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient

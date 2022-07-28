@@ -322,7 +322,8 @@
         "description": "Gateway properties",
         "type": "object",
         "required": [
-          "application"
+          "application",
+          "routes"
         ],
         "allOf": [
           {
@@ -360,10 +361,16 @@
           },
           "routes": {
             "type": "array",
+            "minItems": 1,
             "description": "Routes attached to this Gateway",
             "items": {
               "$ref": "#/definitions/GatewayRoute"
             }
+          },
+          "url": {
+            "type": "string",
+            "readOnly": true,
+            "description": "URL of the gateway resource. Readonly."
           }
         }
       },
@@ -393,8 +400,8 @@
         "required": true,
         "type": "string",
         "description": "The name of the Gateway.",
-        "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-        "maxLength": 128,
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
         "x-ms-parameter-location": "method"
       }
     }

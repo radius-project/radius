@@ -8,6 +8,7 @@ package httproute
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -43,15 +44,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 
-	if route.Properties == nil || route.Properties.Port == 0 {
+	if route.Properties.Port == 0 {
 		defaultPort := kubernetes.GetDefaultPort()
-		route.Properties = &datamodel.HTTPRouteProperties{
-			Port: defaultPort,
-		}
+		route.Properties.Port = defaultPort
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
-		"host": {
+		"hostname": {
 			Value: kubernetes.MakeResourceName(applicationName, route.Name),
 		},
 		"port": {
@@ -78,12 +77,15 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
-
 	appId, err := resources.Parse(route.Properties.Application)
+
 	if err != nil {
 		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
 	}
 	applicationName := appId.Name()
+
+	typeParts := strings.Split(ResourceType, "/")
+	resourceTypeSuffix := typeParts[len(typeParts)-1]
 
 	service := &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -96,13 +98,13 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, ResourceType, route.Name),
+			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, resourceTypeSuffix, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceType + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

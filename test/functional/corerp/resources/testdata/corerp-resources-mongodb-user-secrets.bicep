@@ -9,7 +9,7 @@ param password string = newGuid()
 
 param environment string
 
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb-user-secrets'
@@ -20,7 +20,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'todoapp'
+  name: 'mdb-us-app-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -38,7 +38,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
 
 // https://hub.docker.com/_/mongo/
 resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'mongo'
+  name: 'mdb-us-ctnr'
   location: 'global'
   properties: {
     application: app.id
@@ -61,7 +61,7 @@ resource mongoContainer 'Applications.Core/containers@2022-03-15-privatepreview'
 }
 
 resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
-  name: 'mongo-route'
+  name: 'mdb-us-rte'
   location: 'global'
   properties: {
     application: app.id
@@ -70,9 +70,10 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
 }
 
 resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
-  name: 'mongo'
+  name: 'mdb-us-db'
   location: 'global'
   properties: {
+    application: app.id
     environment: environment
     secrets: {
       connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'

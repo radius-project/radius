@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the mongoDatabase resource",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
+              "$ref": "#/definitions/MongoDatabaseResponseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
+              "$ref": "#/definitions/MongoDatabaseResponseResource"
             }
           },
           "default": {
@@ -362,6 +362,11 @@
           "example": [
             27017
           ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "type": "string",
+          "readOnly": true
         }
       }
     },
@@ -410,8 +415,8 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }

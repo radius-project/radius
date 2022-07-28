@@ -11,10 +11,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/environments"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
@@ -43,12 +44,12 @@ rad resource logs Container orders --application icecream-store --follow
 rad resource logs Container orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
-		env, err := cli.RequireEnvironment(cmd, config)
+		workspace, err := cli.RequireWorkspace(cmd, config)
 		if err != nil {
 			return err
 		}
 
-		application, err := cli.RequireApplication(cmd, env)
+		application, err := cli.RequireApplication(cmd, *workspace)
 		if err != nil {
 			return err
 		}
@@ -57,7 +58,7 @@ rad resource logs Container orders --application icecream-store --container dapr
 		if err != nil {
 			return err
 		}
-		if resourceType != schema.ContainerType {
+		if !strings.EqualFold(resourceType, schema.ContainerType) {
 			return fmt.Errorf("only %s is supported", schema.ContainerType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")
@@ -71,7 +72,7 @@ rad resource logs Container orders --application icecream-store --container dapr
 		}
 
 		var client clients.DiagnosticsClient
-		client, err = environments.CreateDiagnosticsClient(cmd.Context(), env)
+		client, err = connections.DefaultFactory.CreateDiagnosticsClient(cmd.Context(), *workspace)
 		if err != nil {
 			return err
 		}

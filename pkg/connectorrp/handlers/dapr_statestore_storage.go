@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -59,6 +60,9 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	sac := clients.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 	account, err := sac.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], storage.AccountExpand(""))
 	if err != nil {
+		if clients.Is404Error(err) {
+			return resourcemodel.ResourceIdentity{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", properties[StorageAccountNameKey]))
+		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
@@ -78,7 +82,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]string)
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.deleteDaprStateStore(ctx, properties)
 	if err != nil {
@@ -137,6 +141,9 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 
 	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, accountName, "")
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", accountName))
+		}
 		return nil, fmt.Errorf("failed to access keys of storage account: %w", err)
 	}
 
@@ -156,7 +163,7 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]string) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]interface{}) error {
 	item := unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": properties[KubernetesAPIVersionKey],

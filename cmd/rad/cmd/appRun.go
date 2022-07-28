@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/builders"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/radyaml"
 	"github.com/project-radius/radius/pkg/cli/stages"
@@ -40,8 +39,9 @@ to affect deployment.
 
 rad app run
 `,
-	Args: cobra.MaximumNArgs(1),
-	RunE: runApplication,
+	Args:   cobra.MaximumNArgs(1),
+	RunE:   runApplication,
+	Hidden: true,
 }
 
 func init() {
@@ -54,7 +54,7 @@ func init() {
 
 func runApplication(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	env, err := cli.RequireEnvironment(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func runApplication(cmd *cobra.Command, args []string) error {
 	}
 
 	options := stages.Options{
-		Environment:   env,
+		Workspace:     *workspace,
 		BaseDirectory: baseDir,
 		Manifest:      manifest,
 		Builders:      builders.DefaultBuilders(),
@@ -135,9 +135,10 @@ func runApplication(cmd *cobra.Command, args []string) error {
 	output.LogInfo("Application %s has been deployed. Press CTRL+C to exit...", manifest.Name)
 	output.LogInfo("")
 
-	if dev, ok := env.(*environments.LocalEnvironment); ok {
+	// TODO this broken until we fetch the namespace from the environment.
+	if false {
 		output.LogInfo("Launching log stream...")
-		err = tools.SternStart(cmd.Context(), dev.Context, dev.Namespace, manifest.Name)
+		err = tools.SternStart(cmd.Context(), "", "", manifest.Name)
 		if errors.As(err, &tools.ErrToolNotFound{}) {
 			output.LogInfo(err.Error()) // Tolerate missing tool
 		} else if err != nil {

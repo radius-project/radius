@@ -247,7 +247,7 @@ func streamLogFile(ctx context.Context, podClient v1.PodInterface, pod corev1.Po
 	log.Printf("Saved container logs to %s", filename)
 }
 
-// // ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
+// ValidateObjectsRunning validates the namespaces and objects specified in each namespace are running
 func ValidateObjectsRunning(ctx context.Context, t *testing.T, k8s *kubernetes.Clientset, dynamic dynamic.Interface, expected K8sObjectSet) {
 	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(k8s.DiscoveryClient))
 	for namespace, expectedObjects := range expected.Namespaces {
@@ -356,7 +356,7 @@ func ValidateNoPodsInApplication(ctx context.Context, t *testing.T, k8s *kuberne
 func listPodsWithRetries(t *testing.T, k8s *kubernetes.Clientset, labelset map[string]string, namespace, application string) (*corev1.PodList, error) {
 	// Need to retry because of AKS error: https://github.com/project-radius/radius/issues/2484
 	retries := 3
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= retries; i++ {
 		actualPods, err := k8s.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{
 			LabelSelector: labels.SelectorFromSet(labelset).String(),
 		})
@@ -484,7 +484,7 @@ func matchesActualLabels(expectedResources []K8sObject, actualResources []unstru
 	}
 
 	for _, remainingResource := range remaining {
-		log.Printf("Failed to validate resource with of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
+		log.Printf("Failed to validate resource of type %s with labels %s", remainingResource.GroupVersionResource.Resource, remainingResource.Labels)
 	}
 	return len(remaining) == 0
 }

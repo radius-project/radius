@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -48,6 +49,9 @@ func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Cont
 
 	account, err := cosmosDBClient.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure CosmosDB Account %q does not exist", accountID))
+		}
 		return nil, fmt.Errorf("failed to get CosmosDB Account: %w", err)
 	}
 

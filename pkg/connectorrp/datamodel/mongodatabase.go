@@ -46,11 +46,10 @@ func (mongo MongoDatabaseResponse) ResourceTypeName() string {
 type MongoDatabaseResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       string               `json:"environment"`
-	Application       string               `json:"application,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
+	Database          string               `json:"database,omitempty"`
 }
 
 type MongoDatabaseProperties struct {

@@ -31,9 +31,11 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Environment: to.String(src.Properties.Environment),
+					Application: to.String(src.Properties.Application),
+				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-				Environment:       to.String(src.Properties.Environment),
-				Application:       to.String(src.Properties.Application),
 				Queue:             to.String(src.Properties.Queue),
 			},
 			Secrets: secrets,
@@ -56,9 +58,11 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueResponseProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Environment:       to.String(src.Properties.Environment),
-			Application:       to.String(src.Properties.Application),
 			Queue:             to.String(src.Properties.Queue),
 		},
 		InternalMetadata: v1.InternalMetadata{

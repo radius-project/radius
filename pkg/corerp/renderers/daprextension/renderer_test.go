@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -54,7 +55,9 @@ func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -94,7 +97,9 @@ func Test_Render_Success_AppID_FromRoute(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
@@ -140,7 +145,9 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},

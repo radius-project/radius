@@ -7,6 +7,7 @@ package resources
 
 import (
 	"fmt"
+	"net/http"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -365,6 +366,50 @@ func Test_MakeRelativeID(t *testing.T) {
 	}
 }
 
+func Test_FindScope(t *testing.T) {
+	type testcase struct {
+		ID       string
+		Segment  string
+		Expected string
+	}
+
+	cases := []testcase{
+		{
+			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  SubscriptionsSegment,
+			Expected: "s1",
+		},
+		{
+			ID:       "/subscriPtions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  SubscriptionsSegment,
+			Expected: "s1",
+		},
+		{
+			ID:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+			Segment:  ResourceGroupsSegment,
+			Expected: "r1",
+		},
+		{
+			ID:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			Segment:  "radius",
+			Expected: "local",
+		},
+		{
+			ID:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
+			Segment:  ResourceGroupsSegment,
+			Expected: "r1",
+		},
+	}
+
+	for _, tc := range cases {
+		id, err := Parse(tc.ID)
+		require.NoError(t, err)
+
+		result := id.FindScope(tc.Segment)
+		require.Equal(t, tc.Expected, result)
+	}
+}
+
 func Test_Append_Collection(t *testing.T) {
 	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
@@ -451,6 +496,14 @@ func Test_Truncate_ReturnsSelfForTopLevelScope_UCP(t *testing.T) {
 
 	truncated := id.Truncate()
 	require.Equal(t, "/planes", truncated.id)
+}
+
+func Test_Truncate_WithCustomAction(t *testing.T) {
+	id, err := Parse("/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets")
+	require.NoError(t, err)
+
+	truncated := id.Truncate()
+	require.Equal(t, "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0", truncated.id)
 }
 
 func Test_IdParsing_WithNoTypeSegments(t *testing.T) {
@@ -666,6 +719,126 @@ func Test_ValidateResourceType_Invalid(t *testing.T) {
 		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
 			err := v.testID.ValidateResourceType(v.testKnownType)
 			require.Errorf(t, err, "resource '%s' does not match the expected resource type %s", v.testID.id)
+		})
+	}
+}
+
+func Test_ParseByMethod(t *testing.T) {
+	testCases := []struct {
+		desc   string
+		id     string
+		method string
+		err    bool
+		eID    string
+		eRType string
+	}{
+		{
+			desc:   "ucp-post-with-custom-action",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method: http.MethodPost,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "ucp-get",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "ucp-list",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "ucp-put",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPut,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "ucp-patch",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPatch,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "ucp-delete",
+			id:     "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodDelete,
+			err:    false,
+			eID:    "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		}, {
+			desc:   "arm-post-with-custom-action",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0/listSecrets",
+			method: http.MethodPost,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "arm-get",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "arm-list",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			method: http.MethodGet,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "arm-put",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPut,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "arm-patch",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodPatch,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+		{
+			desc:   "arm-delete",
+			id:     "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			method: http.MethodDelete,
+			err:    false,
+			eID:    "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Connector/mongoDatabases/mongo-database-0",
+			eRType: "Applications.Connector/mongoDatabases",
+		},
+	}
+
+	for _, tt := range testCases {
+		t.Run(tt.desc, func(t *testing.T) {
+			parsedID, err := ParseByMethod(tt.id, tt.method)
+			if tt.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.eID, parsedID.String())
+				require.Equal(t, tt.eRType, parsedID.Type())
+			}
 		})
 	}
 }

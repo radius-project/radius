@@ -53,8 +53,9 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.
 		return nil, err
 	}
 
-	redisSecrets := datamodel.RabbitMQSecrets{
-		ConnectionString: secrets[renderers.ConnectionStringValue].(string),
+	redisSecrets := datamodel.RabbitMQSecrets{}
+	if connectionString, ok := secrets[renderers.ConnectionStringValue].(string); ok {
+		redisSecrets.ConnectionString = connectionString
 	}
 
 	versioned, _ := converter.RabbitMQSecretsDataModelToVersioned(&redisSecrets, sCtx.APIVersion)

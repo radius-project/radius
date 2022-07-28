@@ -10,12 +10,14 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -41,16 +43,18 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        datamodel.DaprStateStoreKindAzureTableStorage,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 			},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), &resource)
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
 	require.Len(t, result.Resources, 1)
@@ -61,13 +65,13 @@ func Test_Render_Success(t *testing.T) {
 
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-state-store",
-		handlers.KubernetesNamespaceKey:  applicationName,
+		handlers.KubernetesNamespaceKey:  "radius-test",
 		handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
 		handlers.KubernetesKindKey:       "Component",
 		handlers.ApplicationName:         applicationName,
 		handlers.ResourceIDKey:           "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		handlers.StorageAccountNameKey:   "test-account",
-		handlers.ResourceName:            "mytable",
+		handlers.ResourceName:            "test-state-store",
 	}
 	require.Equal(t, expected, output.Resource)
 }
@@ -81,18 +85,21 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "state.azure.tablestorage",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
@@ -104,16 +111,19 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application:                     applicationID,
-			Environment:                     environmentID,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
 			Kind:                            "state.azure.tablestorage",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_UnsupportedKind(t *testing.T) {
@@ -125,18 +135,21 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "state.azure.cosmosdb",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "state.azure.cosmosdb",
 			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -148,9 +161,11 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        datamodel.DaprStateStoreKindGeneric,
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindGeneric,
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Type:    stateStoreType,
 				Version: daprStateStoreVersion,
@@ -161,7 +176,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	result, err := renderer.Render(context.Background(), &resource)
+	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
 	output := result.Resources[0]
@@ -174,7 +189,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
-				"namespace": applicationName,
+				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
 			},
@@ -202,20 +217,22 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Type:     stateStoreType,
-				Metadata: map[string]interface{}{},
-				Version:  daprStateStoreVersion,
+				Type:    stateStoreType,
+				Version: daprStateStoreVersion,
 			},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -227,9 +244,11 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
@@ -239,9 +258,10 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, "No type specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -253,9 +273,11 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "Applications.Connector/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
-			Application: applicationID,
-			Environment: environmentID,
-			Kind:        "generic",
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Kind: "generic",
 			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
@@ -265,8 +287,35 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
-	_, err := renderer.Render(context.Background(), &resource)
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.Error())
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidApplicationID(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprStateStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			Name: resourceName,
+			Type: "Applications.Connector/daprStateStores",
+		},
+		Properties: datamodel.DaprStateStoreProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: environmentID,
+			},
+			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
+			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
+			},
+		},
+	}
+	renderer.StateStores = SupportedStateStoreKindValues
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

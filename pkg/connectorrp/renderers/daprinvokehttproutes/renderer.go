@@ -19,12 +19,16 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprInvokeHttpRoute)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	properties := resource.Properties
+	_, err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
 	return renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {

@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the redisCache resource",
             "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
+              "$ref": "#/definitions/RedisCacheResponseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
+              "$ref": "#/definitions/RedisCacheResponseResource"
             }
           },
           "default": {
@@ -385,6 +385,11 @@
             6380,
             6379
           ]
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for redis",
+          "readOnly": true
         }
       },
       "required": ["environment"]
@@ -413,8 +418,8 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
-      "maxLength": 128,
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }

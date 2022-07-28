@@ -38,6 +38,7 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "mydestination", ct.Properties.Routes[0].Destination)
 	require.Equal(t, "mypath", ct.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", ct.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", ct.Properties.URL)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
@@ -64,6 +65,7 @@ func TestGatewayConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "mydestination", r.Properties.Routes[0].Destination)
 	require.Equal(t, "mypath", r.Properties.Routes[0].Path)
 	require.Equal(t, "myreplaceprefix", r.Properties.Routes[0].ReplacePrefix)
+	require.Equal(t, "http://myprefix.myapp.mydomain.com", r.Properties.URL)
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "kubernetes", versioned.Properties.Status.OutputResources[0]["Provider"])
 }

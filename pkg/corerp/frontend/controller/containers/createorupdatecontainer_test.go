@@ -7,26 +7,27 @@ package containers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 
 func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
-
 	setupTest := func(tb testing.TB) (func(tb testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
 		mctrl := gomock.NewController(t)
 		mds := store.NewMockStorageClient(mctrl)
@@ -89,7 +90,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
+			containerInput := &v20220315privatepreview.ContainerResource{}
+			_ = json.Unmarshal(radiustesting.ReadFixture("container20220315privatepreview_input.json"), containerInput)
+
+			containerDataModel := &datamodel.ContainerResource{}
+			_ = json.Unmarshal(radiustesting.ReadFixture("container20220315privatepreview_datamodel.json"), containerDataModel)
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, containerInput)
@@ -137,11 +142,11 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
+				locationHeader := getAsyncLocationPath(sCtx, containerDataModel.TrackedResource.Location, "operationResults", req)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx, containerDataModel.TrackedResource.Location, "operationStatuses", req)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
@@ -149,54 +154,82 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	updateCases := []struct {
-		desc     string
-		curState v1.ProvisioningState
-		getErr   error
-		saveErr  error
-		qErr     error
-		rbErr    error
-		rCode    int
-		rErr     error
+		desc               string
+		curState           v1.ProvisioningState
+		versionedInputFile string
+		datamodelFile      string
+		getErr             error
+		skipSave           bool
+		saveErr            error
+		qErr               error
+		rbErr              error
+		rCode              int
+		rErr               error
 	}{
 		{
 			"async-update-existing-container-success",
 			v1.ProvisioningStateSucceeded,
+			"container20220315privatepreview_input.json",
+			"container20220315privatepreview_datamodel.json",
 			nil,
+			false,
 			nil,
 			nil,
 			nil,
 			http.StatusAccepted,
+			nil,
+		},
+		{
+			"async-update-existing-container-mismatched-appid",
+			v1.ProvisioningStateSucceeded,
+			"container20220315privatepreview_input_appid.json",
+			"container20220315privatepreview_datamodel.json",
+			nil,
+			true,
+			nil,
+			nil,
+			nil,
+			http.StatusBadRequest,
 			nil,
 		},
 		{
 			"async-update-existing-container-concurrency-error",
 			v1.ProvisioningStateSucceeded,
+			"container20220315privatepreview_input.json",
+			"container20220315privatepreview_datamodel.json",
+			nil,
+			false,
 			&store.ErrConcurrency{},
 			nil,
 			nil,
-			nil,
-			http.StatusAccepted,
+			http.StatusInternalServerError,
 			&store.ErrConcurrency{},
 		},
 		{
 			"async-update-existing-container-save-error",
 			v1.ProvisioningStateSucceeded,
+			"container20220315privatepreview_input.json",
+			"container20220315privatepreview_datamodel.json",
 			nil,
-			errors.New("testing initial save err"),
+			false,
+			&store.ErrInvalid{Message: "testing initial save err"},
 			nil,
 			nil,
 			http.StatusInternalServerError,
-			errors.New("testing initial save err"),
+			&store.ErrInvalid{Message: "testing initial save err"},
 		},
 		{
 			"async-update-existing-container-enqueue-error",
 			v1.ProvisioningStateSucceeded,
+			"container20220315privatepreview_input.json",
+			"container20220315privatepreview_datamodel.json",
 			nil,
+			false,
 			nil,
-			errors.New("enqueuer client is unset"),
+			&store.ErrInvalid{Message: "testing initial save err"},
 			nil,
 			http.StatusInternalServerError,
-			errors.New("enqueuer client is unset"),
+			&store.ErrInvalid{Message: "testing initial save err"},
 		},
 	}
 
@@ -205,7 +238,14 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			containerInput, containerDataModel, _ := getTestModels20220315privatepreview()
+			containerInput := &v20220315privatepreview.ContainerResource{}
+			err := json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), containerInput)
+			require.NoError(t, err)
+
+			containerDataModel := &datamodel.ContainerResource{}
+			err = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), containerDataModel)
+			require.NoError(t, err)
+
 			containerDataModel.Properties.ProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
@@ -224,7 +264,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 				Return(so, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil {
+			if tt.getErr == nil && !tt.skipSave {
 				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.saveErr).
 					Times(1)
@@ -251,32 +291,51 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
-			if tt.rErr != nil {
-				require.Error(t, tt.rErr)
-			} else {
-				require.NoError(t, err)
-
+			if resp != nil {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
+			}
 
-				locationHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationResults", sCtx.OperationID)
+			if tt.rCode == http.StatusAccepted {
+				require.NoError(t, err)
+
+				locationHeader := getAsyncLocationPath(sCtx, containerDataModel.TrackedResource.Location, "operationResults", req)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx.ResourceID, containerDataModel.TrackedResource.Location, "operationStatuses", sCtx.OperationID)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx, containerDataModel.TrackedResource.Location, "operationStatuses", req)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
+			}
+
+			if tt.rErr != nil {
+				require.ErrorIs(t, tt.rErr, err)
 			}
 		})
 	}
 }
 
-func getAsyncLocationPath(resourceID resources.ID, location string, resourceType string, operationID uuid.UUID) string {
-	root := fmt.Sprintf("/subscriptions/%s", resourceID.FindScope(resources.SubscriptionsSegment))
-
-	if resourceID.IsUCPQualfied() {
-		root = fmt.Sprintf("/planes/%s", resourceID.PlaneNamespace())
+func getAsyncLocationPath(sCtx *servicecontext.ARMRequestContext, location string, resourceType string, req *http.Request) string {
+	dest := url.URL{
+		Host:   req.Host,
+		Scheme: req.URL.Scheme,
+		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
+			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
 	}
 
-	return fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", root, resourceID.ProviderNamespace(), location, resourceType, operationID.String())
+	query := url.Values{}
+	query.Add("api-version", sCtx.APIVersion)
+	dest.RawQuery = query.Encode()
+
+	// In production this is the header we get from app service for the 'real' protocol
+	protocol := req.Header.Get("X-Forwarded-Proto")
+	if protocol != "" {
+		dest.Scheme = protocol
+	}
+
+	if dest.Scheme == "" {
+		dest.Scheme = "http"
+	}
+
+	return dest.String()
 }

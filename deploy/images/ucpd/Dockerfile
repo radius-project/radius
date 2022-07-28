@@ -1,3 +1,4 @@
+# Note: distroless already includes ca-certificates
 FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 
