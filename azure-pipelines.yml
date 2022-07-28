@@ -155,7 +155,7 @@ stages:
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}
         make test-functional-corerp
       displayName: run functional corerp tests
-        - script: |
+    - script: |
         kubectl describe components
       condition: always()
       continueOnError: 'true'
