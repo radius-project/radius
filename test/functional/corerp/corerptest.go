@@ -20,7 +20,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 
@@ -176,7 +175,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 
-	cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
+	//cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
 
 	// Capture all logs from all pods (only run one of these as it will monitor everything)
 	// This runs each application deployment step as a nested test, with the cleanup as part of the surrounding test.
@@ -262,7 +261,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	t.Logf("beginning cleanup phase of %s", ct.Description)
 
 	// Cleanup code here will run regardless of pass/fail of subtests
-	for _, step := range ct.Steps {
+	/*for _, step := range ct.Steps {
 		if step.CoreRPResources == nil && step.SkipResourceValidation {
 			continue
 		}
@@ -280,7 +279,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
 		}
-	}
+	}*/
 
 	t.Logf("Deleting secrets")
 	err = ct.DeleteSecrets(ctx)
