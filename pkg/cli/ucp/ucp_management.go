@@ -64,23 +64,13 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
-	results := []generated.GenericResource{}
+func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error) {
 	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
-	pager := client.ListByRootScope(nil)
-	for pager.NextPage(ctx) {
-		resourceList := pager.PageResponse().GenericResourcesList.Value
-		for _, resource := range resourceList {
-			isResourceWithApplication, err := isResourceWithApplication(ctx, *resource, applicationName)
-			if err != nil {
-				return nil, err
-			}
-			if isResourceWithApplication {
-				results = append(results, *resource)
-			}
-		}
+	getResponse, err := client.Get(ctx, resourceName, &generated.GenericResourcesGetOptions{})
+	if err != nil {
+		return generated.GenericResource{}, err
 	}
-	return results, nil
+	return getResponse.GenericResource, nil
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
