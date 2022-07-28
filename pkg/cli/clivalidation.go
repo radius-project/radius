@@ -131,7 +131,7 @@ func RequireResourceType(args []string) (string, error) {
 	}
 	resourceTypeName := args[0]
 	for _, resourceType := range ucp.ResourceTypesList {
-		if strings.Split(resourceType, "/")[1] == resourceTypeName {
+		if strings.EqualFold(strings.Split(resourceType, "/")[1], resourceTypeName) {
 			return resourceType, nil
 		}
 	}
