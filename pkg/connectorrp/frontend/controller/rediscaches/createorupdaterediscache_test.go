@@ -125,6 +125,8 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						// First time created objects should have the same lastModifiedAt and createdAt
+						dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
 						obj.ETag = "new-resource-etag"
 						obj.Data = dataModel
 						return nil

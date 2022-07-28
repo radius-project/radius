@@ -91,6 +91,7 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 				})
 			mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 			mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
@@ -100,6 +101,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						// First time created objects should have the same lastModifiedAt and createdAt
+						dataModel.SystemData.CreatedAt = dataModel.SystemData.LastModifiedAt
 						obj.ETag = "new-resource-etag"
 						obj.Data = dataModel
 						return nil

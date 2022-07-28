@@ -75,7 +75,7 @@ func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *ExtendersClient) createOrUpdateHandleResponse(resp *http.Response) (ExtendersCreateOrUpdateResponse, error) {
 	result := ExtendersCreateOrUpdateResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.ExtenderResponseResource); err != nil {
 		return ExtendersCreateOrUpdateResponse{}, err
 	}
 	return result, nil

@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the mongoDatabase resource",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
+              "$ref": "#/definitions/MongoDatabaseResponseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
+              "$ref": "#/definitions/MongoDatabaseResponseResource"
             }
           },
           "default": {

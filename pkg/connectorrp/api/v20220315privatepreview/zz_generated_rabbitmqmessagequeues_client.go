@@ -75,7 +75,7 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx conte
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *RabbitMQMessageQueuesClient) createOrUpdateHandleResponse(resp *http.Response) (RabbitMQMessageQueuesCreateOrUpdateResponse, error) {
 	result := RabbitMQMessageQueuesCreateOrUpdateResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResponseResource); err != nil {
 		return RabbitMQMessageQueuesCreateOrUpdateResponse{}, err
 	}
 	return result, nil
