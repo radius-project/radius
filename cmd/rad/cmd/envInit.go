@@ -170,14 +170,14 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	// if workspaceName == "" {
-	// 	section, err := cli.ReadWorkspaceSection(config)
-	// 	if err != nil {
-	// 		return err
-	// 	}
+	if workspaceName == "" {
+		section, err := cli.ReadWorkspaceSection(config)
+		if err != nil {
+			return err
+		}
 
-	// 	workspaceName = section.Default
-	// }
+		workspaceName = section.Default
+	}
 
 	if workspaceName == "" {
 		workspaceName = environmentName

@@ -18,7 +18,7 @@ import (
 const (
 	ContourChartDefaultVersion = "7.4.6"
 	DaprDefaultVersion         = "1.6.0"
-	OSMDefaultVersion          = "0.11.1"
+	OSMDefaultVersion          = "1.2.0"
 )
 
 type CLIClusterOptions struct {

@@ -151,25 +151,3 @@ func modifyOSMResources(helmChart *chart.Chart) error {
 	helmChart.Values = values
 	return nil
 }
-
-func MergeMaps(a, b map[string]interface{}) map[string]interface{} {
-	// b merges into a
-	// This function is retrieved from the helm Github repo
-	// https://github.com/helm/helm/blob/v3.9.0/pkg/cli/values/options.go#L91
-	out := make(map[string]interface{}, len(a))
-	for k, v := range a {
-		out[k] = v
-	}
-	for k, v := range b {
-		if v, ok := v.(map[string]interface{}); ok {
-			if bv, ok := out[k]; ok {
-				if bv, ok := bv.(map[string]interface{}); ok {
-					out[k] = MergeMaps(bv, v)
-					continue
-				}
-			}
-		}
-		out[k] = v
-	}
-	return out
-}

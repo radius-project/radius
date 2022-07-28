@@ -22,7 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	tsv1 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
+	tsv2 "github.com/servicemeshinterface/smi-sdk-go/pkg/apis/split/v1alpha2"
 )
 
 type Renderer struct {
@@ -35,7 +35,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelI
 	}
 
 	if route.Properties == nil || len(route.Properties.Routes) == 0 {
-		return nil, nil, nil
+		return radiusResourceIDs, resourceIDs, nil
 	}
 	for _, routes := range route.Properties.Routes {
 		destination := routes.Destination
@@ -90,15 +90,26 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		}
 		outputResources = append(outputResources, trafficsplit)
 		portNum = pNum
+
 	}
 	if route.Properties.ContainerPort != 0 {
 		portNum = int(route.Properties.ContainerPort)
 	}
-	service, err := r.makeService(route, options, portNum)
-	if err != nil {
-		return renderers.RendererOutput{}, err
+	if len(route.Properties.Routes) > 0 {
+		// if the httproute has the "routes" property, it will be rendered
+		// as the root service of the split
+		service, err := r.makeRootService(route, options, portNum)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		outputResources = append(outputResources, service)
+	} else {
+		service, err := r.makeService(route, options)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		outputResources = append(outputResources, service)
 	}
-	outputResources = append(outputResources, service)
 
 	return renderers.RendererOutput{
 		Resources:      outputResources,
@@ -106,7 +117,46 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}, nil
 }
 
-func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions, specifiedTargetPort int) (outputresource.OutputResource, error) {
+func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
+	appId, err := resources.Parse(route.Properties.Application)
+
+	if err != nil {
+		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+	}
+	applicationName := appId.Name()
+
+	typeParts := strings.Split(ResourceType, "/")
+	resourceTypeSuffix := typeParts[len(typeParts)-1]
+
+	service := &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Service",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
+			Namespace: options.Environment.Namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
+		},
+		Spec: corev1.ServiceSpec{
+			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, resourceTypeSuffix, route.Name),
+			Type:     corev1.ServiceTypeClusterIP,
+			Ports: []corev1.ServicePort{
+				{
+					Name:       route.Name,
+					Port:       route.Properties.Port,
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + route.Name)),
+					Protocol:   corev1.ProtocolTCP,
+				},
+			},
+		},
+	}
+
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Service, outputresource.LocalIDService, service, service.ObjectMeta), nil
+}
+
+func (r *Renderer) makeRootService(route *datamodel.HTTPRoute, options renderers.RenderOptions, specifiedTargetPort int) (outputresource.OutputResource, error) {
+	// This function creates the root service for TrafficSplit.
 	appId, err := resources.Parse(route.Properties.Application)
 
 	if err != nil {
@@ -134,7 +184,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabelsTrafficSplit(applicationName, resourceTypeSuffix, route.Name, specifiedTargetPort),
+			Selector: kubernetes.MakeSelectorLabels(applicationName, ""),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
@@ -153,10 +203,10 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderers.RenderOptions, applicationName string) (outputresource.OutputResource, int, error) {
 	dependencies := options.Dependencies
 	numBackends := len(route.Properties.Routes)
-	var backends []tsv1.TrafficSplitBackend
+	var backends []tsv2.TrafficSplitBackend
 	routeName := route.Name
 	rootService := kubernetes.MakeResourceName(applicationName, routeName) + "." + options.Environment.Namespace + ".svc.cluster.local"
-	trafficsplit := &tsv1.TrafficSplit{
+	trafficsplit := &tsv2.TrafficSplit{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "TrafficSplit",
 			APIVersion: "split.smi-spec.io/v1alpha2",
@@ -166,7 +216,7 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName),
 		},
-		Spec: tsv1.TrafficSplitSpec{
+		Spec: tsv2.TrafficSplitSpec{
 			Service:  rootService,
 			Backends: backends,
 		},
@@ -177,6 +227,8 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 	for i := 0; i < numBackends; i++ {
 		destination := route.Properties.Routes[i].Destination
 		if _, ok := dependencies[destination].ComputedValues["port"]; ok {
+			// We need the port values of all of the backend services to be the same.
+			// This if statement will check to see if the port numbers are the same
 			floatPort := (dependencies[destination].ComputedValues["port"].(float64))
 			if ok {
 				destPort := int(floatPort)
@@ -187,7 +239,7 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 			}
 		}
 		httpRouteName := dependencies[destination].ResourceID.Name()
-		tsBackend := tsv1.TrafficSplitBackend{
+		tsBackend := tsv2.TrafficSplitBackend{
 			Service: kubernetes.MakeResourceName(applicationName, httpRouteName),
 			Weight:  int(route.Properties.Routes[i].Weight),
 		}

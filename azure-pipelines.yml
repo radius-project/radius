@@ -5,7 +5,7 @@
 
 trigger: none
 
-pr: [ main, features/*, tommyniu/main]
+pr: [ main, features/*]
 
 variables:
 - name: RADIUS_CHART_LOCATION
