@@ -307,7 +307,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template),
+			Executor: step.NewDeployErrorExecutor(template, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

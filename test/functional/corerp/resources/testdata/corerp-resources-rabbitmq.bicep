@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'global'
 
 @description('Specifies the image for the container resource.')
-param magpieImage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieImage string
 
 @description('Specifies the port for the container resource.')
 param magpiePort int = 3000

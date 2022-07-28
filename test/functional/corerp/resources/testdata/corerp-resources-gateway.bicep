@@ -10,7 +10,7 @@ param environment string
 param port int = 3000
 
 @description('Specifies the image for the container resource.')
-param image string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-gateway'
@@ -60,7 +60,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
   properties: {
     application: app.id
     container: {
-      image: image
+      image: magpieimage
       ports: {
         web: {
           containerPort: port
@@ -95,7 +95,7 @@ resource backendContainer 'Applications.Core/containers@2022-03-15-privateprevie
   properties: {
     application: app.id
     container: {
-      image: image
+      image: magpieimage
       ports: {
         web: {
           containerPort: port

@@ -34,6 +34,11 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
 
+	_, err := renderers.ValidateApplicationID(properties.Application)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
 	if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
@@ -65,12 +70,12 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Redis Cache resource type
 	err = redisCacheID.ValidateResourceType(RedisResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, renderers.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{

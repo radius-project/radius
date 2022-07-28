@@ -190,10 +190,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall {
-		return fmt.Errorf("chart arg / provider config is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
-	}
-
 	var workspace *workspaces.Workspace
 	if foundExistingWorkspace {
 		workspace, err = cli.GetWorkspace(config, workspaceName)
@@ -215,6 +211,10 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	foundExistingRadius, err := setup.Install(cmd.Context(), clusterOptions, contextName)
 	if err != nil {
 		return err
+	}
+
+	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
+		return fmt.Errorf("chart arg / provider config is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
 	}
 
 	//If existing radius control plane, retrieve az provider subscription and resourcegroup, and use that unless a --reinstall is specified

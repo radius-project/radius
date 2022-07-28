@@ -2,7 +2,7 @@ import radius as radius
 
 param location string = resourceGroup().location
 param environment string
-param image string = 'pratmishra.azurecr.io/magpiego:latest'
+param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'dapr-invokehttproute'
@@ -18,7 +18,7 @@ resource frontend 'Applications.Core/containers@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     container: {
-      image: image
+      image: magpieimage
       readinessProbe:{
         kind:'httpGet'
         containerPort:3000
@@ -45,7 +45,7 @@ resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     container: {
-      image: image
+      image: magpieimage
       ports: {
         orders: {
           containerPort: 3000
