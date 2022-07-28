@@ -14,25 +14,26 @@ import (
 
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
+	"github.com/project-radius/radius/test/validation"
 	"gopkg.in/yaml.v3"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func Test_Kubernetes_Extensibility(t *testing.T) {
 	template := "testdata/k8s-extensibility/connection-string.bicep"
-	application := "corerp-mechanics-k8s-extensibility"
-	test := corerp.NewCoreRPTest(t, application, []corerp.TestStep{
+	name := "corerp-mechanics-k8s-extensibility"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor:           step.NewDeployExecutor(template),
-			K8sOutputResources: loadResources("testdata/k8s-extensibility", "secret.output.yaml"),
+			CoreRPResources:    &validation.CoreRPResourceSet{},
+			K8sOutputResources: loadResources("testdata/k8s-extensibility", ".output.yaml"),
+			// No output resources are expected
 			SkipResourceValidation: true,
-			// TODO: https://github.com/Azure/bicep/issues/7553
-			// this bug blocks the use of 'existing' for Kubernetes resources. Once that's fixed we can
-			// restore those resources to the test.
-
-			// K8sOutputResources: loadResources("testdata/k8s-extensibility", ".output.yaml"),
 		},
-	}, nil, loadResources("testdata/k8s-extensibility", ".input.yaml")...)
+	}, requiredSecrets, loadResources("testdata/k8s-extensibility", ".input.yaml")...)
 
 	test.Test(t)
 }

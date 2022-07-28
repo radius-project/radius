@@ -71,11 +71,12 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
-		Options:     NewCoreRPTestOptions(t),
-		Name:        name,
-		Description: name,
-		Steps:       steps,
-		Secrets:     secrets,
+		Options:          NewCoreRPTestOptions(t),
+		Name:             name,
+		Description:      name,
+		Steps:            steps,
+		Secrets:          secrets,
+		InitialResources: initialResources,
 	}
 }
 
@@ -213,6 +214,9 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
+	defer ct.CleanUpExtensionResources(ct.InitialResources)
+	err = ct.CreateInitialResources(ctx)
+	require.NoError(t, err, "failed to create initial resources")
 
 	success := true
 	for i, step := range ct.Steps {
