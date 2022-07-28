@@ -187,7 +187,7 @@ type ExtendersCreateOrUpdateResponse struct {
 
 // ExtendersCreateOrUpdateResult contains the result from method Extenders.CreateOrUpdate.
 type ExtendersCreateOrUpdateResult struct {
-	ExtenderResource
+	ExtenderResponseResource
 }
 
 // ExtendersDeleteResponse contains the response from method Extenders.Delete.
@@ -242,7 +242,7 @@ type MongoDatabasesCreateOrUpdateResponse struct {
 
 // MongoDatabasesCreateOrUpdateResult contains the result from method MongoDatabases.CreateOrUpdate.
 type MongoDatabasesCreateOrUpdateResult struct {
-	MongoDatabaseResource
+	MongoDatabaseResponseResource
 }
 
 // MongoDatabasesDeleteResponse contains the response from method MongoDatabases.Delete.
@@ -296,7 +296,7 @@ type RabbitMQMessageQueuesCreateOrUpdateResponse struct {
 
 // RabbitMQMessageQueuesCreateOrUpdateResult contains the result from method RabbitMQMessageQueues.CreateOrUpdate.
 type RabbitMQMessageQueuesCreateOrUpdateResult struct {
-	RabbitMQMessageQueueResource
+	RabbitMQMessageQueueResponseResource
 }
 
 // RabbitMQMessageQueuesDeleteResponse contains the response from method RabbitMQMessageQueues.Delete.
@@ -350,7 +350,7 @@ type RedisCachesCreateOrUpdateResponse struct {
 
 // RedisCachesCreateOrUpdateResult contains the result from method RedisCaches.CreateOrUpdate.
 type RedisCachesCreateOrUpdateResult struct {
-	RedisCacheResource
+	RedisCacheResponseResource
 }
 
 // RedisCachesDeleteResponse contains the response from method RedisCaches.Delete.

@@ -75,7 +75,7 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *MongoDatabasesClient) createOrUpdateHandleResponse(resp *http.Response) (MongoDatabasesCreateOrUpdateResponse, error) {
 	result := MongoDatabasesCreateOrUpdateResponse{RawResponse: resp}
-	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResponseResource); err != nil {
 		return MongoDatabasesCreateOrUpdateResponse{}, err
 	}
 	return result, nil

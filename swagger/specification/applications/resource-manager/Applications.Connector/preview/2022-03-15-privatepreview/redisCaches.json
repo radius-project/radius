@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the redisCache resource",
             "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
+              "$ref": "#/definitions/RedisCacheResponseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
+              "$ref": "#/definitions/RedisCacheResponseResource"
             }
           },
           "default": {
