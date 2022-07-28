@@ -163,7 +163,7 @@ After creating a release, it's good to sanity check that the release works in so
    kubectl describe pods -n radius-system -l control-plane=ucp
    ```
 
-   Checking the Containers section of each output to confirm the right image and tag are there.
+   Checking the Containers section of each output to confirm the right image and tag are there. This would, for example, be radius.azurecr.io/appcore-rp:0.12 for the 0.12 release for the appcore-rp image.
 
 5. Execute `rad deploy` to confirm a simple deployment works
 
