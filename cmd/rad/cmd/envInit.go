@@ -213,8 +213,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	if (!isEmpty(chartArgs) || azureProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
-		return fmt.Errorf("chart arg / provider config is not empty for existing workspace. Specify '--reinstall' for the new arguments to take effect")
+	if (azureProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
+		return fmt.Errorf("error: adding a cloud provider requires a reinstall of the Radius services. Specify '--reinstall' for the new arguments to take effect")
+	}
+
+	if !isEmpty(chartArgs) && !chartArgs.Reinstall && foundExistingRadius {
+		return fmt.Errorf("error: arguments provided requires a reinstall of the Radius services. Specify '--reinstall' for the new arguments to take effect")
 	}
 
 	//If existing radius control plane, retrieve az provider subscription and resourcegroup, and use that unless a --reinstall is specified
@@ -390,27 +394,27 @@ func selectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (s
 }
 
 func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
-	var val string
+	var envStr string
 	var err error
 
-	val, err = cmd.Flags().GetString("environment")
+	envStr, err = cmd.Flags().GetString("environment")
 	if err != nil {
 		return "", err
 	}
-	if interactive && val == "" {
+	if interactive && envStr == "" {
 		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		val, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
+		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
 		if err != nil {
 			return "", err
 		}
-		fmt.Printf("Using %s as environment name\n", val)
+		fmt.Printf("Using %s as environment name\n", envStr)
 	} else {
-		if val == "" {
+		if envStr == "" {
 			output.LogInfo("No environment name provided, using: %v", defaultVal)
-			val = defaultVal
+			envStr = defaultVal
 		}
 	}
-	return val, nil
+	return envStr, nil
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {
