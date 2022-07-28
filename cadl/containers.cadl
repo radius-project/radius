@@ -200,7 +200,7 @@ model ContainerProperties {
 
 model ContainerResource is TrackedResource<ContainerProperties> {
   @doc("Container name")
-  @maxLength(128)
+  @maxLength(63)
   @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
   @key("containerName")
   @path
