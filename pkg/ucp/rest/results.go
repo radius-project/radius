@@ -259,6 +259,8 @@ func NewNotFoundResponse(id string) Response {
 }
 
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.LogHTTPStatusCode, http.StatusNotFound)
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
