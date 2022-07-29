@@ -27,7 +27,7 @@ const (
 
 func Test_TrafficSplit(t *testing.T) {
 	template := "testdata/corerp-resources-trafficsplit.bicep"
-	application := "corerp-resources-container-httproute"
+	application := "corerp-resources-container-trafficsplit"
 	requiredSecrets := map[string]map[string]string{}
 	test := corerp.NewCoreRPTest(t, application, []corerp.TestStep{
 		{
@@ -94,8 +94,8 @@ func Test_TrafficSplit(t *testing.T) {
 
 func testTrafficSplitWithCurl(t *testing.T) error {
 	var v1Received, v2Received bool
-	patch := exec.Command(`kubectl`, `patch`, `svc/trafficsplit-httpbin`,
-		`-n`, `trafficsplit`, `--patch-file=testdata/patch.yaml`)
+	patch := exec.Command(`kubectl`, `patch`, `svc/corerp-resources-container-trafficsplit-trafficsplit`,
+		`-n`, `default`, `--patch-file=testdata/patch.yaml`)
 	err := patch.Run()
 	if err != nil {
 		return err
@@ -136,7 +136,7 @@ func getCurlResult(t *testing.T) (*string, *int, error) {
 	}
 	podName := strings.Split(string(podB), "'")[1]
 	curl, err := exec.Command("kubectl", "exec", "-n", "curl", "-i", podName,
-		"-c", "curl", "--", "curl", "-I", "http://trafficsplit-httpbin.trafficsplit:80/json",
+		"-c", "curl", "--", "curl", "-I", "http://corerp-resources-container-trafficsplit-trafficsplit.default:80/json",
 		"|", "egrep", "'HTTP|pod'").Output()
 	if err != nil {
 		if _, ok := err.(*exec.ExitError); !(len(curl) > 0 && ok) {

@@ -14,7 +14,7 @@ param environment string
 param httpbinimage string = 'tommyniu.azurecr.io/httpbin:latest'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-httproute'
+  name: 'corerp-resources-container-trafficsplit'
   location: location
   properties: {
     environment: environment
