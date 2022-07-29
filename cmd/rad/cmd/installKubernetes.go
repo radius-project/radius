@@ -11,7 +11,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -97,14 +99,18 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return nil
 	}
 
+	currentKubeContext, err := getCurrentKubeContext()
+	if err != nil {
+		return err
+	}
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		for _, workspaceItem := range section.Items {
-			if azProvider == nil {
-				workspaceItem.ProviderConfig.Azure.ResourceGroup = ""
-				workspaceItem.ProviderConfig.Azure.SubscriptionID = ""
-			} else {
-				workspaceItem.ProviderConfig.Azure.ResourceGroup = azProvider.ResourceGroup
-				workspaceItem.ProviderConfig.Azure.SubscriptionID = azProvider.SubscriptionID
+			if workspaceItem.IsSameKubernetesContext(currentKubeContext) {
+				if azProvider == nil {
+					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{}
+				} else {
+					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
+				}
 			}
 		}
 		return nil
@@ -113,4 +119,13 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return err
 	}
 	return nil
+}
+
+func getCurrentKubeContext() (string, error) {
+	k8sConfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return "", err
+	}
+
+	return k8sConfig.CurrentContext, nil
 }

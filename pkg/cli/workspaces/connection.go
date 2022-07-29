@@ -60,10 +60,14 @@ func (ws Workspace) ConnectionEquals(other Connection) bool {
 			return false
 		}
 
-		return ws.Connection["kind"] == KindKubernetes && ws.Connection["context"] == kc.Context
+		return ws.Connection["kind"] == KindKubernetes && ws.IsSameKubernetesContext(kc.Context)
 	default:
 		return false
 	}
+}
+
+func (ws Workspace) IsSameKubernetesContext(kubeContext string) bool {
+	return ws.Connection["context"] == kubeContext
 }
 
 var _ Connection = (*KubernetesConnection)(nil)

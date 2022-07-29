@@ -270,8 +270,9 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		section.Items[strings.ToLower(workspaceName)] = *workspace
 
 		for _, workspaceItem := range section.Items {
-			workspaceItem.ProviderConfig.Azure.ResourceGroup = provider.ResourceGroup
-			workspaceItem.ProviderConfig.Azure.SubscriptionID = provider.SubscriptionID
+			if workspaceItem.IsSameKubernetesContext(contextName) {
+				workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
+			}
 		}
 
 		return nil
