@@ -276,15 +276,15 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 		}
 
 		return host, nil
+	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
+		// Trust that the provided FullyQualifiedHostname actually works
+		return gateway.Hostname.FullyQualifiedHostname, nil
 	} else if publicIP == "" {
 		// In the case of no publicIP, return an empty hostname, but don't return an error
 		// Should be improved in https://github.com/project-radius/radius/issues/2196
 		return "", nil
 	} else if gateway.Hostname != nil {
-		if gateway.Hostname.FullyQualifiedHostname != "" {
-			// Use FQDN
-			return gateway.Hostname.FullyQualifiedHostname, nil
-		} else if gateway.Hostname.Prefix != "" {
+		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
 			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, publicIP)
 			return prefixedHostname, nil
