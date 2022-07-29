@@ -193,6 +193,14 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 						After(renderCall).
 						Times(1)
 
+					if !errors.Is(&store.ErrNotFound{}, tt.getErr) {
+						mdp.EXPECT().
+							Delete(gomock.Any(), gomock.Any(), gomock.Any()).
+							Return(nil).
+							After(deployCall).
+							Times(1)
+					}
+
 					if tt.deployErr == nil {
 						msc.EXPECT().
 							Save(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -381,11 +389,18 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 						After(renderCall).
 						Times(1)
 
+					deleteCall := mdp.EXPECT().
+						Delete(gomock.Any(), gomock.Any(), gomock.Any()).
+						Return(nil).
+						After(deployCall).
+						Times(1)
+
 					if tt.deployErr == nil {
 						msc.EXPECT().
 							Save(gomock.Any(), gomock.Any(), gomock.Any()).
 							Return(tt.saveErr).
 							After(deployCall).
+							After(deleteCall).
 							Times(1)
 					}
 				}

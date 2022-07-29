@@ -115,3 +115,52 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 		Resource:     obj,
 	}
 }
+
+// GetGCOutputResources [GC stands for Garbage Collection] returns the elements
+// that are in the oldResource but not in the updatedResource
+func GetGCOutputResources(after []OutputResource, before []OutputResource) []OutputResource {
+	afterMap := map[string][]OutputResource{}
+
+	for _, outputResource := range after {
+		id := outputResource.LocalID
+		orArr := []OutputResource{}
+
+		if arr, ok := afterMap[id]; ok {
+			orArr = arr
+		}
+
+		orArr = append(orArr, outputResource)
+		afterMap[id] = orArr
+	}
+
+	diff := []OutputResource{}
+	for _, outputResource := range before {
+		id := outputResource.LocalID
+
+		// If there is a resource or a group of resources in before(old) outputResources
+		// array with a LocalID that is not in the after(new) outputResources array, then
+		// we have to to delete those resources.
+		if _, found := afterMap[id]; !found {
+			diff = append(diff, outputResource)
+			continue
+		}
+
+		// Otherwise we have to check each resource for their equivalence on ResourceType.Type
+		// and ResourceType.Provider properties. If there is no match, we have to delete that
+		// resource. Meaning that new outputResources doesn't have that resource in the old array.
+		found := false
+		for _, innerOutputResource := range afterMap[id] {
+			if outputResource.ResourceType.Type == innerOutputResource.ResourceType.Type &&
+				outputResource.ResourceType.Provider == innerOutputResource.ResourceType.Provider {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			diff = append(diff, outputResource)
+		}
+	}
+
+	return diff
+}

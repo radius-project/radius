@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -39,6 +40,35 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 		return nil, err
 	}
 
+	old := &datamodel.SqlDatabase{}
+	isNewResource := false
+	etag, err := sql.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			isNewResource = true
+		} else {
+			return nil, err
+		}
+	}
+
+	if req.Method == http.MethodPatch && isNewResource {
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
+	}
+
+	err = ctrl.ValidateETag(*serviceCtx, etag)
+	if err != nil {
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	}
+
+	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
+	if !isNewResource {
+		newResource.CreatedAPIVersion = old.CreatedAPIVersion
+		prop := newResource.Properties.BasicResourceProperties
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
+		}
+	}
+
 	rendererOutput, err := sql.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
@@ -58,36 +88,15 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 	if database, ok := deploymentOutput.ComputedValues["database"].(string); ok {
 		newResource.Properties.Database = database
 	}
-	// Read existing resource info from the data store
-	old := &datamodel.SqlDatabase{}
-	isNewResource := false
-	etag, err := sql.GetResource(ctx, serviceCtx.ResourceID.String(), old)
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			isNewResource = true
-		} else {
+
+	if !isNewResource {
+		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		err = sql.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		if err != nil {
 			return nil, err
 		}
 	}
-	if req.Method == http.MethodPatch && isNewResource {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
-	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
-	}
-
-	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
-	if !isNewResource {
-		newResource.CreatedAPIVersion = old.CreatedAPIVersion
-		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
-		}
-	}
-
-	// Add/update resource in the data store
 	savedResource, err := sql.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
