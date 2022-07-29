@@ -6,11 +6,16 @@
 package resource_test
 
 import (
+	"context"
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -22,6 +27,107 @@ import (
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 )
+
+const (
+	retries = 10
+)
+
+func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+	options := corerp.NewCoreRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	appName := "kubernetes-cli"
+
+	t.Run("Validate rad application show", func(t *testing.T) {
+		output, err := cli.ApplicationShow(ctx, appName)
+		require.NoError(t, err)
+		expected := regexp.MustCompile(`RESOURCE        TYPE\nkubernetes-cli  applications.core/applications\n`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
+	})
+
+	t.Run("Validate rad resource list", func(t *testing.T) {
+		output, err := cli.ResourceList(ctx, appName)
+		require.NoError(t, err)
+
+		// Resource ordering can vary so we don't assert exact output.
+		require.Regexp(t, `containera`, output)
+		require.Regexp(t, `containerb`, output)
+	})
+
+	t.Run("Validate rad resource show", func(t *testing.T) {
+		output, err := cli.ResourceShow(ctx, appName, "containers", "containera")
+		require.NoError(t, err)
+		// We are more interested in the content and less about the formatting, which
+		// is already covered by unit tests. The spaces change depending on the input
+		// and it takes very long to get a feedback from CI.
+		expected := regexp.MustCompile(`RESOURCE    TYPE\ncontainera  applications.core/containers\n`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
+	})
+
+	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
+		output, err := cli.ResourceLogs(ctx, appName, "containera")
+		require.NoError(t, err)
+
+		// We don't want to be too fragile so we're not validating the logs in depth
+		require.Contains(t, output, "Server running at http://localhost:3000")
+	})
+
+	t.Run("Validate rad resource expose Container", func(t *testing.T) {
+		port, err := GetAvailablePort()
+		require.NoError(t, err)
+
+		// We open a local port-forward and then make a request to it.
+		child, cancel := context.WithCancel(ctx)
+
+		done := make(chan error)
+		go func() {
+			_, err = cli.ResourceExpose(child, appName, "containera", port, 3000)
+			done <- err
+		}()
+
+		for i := 0; i < retries; i++ {
+			url := fmt.Sprintf("http://localhost:%d/healthz", port)
+			t.Logf("making request to %s", url)
+			response, err := http.Get(url)
+			if err != nil {
+				if i == retries-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+				}
+				t.Logf("got error %s", err.Error())
+				time.Sleep(1 * time.Second)
+				continue
+			}
+			if response.Body != nil {
+				defer response.Body.Close()
+			}
+
+			if response.StatusCode > 299 || response.StatusCode < 200 {
+				if i == retries-1 {
+					// last retry failed, report failure
+					require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
+				}
+				t.Logf("got status %d", response.StatusCode)
+				time.Sleep(1 * time.Second)
+				continue
+			}
+
+			content, err := ioutil.ReadAll(response.Body)
+			require.NoError(t, err)
+
+			t.Logf("[response] %s", string(content))
+			break
+		}
+
+		cancel()
+		err = <-done
+
+		// The error should be due to cancellation (we can canceled the command).
+		require.Equal(t, context.Canceled, err)
+	})
+
+}
 
 func Test_CLI(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.bicep"
@@ -58,6 +164,7 @@ func Test_CLI(t *testing.T) {
 					},
 				},
 			},
+			PostStepVerify: verifyCLIBasics,
 		},
 	}, requiredSecrets)
 
@@ -128,4 +235,18 @@ func Test_CLI_version(t *testing.T) {
 	matcher := fmt.Sprintf(`RELEASE\s+VERSION\s+BICEP\s+COMMIT\s*([a-zA-Z0-9-\.]+)\s+([a-zA-Z0-9-\.]+)\s+(%s)\s+([a-z0-9]+)`, bicep.SemanticVersionRegex)
 	expected := regexp.MustCompile(matcher)
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
+}
+
+func GetAvailablePort() (int, error) {
+	address, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	if err != nil {
+		return 0, err
+	}
+
+	l, err := net.ListenTCP("tcp", address)
+	if err != nil {
+		return 0, err
+	}
+	defer l.Close()
+	return l.Addr().(*net.TCPAddr).Port, nil
 }
