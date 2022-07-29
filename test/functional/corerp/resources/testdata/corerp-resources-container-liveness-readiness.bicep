@@ -53,17 +53,4 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
       connections: {}
     }
   }
-/*
-  "livenessProbe": {
-    "kind": "tcp",
-    "tcp": {
-      "healthProbeBase": {
-        "failureThreshold": 5,
-        "initialDelaySeconds": 5,
-        "periodSeconds": 5
-      },
-      "containerPort": 8080
-    }
-  }
-*/
 
