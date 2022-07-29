@@ -42,7 +42,8 @@ const (
 	GenericResourceType         = "RadiusResource"
 	AzureConnectionResourceType = "AzureConnection"
 
-	ContainerType = "Container"
+	LegacyContainerType = "Container"
+	ContainerType    = "containers"
 )
 
 // manifest is the format of the 'resource-types.json' manifest.

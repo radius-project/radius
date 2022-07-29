@@ -46,18 +46,24 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, `containerb`, output)
 	})
 
-// 	t.Run("Validate rad resource show", func(t *testing.T) {
-// 		output, err := cli.ResourceShow(ctx, appName, "Container", "a")
-// 		require.NoError(t, err)
-// 		// We are more interested in the content and less about the formatting, which
-// 		// is already covered by unit tests. The spaces change depending on the input
-// 		// and it takes very long to get a feedback from CI.
-// 		expected := regexp.MustCompile(`RESOURCE\s+TYPE\s+PROVISIONING_STATE\s+HEALTH_STATE
-// a\s+Container\s+.*Provisioned\s+.*[h|H]ealthy\s*
-// `)
-// 		match := expected.MatchString(output)
-// 		require.Equal(t, true, match)
-// 	})
+	t.Run("Validate rad resource show", func(t *testing.T) {
+		output, err := cli.ResourceShow(ctx, appName, "containers", "containera")
+		require.NoError(t, err)
+		// We are more interested in the content and less about the formatting, which
+		// is already covered by unit tests. The spaces change depending on the input
+		// and it takes very long to get a feedback from CI.
+		expected := regexp.MustCompile(`RESOURCE    TYPE\ncontainera  applications.core/containers\n`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
+	})
+
+	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
+		output, err := cli.ResourceLogs(ctx, appName, "containera")
+		require.NoError(t, err)
+
+		// We don't want to be too fragile so we're not validating the logs in depth
+		require.Contains(t, output, "Server running at http://localhost:3000")
+	})
 }
 
 func Test_CLI(t *testing.T) {
