@@ -17,6 +17,24 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
+type ErrWorkspaceNotFound struct {
+	resp *http.Response
+	err  error
+}
+
+func (e *ErrWorkspaceNotFound) Error() string {
+	if e.resp == nil {
+		return fmt.Sprintf("failed to create UCP resourceGroup: %s", e.err)
+	}
+
+	return fmt.Sprintf("request to create UCP resourceGroup failed with status: %d, response: %+v", e.resp.StatusCode, e.resp)
+}
+
+func (e *ErrWorkspaceNotFound) Is(target error) bool {
+	_, ok := target.(*ErrWorkspaceNotFound)
+	return ok
+}
+
 func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {
@@ -49,18 +67,15 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`))
 	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+		return "", &ErrWorkspaceNotFound{nil, err}
 	}
 	createRgRequest = createRgRequest.WithContext(ctx)
 
 	resp, err := rt.RoundTrip(createRgRequest)
-	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	if err != nil || (resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK) {
+		return "", &ErrWorkspaceNotFound{resp, err}
 	}
 
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
-	}
 	defer resp.Body.Close()
 	var jsonBody map[string]interface{}
 	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
