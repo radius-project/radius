@@ -22,8 +22,8 @@ import (
 
 var resourceLogsCmd = &cobra.Command{
 	Use:   "logs [resource]",
-	Short: "Read logs from a running Container resource",
-	Long: `Reads logs from a running resource. Currently only supports the resource type 'radius.dev/Container'.
+	Short: "Read logs from a running containers resource",
+	Long: `Reads logs from a running resource. Currently only supports the resource type 'Applications.Core/containers'.
 This command allows you to access logs of a deployed application and output those logs to the local console.
 
 'rad resource logs' will output all currently available logs for the resource and then exit.
@@ -32,16 +32,16 @@ This command allows you to access logs of a deployed application and output thos
 
 Specify the '--follow' option to stream additional logs as they are emitted by the resource. When following, press CTRL+C to exit the command and terminate the stream.`,
 	Example: `# read logs from the 'webapp' resource of the current default app
-rad resource logs Container webapp
+rad resource logs containers webapp
 
 # read logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs Container orders --application icecream-store
+rad resource logs containers orders --application icecream-store
 
 # stream logs from the 'orders' resource of the 'icecream-store' application
-rad resource logs Container orders --application icecream-store --follow
+rad resource logs containers orders --application icecream-store --follow
 
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
-rad resource logs Container orders --application icecream-store --container daprd`,
+rad resource logs containers orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
 		workspace, err := cli.RequireWorkspace(cmd, config)
