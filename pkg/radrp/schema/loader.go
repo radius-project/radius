@@ -41,8 +41,7 @@ const (
 	ApplicationResourceType     = "Application"
 	GenericResourceType         = "RadiusResource"
 	AzureConnectionResourceType = "AzureConnection"
-
-	LegacyContainerType = "Container"
+	
 	ContainerType    = "containers"
 )
 
