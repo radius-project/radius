@@ -179,14 +179,13 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 
 		workspaceName = section.Default
-		workspaceSpecified = false
 	} else {
 		workspaceSpecified = true
 	}
 
+	// if user does not specify a workspace name and there is no default workspace, use environmentName as workspace name
 	if workspaceName == "" {
 		workspaceName = environmentName
-		workspaceSpecified = false
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -212,13 +211,15 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	if foundExistingWorkspace {
 		isSameConn = workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName})
 	}
-	if foundExistingWorkspace && workspaceSpecified && !force && !isSameConn {
-		return fmt.Errorf("the specified workspace %q has a connection to Kubernetes context %q, which is different from context %q. Specify '--force' to overwrite", workspaceName, workspace.Connection["context"], contextName)
-	}
 
-	if foundExistingWorkspace && !workspaceSpecified && !isSameConn {
-		workspaceName = environmentName
-		workspace = nil
+	if foundExistingWorkspace {
+		if workspaceSpecified && !force && !isSameConn {
+			return fmt.Errorf("the specified workspace %q has a connection to Kubernetes context %q, which is different from context %q. Specify '--force' to overwrite", workspaceName, workspace.Connection["context"], contextName)
+		}
+		if !workspaceSpecified && !isSameConn {
+			workspaceName = environmentName
+			workspace = nil
+		}
 	}
 
 	// Make sure namespace for applications exists
