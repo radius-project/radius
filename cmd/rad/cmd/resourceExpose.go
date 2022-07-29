@@ -43,8 +43,8 @@ rad resource expose --application icecream-store Container orders --port 5000 --
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(resourceType, schema.LegacyContainerType) {
-			return fmt.Errorf("only %s is supported", schema.LegacyContainerType)
+		if !strings.EqualFold(resourceType, schema.ContainerType) {
+			return fmt.Errorf("only %s is supported", schema.ContainerType)
 		}
 
 		localPort, err := cmd.Flags().GetInt("port")
