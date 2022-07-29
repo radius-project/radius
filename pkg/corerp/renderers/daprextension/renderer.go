@@ -49,7 +49,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 	parsed, err := resources.Parse(extension.Provides)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 	}
 
 	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
@@ -148,7 +148,7 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 	if extension.Provides != "" {
 		routeDependency, ok := dependencies[extension.Provides]
 		if !ok {
-			return "", fmt.Errorf("failed to find depenendency with id %q", extension.Provides)
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to find depenendency with id %q", extension.Provides))
 		}
 
 		route := connector.DaprInvokeHttpRouteProperties{}
@@ -161,7 +161,7 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 
 	appID := extension.AppID
 	if appID != "" && routeAppID != "" && appID != routeAppID {
-		return "", fmt.Errorf("the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: %q, Extension: %q", routeAppID, appID)
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: %q, Extension: %q", routeAppID, appID))
 	}
 
 	if routeAppID != "" {

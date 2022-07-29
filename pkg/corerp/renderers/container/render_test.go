@@ -14,6 +14,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -21,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -214,7 +216,8 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }
