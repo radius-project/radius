@@ -68,6 +68,7 @@ runAsRoot() {
     local CMD="$*"
 
     if [ $EUID -ne 0 -a $USE_SUDO = "true" ]; then
+        echo "Additional permissions needed. Please enter your sudo password..."
         CMD="sudo $CMD"
     fi
 
@@ -133,7 +134,7 @@ downloadFile() {
     fi
 
 
-    echo "Downloading $DOWNLOAD_URL ..."
+    echo "Downloading ${DOWNLOAD_URL}..."
     if [ "$RADIUS_HTTP_REQUEST_CLI" == "curl" ]; then
         curl -SsL "$DOWNLOAD_URL" -o "$ARTIFACT_TMP_FILE"
     else
@@ -141,7 +142,7 @@ downloadFile() {
     fi
 
     if [ ! -f "$ARTIFACT_TMP_FILE" ]; then
-        echo "failed to download $DOWNLOAD_URL ..."
+        echo "failed to download ${DOWNLOAD_URL}..."
         exit 1
     fi
 }
