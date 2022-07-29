@@ -53,4 +53,3 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
       connections: {}
     }
   }
-
