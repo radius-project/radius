@@ -40,6 +40,7 @@ const envVarName1 = "TEST_VAR_1"
 const envVarValue1 = "TEST_VALUE_1"
 const envVarName2 = "TEST_VAR_2"
 const envVarValue2 = "81"
+const secretName = "test-app_test-container"
 
 func createContext(t *testing.T) context.Context {
 	logger, err := radlogger.NewTestLogger(t)
@@ -433,24 +434,24 @@ func Test_Render_Connections(t *testing.T) {
 
 		expectedEnv := []v1.EnvVar{
 			{
-				Name: "CONNECTION_A_COMPUTEDKEY1",
+				Name: "CONNECTION_TEST-APP_A_COMPUTEDKEY1",
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: resource.Name,
 						},
-						Key: "CONNECTION_A_COMPUTEDKEY1",
+						Key: "CONNECTION_TEST-APP_A_COMPUTEDKEY1",
 					},
 				},
 			},
 			{
-				Name: "CONNECTION_A_COMPUTEDKEY2",
+				Name: "CONNECTION_TEST-APP_A_COMPUTEDKEY2",
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: resource.Name,
 						},
-						Key: "CONNECTION_A_COMPUTEDKEY2",
+						Key: "CONNECTION_TEST-APP_A_COMPUTEDKEY2",
 					},
 				},
 			},
@@ -467,15 +468,15 @@ func Test_Render_Connections(t *testing.T) {
 		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, secret, secret.ObjectMeta)
 		require.Equal(t, outputResource, expectedOutputResource)
 
-		require.Equal(t, resourceName, secret.Name)
+		require.Equal(t, secretName, secret.Name)
 		require.Equal(t, "default", secret.Namespace)
 		require.Equal(t, labels, secret.Labels)
 		require.Empty(t, secret.Annotations)
 
 		require.Equal(t, outputResource.LocalID, outputresource.LocalIDSecret)
 		require.Len(t, secret.Data, 2)
-		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
-		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
+		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_TEST-APP_A_COMPUTEDKEY1"]))
+		require.Equal(t, "82", string(secret.Data["CONNECTION_TEST-APP_A_COMPUTEDKEY2"]))
 	})
 	require.Len(t, output.Resources, 2)
 }
