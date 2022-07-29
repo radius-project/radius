@@ -110,6 +110,10 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 	// We'll flesh this out more when we add explicit commands for managing resource groups.
 	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: kubecontext}, name)
 	if err != nil {
+		if strings.Contains(err.Error(), "404") {
+			return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad env init kubernetes")
+		}
+
 		return err
 	}
 
