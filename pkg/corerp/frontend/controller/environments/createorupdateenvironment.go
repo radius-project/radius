@@ -54,24 +54,26 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	query := store.Query{
+	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
+	namespaceQuery := store.Query{
 		RootScope:    serviceCtx.ResourceID.RootScope(),
 		ResourceType: serviceCtx.ResourceID.Type(),
-		// Filters: []store.QueryFilter{
-		// 	{
-		// 		Field: "namespace",
-		// 		Value: newResource.Properties.Namespace,
-		// 	},
-		// },
+		Filters: []store.QueryFilter{
+			{
+				Field: "properties.compute.kubernetes.namespace",
+				Value: namespace,
+			},
+		},
 	}
 
-	result, err := e.StorageClient().Query(ctx, query, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	// Check if environment with this namespace already exists
+	result, err := e.StorageClient().Query(ctx, namespaceQuery, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
 	if err != nil {
 		return nil, err
 	}
 
 	if len(result.Items) > 0 {
-		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace already exists", serviceCtx.ResourceID)), nil
+		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", result.Items[0].ID, namespace)), nil
 	}
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)

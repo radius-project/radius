@@ -7,6 +7,7 @@ package store
 
 import (
 	"reflect"
+	"strings"
 )
 
 func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
@@ -30,9 +31,16 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 		}
 	}
 
-	wrapper := reflect.ValueOf(data)
+	value := reflect.ValueOf(data)
 	for _, filter := range filters {
-		value := wrapper.MapIndex(reflect.ValueOf(filter.Field))
+		fields := strings.Split(filter.Field, ".")
+		for i, field := range fields {
+			value = value.MapIndex(reflect.ValueOf(field))
+			if i < len(fields)-1 {
+				// Need to go further into the nested fields
+				value = reflect.ValueOf(value.Interface())
+			}
+		}
 		comparator := reflect.ValueOf(filter.Value)
 
 		if value.Type().Kind() == reflect.Interface {
