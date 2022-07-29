@@ -15,11 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
-	"github.com/project-radius/radius/pkg/radrp/rest"
-	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/test/functional/kubernetes"
+	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
@@ -32,19 +28,35 @@ const (
 func Test_TrafficSplit(t *testing.T) {
 	template := "testdata/corerp-resources-trafficsplit.bicep"
 	application := "trafficsplit"
-	test := kubernetes.NewApplicationTest(t, application, []kubernetes.TestStep{
+	requiredSecrets := map[string]map[string]string{}
+	test := corerp.NewCoreRPTest(t, application, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
-			RadiusResources: &validation.ResourceSet{
-				Resources: []validation.RadiusResource{
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
 					{
-						ApplicationName: application,
-						ResourceName:    "trafficsplit",
-						OutputResources: map[string]validation.ExpectedOutputResource{
-							outputresource.LocalIDDeployment: validation.NewOutputResource(outputresource.LocalIDDeployment, rest.ResourceType{Type: resourcekinds.Deployment, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
-							outputresource.LocalIDService:    validation.NewOutputResource(outputresource.LocalIDService, rest.ResourceType{Type: resourcekinds.Service, Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
-							"TrafficSplit":                   validation.NewOutputResource("TrafficSplit", rest.ResourceType{Type: "TrafficSplit", Provider: providers.ProviderKubernetes}, false, rest.OutputResourceStatus{}),
-						},
+						Name: application,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "httpbinv1",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "httpbinv2",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "httpbinroute-v1",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "httpbinroute-v2",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "httpbin",
+						Type: validation.HttpRoutesResource,
 					},
 				},
 			},
@@ -59,7 +71,7 @@ func Test_TrafficSplit(t *testing.T) {
 					},
 				},
 			},
-			PostStepVerify: func(ctx context.Context, t *testing.T, at kubernetes.ApplicationTest) {
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				retries := 3
 
 				for i := 1; i <= retries; i++ {
@@ -76,7 +88,7 @@ func Test_TrafficSplit(t *testing.T) {
 				require.Fail(t, fmt.Sprintf("Curl tests failed after %d retries", retries))
 			},
 		},
-	})
+	}, requiredSecrets)
 	test.Test(t)
 }
 
