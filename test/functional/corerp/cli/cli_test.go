@@ -217,6 +217,11 @@ func Test_CLI_Delete(t *testing.T) {
 		err = cli.ApplicationDelete(ctx, appName)
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 	})
+
+	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
+		err = cli.ApplicationDelete(ctx, appName)
+		require.NoErrorf(t, err, "failed to deploy %s", appName)
+	})
 }
 
 func Test_CLI_DeploymentParameters(t *testing.T) {
