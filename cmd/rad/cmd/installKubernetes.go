@@ -89,7 +89,15 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 
 	config := ConfigFromContext(ctx)
-	err := cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
+	section, err := cli.ReadWorkspaceSection(config)
+	if err != nil {
+		return err
+	}
+	if len(section.Items) == 0 {
+		return nil
+	}
+
+	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		for _, workspaceItem := range section.Items {
 			if azProvider == nil {
 				workspaceItem.ProviderConfig.Azure.ResourceGroup = ""
