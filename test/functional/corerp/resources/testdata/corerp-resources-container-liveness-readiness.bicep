@@ -14,7 +14,7 @@ param port int = 3000
 param environment string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container'
+  name: 'corerp-resources-container-live-ready'
   location: location
   properties: {
     environment: environment
@@ -34,15 +34,16 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
           path: '/healthz'
           initialDelaySeconds:3
           failureThreshold:4
-          periodSeconds:20
+          periodSeconds:10
         }
-        /*
         livenessProbe:{
           kind:'exec'
           command:'ls /tmp'
           failureThreshold:5
+          initialDelaySeconds:2
+          periodSeconds:10 
         }
-        */
+        
         ports: {
           web: {
             containerPort: port
