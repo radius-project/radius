@@ -90,7 +90,6 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 
 	config := ConfigFromContext(ctx)
 	err := cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
-
 		for _, workspaceItem := range section.Items {
 			if azProvider == nil {
 				workspaceItem.ProviderConfig.Azure.ResourceGroup = ""
