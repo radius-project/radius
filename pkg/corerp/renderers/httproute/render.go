@@ -92,9 +92,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		portNum = pNum
 
 	}
-	if route.Properties.ContainerPort != 0 {
-		portNum = int(route.Properties.ContainerPort)
-	}
 	if len(route.Properties.Routes) > 0 {
 		// if the httproute has the "routes" property, it will be rendered
 		// as the root service of the split
@@ -239,6 +236,9 @@ func (r *Renderer) makeTrafficSplit(route *datamodel.HTTPRoute, options renderer
 			}
 		}
 		httpRouteName := dependencies[destination].ResourceID.Name()
+		if int(route.Properties.Routes[i].Weight) < 0 {
+			err = fmt.Errorf("route %s has negative weights", httpRouteName)
+		}
 		tsBackend := tsv2.TrafficSplitBackend{
 			Service: kubernetes.MakeResourceName(applicationName, httpRouteName),
 			Weight:  int(route.Properties.Routes[i].Weight),
