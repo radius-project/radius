@@ -27,7 +27,7 @@ const (
 
 func Test_TrafficSplit(t *testing.T) {
 	template := "testdata/corerp-resources-trafficsplit.bicep"
-	application := "trafficsplit"
+	application := "corerp-resources-container-httproute"
 	requiredSecrets := map[string]map[string]string{}
 	test := corerp.NewCoreRPTest(t, application, []corerp.TestStep{
 		{
