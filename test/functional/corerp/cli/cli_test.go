@@ -171,6 +171,54 @@ func Test_CLI(t *testing.T) {
 	test.Test(t)
 }
 
+func Test_CLI_Delete(t *testing.T) {
+	ctx, cancel := test.GetContext(t)
+	defer cancel()
+
+	options := corerp.NewCoreRPTestOptions(t)
+	appName := "kubernetes-cli"
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
+		template := "testdata/corerp-kubernetes-cli.bicep"
+
+		templateFilePath := filepath.Join(cwd, template)
+		t.Logf("deploying %s from file %s", appName, template)
+
+		err = cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
+		require.NoErrorf(t, err, "failed to deploy %s", appName)
+
+		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
+			Namespaces: map[string][]validation.K8sObject{
+				"default": {
+					validation.NewK8sPodForResource(appName, "containera"),
+					validation.NewK8sPodForResource(appName, "containerb"),
+				},
+			},
+		})
+
+		err = cli.ApplicationDelete(ctx, appName)
+		require.NoErrorf(t, err, "failed to deploy %s", appName)
+	})
+
+	t.Run("Validate rad app delete with empty resources", func(t *testing.T) {
+		template := "testdata/corerp-kubernetes-cli-app-empty-resources.bicep"
+
+		templateFilePath := filepath.Join(cwd, template)
+		t.Logf("deploying %s from file %s", appName, template)
+
+		err = cli.Deploy(ctx, templateFilePath)
+		require.NoErrorf(t, err, "failed to deploy %s", appName)
+
+		err = cli.ApplicationDelete(ctx, appName)
+		require.NoErrorf(t, err, "failed to deploy %s", appName)
+	})
+}
+
 func Test_CLI_DeploymentParameters(t *testing.T) {
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
