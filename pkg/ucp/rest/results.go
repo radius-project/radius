@@ -260,6 +260,18 @@ func NewNotFoundResponse(id string) Response {
 	}
 }
 
+func NewNoResourceMatchResponse(path string) Response {
+	return &NotFoundResponse{
+		Body: ErrorResponse{
+			Error: ErrorDetails{
+				Code:    NotFound,
+				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
+				Target:  path,
+			},
+		},
+	}
+}
+
 func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.LogHTTPStatusCode, http.StatusNotFound)
