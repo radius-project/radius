@@ -93,17 +93,18 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	// 1. fetch the resource from the DB and get the application info
 	res, err := dp.getResourceDataByID(ctx, resourceID)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch resource info and deployment namespace for resource %s with error: %w", resourceID, err)
+		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
+		return renderers.RendererOutput{}, err
 	}
 	// 2. fetch the application resource from the DB to get the environment info
-	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID)
+	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID, resourceID.String())
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch info for application: %s and deployment namespace for resource: %s with error: %w", res.AppID, resourceID, err)
+		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	namespace, err := dp.getEnvironmentNamespace(ctx, environment)
+	namespace, err := dp.getEnvironmentNamespace(ctx, environment, resourceID.String())
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("failed to fetch info for environment: %s and deployment namespace for resource: %s with error: %w", environment, resourceID, err)
+		return renderers.RendererOutput{}, err
 	}
 
 	// Get resources that the resource being deployed has connection with.
@@ -130,12 +131,10 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
 		if or.ResourceType.Provider == "" {
-			err = fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
-			return renderers.RendererOutput{}, err
+			return renderers.RendererOutput{}, fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			err := fmt.Errorf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type)
-			return renderers.RendererOutput{}, err
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -145,6 +144,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (renderers.Renderer, error) {
 	radiusResourceModel, err := dp.appmodel.LookupRadiusResourceModel(resourceID.Type())
 	if err != nil {
+		// Internal error: A resource type with unsupported app model shouldn't have reached here
 		return nil, err
 	}
 
@@ -236,8 +236,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		}
 
 		if outputResource.Identity.ResourceType == nil {
-			err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
-			return rp.DeploymentOutput{}, err
+			return rp.DeploymentOutput{}, fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 		}
 
 		// Build database resource - copy updated properties to Resource field
@@ -295,7 +294,7 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 	for _, id := range resourceIDs {
 		rd, err := dp.getResourceDataByID(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch required resource dependencies %q: %w", id.String(), err)
+			return nil, err
 		}
 
 		rendererDependency, err := dp.getRendererDependency(ctx, rd)
@@ -414,121 +413,112 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 
 // getResourceDataByID fetches resource for the provided id from the data store
 func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
-	var res *store.Object
-	var err error
-	var sc store.StorageClient
-	sc, err = dp.sp.GetStorageClient(ctx, resourceID.Type())
+	errMsg := "failed to fetch the resource %q. Err: %w"
+	sc, err := dp.sp.GetStorageClient(ctx, resourceID.Type())
 	if err != nil {
-		return ResourceData{}, err
+		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+	}
+
+	resource, err := sc.Get(ctx, resourceID.String())
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
+		}
+		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 	}
 
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(container.ResourceType):
 		obj := &datamodel.ContainerResource{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(gateway.ResourceType):
 		obj := &datamodel.Gateway{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := &connector_dm.MongoDatabase{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := &connector_dm.SqlDatabase{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := &connector_dm.RedisCache{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := &connector_dm.RabbitMQMessageQueue{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(extenders.ResourceType):
 		obj := &connector_dm.Extender{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := &connector_dm.DaprStateStore{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := &connector_dm.DaprSecretStore{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := &connector_dm.DaprPubSubBroker{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := &connector_dm.DaprInvokeHttpRoute{}
-		if res, err = sc.Get(ctx, resourceID.String()); err == nil {
-			if err = res.As(obj); err == nil {
-				return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
-			}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	default:
-		err = fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, resourceID.String())
+		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
-
-	return ResourceData{}, err
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, application string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
 	var appID resources.ID
-	if application != "" {
-		parsedID, err := resources.Parse(application)
+	if applicationID != "" {
+		parsedID, err := resources.Parse(applicationID)
 		if err != nil {
-			return ResourceData{}, fmt.Errorf("failed to parse application from the property: %w ", err)
+			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = parsedID
 	} else if strings.EqualFold(resourceID.ProviderNamespace(), ConnectorRPNamespace) {
 		// Application id is optional for connector resource types
 		appID = resources.ID{}
 	} else {
-		return ResourceData{}, fmt.Errorf("missing required application id for the resource %s", resourceID.String())
+		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())
 	}
 
 	return ResourceData{
@@ -575,56 +565,68 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	return rendererDependency, nil
 }
 
-// getEnvironmentFromApplication fetches the application resource from the db for getting the environment to fetch the environment resource
-func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID) (environment string, err error) {
-	var res *store.Object
-	var sc store.StorageClient
-	sc, err = dp.sp.GetStorageClient(ctx, appID.Type())
-	if err != nil {
-		return
-	}
+// getEnvironmentFromApplication returns environment id linked to the application fetched from the db
+func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID, resourceID string) (string, error) {
+	errMsg := "failed to fetch the application %q for the resource %q. Err: %w"
+
+	appIDType := appID.Type()
 	app := &datamodel.Application{}
-	res, err = sc.Get(ctx, appID.String())
+	if !strings.EqualFold(appIDType, app.ResourceTypeName()) {
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
+	}
+
+	sc, err := dp.sp.GetStorageClient(ctx, appIDType)
 	if err != nil {
-		return
+		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+	}
+
+	res, err := sc.Get(ctx, appID.String())
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
+		}
+		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 	err = res.As(app)
 	if err != nil {
-		return
+		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
-	environment = app.Properties.Environment
-	return
+
+	return app.Properties.Environment, nil
 }
 
 // getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environment string) (namespace string, err error) {
-	var res *store.Object
-	var sc store.StorageClient
-
-	envId, err := resources.Parse(environment)
+func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
+	envId, err := resources.Parse(environmentID)
 	if err != nil {
-		return
-	}
-	sc, err = dp.sp.GetStorageClient(ctx, envId.Type())
-	if err != nil {
-		return
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
 	}
 
 	env := &datamodel.Environment{}
-	res, err = sc.Get(ctx, envId.String())
+	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
+	}
+
+	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
+	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
 	if err != nil {
-		return
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
+	}
+	res, err := sc.Get(ctx, envId.String())
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
+		}
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 	err = res.As(env)
 	if err != nil {
-		return
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 
 	if env.Properties != (datamodel.EnvironmentProperties{}) && env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
-		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+		return env.Properties.Compute.KubernetesCompute.Namespace, nil
 	} else {
-		err = fmt.Errorf("Cannot find namespace in the environment resource")
+		return "", fmt.Errorf("cannot find namespace in the environment resource")
 	}
-
-	return
 }
