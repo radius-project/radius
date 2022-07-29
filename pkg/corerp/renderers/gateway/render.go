@@ -7,7 +7,6 @@ package gateway
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -40,7 +39,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	for _, httpRoute := range gtwyProperties.Routes {
 		resourceID, err := resources.Parse(httpRoute.Destination)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
 
 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
@@ -58,7 +57,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	appId, err := resources.Parse(gateway.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, gateway.Properties.Application)
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
@@ -105,7 +104,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 	includes := []contourv1.Include{}
 
 	if len(gateway.Properties.Routes) < 1 {
-		return outputresource.OutputResource{}, errors.New("must have at least one route when declaring a Gateway resource")
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
 	for _, route := range gateway.Properties.Routes {
@@ -254,7 +253,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 	resourceID, err := resources.Parse(route.Destination)
 	if err != nil {
-		return "", err
+		return "", conv.NewClientErrInvalidRequest(err.Error())
 	}
 
 	return resourceID.Name(), nil
