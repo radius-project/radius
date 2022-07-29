@@ -19,6 +19,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/ucp"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
@@ -177,16 +179,20 @@ func Test_CLI_Delete(t *testing.T) {
 
 	options := corerp.NewCoreRPTestOptions(t)
 	appName := "kubernetes-cli"
+	appNameEmptyResources := "kubernetes-cli-empty-resources"
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
+	template := "testdata/corerp-kubernetes-cli.bicep"
+	templateFilePath := filepath.Join(cwd, template)
+
+	templateEmptyResources := "testdata/corerp-kubernetes-cli-app-empty-resources.bicep"
+	templateFilePathEmptyResources := filepath.Join(cwd, templateEmptyResources)
+
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
-		template := "testdata/corerp-kubernetes-cli.bicep"
-
-		templateFilePath := filepath.Join(cwd, template)
 		t.Logf("deploying %s from file %s", appName, template)
 
 		err = cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
@@ -202,25 +208,56 @@ func Test_CLI_Delete(t *testing.T) {
 		})
 
 		err = cli.ApplicationDelete(ctx, appName)
-		require.NoErrorf(t, err, "failed to deploy %s", appName)
+		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
 	t.Run("Validate rad app delete with empty resources", func(t *testing.T) {
-		template := "testdata/corerp-kubernetes-cli-app-empty-resources.bicep"
+		t.Logf("deploying %s from file %s", appNameEmptyResources, templateEmptyResources)
 
-		templateFilePath := filepath.Join(cwd, template)
-		t.Logf("deploying %s from file %s", appName, template)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources)
+		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
 
-		err = cli.Deploy(ctx, templateFilePath)
-		require.NoErrorf(t, err, "failed to deploy %s", appName)
-
-		err = cli.ApplicationDelete(ctx, appName)
-		require.NoErrorf(t, err, "failed to deploy %s", appName)
+		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
+		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 	})
 
 	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
-		err = cli.ApplicationDelete(ctx, appName)
+		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
+		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
+	})
+
+	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
+		t.Logf("deploying from file %s", template)
+
+		err := cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
+
+		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
+			Namespaces: map[string][]validation.K8sObject{
+				"default": {
+					validation.NewK8sPodForResource(appName, "containera"),
+					validation.NewK8sPodForResource(appName, "containerb"),
+				},
+			},
+		})
+
+		//ignore response for tests
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerb")
+		require.NoErrorf(t, err, "failed to delete resource containerb")
+		err = DeleteAppWithoutDeletingResources(t, ctx, options, appName)
+		require.NoErrorf(t, err, "failed to delete application %s", appName)
+
+		t.Logf("deploying from file %s", templateEmptyResources)
+		err = cli.Deploy(ctx, templateFilePathEmptyResources)
+		require.NoErrorf(t, err, "failed to deploy %s", appNameEmptyResources)
+
+		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
+		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
+
+		//ignore response for tests
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containera")
+		require.NoErrorf(t, err, "failed to delete resource containerb")
+
 	})
 }
 
@@ -302,4 +339,14 @@ func GetAvailablePort() (int, error) {
 	}
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, options corerp.CoreRPTestOptions, applicationName string) error {
+	client := options.ManagementClient
+	require.IsType(t, client, &ucp.ARMApplicationsManagementClient{})
+	appManagementClient := client.(*ucp.ARMApplicationsManagementClient)
+	appDeleteClient := v20220315privatepreview.NewApplicationsClient(appManagementClient.Connection, appManagementClient.RootScope)
+	// We don't care about the response for tests
+	_, err := appDeleteClient.Delete(ctx, applicationName, nil)
+	return err
 }
