@@ -166,7 +166,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// - default value (config)
 	// - environment name
 
-	var workspaceSpecified bool
+	workspaceSpecified := false
 	workspaceName, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return err
@@ -204,18 +204,20 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 	}
 
+	//If the user specifies a workspace name with -w and that workspace points to a different Kubernetes cluster, then --force is required
+	//If the user does not specify a workspace with -w and the current default workspace points to a different cluster, then create a new workspace
+	//If the user does not specify a workspace with -w and the current default workspace points to the same cluster, then update the existing workspace
+
 	isSameConn := true
 	if foundExistingWorkspace {
 		isSameConn = workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName})
 	}
 	if foundExistingWorkspace && workspaceSpecified && !force && !isSameConn {
-		return fmt.Errorf("the cat workspace %q already exists. Specify '--force' to overwrite", workspaceName)
+		return fmt.Errorf("the specified workspace %q has a connection to Kubernetes context %q, which is different from context %q. Specify '--force' to overwrite", workspaceName, workspace.Connection["context"], contextName)
 	}
 
-	//if workspace exists, but was not explicitly specified ( default?), and on a different context
 	if foundExistingWorkspace && !workspaceSpecified && !isSameConn {
 		workspaceName = environmentName
-		foundExistingWorkspace = false
 		workspace = nil
 	}
 
@@ -252,6 +254,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// 1. Create workspace & resource groups
 	// 2. Create environment resource
 	// 3. Update workspace
+
 	step := output.BeginStep("Creating Workspace...")
 
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
