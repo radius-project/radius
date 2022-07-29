@@ -13,6 +13,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/services/resources/mgmt/2020-10-01/resources"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
@@ -75,6 +76,9 @@ func getByID(ctx context.Context, subscriptionID string, auth autorest.Authorize
 	rc := clients.NewGenericResourceClient(subscriptionID, auth)
 	resource, err := rc.GetByID(ctx, id, apiVersion)
 	if err != nil {
+		if clients.Is404Error(err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure resource %q does not exist", id))
+		}
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
 	return &resource, nil
