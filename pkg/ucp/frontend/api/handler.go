@@ -177,7 +177,7 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
 	path := h.getRelativePath(r.URL.Path)
-	restResponse := rest.InvalidPathResponse(path)
+	restResponse := rest.NewNoResourceMatchResponse(path)
 	err := restResponse.Apply(r.Context(), w, r)
 	if err != nil {
 		internalServerError(r.Context(), w, r, err)

@@ -260,12 +260,12 @@ func NewNotFoundResponse(id string) Response {
 	}
 }
 
-func InvalidPathResponse(path string) Response {
+func NewNoResourceMatchResponse(path string) Response {
 	return &NotFoundResponse{
 		Body: ErrorResponse{
 			Error: ErrorDetails{
-				Code:    Invalid,
-				Message: fmt.Sprintf("the specified path '%s' is invalid", path),
+				Code:    NotFound,
+				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
 				Target:  path,
 			},
 		},
