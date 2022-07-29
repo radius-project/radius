@@ -258,6 +258,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	if azureProvider != nil {
 		provider.SubscriptionID = azureProvider.SubscriptionID
 		provider.ResourceGroup = azureProvider.ResourceGroup
+
 	} else if azProviderFromInstall != nil {
 		provider.SubscriptionID = azProviderFromInstall.SubscriptionID
 		provider.ResourceGroup = azProviderFromInstall.ResourceGroup
@@ -267,6 +268,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
 		section.Items[strings.ToLower(workspaceName)] = *workspace
+
+		for _, workspaceItem := range section.Items {
+			workspaceItem.ProviderConfig.Azure.ResourceGroup = provider.ResourceGroup
+			workspaceItem.ProviderConfig.Azure.SubscriptionID = provider.SubscriptionID
+		}
+
 		return nil
 	})
 	if err != nil {
