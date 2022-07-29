@@ -31,8 +31,8 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 		}
 	}
 
-	value := reflect.ValueOf(data)
 	for _, filter := range filters {
+		value := reflect.ValueOf(data)
 		fields := strings.Split(filter.Field, ".")
 		for i, field := range fields {
 			value = value.MapIndex(reflect.ValueOf(field))
