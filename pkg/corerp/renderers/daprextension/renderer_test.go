@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -174,7 +175,8 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.Error())
+	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.(*conv.ErrClientRP).Message)
 }
 
 func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
