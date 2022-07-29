@@ -49,7 +49,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 	parsed, err := resources.Parse(extension.Provides)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 	}
 
 	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
