@@ -178,14 +178,14 @@ func Test_CLI_Delete(t *testing.T) {
 	defer cancel()
 
 	options := corerp.NewCoreRPTestOptions(t)
-	appName := "kubernetes-cli"
+	appName := "kubernetes-cli-with-resources"
 	appNameEmptyResources := "kubernetes-cli-empty-resources"
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 
-	template := "testdata/corerp-kubernetes-cli.bicep"
-	templateFilePath := filepath.Join(cwd, template)
+	templateWithResources := "testdata/corerp-kubernetes-cli-with-resources.bicep"
+	templateFilePathWithResources := filepath.Join(cwd, templateWithResources)
 
 	templateEmptyResources := "testdata/corerp-kubernetes-cli-app-empty-resources.bicep"
 	templateFilePathEmptyResources := filepath.Join(cwd, templateEmptyResources)
@@ -193,16 +193,16 @@ func Test_CLI_Delete(t *testing.T) {
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 
 	t.Run("Validate rad app delete with non empty resources", func(t *testing.T) {
-		t.Logf("deploying %s from file %s", appName, template)
+		t.Logf("deploying %s from file %s", appName, templateWithResources)
 
-		err = cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
+		err = cli.Deploy(ctx, templateFilePathWithResources, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
 				"default": {
-					validation.NewK8sPodForResource(appName, "containera"),
-					validation.NewK8sPodForResource(appName, "containerb"),
+					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
+					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
 			},
 		})
@@ -222,28 +222,28 @@ func Test_CLI_Delete(t *testing.T) {
 	})
 
 	t.Run("Validate rad app delete with non existent app", func(t *testing.T) {
-		err = cli.ApplicationDelete(ctx, appNameEmptyResources)
-		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
+		err = cli.ApplicationDelete(ctx, appName)
+		require.NoErrorf(t, err, "failed to delete %s", appName)
 	})
 
 	t.Run("Validate rad app delete with resources not associated with any application", func(t *testing.T) {
-		t.Logf("deploying from file %s", template)
+		t.Logf("deploying from file %s", templateWithResources)
 
-		err := cli.Deploy(ctx, templateFilePath, functional.GetMagpieImage())
+		err := cli.Deploy(ctx, templateFilePathWithResources, functional.GetMagpieImage())
 		require.NoErrorf(t, err, "failed to deploy %s", appName)
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
 				"default": {
-					validation.NewK8sPodForResource(appName, "containera"),
-					validation.NewK8sPodForResource(appName, "containerb"),
+					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
+					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
 			},
 		})
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerb")
-		require.NoErrorf(t, err, "failed to delete resource containerb")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containerb-app-with-resources")
+		require.NoErrorf(t, err, "failed to delete resource containerb-app-with-resources")
 		err = DeleteAppWithoutDeletingResources(t, ctx, options, appName)
 		require.NoErrorf(t, err, "failed to delete application %s", appName)
 
@@ -255,8 +255,8 @@ func Test_CLI_Delete(t *testing.T) {
 		require.NoErrorf(t, err, "failed to delete %s", appNameEmptyResources)
 
 		//ignore response for tests
-		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containera")
-		require.NoErrorf(t, err, "failed to delete resource containerb")
+		_, err = options.ManagementClient.DeleteResource(ctx, "Applications.Core/containers", "containera-app-with-resources")
+		require.NoErrorf(t, err, "failed to delete resource containera-app-with-resources")
 
 	})
 }
