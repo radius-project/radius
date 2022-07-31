@@ -26,7 +26,7 @@ This command is useful for testing resources that accept network traffic but are
 Press CTRL+C to exit the command and terminate the tunnel.`,
 	Example: `# expose port 80 on the 'orders' resource of the 'icecream-store' application
 # on local port 5000
-rad resource expose --application icecream-store Container orders --port 5000 --remote-port 80`,
+rad resource expose --application icecream-store containers orders --port 5000 --remote-port 80`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		config := ConfigFromContext(cmd.Context())
 		workspace, err := cli.RequireWorkspace(cmd, config)
