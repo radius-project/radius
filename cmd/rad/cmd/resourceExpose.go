@@ -10,11 +10,16 @@ import (
 	"os/signal"
 	"strings"
 
+	"github.com/agnivade/levenshtein"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
+)
+
+const (
+	LEVENSHTEIN_CUTOFF = 2
 )
 
 var resourceExposeCmd = &cobra.Command{
@@ -34,8 +39,30 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 			return err
 		}
 
+		// This gets the application name from the args provided
 		application, err := cli.RequireApplication(cmd, *workspace)
 		if err != nil {
+			return err
+		}
+
+		//Check if the application provided exists or suggest a closest application in the scope
+		managementClient, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
+		if err != nil {
+			return err
+		}
+
+		//ignore applicationresource as we only check for existence of application
+		_, err = managementClient.ShowApplication(cmd.Context(), application)
+		if err != nil {
+			//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
+			appList, _ := managementClient.ListApplications(cmd.Context())
+			for _, app := range appList {
+				distance := levenshtein.ComputeDistance(*app.Name, application)
+				if distance <= LEVENSHTEIN_CUTOFF {
+					fmt.Println("Did you mean application: ", *app.Name)
+					break
+				}
+			}
 			return err
 		}
 
