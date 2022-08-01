@@ -77,6 +77,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		computedHostname = "unknown"
 	} else if options.Environment.Gateway.PublicEndpointOverride {
 		computedHostname = options.Environment.Gateway.PublicIP
+	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
+		computedHostname = gateway.Properties.Hostname.FullyQualifiedHostname
 	} else {
 		computedHostname = "http://" + hostname
 	}
@@ -263,8 +265,13 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	publicIP := options.Environment.Gateway.PublicIP
 	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
 
+	// Order of precedence for hostname creation:
+	// 1. if publicEndpointOverride is true: hostname = publicIP
+	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = propeties.hostname.FullyQualifiedHostname
+	// 3. if publicIP is "": hostname = "" (cannot determine a suitable hostname to use)
+	// 4. if properties.hostname.prefix is provided: hostname = (properties.hostname.prefix).appname.ip.nip.io
+	// 5. else: hostname = gatewayname.appname.ip.nip.io
 	if publicEndpointOverride {
-		// Local Dev scenario
 		urlOverride, err := url.Parse(publicIP)
 		if err != nil {
 			return "", fmt.Errorf("unable to parse given url: %s", publicIP)
