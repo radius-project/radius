@@ -7,8 +7,10 @@ package apiserverstore
 
 import (
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/util/etag"
@@ -23,6 +25,72 @@ import (
 	"github.com/project-radius/radius/test/ucp/kubeenv"
 	shared "github.com/project-radius/radius/test/ucp/storetest"
 )
+
+func Test_ResourceName_Normalize(t *testing.T) {
+	resourceNameTests := []struct {
+		desc       string
+		resourceID string
+		objectName string
+	}{
+		{
+			"ucp_resourcegroup_with_valid_characters",
+			"/planes/radius/local/resourceGroups/test-Group",
+			"scope.test-group.b8fcfb5d6a16e6f9cd10cd4c0377082bed734c6f",
+		},
+		{
+			"ucp_resourcegroup_with_underscore",
+			"/planes/radius/local/resourceGroups/test_group",
+			"scope.test05fgroup.0fb96a9aa19f9c2e101405b80929ecc5cae090d0",
+		},
+		{
+			"ucp_resourcegroup_with_colon",
+			"/planes/radius/local/resourceGroups/test:group",
+			"scope.test03agroup.a01f2550797ca2e5d80b6032f361dea167e6c1f5",
+		},
+		{
+			"ucp_resourcegroup_with_undercore_char_code",
+			"/planes/radius/local/resourceGroups/test05fgroup",
+			"scope.test05fgroup.345a38402eb702848d9e7986b0d05462f66770e3",
+		},
+		{
+			"ucp_resourcegroup_with_long_resourcegroup_name",
+			"/planes/radius/local/resourceGroups/" + strings.Repeat("longResourceGroupName", 50),
+			"scope.longresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroupnamelongresourcegroup.77d9b26654021c6b2acc6434ea3da6bf6fd2ee63",
+		},
+		{
+			"ucp_id_with_underscore",
+			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool_test",
+			"resource.cool05ftest.d42a57ad9f2f44521a1b0a63626fb9da20a31f45",
+		},
+		{
+			"ucp_id_with_dot",
+			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool.test",
+			"resource.cool02etest.abdff8cc92a10c748a2f8907b0b187cff1f9de14",
+		},
+		{
+			"ucp_id_with_hyphen",
+			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool-test",
+			"resource.cool-test.0424033ec7fe861358037a96b8510f168a459e5a",
+		},
+		{
+			"ucp_id_with_long_resource_name",
+			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/" + strings.Repeat("longResourceName", 50),
+			"resource.longresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourcenamelongresourc.0d69e6d1293c114e5c6d1e905893b44d29f5ea71",
+		},
+	}
+
+	for _, tt := range resourceNameTests {
+		t.Run(tt.desc, func(t *testing.T) {
+			rid, err := resources.Parse(tt.resourceID)
+			require.NoError(t, err)
+
+			key := resourceName(rid)
+
+			require.Equal(t, tt.objectName, key)
+			require.LessOrEqual(t, len(key), 253)
+		})
+	}
+}
 
 //
 func Test_APIServer_Client(t *testing.T) {
