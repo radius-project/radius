@@ -434,24 +434,24 @@ func Test_Render_Connections(t *testing.T) {
 
 		expectedEnv := []v1.EnvVar{
 			{
-				Name: "CONNECTION_TEST-APP-A_COMPUTEDKEY1",
+				Name: "CONNECTION_A_COMPUTEDKEY1",
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: resource.Name,
 						},
-						Key: "CONNECTION_TEST-APP-A_COMPUTEDKEY1",
+						Key: "CONNECTION_A_COMPUTEDKEY1",
 					},
 				},
 			},
 			{
-				Name: "CONNECTION_TEST-APP-A_COMPUTEDKEY2",
+				Name: "CONNECTION_A_COMPUTEDKEY2",
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
 							Name: resource.Name,
 						},
-						Key: "CONNECTION_TEST-APP-A_COMPUTEDKEY2",
+						Key: "CONNECTION_A_COMPUTEDKEY2",
 					},
 				},
 			},
@@ -475,8 +475,8 @@ func Test_Render_Connections(t *testing.T) {
 
 		require.Equal(t, outputResource.LocalID, outputresource.LocalIDSecret)
 		require.Len(t, secret.Data, 2)
-		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_TEST-APP-A_COMPUTEDKEY1"]))
-		require.Equal(t, "82", string(secret.Data["CONNECTION_TEST-APP-A_COMPUTEDKEY2"]))
+		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
+		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
 	})
 	require.Len(t, output.Resources, 2)
 }

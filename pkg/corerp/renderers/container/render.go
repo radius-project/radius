@@ -391,7 +391,7 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationNa
 		properties := dependencies[con.Source]
 		if !con.GetDisableDefaultEnvVars() {
 			for key, value := range properties.ComputedValues {
-				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(applicationName+"-"+name), strings.ToUpper(key))
+				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
 
 				source := corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
@@ -567,7 +567,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      applicationName + "-" + resource.Name,
+			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
 		},
