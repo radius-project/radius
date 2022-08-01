@@ -20,6 +20,8 @@ var resourceDeleteCmd = &cobra.Command{
 }
 
 func init() {
+	resourceDeleteCmd.PersistentFlags().StringP("type", "t", "", "The resource type")
+	resourceDeleteCmd.PersistentFlags().StringP("resource", "r", "", "The resource name")
 	resourceCmd.AddCommand(resourceDeleteCmd)
 }
 
