@@ -53,7 +53,6 @@ Do not start the release until the following scenarios are validated:
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.12
    git tag v0.12.0
    git push --tags
    ```
@@ -68,7 +67,6 @@ Do not start the release until the following scenarios are validated:
    ```bash
    git checkout main
    git pull origin main
-   git checkout -b release/0.12
    git tag v0.12.0
    git push --tags
    ```
@@ -98,6 +96,8 @@ Do not start the release until the following scenarios are validated:
 4. Check the stable version marker
 
    If this is a patch release - you can stop here, you are done.
+   
+   If this is a rc release - you can stop here, you are done.
    
    If this is a new minor release - check the stable version marker.
    
