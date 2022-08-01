@@ -121,7 +121,6 @@ func CreateRestRoundTripper(context string, group string, overrideURL string) (h
 }
 
 func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
-
 	var baseURL string
 	var err error
 	var roundTripper http.RoundTripper
@@ -134,7 +133,6 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesTransporter{Client: roundTripper},
 	}), nil
-
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {

@@ -13,8 +13,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/go-autorest/autorest"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
@@ -22,6 +26,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+)
+
+const (
+	module  = "v20220315privatepreview"
+	version = "v0.0.1"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -104,6 +113,11 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			return nil, err
 		}
 
+		err = RadiusHealthCheck(ctx, con, workspace)
+		if err != nil {
+			return nil, err
+		}
+
 		return &azure.ARMDiagnosticsClient{
 			K8sTypedClient:    k8sClient,
 			RestConfig:        config,
@@ -131,6 +145,11 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 			return nil, err
 		}
 
+		err = RadiusHealthCheck(ctx, connection, workspace)
+		if err != nil {
+			return nil, err
+		}
+
 		return &ucp.ARMApplicationsManagementClient{
 			Connection: connection,
 
@@ -154,4 +173,33 @@ type sender struct {
 
 func (s *sender) Do(request *http.Request) (*http.Response, error) {
 	return s.RoundTripper.RoundTrip(request)
+}
+
+// HealthCheck function checks if there is a Radius installation for the given connection.
+func RadiusHealthCheck(ctx context.Context, conn *arm.Connection, workspace workspaces.Workspace) error {
+	pipeline := conn.NewPipeline(module, version)
+	req, err := createHealthCheckRequest(ctx, conn.Endpoint())
+	if err != nil {
+		return err
+	}
+	resp, err := pipeline.Do(req)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode == http.StatusNotFound {
+		return &cli.FriendlyError{
+			Message: fmt.Sprintf("A Radius installation could not be found for Kubernetes context %q. Use 'rad install kubernetes' to install.", workspace.Name),
+		}
+	}
+
+	return nil
+}
+
+func createHealthCheckRequest(ctx context.Context, basepath string) (*policy.Request, error) {
+	req, err := runtime.NewRequest(ctx, http.MethodGet, basepath)
+	if err != nil {
+		return nil, err
+	}
+	req.Raw().Header.Set("Accept", "application/json")
+	return req, nil
 }
