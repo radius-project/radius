@@ -111,7 +111,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 			Ports: map[string]datamodel.ContainerPort{
 				"web": {
 					ContainerPort: 5000,
-					Provides:      makeResourceID(t, "Applications.Core/HttpRoutes", "C").String(),
+					Provides:      makeResourceID(t, "Applications.Core/httpRoutes", "C").String(),
 				},
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
