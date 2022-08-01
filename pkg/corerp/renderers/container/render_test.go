@@ -343,7 +343,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		require.Len(t, container.Ports, 1)
 		port := container.Ports[0]
 
-		routeID := makeResourceID(t, "Applications.Core/HttpRoutes", "A")
+		routeID := makeResourceID(t, "Applications.Core/httpRoutes", "A")
 
 		expected := v1.ContainerPort{
 			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "httpRoutes" + routeID.Name()),
