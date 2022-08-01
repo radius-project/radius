@@ -236,7 +236,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	// We build the environment variable list in a stable order for testability
 	// For the values that come from connections we back them with secretData. We'll extract the values
 	// and return them.
-	env, secretData := getEnvVarsAndSecretData(resource, applicationName, dependencies)
+	env, secretData := getEnvVarsAndSecretData(resource, dependencies)
 
 	for k, v := range cc.Container.Env {
 		env[k] = corev1.EnvVar{Name: k, Value: v}
@@ -378,7 +378,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	return deploymentOutput, outputResources, secretData, nil
 }
 
-func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {
+func getEnvVarsAndSecretData(resource datamodel.ContainerResource, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {
 	env := map[string]corev1.EnvVar{}
 	secretData := map[string][]byte{}
 	cc := resource.Properties
