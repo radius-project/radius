@@ -40,17 +40,17 @@ func Test_ResourceName_Normalize(t *testing.T) {
 		{
 			"ucp_resourcegroup_with_underscore",
 			"/planes/radius/local/resourceGroups/test_group",
-			"scope.test05fgroup.0fb96a9aa19f9c2e101405b80929ecc5cae090d0",
+			"scope.testx5fgroup.0fb96a9aa19f9c2e101405b80929ecc5cae090d0",
 		},
 		{
 			"ucp_resourcegroup_with_colon",
 			"/planes/radius/local/resourceGroups/test:group",
-			"scope.test03agroup.a01f2550797ca2e5d80b6032f361dea167e6c1f5",
+			"scope.testx3agroup.a01f2550797ca2e5d80b6032f361dea167e6c1f5",
 		},
 		{
 			"ucp_resourcegroup_with_undercore_char_code",
-			"/planes/radius/local/resourceGroups/test05fgroup",
-			"scope.test05fgroup.345a38402eb702848d9e7986b0d05462f66770e3",
+			"/planes/radius/local/resourceGroups/testx5fgroup",
+			"scope.testx5fgroup.38e1d2520da9c33fb1f82e7c697ebfb7ec28da2e",
 		},
 		{
 			"ucp_resourcegroup_with_long_resourcegroup_name",
@@ -60,12 +60,12 @@ func Test_ResourceName_Normalize(t *testing.T) {
 		{
 			"ucp_id_with_underscore",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool_test",
-			"resource.cool05ftest.d42a57ad9f2f44521a1b0a63626fb9da20a31f45",
+			"resource.coolx5ftest.d42a57ad9f2f44521a1b0a63626fb9da20a31f45",
 		},
 		{
 			"ucp_id_with_dot",
 			"/planes/radius/local/resourceGroups/test_group/providers/Applications.Core/environments/cool.test",
-			"resource.cool02etest.abdff8cc92a10c748a2f8907b0b187cff1f9de14",
+			"resource.coolx2etest.abdff8cc92a10c748a2f8907b0b187cff1f9de14",
 		},
 		{
 			"ucp_id_with_hyphen",

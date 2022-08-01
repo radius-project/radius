@@ -372,10 +372,11 @@ func (c *APIServerClient) synchronize() {
 func normalizeName(name string) string {
 	sb := strings.Builder{}
 	for _, ch := range name {
+		// Since this store uses . (dot) as a separator of the key, it converts dot character to hex code.
 		if unicode.IsDigit(ch) || unicode.IsLetter(ch) || ch == '-' {
 			sb.WriteRune(unicode.ToLower(ch))
 		} else {
-			sb.WriteString(fmt.Sprintf("0%02x", ch))
+			sb.WriteString(fmt.Sprintf("x%02x", ch))
 		}
 	}
 
