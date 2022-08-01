@@ -28,9 +28,6 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
     connections: {
       databaseresource: {
         source: databaseAccount.id
-        iam: {
-          kind: 'azure'
-        }
       }
     }
   }

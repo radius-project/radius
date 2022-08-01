@@ -842,3 +842,57 @@ func Test_ParseByMethod(t *testing.T) {
 		})
 	}
 }
+
+func Test_RadiusRPResource(t *testing.T) {
+	values := []struct {
+		testID   ID
+		expected bool
+	}{
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.Core/containers/test-container",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Applications.Core/containers", Name: "test-container"},
+				},
+			},
+			expected: true,
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.Connector/mongoDatabases/test-mongo",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Applications.Connector/mongoDatabases", Name: "test-mongo"},
+				},
+			},
+			expected: true,
+		},
+		{
+			testID: ID{
+				id: "/subscriptions/s1/resourceGroups/r1/providers/Applications.foo/containers/test-container",
+				scopeSegments: []ScopeSegment{
+					{Type: "subscriptions", Name: "s1"},
+					{Type: "resourceGroups", Name: "r1"},
+				},
+				typeSegments: []TypeSegment{
+					{Type: "Applications.foo/containers", Name: "test-container"},
+				},
+			},
+			expected: false,
+		},
+	}
+
+	for i, v := range values {
+		t.Run(fmt.Sprintf("%d: %v", i, v.testID.id), func(t *testing.T) {
+			radiusResource := v.testID.IsRadiusRPResource()
+			require.Equal(t, v.expected, radiusResource)
+		})
+	}
+}
