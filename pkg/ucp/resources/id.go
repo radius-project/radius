@@ -18,6 +18,9 @@ const (
 	ResourceGroupsSegment = "resourcegroups"
 	SubscriptionsSegment  = "subscriptions"
 	LocationsSegment      = "locations"
+
+	CoreRPNamespace      = "Applications.Core"
+	ConnectorRPNamespace = "Applications.Connector"
 )
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() to create IDs and use
@@ -162,6 +165,11 @@ func (ri ID) ProviderNamespace() string {
 	}
 	segments := strings.Split(ri.typeSegments[0].Type, SegmentSeparator)
 	return segments[0]
+}
+
+func (ri ID) IsRadiusRPResource() bool {
+	return strings.EqualFold(ri.ProviderNamespace(), CoreRPNamespace) ||
+		strings.EqualFold(ri.ProviderNamespace(), ConnectorRPNamespace)
 }
 
 // PlaneNamespace returns the plane part of the UCP ID

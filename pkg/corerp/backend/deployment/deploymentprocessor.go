@@ -44,10 +44,6 @@ import (
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const (
-	ConnectorRPNamespace = "Applications.Connector"
-)
-
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
@@ -514,7 +510,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = parsedID
-	} else if strings.EqualFold(resourceID.ProviderNamespace(), ConnectorRPNamespace) {
+	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.ConnectorRPNamespace) {
 		// Application id is optional for connector resource types
 		appID = resources.ID{}
 	} else {
