@@ -6,8 +6,14 @@
 package cmd
 
 import (
+	"context"
+
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -66,10 +72,60 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
-	_, err = setup.Install(cmd.Context(), clusterOptions, kubeContext)
+	alreadyInstalled, err := setup.Install(cmd.Context(), clusterOptions, kubeContext)
 	if err != nil {
 		return err
 	}
 
+	//installation completed. update workspaces, if any.
+	if !alreadyInstalled {
+		err = updateWorkspaces(cmd.Context(), azureProvider)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
+
+	config := ConfigFromContext(ctx)
+	section, err := cli.ReadWorkspaceSection(config)
+	if err != nil {
+		return err
+	}
+	if len(section.Items) == 0 {
+		return nil
+	}
+
+	currentKubeContext, err := getCurrentKubeContext()
+	if err != nil {
+		return err
+	}
+	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
+		for _, workspaceItem := range section.Items {
+			if workspaceItem.IsSameKubernetesContext(currentKubeContext) {
+				if azProvider == nil {
+					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{}
+				} else {
+					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func getCurrentKubeContext() (string, error) {
+	k8sConfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return "", err
+	}
+
+	return k8sConfig.CurrentContext, nil
 }
