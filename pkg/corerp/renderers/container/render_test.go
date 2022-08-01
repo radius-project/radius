@@ -86,7 +86,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "Applications.Core/HttpRoutes", "A").String(),
+				Source: makeResourceID(t, "Applications.Core/httpRoutes", "A").String(),
 			},
 			"B": {
 				Source: makeResourceID(t, "Applications.Core/httpRoutes", "B").String(),
