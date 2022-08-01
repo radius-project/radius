@@ -197,15 +197,16 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
+
+                // Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
+		err = validation.SaveLogsForController(ctx, ct.Options.K8sClient, "default", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %v", err)
+		}
 	})
 
-	err := validation.SaveLogsForApplication(ctx, ct.Options.K8sClient, ct.Name, logPrefix+"/"+ct.Name, ct.Name)
-	if err != nil {
-		t.Errorf("failed to capture logs from radius pods %v", err)
-	}
-
 	t.Logf("Creating secrets if provided")
-	err = ct.CreateSecrets(ctx)
+	err := ct.CreateSecrets(ctx)
 	if err != nil {
 		t.Errorf("failed to create secrets %v", err)
 	}
