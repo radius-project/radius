@@ -136,9 +136,9 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	require.Len(t, azureResourceIDs, 1)
 
 	expectedRadiusResourceIDs := []resources.ID{
-		makeResourceID(t, "Applications.Core/HttpRoutes", "A"),
-		makeResourceID(t, "Applications.Core/HttpRoutes", "B"),
-		makeResourceID(t, "Applications.Core/HttpRoutes", "C"),
+		makeResourceID(t, "Applications.Core/httpRoutes", "A"),
+		makeResourceID(t, "Applications.Core/httpRoutes", "B"),
+		makeResourceID(t, "Applications.Core/httpRoutes", "C"),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
 
