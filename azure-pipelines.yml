@@ -114,8 +114,8 @@ stages:
       displayName: az account set 
     - script: |
         export RANID=$(date +%s%N)
-        arr=("japaneast" "eastasia" "australiaeast")
-        index=$(expr $RANID % 3)
+        arr=("japaneast" "eastasia")
+        index=$(expr $RANID % 2)
         export LOCATION=${arr[$index]}
         az group create \
           --location $LOCATION \
