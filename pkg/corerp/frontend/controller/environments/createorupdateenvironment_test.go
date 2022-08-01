@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -56,6 +57,17 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
 				})
+
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+			}
 
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
@@ -129,6 +141,17 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
+					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+			}
+
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						obj.ETag = "updated-resource-etag"
@@ -186,6 +209,17 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 					return nil, &store.ErrNotFound{}
 				})
 
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+			}
+
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 			}
@@ -234,6 +268,17 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
+					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+			}
+
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
 						cfg := store.NewSaveConfig(opts...)
@@ -259,6 +304,72 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 			}
+		})
+	}
+
+	existingResourceNamespaceCases := []struct {
+		desc               string
+		headerKey          string
+		headerValue        string
+		resourceEtag       string
+		expectedStatusCode int
+		shouldFail         bool
+	}{
+		{"create-existing-namespace-match", "If-Match", "", "resource-etag", 409, true},
+	}
+
+	for _, tt := range existingResourceNamespaceCases {
+		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
+			envInput, envDataModel, _ := getTestModels20220315privatepreview()
+			_, conflictDataModel, _ := getTestModels20220315privatepreview()
+
+			conflictDataModel.Name = "existing"
+			w := httptest.NewRecorder()
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
+			req.Header.Set(tt.headerKey, tt.headerValue)
+			ctx := radiustesting.ARMTestContextFromRequest(req)
+
+			mStorageClient.
+				EXPECT().
+				Get(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+					return &store.Object{
+						Metadata: store.Metadata{ID: id, ETag: tt.resourceEtag},
+						Data:     envDataModel,
+					}, nil
+				})
+
+			paginationToken := "nextLink"
+
+			items := []store.Object{
+				{
+					Metadata: store.Metadata{
+						ID: uuid.New().String(),
+					},
+					Data: conflictDataModel,
+				},
+			}
+
+			mStorageClient.
+				EXPECT().
+				Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+					return &store.ObjectQueryResult{
+						Items:           items,
+						PaginationToken: paginationToken,
+					}, nil
+				})
+
+			opts := ctrl.Options{
+				StorageClient: mStorageClient,
+			}
+
+			ctl, err := NewCreateOrUpdateEnvironment(opts)
+			require.NoError(t, err)
+			resp, err := ctl.Run(ctx, req)
+			_ = resp.Apply(ctx, w, req)
+			require.NoError(t, err)
+			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
 	}
 }
