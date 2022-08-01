@@ -402,7 +402,7 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationNa
 		properties := dependencies[con.Source]
 		if !con.GetDisableDefaultEnvVars() {
 			for key, value := range properties.ComputedValues {
-				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(applicationName+"-"+name), strings.ToUpper(key))
+				name := fmt.Sprintf("%s_%s_%s", "CONNECTION", strings.ToUpper(name), strings.ToUpper(key))
 
 				source := corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
