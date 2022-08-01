@@ -482,7 +482,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
-		return nil, fmt.Errorf("health probe kind unsupported: %v", p.Kind)
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("health probe kind unsupported: %v", p.Kind))
 	}
 	return &probeSpec, nil
 }
