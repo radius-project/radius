@@ -59,7 +59,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 	}
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("request to create UCP resouceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
+		return "", fmt.Errorf("request to create UCP resourceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
 	}
 	defer resp.Body.Close()
 	var jsonBody map[string]interface{}

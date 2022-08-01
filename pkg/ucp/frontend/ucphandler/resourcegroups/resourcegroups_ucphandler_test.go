@@ -127,7 +127,7 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		Name: testResourceGroupName,
 	}
 
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
 			Data:     &rg,
@@ -164,16 +164,16 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 		Name: "default",
 	}
 
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
 			Data:     &rg,
 		}, nil
 	})
 
-	mockStorageClient.EXPECT().Query(ctx, gomock.Any())
+	mockStorageClient.EXPECT().Query(gomock.Any(), gomock.Any())
 
-	mockStorageClient.EXPECT().Delete(ctx, gomock.Any())
+	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any())
 	request, err := http.NewRequest(http.MethodDelete, "/planes/radius/local", nil)
 	require.NoError(t, err)
 
@@ -203,7 +203,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 		Name: "default",
 	}
 
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return &store.Object{
 			Metadata: store.Metadata{},
 			Data:     &rg,
@@ -217,7 +217,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 		Type: "Applications.Core/environments",
 	}
 
-	mockStorageClient.EXPECT().Query(ctx, gomock.Any()).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+	mockStorageClient.EXPECT().Query(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 		return &store.ObjectQueryResult{
 			Items: []store.Object{
 				{

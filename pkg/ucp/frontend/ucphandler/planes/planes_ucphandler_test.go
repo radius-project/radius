@@ -143,7 +143,7 @@ func Test_GetPlaneByID(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any())
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
 	_, err := testHandler.GetByID(ctx, mockStorageClient, path)
 
 	assert.Equal(t, nil, err)
@@ -159,8 +159,8 @@ func Test_DeletePlaneByID(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	mockStorageClient.EXPECT().Get(ctx, gomock.Any())
-	mockStorageClient.EXPECT().Delete(ctx, gomock.Any())
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any())
+	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any())
 	_, err := testHandler.DeleteByID(ctx, mockStorageClient, path)
 
 	assert.Equal(t, nil, err)

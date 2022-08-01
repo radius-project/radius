@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -52,6 +53,7 @@ type ucpHandler struct {
 }
 
 func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClient, body []byte, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var plane rest.Plane
 	err := json.Unmarshal(body, &plane)
 	if err != nil {
@@ -71,6 +73,8 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, plane.Properties.Kind)
+	logger := ucplog.GetLogger(ctx)
 	// At least one provider needs to be configured
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		if plane.Properties.ResourceProviders == nil || len(plane.Properties.ResourceProviders) == 0 {
@@ -88,6 +92,7 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false
+			logger.Info(fmt.Sprintf("No existing plane %s found in db", ID))
 		} else {
 			return nil, err
 		}
@@ -99,16 +104,21 @@ func (ucp *ucpHandler) CreateOrUpdate(ctx context.Context, db store.StorageClien
 	var restResp rest.Response
 	if planeExists {
 		restResp = rest.NewOKResponse(plane)
+		logger.Info(fmt.Sprintf("Updated plane %s successfully", plane.Name))
 	} else {
 		restResp = rest.NewCreatedResponse(plane)
+		logger.Info(fmt.Sprintf("Created plane %s successfully", plane.Name))
 	}
 	return restResp, nil
 }
 
 func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
+	logger := ucplog.GetLogger(ctx)
 	var query store.Query
 	query.RootScope = path
 	query.IsScopeQuery = true
+	logger.Info(fmt.Sprintf("Listing planes in scope %s", query.RootScope))
 	listOfPlanes, err := planesdb.GetScope(ctx, db, query)
 	if err != nil {
 		return nil, err
@@ -118,6 +128,8 @@ func (ucp *ucpHandler) List(ctx context.Context, db store.StorageClient, path st
 }
 
 func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
+	logger := ucplog.GetLogger(ctx)
 	id := strings.ToLower(path)
 	resourceId, err := resources.Parse(id)
 	if err != nil {
@@ -125,10 +137,12 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 			return rest.NewBadRequestResponse(err.Error()), nil
 		}
 	}
+	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
 	plane, err := planesdb.GetByID(ctx, db, resourceId)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := rest.NewNotFoundResponse(path)
+			logger.Info(fmt.Sprintf("Plane %s not found in db", resourceId))
 			return restResponse, nil
 		}
 		return nil, err
@@ -138,6 +152,8 @@ func (ucp *ucpHandler) GetByID(ctx context.Context, db store.StorageClient, path
 }
 
 func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, path string) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
+	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.Parse(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
@@ -155,10 +171,12 @@ func (ucp *ucpHandler) DeleteByID(ctx context.Context, db store.StorageClient, p
 		return nil, err
 	}
 	restResponse := rest.NewNoContentResponse()
+	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
 }
 
 func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient, w http.ResponseWriter, r *http.Request, incomingURL *url.URL) (rest.Response, error) {
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, incomingURL)
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(incomingURL.Path)
 	if err != nil {
 		return rest.InternalServerError(err), err
@@ -180,6 +198,9 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 		return rest.InternalServerError(err), err
 	}
 
+	ctx = ucplog.WrapLogContext(ctx,
+		ucplog.LogFieldPlaneID, planeID,
+		ucplog.LogFieldPlaneKind, plane.Properties.Kind)
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		// Check if the resource group exists
 		id, err := resources.Parse(incomingURL.Path)
@@ -207,7 +228,7 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	}
 
 	if resourceID.ProviderNamespace() == "" {
-		err = fmt.Errorf("Invalid resourceID specified with no provider.")
+		err = fmt.Errorf("Invalid resourceID specified with no provider")
 		return rest.NewBadRequestResponse(err.Error()), err
 	}
 
@@ -223,10 +244,14 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 			err = fmt.Errorf("Provider %s not configured", resourceID.ProviderNamespace())
 			return rest.InternalServerError(err), err
 		}
+		ctx = ucplog.WrapLogContext(ctx,
+			ucplog.LogFieldPlaneURL, proxyURL,
+			ucplog.LogFieldProvider, resourceID.ProviderNamespace())
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
 		proxyURL = plane.Properties.URL
+		ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneURL, proxyURL)
 	}
 
 	downstream, err := url.Parse(proxyURL)
@@ -246,7 +271,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	if r.TLS != nil {
 		httpScheme = "https"
 	}
-	fmt.Printf("@@@@ using httpscheme: %s\n", httpScheme)
+
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldHTTPScheme, httpScheme)
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
@@ -271,6 +297,8 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Proxying request to target %s", proxyURL))
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
 	return nil, nil

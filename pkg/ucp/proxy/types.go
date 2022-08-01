@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 type UCPRequestInfo struct {
@@ -155,6 +156,13 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	if requestInfo.PlaneKind == "" {
 		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
 	}
+	ctx = ucplog.WrapLogContext(ctx,
+		ucplog.LogFieldPlaneKind, requestInfo.PlaneKind,
+		ucplog.LogFieldPlaneID, requestInfo.PlaneID,
+		ucplog.LogFieldPlaneURL, requestInfo.PlaneURL,
+		ucplog.LogFieldUCPHost, requestInfo.UCPHost,
+		ucplog.LogFieldHTTPScheme, requestInfo.HTTPScheme,
+	)
 
 	var planeID string
 	if requestInfo.PlaneKind != rest.PlaneKindUCPNative {
@@ -177,5 +185,8 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	// Replace the header with the computed value.
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
 	resp.Header[headerName] = []string{val}
+
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("Converting %s header from %s to %s", headerName, header[0], val))
 	return nil
 }
