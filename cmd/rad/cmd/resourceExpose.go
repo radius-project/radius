@@ -54,6 +54,7 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		//ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
+			fmt.Println("Couldn't find application: ", application)
 			//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
 			appList, _ := managementClient.ListApplications(cmd.Context())
 			for _, app := range appList {
