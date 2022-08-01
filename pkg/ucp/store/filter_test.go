@@ -90,6 +90,18 @@ func Test_MatchesFilters(t *testing.T) {
 			Filters:       []QueryFilter{{Field: "value", Value: "cool"}, {Field: "another", Value: "very-cool"}},
 			ExpectedMatch: false,
 		},
+		{
+			Description:   "nested_match",
+			Obj:           &Object{Data: map[string]interface{}{"properties": map[string]interface{}{"value": "freezing"}}},
+			Filters:       []QueryFilter{{Field: "properties.value", Value: "freezing"}},
+			ExpectedMatch: true,
+		},
+		{
+			Description:   "nested_match",
+			Obj:           &Object{Data: map[string]interface{}{"properties": map[string]interface{}{"value": "freezing"}}},
+			Filters:       []QueryFilter{{Field: "properties.value", Value: "warm"}},
+			ExpectedMatch: false,
+		},
 	}
 
 	for _, testcase := range cases {

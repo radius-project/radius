@@ -522,6 +522,17 @@ func Test_Deploy(t *testing.T) {
 		resourceID, _, testRendererOutput := buildTestMongoResource()
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.Error(t, err)
+		require.Equal(t, "failed to deploy the resource", err.Error())
+	})
+
+	t.Run("Verify deploy failure - invalid request", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, conv.NewClientErrInvalidRequest("failed to access connected Azure resource"))
+
+		resourceID, _, testRendererOutput := buildTestMongoResource()
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "failed to access connected Azure resource", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 )
@@ -38,12 +39,14 @@ func Register(ctx context.Context, router *mux.Router, client store.StorageClien
 
 	// If we're in Kubernetes we have some required routes to implement.
 	if baseURL != "" {
-		// NOTE: the Kubernetes API Server does not include the gvr (base path) in 
+		// NOTE: the Kubernetes API Server does not include the gvr (base path) in
 		// the URL for swagger routes.
 		router.Path("/openapi/v2").Methods("GET").HandlerFunc(h.GetOpenAPIv2Doc)
 
 		router.Path(baseURL).Methods("GET").HandlerFunc(h.GetDiscoveryDoc)
 	}
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
 	if err != nil {
@@ -52,7 +55,7 @@ func Register(ctx context.Context, router *mux.Router, client store.StorageClien
 
 	subrouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
 	subrouter.Use(validator.APIValidatorUCP(specLoader))
-	
+
 	// TODO: Handle trailing slashes for matching routes
 	// https://github.com/project-radius/radius/issues/2303
 	p := fmt.Sprintf("%s%s", baseURL, planeCollectionPath)

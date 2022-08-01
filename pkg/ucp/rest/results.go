@@ -13,7 +13,6 @@ import (
 	"net/textproto"
 	"net/url"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -35,9 +34,8 @@ func NewOKResponse(body interface{}) Response {
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusOK), ucplog.LogHTTPStatusCode, http.StatusOK)
-
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -65,7 +63,7 @@ func NewCreatedResponse(body interface{}) Response {
 }
 
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -97,7 +95,7 @@ func NewCreatedAsyncResponse(body interface{}, location string, scheme string) R
 }
 
 func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), ucplog.LogHTTPStatusCode, http.StatusCreated)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -146,7 +144,7 @@ func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) 
 }
 
 func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusAccepted), ucplog.LogHTTPStatusCode, http.StatusAccepted)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -223,7 +221,7 @@ func NewBadRequestARMResponse(body ErrorResponse) Response {
 }
 
 func (r *BadRequestResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusBadRequest), ucplog.LogHTTPStatusCode, http.StatusBadRequest)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -260,10 +258,21 @@ func NewNotFoundResponse(id string) Response {
 	}
 }
 
-func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.LogHTTPStatusCode, http.StatusNotFound)
+func NewNoResourceMatchResponse(path string) Response {
+	return &NotFoundResponse{
+		Body: ErrorResponse{
+			Error: ErrorDetails{
+				Code:    NotFound,
+				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
+				Target:  path,
+			},
+		},
+	}
+}
 
+func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusNotFound), ucplog.LogHTTPStatusCode, http.StatusNotFound)
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
@@ -298,7 +307,7 @@ func NewConflictResponse(message string) Response {
 }
 
 func (r *ConflictResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusConflict), ucplog.LogHTTPStatusCode, http.StatusConflict)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
@@ -327,7 +336,7 @@ func NewInternalServerErrorARMResponse(body ErrorResponse) Response {
 }
 
 func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
-	logger := logr.FromContextOrDiscard(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusInternalServerError), ucplog.LogHTTPStatusCode, http.StatusInternalServerError)
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")

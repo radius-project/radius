@@ -40,7 +40,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	outputResources := []outputresource.OutputResource{}
 	appId, err := resources.Parse(route.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
 	applicationName := appId.Name()
 
@@ -80,7 +80,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 	appId, err := resources.Parse(route.Properties.Application)
 
 	if err != nil {
-		return outputresource.OutputResource{}, fmt.Errorf("invalid application id: %w. id: %s", err, route.Properties.Application)
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
 	applicationName := appId.Name()
 

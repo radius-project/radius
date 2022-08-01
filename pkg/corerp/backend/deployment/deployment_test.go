@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	connectorrp_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -23,6 +24,7 @@ import (
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -497,6 +499,44 @@ func Test_Render(t *testing.T) {
 		require.Error(t, err, "failed to render the resource")
 	})
 
+	t.Run("Failure to get storage client", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("unsupported storage provider"))
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, "failed to fetch the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\". Err: unsupported storage provider", err.Error())
+	})
+
+	t.Run("Resource not found in data store", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, &store.ErrNotFound{})
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*conv.ErrClientRP).Message)
+	})
+
+	t.Run("Data store access error", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&store.Object{}, errors.New("failed to connect to data store"))
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, "failed to fetch the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\". Err: failed to connect to data store", err.Error())
+	})
+
 	t.Run("Invalid resource type", func(t *testing.T) {
 		testInvalidResourceID := "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.foo/foo/foo"
 		testResource := getTestResource()
@@ -505,6 +545,68 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
 
+	})
+
+	t.Run("Invalid application id", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+		testResource.Properties.Application = "invalid-app-id"
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	})
+
+	t.Run("Missing application id", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+		testResource.Properties.Application = ""
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, "missing required application id for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\"", err.Error())
+	})
+
+	t.Run("Invalid application resource type", func(t *testing.T) {
+		testResource := getTestResource()
+		resourceID := getTestResourceID(testResource.ID)
+		testResource.Properties.Application = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application"
+
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		cr := store.Object{
+			Metadata: store.Metadata{
+				ID: testResource.ID,
+			},
+			Data: testResource,
+		}
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
+
+		_, err := dp.Render(ctx, resourceID, &testResource)
+		require.Error(t, err)
+		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, "linked application ID \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" for resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" has invalid application resource type.", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {

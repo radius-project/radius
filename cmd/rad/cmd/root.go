@@ -30,15 +30,19 @@ var RootCmd = &cobra.Command{
 }
 
 func prettyPrintRPError(err error) string {
-	raw := err.Error()
 	if new := clients.TryUnfoldErrorResponse(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
 		}
-		return raw
+	} else if new := clients.TryUnfoldServiceError(err); new != nil {
+		m, err := prettyPrintJSON(new)
+		if err == nil {
+			return m
+		}
 	}
-	return raw
+
+	return err.Error()
 }
 
 func prettyPrintJSON(o interface{}) (string, error) {

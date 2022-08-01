@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -18,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -279,7 +281,8 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.Error(), "must have at least one route when declaring a Gateway resource")
+	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "must have at least one route when declaring a Gateway resource")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
