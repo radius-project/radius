@@ -165,6 +165,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// - passed via flag
 	// - default value (config)
 	// - environment name
+
+	workspaceSpecified := false
 	workspaceName, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return err
@@ -177,8 +179,11 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 
 		workspaceName = section.Default
+	} else {
+		workspaceSpecified = true
 	}
 
+	// if user does not specify a workspace name and there is no default workspace, use environmentName as workspace name
 	if workspaceName == "" {
 		workspaceName = environmentName
 	}
@@ -198,8 +203,23 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 	}
 
-	if foundExistingWorkspace && !force && !workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName}) {
-		return fmt.Errorf("the workspace %q already exists. Specify '--force' to overwrite", workspaceName)
+	//If the user specifies a workspace name with -w and that workspace points to a different Kubernetes cluster, then --force is required
+	//If the user does not specify a workspace with -w and the current default workspace points to a different cluster, then create a new workspace
+	//If the user does not specify a workspace with -w and the current default workspace points to the same cluster, then update the existing workspace
+
+	isSameConn := true
+	if foundExistingWorkspace {
+		isSameConn = workspace.ConnectionEquals(&workspaces.KubernetesConnection{Kind: workspaces.KindKubernetes, Context: contextName})
+	}
+
+	if foundExistingWorkspace {
+		if workspaceSpecified && !force && !isSameConn {
+			return fmt.Errorf("the specified workspace %q has a connection to Kubernetes context %q, which is different from context %q. Specify '--force' to overwrite", workspaceName, workspace.Connection["context"], contextName)
+		}
+		if !workspaceSpecified && !isSameConn {
+			workspaceName = environmentName
+			workspace = nil
+		}
 	}
 
 	// Make sure namespace for applications exists
@@ -235,6 +255,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// 1. Create workspace & resource groups
 	// 2. Create environment resource
 	// 3. Update workspace
+
 	step := output.BeginStep("Creating Workspace...")
 
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
