@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   labels:
     control-plane: appcore-rp
+    app.kubernetes.io/part-of: radius-control-plane
   name: appcore-rp
   namespace: {{ .Release.Namespace }}
 spec:
@@ -14,6 +15,7 @@ spec:
     metadata:
       labels:
         control-plane: appcore-rp
+        app.kubernetes.io/part-of: radius-control-plane
 {{ if .Values.global.rp.provider.azure.podidentity }}
         aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
 {{ end }}

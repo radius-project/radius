@@ -26,6 +26,7 @@ const (
 
 	FieldManager      = "radius-rp"
 	AnnotationLocalID = "radius.dev/local-id"
+	ControlPlane      = "radius-control-plane"
 )
 
 // NOTE: the difference between descriptive labels and selector labels

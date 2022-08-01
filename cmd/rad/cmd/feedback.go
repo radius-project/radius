@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	k8slabels "github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/spf13/cobra"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -29,8 +30,8 @@ const (
 
 var feedbackCmd = &cobra.Command{
 	Use:   "feedback",
-	Short: "Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory.",
-	Long:  `Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory.`,
+	Short: "Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.",
+	Long:  `Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.`,
 	RunE:  feedback,
 }
 
@@ -62,7 +63,9 @@ func feedback(cmd *cobra.Command, args []string) error {
 
 	fmt.Printf("Capturing logs from the Radius workspace \"%s\"\n", w.Name)
 
-	pods, err := k8sClient.CoreV1().Pods("radius-system").List(cmd.Context(), v1.ListOptions{})
+	pods, err := k8sClient.CoreV1().Pods("radius-system").List(cmd.Context(), v1.ListOptions{
+		LabelSelector: fmt.Sprintf("%s=%s", k8slabels.LabelPartOf, k8slabels.ControlPlane),
+	})
 
 	if err != nil {
 		return err
@@ -122,18 +125,17 @@ func feedback(cmd *cobra.Command, args []string) error {
 		}
 		defer file.Close()
 
-		t, err := io.Copy(headerWriter, file)
+		_, err = io.Copy(headerWriter, file)
 		if err != nil {
 			return err
 		}
-		fmt.Println(t)
 
 		return nil
 	}
 
 	err = filepath.Walk(tmpdir, walker)
 
-	fmt.Printf("Wrote zip file %s\n", feedbackFile)
+	fmt.Printf("Wrote zip file %s. Please inspect each log file and remove any private information before sharing feedback.\n", feedbackFile)
 
 	return err
 }
