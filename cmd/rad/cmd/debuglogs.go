@@ -25,22 +25,22 @@ import (
 )
 
 const (
-	feedbackFile = "feedback.zip"
+	debugLogsFile = "debug-logs.zip"
 )
 
-var feedbackCmd = &cobra.Command{
-	Use:   "feedback",
+var debugLogsCmd = &cobra.Command{
+	Use:   "debug-logs",
 	Short: "Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.",
 	Long:  `Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.`,
-	RunE:  feedback,
+	RunE:  debugLogs,
 }
 
 func init() {
-	RootCmd.AddCommand(feedbackCmd)
-	feedbackCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
+	RootCmd.AddCommand(debugLogsCmd)
+	debugLogsCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 }
 
-func feedback(cmd *cobra.Command, args []string) error {
+func debugLogs(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
 
 	w, err := cli.RequireWorkspace(cmd, config)
@@ -71,7 +71,7 @@ func feedback(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tmpdir, _ := ioutil.TempDir("", "radius-feedback")
+	tmpdir, _ := ioutil.TempDir("", "radius-debug-logs")
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
@@ -89,7 +89,7 @@ func feedback(cmd *cobra.Command, args []string) error {
 
 	defer os.RemoveAll(tmpdir)
 
-	file, err := os.Create(feedbackFile)
+	file, err := os.Create(debugLogsFile)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func feedback(cmd *cobra.Command, args []string) error {
 
 	err = filepath.Walk(tmpdir, walker)
 
-	fmt.Printf("Wrote zip file %s. Please inspect each log file and remove any private information before sharing feedback.\n", feedbackFile)
+	fmt.Printf("Wrote zip file %s. Please inspect each log file and remove any private information before sharing feedback.\n", debugLogsFile)
 
 	return err
 }
