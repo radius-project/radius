@@ -438,7 +438,7 @@ func Test_Render_Connections(t *testing.T) {
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
-							Name: resource.Name,
+							Name: secretName,
 						},
 						Key: "CONNECTION_A_COMPUTEDKEY1",
 					},
@@ -449,7 +449,7 @@ func Test_Render_Connections(t *testing.T) {
 				ValueFrom: &v1.EnvVarSource{
 					SecretKeyRef: &v1.SecretKeySelector{
 						LocalObjectReference: v1.LocalObjectReference{
-							Name: resource.Name,
+							Name: secretName,
 						},
 						Key: "CONNECTION_A_COMPUTEDKEY2",
 					},
