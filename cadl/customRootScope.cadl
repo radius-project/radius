@@ -1,3 +1,7 @@
+// Currently, our spec is not approved by ARM so this is a workaround that the CADL team gave us
+// so that we can preface our paths with {rootScope}
+// To generate {rootScope} in the path, use the tag --import "./aksrootscope.cadl" while compiling
+
 import "@cadl-lang/openapi";
 import "@cadl-lang/rest";
 import "@azure-tools/cadl-autorest";

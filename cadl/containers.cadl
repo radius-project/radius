@@ -1,10 +1,14 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 import "@cadl-lang/rest";
 import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 
 import "./types.cadl";
-import "./customArm.cadl";
+import "./customRootScope.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;

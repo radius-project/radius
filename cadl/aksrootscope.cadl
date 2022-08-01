@@ -7,7 +7,7 @@ using Cadl.Http;
 using Cadl.Rest;
 using Azure.ResourceManager;
 
-@doc("Empty root scope")
+@doc("Custom root scope")
 model RootScopeParam {
   @doc("root scope path")
   @minLength(1)
