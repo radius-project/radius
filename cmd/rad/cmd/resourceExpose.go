@@ -18,7 +18,7 @@ import (
 )
 
 var resourceExposeCmd = &cobra.Command{
-	Use:   "expose resource",
+	Use:   "expose [resource]",
 	Short: "Exposes a resource for network traffic",
 	Long: `Exposes a port inside a resource for network traffic using a local port.
 This command is useful for testing resources that accept network traffic but are not exposed to the public internet. Exposing a port for testing allows you to send TCP traffic from your local machine to the resource.

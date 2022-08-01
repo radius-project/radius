@@ -13,7 +13,7 @@ import (
 
 // resourceDeleteCmd is the command to delete a resource
 var resourceDeleteCmd = &cobra.Command{
-	Use:   "delete resource_type resource_name",
+	Use:   "delete [type] [resource]",
 	Short: "Delete a RAD resource",
 	Long:  "Deletes a RAD resource with the given name",
 	RunE:  deleteResource,
