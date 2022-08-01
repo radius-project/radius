@@ -16,10 +16,11 @@ import (
 
 // resourceShowCmd command to show details of a resource
 var resourceShowCmd = &cobra.Command{
-	Use:   "show",
-	Short: "Show RAD resource details",
-	Long:  "Show details of the specified Radius resource",
-	RunE:  showResource,
+	Use:     "show [type] [resource]",
+	Short:   "Show RAD resource details",
+	Long:    "Show details of the specified Radius resource",
+	Example: `rad resource show --application icecream-store containers orders`,
+	RunE:    showResource,
 }
 
 func init() {
