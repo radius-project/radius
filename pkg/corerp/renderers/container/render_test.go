@@ -89,7 +89,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 				Source: makeResourceID(t, "Applications.Core/HttpRoutes", "A").String(),
 			},
 			"B": {
-				Source: makeResourceID(t, "Applications.Core/HttpRoutes", "B").String(),
+				Source: makeResourceID(t, "Applications.Core/httpRoutes", "B").String(),
 				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
