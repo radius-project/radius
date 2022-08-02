@@ -109,7 +109,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	environment, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	environment, err := cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
