@@ -88,7 +88,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		// because it is wiped from the DB when we are saving the newResource.
 		// Container X - v2 needs to be deployed and because we don't know the outputResources
 		// of v1, we don't know which one to delete.
-		newResource.Properties.BasicResourceProperties = old.Properties.BasicResourceProperties
+		newResource.Properties.Status.DeepCopy(&old.Properties.Status)
 	}
 
 	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

@@ -160,6 +160,10 @@ type ResourceStatus struct {
 	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
 }
 
+func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
+	in.OutputResources = out.OutputResources
+}
+
 // OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
 func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
 	var externalOutputResources []map[string]interface{}
