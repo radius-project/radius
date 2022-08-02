@@ -73,7 +73,16 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 
 	if len(result.Items) > 0 {
-		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", result.Items[0].ID, namespace)), nil
+		storedResource, ok := result.Items[0].Data.(*datamodel.Environment)
+		if !ok {
+			return nil, fmt.Errorf("failed to convert stored resource: %s into datamodel.Environment", result.Items[0].Data)
+		}
+
+		// If a different resource has the same namespace, return a conflict
+		// Otherwise, continue and update the resource
+		if storedResource.ID != existingResource.ID {
+			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", storedResource.ID, namespace)), nil
+		}
 	}
 
 	UpdateExistingResourceData(ctx, existingResource, newResource)
