@@ -7,12 +7,15 @@ package helm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/project-radius/radius/pkg/version"
+	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 const (
@@ -161,4 +164,28 @@ func UninstallOnCluster(kubeContext string) error {
 	}
 
 	return nil
+}
+
+func CheckRadiusInstall(kubeContext string) (bool, error) {
+	var helmOutput strings.Builder
+
+	namespace := RadiusSystemNamespace
+	flags := genericclioptions.ConfigFlags{
+		Namespace: &namespace,
+		Context:   &kubeContext,
+	}
+
+	helmConf, err := HelmConfig(&helmOutput, &flags)
+	if err != nil {
+		return false, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
+	}
+	histClient := helm.NewHistory(helmConf)
+	histClient.Max = 1 // Only need to check if at least 1 exists
+
+	_, err = histClient.Run(radiusReleaseName)
+	if errors.Is(err, driver.ErrReleaseNotFound) {
+		return false, err
+	}
+
+	return true, nil
 }

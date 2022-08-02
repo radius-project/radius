@@ -22,3 +22,8 @@ func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContex
 	output.CompleteStep(step)
 	return foundExisting, nil
 }
+
+func IsRadiusInstalled(kubeContext string) bool {
+	isRadiusInstalled, err := helm.CheckRadiusInstall(kubeContext)
+	return err != nil && isRadiusInstalled
+}

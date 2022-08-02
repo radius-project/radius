@@ -105,15 +105,16 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 
 	step := output.BeginStep("Creating Workspace...")
 
+	isRadiusInstalled := setup.IsRadiusInstalled(kubecontext)
+	if !isRadiusInstalled {
+		return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad env init kubernetes")
+	}
+
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
 	//
 	// We'll flesh this out more when we add explicit commands for managing resource groups.
 	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: kubecontext}, name)
 	if err != nil {
-		if errors.Is(err, &setup.ErrWorkspaceNotFound{}) {
-			return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad env init kubernetes")
-		}
-
 		return err
 	}
 

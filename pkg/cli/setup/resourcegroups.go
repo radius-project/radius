@@ -13,16 +13,17 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
-type ErrWorkspaceNotFound struct {
+type ErrUCPResourceGroupCreationFailed struct {
 	resp *http.Response
 	err  error
 }
 
-func (e *ErrWorkspaceNotFound) Error() string {
+func (e *ErrUCPResourceGroupCreationFailed) Error() string {
 	if e.resp == nil {
 		return fmt.Sprintf("failed to create UCP resourceGroup: %s", e.err)
 	}
@@ -30,8 +31,8 @@ func (e *ErrWorkspaceNotFound) Error() string {
 	return fmt.Sprintf("request to create UCP resourceGroup failed with status: %d, response: %+v", e.resp.StatusCode, e.resp)
 }
 
-func (e *ErrWorkspaceNotFound) Is(target error) bool {
-	_, ok := target.(*ErrWorkspaceNotFound)
+func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
+	_, ok := target.(*ErrUCPResourceGroupCreationFailed)
 	return ok
 }
 
@@ -59,7 +60,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper("", kubernetes.UCPType, kc.Context)
 	if err != nil {
-		return "", err
+		return "", &cli.ClusterUnreachable{Err: err}
 	}
 
 	createRgRequest, err := http.NewRequest(
@@ -67,13 +68,13 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`))
 	if err != nil {
-		return "", &ErrWorkspaceNotFound{nil, err}
+		return "", &ErrUCPResourceGroupCreationFailed{nil, err}
 	}
 	createRgRequest = createRgRequest.WithContext(ctx)
 
 	resp, err := rt.RoundTrip(createRgRequest)
 	if err != nil || (resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK) {
-		return "", &ErrWorkspaceNotFound{resp, err}
+		return "", &ErrUCPResourceGroupCreationFailed{resp, err}
 	}
 
 	defer resp.Body.Close()
