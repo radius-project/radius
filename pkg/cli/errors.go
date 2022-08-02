@@ -26,7 +26,7 @@ func (fe *FriendlyError) Is(target error) bool {
 }
 
 // ClusterUnreachable is an error type to be thrown when the kubernetes cluster
-// is unreachable. The cluster the cluster could gone, or we don't have access.
+// is unreachable. The cluster could be gone, or we don't have access.
 type ClusterUnreachable struct {
 	Err error
 }
@@ -37,5 +37,5 @@ func (e *ClusterUnreachable) Is(target error) bool {
 }
 
 func (e *ClusterUnreachable) Error() string {
-	return fmt.Sprintf("kubernetes cluster unreachable: %s", e.Err)
+	return fmt.Sprintf("kubernetes cluster unreachable: %s", e.Err.Error())
 }

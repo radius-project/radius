@@ -185,6 +185,8 @@ func CheckRadiusInstall(kubeContext string) (bool, error) {
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
 		return false, nil
+	} else if err != nil {
+		return false, err
 	}
 
 	return true, nil
