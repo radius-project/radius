@@ -318,27 +318,27 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceName string, resourceID resources.ID, oldResourceProp *v1.BasicResourceProperties, newResourceProp *v1.BasicResourceProperties) Response {
 	details := []armerrors.ErrorDetails{}
-	if resourceProp.Environment != "" {
+	message := fmt.Sprintf("Attempted to deploy '%s'. Options to resolve the conflict are: To create a new resource, change the name of the '%s' resource definition in the '%s' application OR Update the existing '%s' in the '%s'. change the resource's ", resourceName, resourceName, extractResourceName(newResourceProp.Application), resourceName, extractResourceName(oldResourceProp.Application))
+	if oldResourceProp.Environment != "" {
 		details = append(details, armerrors.ErrorDetails{
 			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("environment must be '%s'.", resourceProp.Environment),
+			Message: message + fmt.Sprintf("environment properties to '%s'.", extractResourceName(oldResourceProp.Environment)),
 		})
 	}
-	if resourceProp.Application != "" {
+	if oldResourceProp.Application != "" {
 		details = append(details, armerrors.ErrorDetails{
 			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("application must be '%s'.", resourceProp.Application),
+			Message: message + fmt.Sprintf("application properties to '%s'.", extractResourceName(oldResourceProp.Application)),
 		})
 	}
-
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
 				Message: "Resource update failed because environment and application properties are read-only. The provided environment and application do not match the resource's existing environment and application values. Please use the correct values to update this resource or use a different resource name to create a new resource.",
-				Target:  target,
+				Target:  resourceID.String(),
 				Details: details,
 			},
 		},
