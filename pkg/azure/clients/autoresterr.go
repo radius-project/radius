@@ -6,8 +6,11 @@
 package clients
 
 import (
+	"encoding/json"
+
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
 // ExtractServiceError returns an azure.ServiceError if the error contains a service error payload.
@@ -70,4 +73,16 @@ func IsLongRunning404(err error, future azure.FutureAPI) bool {
 
 	response := future.Response()
 	return response != nil && response.StatusCode == 404
+}
+
+// Is404Error returns true if the error is a 404 payload from an autorest operation.
+func Is404ErrorForAzureError(err error) bool {
+	var errorResponse v20220315privatepreview.ErrorResponse
+	json.Unmarshal([]byte(err.Error()), &errorResponse)
+
+	if *errorResponse.InnerError.Code == "NotFound" {
+		return true
+	}
+
+	return false
 }

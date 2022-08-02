@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/agnivade/levenshtein"
+	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -19,7 +20,7 @@ import (
 )
 
 const (
-	LEVENSHTEIN_CUTOFF = 2
+	LevenshteinCutoff = 2
 )
 
 var resourceExposeCmd = &cobra.Command{
@@ -54,17 +55,19 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		//ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
-			fmt.Println("Couldn't find application: ", application)
-			//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
-			appList, _ := managementClient.ListApplications(cmd.Context())
-			for _, app := range appList {
-				distance := levenshtein.ComputeDistance(*app.Name, application)
-				if distance <= LEVENSHTEIN_CUTOFF {
-					fmt.Println("Did you mean application: ", *app.Name)
-					break
+			//suggest an application only when an existing one is not found
+			if azclient.Is404ErrorForAzureError(err) {
+				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
+				appList, _ := managementClient.ListApplications(cmd.Context())
+				for _, app := range appList {
+					distance := levenshtein.ComputeDistance(*app.Name, application)
+					if distance <= LevenshteinCutoff {
+						fmt.Printf("Application %s does not exist. Did you mean %s?\n", application, *app.Name)
+						break
+					}
 				}
 			}
-			return err
+			return &cli.FriendlyError{Message: "Unable to expose resource"}
 		}
 
 		resourceType, resourceName, err := cli.RequireResource(cmd, args)
