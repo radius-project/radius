@@ -308,14 +308,16 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 	}
 
 	existingResourceNamespaceCases := []struct {
-		desc               string
-		headerKey          string
-		headerValue        string
-		resourceEtag       string
-		expectedStatusCode int
-		shouldFail         bool
+		desc                 string
+		headerKey            string
+		headerValue          string
+		resourceEtag         string
+		existingResourceName string
+		expectedStatusCode   int
+		shouldFail           bool
 	}{
-		{"create-existing-namespace-match", "If-Match", "", "resource-etag", 409, true},
+		{"create-existing-namespace-match", "If-Match", "", "resource-etag", "env1", 409, true},
+		{"create-existing-namespace-match-same-resource", "If-Match", "", "resource-etag", "env0", 200, false},
 	}
 
 	for _, tt := range existingResourceNamespaceCases {
@@ -324,6 +326,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			_, conflictDataModel, _ := getTestModels20220315privatepreview()
 
 			conflictDataModel.Name = "existing"
+			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/" + tt.existingResourceName
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, envInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
@@ -359,6 +362,18 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 						PaginationToken: paginationToken,
 					}, nil
 				})
+
+			if !tt.shouldFail {
+				mStorageClient.
+					EXPECT().
+					Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+						cfg := store.NewSaveConfig(opts...)
+						obj.ETag = cfg.ETag
+						obj.Data = envDataModel
+						return nil
+					})
+			}
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
