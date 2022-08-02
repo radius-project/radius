@@ -106,6 +106,7 @@ func (h *Handler) CreateOrUpdatePlane(w http.ResponseWriter, r *http.Request) {
 		internalServerError(ctx, w, r, err)
 		return
 	}
+
 	err = response.Apply(ctx, w, r)
 	if err != nil {
 		internalServerError(ctx, w, r, err)
@@ -172,10 +173,12 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = response.Apply(ctx, w, r)
-	if err != nil {
-		internalServerError(ctx, w, r, err)
-		return
+	if response != nil {
+		err = response.Apply(ctx, w, r)
+		if err != nil {
+			internalServerError(ctx, w, r, err)
+			return
+		}
 	}
 }
 func (h *Handler) DefaultHandler(w http.ResponseWriter, r *http.Request) {

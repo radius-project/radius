@@ -301,5 +301,6 @@ func (ucp *ucpHandler) ProxyRequest(ctx context.Context, db store.StorageClient,
 	logger.Info(fmt.Sprintf("Proxying request to target %s", proxyURL))
 	sender.ServeHTTP(w, r.WithContext(ctx))
 
-	return rest.NewNoContentResponse(), nil
+	// The upstream response has already been sent at this point. Therefore, return nil response here
+	return nil, nil
 }
