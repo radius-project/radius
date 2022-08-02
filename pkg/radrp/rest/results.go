@@ -318,27 +318,45 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldResourceProp *v1.BasicResourceProperties, newResourceProp *v1.BasicResourceProperties) Response {
+	var envID, oldAppID, newAppID resources.ID
+	var err error
 	details := []armerrors.ErrorDetails{}
-	if resourceProp.Environment != "" {
-		details = append(details, armerrors.ErrorDetails{
-			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("environment must be '%s'.", resourceProp.Environment),
-		})
+	if oldResourceProp.Environment != "" {
+		envID, err = resources.Parse(oldResourceProp.Environment)
+		if err != nil {
+			details = append(details, armerrors.ErrorDetails{
+				Code:    armerrors.InvalidProperties,
+				Message: err.Error(),
+			})
+		}
 	}
-	if resourceProp.Application != "" {
-		details = append(details, armerrors.ErrorDetails{
-			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("application must be '%s'.", resourceProp.Application),
-		})
+	if oldResourceProp.Application != "" {
+		oldAppID, err = resources.Parse(oldResourceProp.Application)
+		if err != nil {
+			details = append(details, armerrors.ErrorDetails{
+				Code:    armerrors.InvalidProperties,
+				Message: err.Error(),
+			})
+		}
+	}
+	if newResourceProp.Application != "" {
+		newAppID, err = resources.Parse(newResourceProp.Application)
+		if err != nil {
+			details = append(details, armerrors.ErrorDetails{
+				Code:    armerrors.InvalidProperties,
+				Message: err.Error(),
+			})
+		}
 	}
 
+	message := fmt.Sprintf("Attempted to deploy '%s'. Options to resolve the conflict are: to create a new resource, change the name of the '%s' resource definition in the '%s' application or to update the existing resource '%s' in the '%s', change the resource's application (and/or) environment properties to '%s' and '%s' respectively.", resourceID.Name(), resourceID.Name(), newAppID.Name(), resourceID.Name(), oldAppID.Name(), oldAppID.String(), envID.String())
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: "Resource update failed because environment and application properties are read-only. The provided environment and application do not match the resource's existing environment and application values. Please use the correct values to update this resource or use a different resource name to create a new resource.",
-				Target:  target,
+				Message: message,
+				Target:  resourceID.String(),
 				Details: details,
 			},
 		},

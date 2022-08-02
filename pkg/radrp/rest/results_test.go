@@ -11,8 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -477,6 +479,34 @@ func Test_AggregateApplicationProvisioningState_ProvisioningAndProvisionedIsProv
 	require.Equal(t, "Resource b is in Provisioning state", aggregateProvisioningStateErrorDetails)
 }
 
+func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
+
+	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
+	require.NoError(t, err)
+	details := []armerrors.ErrorDetails{}
+	expctedResp := &BadRequestResponse{
+		Body: armerrors.ErrorResponse{
+			Error: armerrors.ErrorDetails{
+				Code:    armerrors.Invalid,
+				Message: "Attempted to deploy 'test-container-0'. Options to resolve the conflict are: to create a new resource, change the name of the 'test-container-0' resource definition in the 'updated-application' application or to update the existing resource 'test-container-0' in the 'test-application', change the resource's application (and/or) environment properties to '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application' and '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment' respectively.",
+				Target:  resource.String(),
+				Details: details,
+			},
+		},
+	}
+	oldResourceProp := &v1.BasicResourceProperties{
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application",
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+	}
+	newResourceProp := &v1.BasicResourceProperties{
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/updated-application",
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+	}
+	resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
+
+	require.Equal(t, resp, expctedResp)
+}
+
 func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsProvisioning(t *testing.T) {
 
 	resourceStatuses := map[string]ResourceStatus{
@@ -493,7 +523,6 @@ func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsPr
 	require.Equal(t, ProvisioningStateProvisioning, aggregateProvisioningState)
 	require.Equal(t, "Resource b is in NotProvisioned state", aggregateProvisioningStateErrorDetails)
 }
-
 func Test_OKResponse_Empty(t *testing.T) {
 	response := NewOKResponse(nil)
 
