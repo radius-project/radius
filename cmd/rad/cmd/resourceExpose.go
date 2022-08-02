@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/agnivade/levenshtein"
-	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -55,10 +54,17 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		//ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
+			doesAppExist, newErr := cli.Is404ErrorForAzureError(err)
+			if newErr != nil {
+				return &cli.FriendlyError{Message: "Unable to expose resource"}
+			}
 			//suggest an application only when an existing one is not found
-			if azclient.Is404ErrorForAzureError(err) {
+			if doesAppExist {
 				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
-				appList, _ := managementClient.ListApplications(cmd.Context())
+				appList, listErr := managementClient.ListApplications(cmd.Context())
+				if listErr != nil {
+
+				}
 				for _, app := range appList {
 					distance := levenshtein.ComputeDistance(*app.Name, application)
 					if distance <= LevenshteinCutoff {
