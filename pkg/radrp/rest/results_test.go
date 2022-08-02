@@ -483,19 +483,13 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 
 	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
 	require.NoError(t, err)
-	details := []armerrors.ErrorDetails{}
-	details = append(details, armerrors.ErrorDetails{
-		Code:    armerrors.InvalidProperties,
-		Message: "Attempted to deploy 'test-container-0'. Options to resolve the conflict are: To create a new resource, change the name of the 'test-container-0' resource definition in the 'updated-application' application OR Update the existing 'test-container-0' in the 'test-application'. change the resource's application properties to 'test-application'.",
-	})
 
 	expctedResp := &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: "Resource update failed because environment and application properties are read-only. The provided environment and application do not match the resource's existing environment and application values. Please use the correct values to update this resource or use a different resource name to create a new resource.",
+				Message: "Attempted to deploy 'test-container-0'. Options to resolve the conflict are: To create a new resource, change the name of the 'test-container-0' resource definition in the 'updated-application' application OR Update the existing 'test-container-0' in the 'test-application'. Change the resource's application properties to 'test-application'.",
 				Target:  resource.String(),
-				Details: details,
 			},
 		},
 	}
@@ -505,7 +499,7 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 	newResourceProp := &v1.BasicResourceProperties{
 		Application: "updated-application",
 	}
-	resp := NewLinkedResourceUpdateErrorResponse("test-container-0", resource, oldResourceProp, newResourceProp)
+	resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
 
 	require.Equal(t, resp, expctedResp)
 }
