@@ -239,8 +239,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
 			if err != nil {
-				code, msg := extractError(err)
-				result.SetFailed(armerrors.ErrorDetails{Code: code, Message: msg}, false)
+				armErr := extractError(err)
+				result.SetFailed(armErr, false)
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
@@ -281,11 +281,11 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	}
 }
 
-func extractError(err error) (errCode, errMessage string) {
+func extractError(err error) armerrors.ErrorDetails {
 	if clientErr, ok := err.(*conv.ErrClientRP); ok {
-		return clientErr.Code, clientErr.Message
+		return armerrors.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
 	} else {
-		return armerrors.Internal, err.Error()
+		return armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}
 	}
 }
 

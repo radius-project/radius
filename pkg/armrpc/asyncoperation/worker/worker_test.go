@@ -143,25 +143,21 @@ func TestGetMessageExtendDuration(t *testing.T) {
 
 func TestErrorHandling(t *testing.T) {
 	tests := []struct {
-		err          error
-		expectedCode string
-		expectedMsg  string
+		err            error
+		expectedArmErr armerrors.ErrorDetails
 	}{
 		{
-			err:          conv.NewClientErrInvalidRequest("client error"),
-			expectedCode: armerrors.Invalid,
-			expectedMsg:  "client error",
+			err:            conv.NewClientErrInvalidRequest("client error"),
+			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Invalid, Message: "client error"},
 		},
 		{
-			err:          errors.New("internal error"),
-			expectedCode: armerrors.Internal,
-			expectedMsg:  "internal error",
+			err:            errors.New("internal error"),
+			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Internal, Message: "internal error"},
 		},
 	}
 
 	for _, tt := range tests {
-		code, msg := extractError(tt.err)
-		require.Equal(t, tt.expectedCode, code)
-		require.Equal(t, tt.expectedMsg, msg)
+		armErr := extractError(tt.err)
+		require.Equal(t, tt.expectedArmErr, armErr)
 	}
 }
