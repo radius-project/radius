@@ -70,10 +70,6 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) reso
 			{Type: "resourceGroups", Name: "test-resourcegroup"},
 		},
 		resources.TypeSegment{
-			Type: "radius.dev/Application",
-			Name: applicationName,
-		},
-		resources.TypeSegment{
 			Type: resourceType,
 			Name: resourceName,
 		}))
@@ -83,7 +79,7 @@ func makeResourceID(t *testing.T, resourceType string, resourceName string) reso
 }
 
 func Test_GetDependencyIDs_Success(t *testing.T) {
-	testResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
+	testStorageResourceID := "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Microsoft.Storage/storageaccounts/testaccount/fileservices/default/shares/testShareName"
 	testAzureResourceID := makeResourceID(t, "Microsoft.ServiceBus/namespaces", "testAzureResource")
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: apiv1.BasicResourceProperties{
@@ -91,14 +87,10 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "HttpRoute", "A").String(),
-				IAM: datamodel.IAMProperties{
-					Kind:  datamodel.KindHTTP,
-					Roles: []string{"administrator"},
-				},
+				Source: makeResourceID(t, "Applications.Core/httpRoutes", "A").String(),
 			},
 			"B": {
-				Source: makeResourceID(t, "HttpRoute", "B").String(),
+				Source: makeResourceID(t, "Applications.Core/httpRoutes", "B").String(),
 				IAM: datamodel.IAMProperties{
 					Kind:  datamodel.KindHTTP,
 					Roles: []string{"administrator"},
@@ -111,23 +103,26 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 					Roles: []string{"administrator"},
 				},
 			},
+			"testNonRadiusConnectionWithoutIAM": {
+				Source: testAzureResourceID.String(),
+			},
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Ports: map[string]datamodel.ContainerPort{
 				"web": {
 					ContainerPort: 5000,
-					Provides:      makeResourceID(t, "HttpRoute", "C").String(),
+					Provides:      makeResourceID(t, "Applications.Core/httpRoutes", "C").String(),
 				},
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
-				"vol1": datamodel.VolumeProperties{
+				"vol1": {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
 						VolumeBase: datamodel.VolumeBase{
 							MountPath: "/tmpfs",
 						},
-						Source: testResourceID,
+						Source: testStorageResourceID,
 					},
 				},
 			},
@@ -138,32 +133,13 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	renderer := Renderer{}
 	radiusResourceIDs, azureResourceIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.NoError(t, err)
-	require.Len(t, radiusResourceIDs, 4)
+	require.Len(t, radiusResourceIDs, 3)
 	require.Len(t, azureResourceIDs, 1)
 
-	storageID, _ := resources.Parse(resources.MakeRelativeID(
-		[]resources.ScopeSegment{
-			{Type: "subscriptions", Name: "test-sub-id"},
-			{Type: "resourceGroups", Name: "test-rg"},
-		},
-		resources.TypeSegment{
-			Type: "Microsoft.Storage/storageaccounts",
-			Name: "testaccount",
-		},
-		resources.TypeSegment{
-			Type: "fileservices",
-			Name: "default",
-		},
-		resources.TypeSegment{
-			Type: "shares",
-			Name: "testShareName",
-		}))
-
 	expectedRadiusResourceIDs := []resources.ID{
-		makeResourceID(t, "HttpRoute", "A"),
-		makeResourceID(t, "HttpRoute", "B"),
-		makeResourceID(t, "HttpRoute", "C"),
-		storageID,
+		makeResourceID(t, "Applications.Core/httpRoutes", "A"),
+		makeResourceID(t, "Applications.Core/httpRoutes", "B"),
+		makeResourceID(t, "Applications.Core/httpRoutes", "C"),
 	}
 	require.ElementsMatch(t, expectedRadiusResourceIDs, radiusResourceIDs)
 
@@ -336,7 +312,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 				"web": {
 					ContainerPort: 5000,
 					Protocol:      datamodel.ProtocolTCP,
-					Provides:      makeResourceID(t, "httpRoutes", "A").String(),
+					Provides:      makeResourceID(t, "Applications.Core/httpRoutes", "A").String(),
 				},
 			},
 		},
@@ -368,7 +344,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		require.Len(t, container.Ports, 1)
 		port := container.Ports[0]
 
-		routeID := makeResourceID(t, "HttpRoute", "A")
+		routeID := makeResourceID(t, "Applications.Core/httpRoutes", "A")
 
 		expected := v1.ContainerPort{
 			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "httpRoutes" + routeID.Name()),

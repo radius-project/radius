@@ -75,7 +75,10 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 			continue
 		}
 
-		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+		if resourceID.IsRadiusRPResource() {
+			radiusResourceIDs = append(radiusResourceIDs, resourceID)
+			continue
+		}
 	}
 
 	for _, port := range properties.Container.Ports {
@@ -88,7 +91,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
-		radiusResourceIDs = append(radiusResourceIDs, resourceID)
+
+		if resourceID.IsRadiusRPResource() {
+			radiusResourceIDs = append(radiusResourceIDs, resourceID)
+			continue
+		}
 	}
 
 	for _, volume := range properties.Container.Volumes {
@@ -98,7 +105,11 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 			if err != nil {
 				return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
-			radiusResourceIDs = append(radiusResourceIDs, resourceID)
+
+			if resourceID.IsRadiusRPResource() {
+				radiusResourceIDs = append(radiusResourceIDs, resourceID)
+				continue
+			}
 		}
 	}
 
@@ -482,7 +493,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
-		return nil, fmt.Errorf("health probe kind unsupported: %v", p.Kind)
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("health probe kind unsupported: %v", p.Kind))
 	}
 	return &probeSpec, nil
 }
