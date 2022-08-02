@@ -76,6 +76,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
+		t.Skip("https://github.com/project-radius/radius/issues/3232")
 		port, err := GetAvailablePort()
 		require.NoError(t, err)
 
