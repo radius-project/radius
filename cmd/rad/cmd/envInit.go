@@ -188,6 +188,11 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		workspaceName = environmentName
 	}
 
+	matched, msg, _ := prompt.ResourceName(workspaceName)
+	if !matched {
+		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name.", workspaceName, msg)
+	}
+
 	// We're going to update the workspace in place if it's compatible. We only need to
 	// report an error if it's not (eg: different connection type or different kubecontext.)
 	foundExistingWorkspace, err := cli.HasWorkspace(config, workspaceName)
@@ -432,7 +437,7 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 	}
 	if interactive && envStr == "" {
 		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
+		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.ResourceName)
 		if err != nil {
 			return "", err
 		}
@@ -442,7 +447,12 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 			output.LogInfo("No environment name provided, using: %v", defaultVal)
 			envStr = defaultVal
 		}
+		matched, msg, _ := prompt.ResourceName(envStr)
+		if !matched {
+			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name.", envStr, msg)
+		}
 	}
+
 	return envStr, nil
 }
 
