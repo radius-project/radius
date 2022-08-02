@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -40,23 +41,6 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 		return nil, err
 	}
 
-	rendererOutput, err := rabbitmq.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
-	}
-	deploymentOutput, err := rabbitmq.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
-	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
-	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
-	if queue, ok := deploymentOutput.ComputedValues[rabbitmqmessagequeues.QueueNameKey].(string); ok {
-		newResource.Properties.Queue = queue
-	}
-
-	// Read existing resource info from the data store
 	old := &datamodel.RabbitMQMessageQueue{}
 	isNewResource := false
 	etag, err := rabbitmq.GetResource(ctx, serviceCtx.ResourceID.String(), old)
@@ -67,6 +51,7 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 			return nil, err
 		}
 	}
+
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -85,7 +70,30 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req
 		}
 	}
 
-	// Add/update resource in the data store
+	rendererOutput, err := rabbitmq.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := rabbitmq.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	if queue, ok := deploymentOutput.ComputedValues[rabbitmqmessagequeues.QueueNameKey].(string); ok {
+		newResource.Properties.Queue = queue
+	}
+
+	if !isNewResource {
+		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		err = rabbitmq.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	savedResource, err := rabbitmq.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err

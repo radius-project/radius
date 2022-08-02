@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -40,24 +41,6 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, req
 		return nil, err
 	}
 
-	rendererOutput, err := daprStateStore.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
-	}
-	deploymentOutput, err := daprStateStore.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
-	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
-	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
-
-	if stateStoreName, ok := deploymentOutput.ComputedValues[renderers.StateStoreName].(string); ok {
-		newResource.Properties.StateStoreName = stateStoreName
-	}
-
-	// Read existing resource info from the data store
 	old := &datamodel.DaprStateStore{}
 	isNewResource := false
 	etag, err := daprStateStore.GetResource(ctx, serviceCtx.ResourceID.String(), old)
@@ -68,6 +51,7 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, req
 			return nil, err
 		}
 	}
+
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -86,7 +70,31 @@ func (daprStateStore *CreateOrUpdateDaprStateStore) Run(ctx context.Context, req
 		}
 	}
 
-	// Add/update resource in the data store
+	rendererOutput, err := daprStateStore.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := daprStateStore.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+
+	if stateStoreName, ok := deploymentOutput.ComputedValues[renderers.StateStoreName].(string); ok {
+		newResource.Properties.StateStoreName = stateStoreName
+	}
+
+	if !isNewResource {
+		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		err = daprStateStore.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	savedResource, err := daprStateStore.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err

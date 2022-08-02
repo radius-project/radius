@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -57,6 +58,11 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	isNewResource := false
+	if errors.Is(&store.ErrNotFound{}, err) {
+		isNewResource = true
+	}
+
 	opType, _ := v1.ParseOperationType(request.OperationType)
 	if opType.Method == http.MethodPatch && errors.Is(&store.ErrNotFound{}, err) {
 		return ctrl.Result{}, err
@@ -91,7 +97,17 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: "deployment data model conversion error"}), err
 	}
 
+	oldOutputResources := deploymentDataModel.OutputResources()
+
 	deploymentDataModel.ApplyDeploymentOutput(deploymentOutput)
+
+	if !isNewResource {
+		diff := outputresource.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
+		err = c.DeploymentProcessor().Delete(ctx, id, diff)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+	}
 
 	nr := &store.Object{
 		Metadata: store.Metadata{

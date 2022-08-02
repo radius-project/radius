@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/radrp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -40,23 +41,6 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		return nil, err
 	}
 
-	rendererOutput, err := daprHttpRoute.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
-	if err != nil {
-		return nil, err
-	}
-	deploymentOutput, err := daprHttpRoute.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
-	if err != nil {
-		return nil, err
-	}
-
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
-	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
-	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
-	if appId, ok := deploymentOutput.ComputedValues[daprinvokehttproutes.AppIDKey].(string); ok {
-		newResource.Properties.AppId = appId
-	}
-
-	// Read existing resource info from the data store
 	old := &datamodel.DaprInvokeHttpRoute{}
 	isNewResource := false
 	etag, err := daprHttpRoute.GetResource(ctx, serviceCtx.ResourceID.String(), old)
@@ -67,6 +51,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 			return nil, err
 		}
 	}
+
 	if req.Method == http.MethodPatch && isNewResource {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
@@ -85,7 +70,30 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		}
 	}
 
-	// Add/update resource in the data store
+	rendererOutput, err := daprHttpRoute.DeploymentProcessor().Render(ctx, serviceCtx.ResourceID, newResource)
+	if err != nil {
+		return nil, err
+	}
+	deploymentOutput, err := daprHttpRoute.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	if err != nil {
+		return nil, err
+	}
+
+	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
+	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	if appId, ok := deploymentOutput.ComputedValues[daprinvokehttproutes.AppIDKey].(string); ok {
+		newResource.Properties.AppId = appId
+	}
+
+	if !isNewResource {
+		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
+		err = daprHttpRoute.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	savedResource, err := daprHttpRoute.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
