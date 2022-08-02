@@ -483,21 +483,24 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 
 	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
 	require.NoError(t, err)
-
+	details := []armerrors.ErrorDetails{}
 	expctedResp := &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: "Attempted to deploy 'test-container-0'. Options to resolve the conflict are: To create a new resource, change the name of the 'test-container-0' resource definition in the 'updated-application' application OR Update the existing 'test-container-0' in the 'test-application'. Change the resource's application properties to 'test-application'.",
+				Message: "Attempted to deploy 'test-container-0'. Options to resolve the conflict are: To create a new resource, change the name of the 'test-container-0' resource definition in the 'updated-application' application OR Update the existing resource 'test-container-0' in the 'test-application'. Change the resource's application/environment properties to 'test-application'/'test-environment'.",
 				Target:  resource.String(),
+				Details: details,
 			},
 		},
 	}
 	oldResourceProp := &v1.BasicResourceProperties{
-		Application: "test-application",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application",
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
 	}
 	newResourceProp := &v1.BasicResourceProperties{
-		Application: "updated-application",
+		Application: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/updated-application",
+		Environment: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
 	}
 	resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
 

@@ -6,8 +6,6 @@
 package rest
 
 import (
-	"strings"
-
 	"github.com/project-radius/radius/pkg/resourcemodel"
 )
 
@@ -100,8 +98,4 @@ const (
 
 func IsTeminalStatus(status OperationStatus) bool {
 	return status == SuccededStatus || status == FailedStatus || status == CanceledStatus
-}
-
-func extractResourceName(resource string) string {
-	return resource[strings.LastIndex(resource, "/")+1:]
 }
