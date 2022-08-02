@@ -267,10 +267,10 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 
 	// Order of precedence for hostname creation:
 	// 1. if publicEndpointOverride is true: hostname = publicIP
-	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = propeties.hostname.FullyQualifiedHostname
+	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname
 	// 3. if publicIP is "": hostname = "" (cannot determine a suitable hostname to use)
-	// 4. if properties.hostname.prefix is provided: hostname = (properties.hostname.prefix).appname.ip.nip.io
-	// 5. else: hostname = gatewayname.appname.ip.nip.io
+	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
+	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
 	if publicEndpointOverride {
 		urlOverride, err := url.Parse(publicIP)
 		if err != nil {
