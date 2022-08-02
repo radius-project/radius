@@ -19,7 +19,7 @@ const (
 	Yes     BinaryAnswer = iota
 	No
 
-	InvalidResourceNameMessage = "names must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
+	InvalidResourceNameMessage = "name must be made up of alphanumeric characters and hyphens, and must begin with an alphabetic character and end with an alphanumeric character"
 )
 
 func MatchAll(validators ...func(string) (bool, string, error)) func(string) (bool, string, error) {
