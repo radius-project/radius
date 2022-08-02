@@ -55,13 +55,6 @@ func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) 
 		return "", err
 	}
 
-	if len(args) > 0 {
-		if name != "" {
-			return "", fmt.Errorf("cannot specify environment name via both arguments and `-e`")
-		}
-		name = args[0]
-	}
-
 	return name, err
 }
 
