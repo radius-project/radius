@@ -190,7 +190,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	matched, msg, _ := prompt.ResourceName(workspaceName)
 	if !matched {
-		return fmt.Errorf("workspace %s. Use --workspace option to specify the valid name.", msg)
+		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name.", workspaceName, msg)
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -449,7 +449,7 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		}
 		matched, msg, _ := prompt.ResourceName(envStr)
 		if !matched {
-			return "", fmt.Errorf("environment %s. Use --environment option to specify the valid name.", msg)
+			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name.", envStr, msg)
 		}
 	}
 
