@@ -71,7 +71,11 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tmpdir, _ := ioutil.TempDir("", "radius-debug-logs")
+	tmpdir, err := ioutil.TempDir("", "radius-debug-logs")
+
+	if err != nil {
+		return err
+	}
 
 	for _, pod := range pods.Items {
 		for _, container := range pod.Spec.Containers {
