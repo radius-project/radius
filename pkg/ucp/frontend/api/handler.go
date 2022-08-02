@@ -106,6 +106,7 @@ func (h *Handler) CreateOrUpdatePlane(w http.ResponseWriter, r *http.Request) {
 		internalServerError(ctx, w, r, err)
 		return
 	}
+
 	err = response.Apply(ctx, w, r)
 	if err != nil {
 		internalServerError(ctx, w, r, err)
@@ -168,7 +169,12 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 	newURL.Path = h.getRelativePath(r.URL.Path)
 	response, err := h.ucp.Planes.ProxyRequest(ctx, h.db, w, r, &newURL)
 	if err != nil {
-		err := response.Apply(ctx, w, r)
+		internalServerError(ctx, w, r, err)
+		return
+	}
+
+	if response != nil {
+		err = response.Apply(ctx, w, r)
 		if err != nil {
 			internalServerError(ctx, w, r, err)
 			return
