@@ -32,7 +32,18 @@ Do not start the release until the following scenarios are validated:
 
 1. In the Bicep fork: `bicep-extensibility` branch at the time of writing
 
+   If doing release on release branch (release/0.12)
    ```bash
+   git checkout -b release/0.12
+   git pull origin release/0.12 
+   git tag v0.12.0
+   git push --tags
+   ```
+
+   Else if on main branch
+   ```bash
+   git checkout main 
+   git pull origin main
    # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
@@ -50,12 +61,23 @@ Do not start the release until the following scenarios are validated:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
    
+   If doing release on release branch (release/0.12)
    ```bash
-   git checkout main
-   git pull origin main
+   git checkout -b release/0.12
+   git pull origin release/0.12 
    git tag v0.12.0
    git push --tags
    ```
+
+   Else if on main branch
+   ```bash
+   git checkout main 
+   git pull origin main
+   # replace v0.12.0 with the release version
+   git tag v0.12.0
+   git push --tags
+   ```
+
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
@@ -64,9 +86,19 @@ Do not start the release until the following scenarios are validated:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
    
+   If doing release on release branch (release/0.12)
    ```bash
-   git checkout main
+   git checkout -b release/0.12
+   git pull origin release/0.12 
+   git tag v0.12.0
+   git push --tags
+   ```
+
+   Else if on main branch
+   ```bash
+   git checkout main 
    git pull origin main
+   # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
    ```
