@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 import "@cadl-lang/rest";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";

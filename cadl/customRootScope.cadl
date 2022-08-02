@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 // Currently, our spec is not approved by ARM so this is a workaround that the CADL team gave us
 // so that we can preface our paths with {rootScope}
 // To generate {rootScope} in the path, use the tag --import "./aksrootscope.cadl" while compiling

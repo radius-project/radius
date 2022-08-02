@@ -2,6 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
+
 import "@cadl-lang/rest";
 import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
