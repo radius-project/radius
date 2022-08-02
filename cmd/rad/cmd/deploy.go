@@ -109,7 +109,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
+	environment, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
-	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), workspace.Environment)
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)
 	if err != nil {
 		return err
 	}
