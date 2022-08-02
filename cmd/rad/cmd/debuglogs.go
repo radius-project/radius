@@ -55,7 +55,6 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 
 	c := connection.(*workspaces.KubernetesConnection)
 
-	// k8sClient, err := // connections.DefaultFactory.CreateK8sClient(cmd.Context(), *workspace)
 	k8sClient, _, err := kubernetes.CreateTypedClient(c.Context)
 	if err != nil {
 		return err
