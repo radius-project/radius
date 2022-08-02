@@ -1,0 +1,106 @@
+// Currently, our spec is not approved by ARM so this is a workaround that the CADL team gave us
+// so that we can preface our paths with {rootScope}
+// To generate {rootScope} in the path, use the tag --import "./aksrootscope.cadl" while compiling
+
+import "@cadl-lang/openapi";
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-autorest";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-azure-core";
+
+namespace Azure.ResourceManager.Radius;
+
+using Cadl.Http;
+using Cadl.Rest;
+using OpenAPI;
+using Autorest;
+using Azure.Core;
+
+model RootScopeParentScope<TResource, TRootParams> {
+  ...RootScopeResourceCommonParameters<TResource, TRootParams>;
+  ...ParentKeysOf<TResource>;
+}
+
+model RootScopeResourceCommonParameters<TResource, TRootParams> {
+  ...ApiVersionParameter;
+  ...TRootParams;
+  ...ProviderNamespace<TResource>;
+}
+
+model RootScopeResourceInstanceParameters<TResource, TRootParams> {
+  ...RootScopeResourceCommonParameters<TResource, TRootParams>;
+  ...KeysOf<TResource>;
+}
+
+interface ResourceRead<TResource, TRootParams> {
+  @autoRoute
+  @doc("Get a {name}", TResource)
+  @get
+  @armResourceRead(TResource)
+  Get(...TRootParams): ArmResponse<TResource> | ErrorResponse;
+}
+
+interface ResourceCreate<TResource, TRootParams> {
+  @autoRoute
+  @doc("Create a {name}", TResource)
+  @extension("x-ms-long-running-operation", true)
+  @asyncOperationOptions("azure-async-operation")
+  @armResourceCreateOrUpdate(TResource)
+  @put
+  CreateOrUpdate(
+    ...TRootParams,
+
+    @doc("Resource create parameters.")
+    @body
+    resource: TResource
+  ): ArmResponse<TResource> | ArmCreatedResponse<TResource> | ErrorResponse;
+}
+
+@doc("Update model for resource tags")
+interface ResourceUpdate<TResource, TProperties, TRootParams> {
+  @autoRoute
+  @doc("Update a {name}", TResource)
+  @armResourceUpdate(TResource)
+  @patch
+  Update(
+    ...TRootParams,
+
+    @doc("The resource properties to be updated.")
+    @body
+    properties: ResourceUpdateModel<TResource, TProperties>
+  ): ArmResponse<TResource> | ErrorResponse;
+}
+
+interface ResourceDelete<TResource, TRootParams> {
+  @autoRoute
+  @doc("Delete a {name}", TResource)
+  @extension("x-ms-long-running-operation", true)
+  @asyncOperationOptions("azure-async-operation")
+  @armResourceDelete(TResource)
+  @delete
+  Delete(...TRootParams):
+    | ArmDeletedResponse
+    | ArmDeleteAcceptedResponse
+    | ArmDeletedNoContentResponse
+    | ErrorResponse;
+}
+
+interface ResourceListByParent<TResource, TRootParams> {
+  @get
+  @pageable
+  @autoRoute
+  @list(TResource)
+  @segmentOf(TResource)
+  @armRenameListByOperation(TResource) // This must come before @armResourceList!
+  @armResourceList(TResource)
+  ListByParent(
+    ...RootScopeParentScope<TResource, TRootParams>
+  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+}
+
+interface RootScopeResourceOperations<TResource, TProperties, TRootParams>
+  extends ResourceRead<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
+    ResourceCreate<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
+    ResourceUpdate<TResource, TProperties, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
+    ResourceDelete<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
+    ResourceListByParent<TResource, TRootParams> {}

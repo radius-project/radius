@@ -47,72 +47,7 @@
     }
   ],
   "paths": {
-    "/providers/Environment/operations": {
-      "get": {
-        "tags": [
-          "Operations"
-        ],
-        "operationId": "Operations_List",
-        "description": "List the operations for the provider",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
-            }
-          },
-          "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/providers/Environment/environmentName": {
-      "get": {
-        "tags": [
-          "Environment"
-        ],
-        "operationId": "Environment_ListBySubscription",
-        "description": "List EnvironmentResource resources by subscription ID",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/EnvironmentResourceListResult"
-            }
-          },
-          "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Environment/environmentName": {
+    "/{rootScope}/providers/Applications.Core/environments": {
       "get": {
         "tags": [
           "Environment"
@@ -124,10 +59,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -149,7 +81,7 @@
         }
       }
     },
-    "/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/Environment/environmentName/{environmentName}": {
+    "/{rootScope}/providers/Applications.Core/environments/{environmentName}": {
       "get": {
         "tags": [
           "Environment"
@@ -161,10 +93,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/EnvironmentResource.environmentName"
@@ -196,10 +125,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/EnvironmentResource.environmentName"
@@ -257,10 +183,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/EnvironmentResource.environmentName"
@@ -301,10 +224,7 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/SubscriptionIdParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ResourceGroupNameParameter"
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/EnvironmentResource.environmentName"
@@ -339,9 +259,59 @@
         },
         "x-ms-long-running-operation": true
       }
+    },
+    "/providers/Applications.Core/operations": {
+      "get": {
+        "tags": [
+          "Operations"
+        ],
+        "operationId": "Operations_List",
+        "description": "List the operations for the provider",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/OperationListResult"
+            }
+          },
+          "default": {
+            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
     }
   },
   "definitions": {
+    "EnvironmentCompute": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "description": "Discriminator property for EnvironmentCompute."
+        },
+        "resourceId": {
+          "type": "string",
+          "description": "The resource id of the compute resource for application environment."
+        }
+      },
+      "description": "Compute resource used by application environment resource.",
+      "discriminator": "kind",
+      "required": [
+        "kind",
+        "resourceId"
+      ]
+    },
     "EnvironmentProperties": {
       "type": "object",
       "properties": {
@@ -349,9 +319,16 @@
           "$ref": "#/definitions/ProvisioningState",
           "description": "The status of the last operation.",
           "readOnly": true
+        },
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource used by application environment."
         }
       },
-      "description": "Environment properties"
+      "description": "Environment properties",
+      "required": [
+        "compute"
+      ]
     },
     "EnvironmentResource": {
       "type": "object",
@@ -385,7 +362,7 @@
             "$ref": "#/definitions/EnvironmentResource"
           },
           "x-cadl-name": "EnvironmentResource[]",
-          "description": "The items on this page"
+          "description": "The EnvironmentResource items on this page"
         },
         "nextLink": {
           "type": "string",
@@ -415,8 +392,32 @@
     },
     "EnvironmentResourceUpdateProperties": {
       "type": "object",
-      "properties": {},
+      "properties": {
+        "compute": {
+          "$ref": "#/definitions/EnvironmentCompute",
+          "description": "The compute resource used by application environment."
+        }
+      },
       "description": "The updatable properties of the EnvironmentResource."
+    },
+    "KubernetesCompute": {
+      "type": "object",
+      "properties": {
+        "nameSpace": {
+          "type": "string",
+          "description": "The namespace to use for the environment"
+        }
+      },
+      "description": "Specifies the properties for Kubernetes compute environment",
+      "required": [
+        "nameSpace"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentCompute"
+        }
+      ],
+      "x-ms-discriminator-value": "kubernetes"
     },
     "ProvisioningState": {
       "type": "string",
@@ -441,8 +442,17 @@
       "in": "path",
       "required": true,
       "description": "environment name",
-      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-      "maxLength": 63,
+      "pattern": "^[a-z0-9]+(-[a-z0-9]+)*",
+      "maxLength": 128,
+      "type": "string",
+      "x-ms-parameter-location": "method"
+    },
+    "RootScopeParam": {
+      "name": "rootScope",
+      "in": "path",
+      "required": true,
+      "description": "root scope path",
+      "minLength": 1,
       "type": "string",
       "x-ms-parameter-location": "method"
     }

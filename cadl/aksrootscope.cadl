@@ -1,0 +1,19 @@
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.ResourceManager;
+
+@doc("Custom root scope")
+model RootScopeParam {
+  @doc("root scope path")
+  @minLength(1)
+  @path
+  rootScope: string;
+}
+
+// Skip generation of ListBySubscription
+interface RootScopeResourceListBySubscription<TResource> {}

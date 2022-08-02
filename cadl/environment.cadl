@@ -1,24 +1,40 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 import "@cadl-lang/rest";
-import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+
+// This file allows to use {rootScope} in our paths with a custom resourceOperations object
+import "./customRootScope.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
 using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
 
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
 @doc("REST API for Applications.Core Environment Resource")
-namespace Environment;
+namespace Applications.Core;
 
+@discriminator("kind")
 @doc("Compute resource used by application environment resource.")
 model EnvironmentCompute {
-  @doc("Type of compute resource.")
-  kind: EnvironmentComputeKind;
-
   @doc("The resource id of the compute resource for application environment.")
   resourceId: string;
+}
+
+@doc("Specifies the properties for Kubernetes compute environment")
+model KubernetesCompute extends EnvironmentCompute {
+  @doc("resource compute kind")
+  kind: "kubernetes";
+
+  @doc("The namespace to use for the environment")
+  nameSpace: string;
 }
 
 @doc("Environment properties")
@@ -37,13 +53,13 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
   @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
   @key("environmentName")
   @path
-  @segment("{environmentName}")
+  @segment("environments")
   name: string;
 }
 
 @armResourceOperations
 interface Environment
-  extends ResourceOperations<EnvironmentResource, EnvironmentProperties> {}
+  extends Radius.RootScopeResourceOperations<EnvironmentResource, EnvironmentProperties, RootScopeParam> {}
 
 @knownValues(ProvisioningStateKV)
 model ProvisioningState is string {}
@@ -55,10 +71,4 @@ enum ProvisioningStateKV {
   Updating,
   Deleting,
   Accepted,
-}
-
-@knownValues(EnvironmentComputeKV)
-model EnvironmentComputeKind is string {}
-enum EnvironmentComputeKV {
-  kubernetes,
 }

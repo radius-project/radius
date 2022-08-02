@@ -1,13 +1,19 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 import "@cadl-lang/rest";
 import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 
 import "./types.cadl";
+import "./customRootScope.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
 using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
 
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
@@ -198,17 +204,17 @@ model ContainerProperties {
 
 model ContainerResource is TrackedResource<ContainerProperties> {
   @doc("Container name")
-  @maxLength(128)
-  @pattern("^[a-z0-9]+(-[a-z0-9]+)*")
-  @key("ContainerName")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("containerName")
   @path
-  @segment("{ContainerName}")
+  @segment("containers")
   name: string;
 }
 
 @armResourceOperations
 interface Containers
-  extends ResourceOperations<ContainerResource, ContainerProperties> {}
+  extends Radius.RootScopeResourceOperations<ContainerResource, ContainerProperties, RootScopeParam> {}
 
 @knownValues(ProvisioningStateKV)
 model ProvisioningState is string {}

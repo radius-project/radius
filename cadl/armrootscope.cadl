@@ -1,0 +1,16 @@
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.Core;
+using Azure.ResourceManager;
+
+// /subscription/{id}/rg/{rgname}...
+@doc("Root scope param")
+model RootScopeParam {
+  ...SubscriptionId;
+  ...ResourceGroup;
+}
+
+alias RootScopeResourceListBySubscription<TResource> = ResourceListBySubscription<TResource>;
