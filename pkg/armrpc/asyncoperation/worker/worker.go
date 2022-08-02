@@ -18,6 +18,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -238,7 +239,8 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 		// Such cases should not call w.completeOperation.
 		if !errors.Is(asyncReqCtx.Err(), context.Canceled) {
 			if err != nil {
-				result.SetFailed(armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}, false)
+				armErr := extractError(err)
+				result.SetFailed(armErr, false)
 			}
 			w.completeOperation(ctx, message, result, asyncCtrl.StorageClient())
 		}
@@ -276,6 +278,14 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			logger.Info("End processing operation.", "StartAt", opStartAt.UTC(), "EndAt", opEndAt.UTC(), "Duration", opEndAt.Sub(opStartAt))
 			return
 		}
+	}
+}
+
+func extractError(err error) armerrors.ErrorDetails {
+	if clientErr, ok := err.(*conv.ErrClientRP); ok {
+		return armerrors.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
+	} else {
+		return armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}
 	}
 }
 
