@@ -7,11 +7,14 @@ package worker
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -135,5 +138,26 @@ func TestGetMessageExtendDuration(t *testing.T) {
 		worker := New(Options{}, nil, nil, nil)
 		d := worker.getMessageExtendDuration(tt.in)
 		require.Equal(t, tt.out, d.Round(time.Second))
+	}
+}
+
+func TestErrorHandling(t *testing.T) {
+	tests := []struct {
+		err            error
+		expectedArmErr armerrors.ErrorDetails
+	}{
+		{
+			err:            conv.NewClientErrInvalidRequest("client error"),
+			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Invalid, Message: "client error"},
+		},
+		{
+			err:            errors.New("internal error"),
+			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Internal, Message: "internal error"},
+		},
+	}
+
+	for _, tt := range tests {
+		armErr := extractError(tt.err)
+		require.Equal(t, tt.expectedArmErr, armErr)
 	}
 }
