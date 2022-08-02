@@ -350,7 +350,7 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldResourcePr
 		}
 	}
 
-	message := fmt.Sprintf("Attempted to deploy '%s'. Options to resolve the conflict are: To create a new resource, change the name of the '%s' resource definition in the '%s' application OR Update the existing resource '%s' in the '%s'. Change the resource's application/environment properties to '%s'/'%s'.", resourceID.Name(), resourceID.Name(), newAppID.Name(), resourceID.Name(), oldAppID.Name(), oldAppID.Name(), envID.Name())
+	message := fmt.Sprintf("Attempted to deploy '%s'. Options to resolve the conflict are: to create a new resource, change the name of the '%s' resource definition in the '%s' application or to update the existing resource '%s' in the '%s', change the resource's application (and/or) environment properties to '%s' and '%s' respectively.", resourceID.Name(), resourceID.Name(), newAppID.Name(), resourceID.Name(), oldAppID.Name(), oldAppID.String(), envID.String())
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
