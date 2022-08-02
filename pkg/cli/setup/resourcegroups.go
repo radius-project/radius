@@ -60,7 +60,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper("", kubernetes.UCPType, kc.Context)
 	if err != nil {
-		return "", &cli.ClusterUnreachable{Err: err}
+		return "", &cli.ClusterUnreachableError{Err: err}
 	}
 
 	createRgRequest, err := http.NewRequest(
