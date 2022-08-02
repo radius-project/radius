@@ -54,10 +54,7 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		//ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
-			doesAppExist, newErr := cli.Is404ErrorForAzureError(err)
-			if newErr != nil {
-				return &cli.FriendlyError{Message: "Unable to expose resource"}
-			}
+			doesAppExist := cli.Is404ErrorForAzureError(err)
 			//suggest an application only when an existing one is not found
 			if doesAppExist {
 				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
