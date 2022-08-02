@@ -19,9 +19,9 @@ import (
 // resourceListCmd command to list resources in an application
 var resourceListCmd = &cobra.Command{
 	Use:     "list [type]",
-	Short:   "Lists application resources",
-	Long:    "List all the resources in the specified application",
-	Example: `rad resource delete containers --application icecream-store `,
+	Short:   "Lists resources",
+	Long:    "List all resources of specified type",
+	Example: `rad resource list containers --application icecream-store `,
 	RunE:    listResources,
 }
 

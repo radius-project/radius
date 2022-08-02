@@ -79,14 +79,12 @@ func (amc *ARMApplicationsManagementClient) ListAllResourceOfTypeInApplication(c
 // ListAllResourcesByApplication lists the resources of a particular application
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	for _, resourceType := range(ResourceTypesList) {
+	for _, resourceType := range ResourceTypesList {
 		resourceList, err := amc.ListAllResourceOfTypeInApplication(ctx, applicationName, resourceType)
 		if err != nil {
 			return nil, err
 		}
-		for _, resource := range resourceList {
-			results = append(results, resource)
-		}
+		results = append(results, resourceList...)
 	}
 
 	return results, nil

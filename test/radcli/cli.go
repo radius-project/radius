@@ -159,6 +159,7 @@ func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (strin
 	args := []string{
 		"resource",
 		"list",
+		"containers",
 		"-a", applicationName,
 	}
 	return cli.RunCommand(ctx, args)
