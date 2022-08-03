@@ -259,7 +259,7 @@ func Is404ErrorForAzureError(err error) bool {
 		return false
 	}
 
-	if *errorResponse.InnerError.Code == armerrors.NotFound {
+	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == armerrors.NotFound {
 		return true
 	}
 

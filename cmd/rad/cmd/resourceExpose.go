@@ -54,21 +54,23 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		//ignore applicationresource as we only check for existence of application
 		_, err = managementClient.ShowApplication(cmd.Context(), application)
 		if err != nil {
-			doesAppExist := cli.Is404ErrorForAzureError(err)
+			appNotFound := cli.Is404ErrorForAzureError(err)
 			//suggest an application only when an existing one is not found
-			if doesAppExist {
+			if appNotFound {
 				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
 				appList, listErr := managementClient.ListApplications(cmd.Context())
 				if listErr != nil {
 					return &cli.FriendlyError{Message: "Unable to expose resource"}
 				}
+				msg := fmt.Sprintf("Application %s does not exist.", application)
 				for _, app := range appList {
 					distance := levenshtein.ComputeDistance(*app.Name, application)
 					if distance <= LevenshteinCutoff {
-						fmt.Printf("Application %s does not exist. Did you mean %s?\n", application, *app.Name)
+						msg = msg + fmt.Sprintf("Did you mean %s?", *app.Name)
 						break
 					}
 				}
+				fmt.Println(msg)
 			}
 			return &cli.FriendlyError{Message: "Unable to expose resource"}
 		}
