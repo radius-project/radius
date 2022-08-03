@@ -43,25 +43,50 @@ var (
 	}
 )
 
+// ListAllResourcesByType lists the all the resources within a scope
+func (amc *ARMApplicationsManagementClient) ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+	pager := client.ListByRootScope(nil)
+	if pager.Err() != nil {
+		return nil, pager.Err()
+	}
+	for pager.NextPage(ctx) {
+		resourceList := pager.PageResponse().GenericResourcesList.Value
+		for _, resource := range resourceList {
+			results = append(results, *resource)
+		}
+	}
+	return results, nil
+}
+
+// ListAllResourceOfTypeInApplication lists the resources of a particular type in an application
+func (amc *ARMApplicationsManagementClient) ListAllResourceOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	resourceList, err := amc.ListAllResourcesByType(ctx, resourceType)
+	if err != nil {
+		return nil, err
+	}
+	for _, resource := range resourceList {
+		isResourceWithApplication := isResourceWithApplication(ctx, resource, applicationName)
+		if isResourceWithApplication {
+			results = append(results, resource)
+		}
+	}
+	return results, nil
+}
+
 // ListAllResourcesByApplication lists the resources of a particular application
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range ResourceTypesList {
-		client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
-		pager := client.ListByRootScope(nil)
-		if pager.Err() != nil {
-			return nil, pager.Err()
+		resourceList, err := amc.ListAllResourceOfTypeInApplication(ctx, applicationName, resourceType)
+		if err != nil {
+			return nil, err
 		}
-		for pager.NextPage(ctx) {
-			resourceList := pager.PageResponse().GenericResourcesList.Value
-			for _, resource := range resourceList {
-				isResourceWithApplication := isResourceWithApplication(ctx, *resource, applicationName)
-				if isResourceWithApplication {
-					results = append(results, *resource)
-				}
-			}
-		}
+		results = append(results, resourceList...)
 	}
+
 	return results, nil
 }
 
