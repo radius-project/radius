@@ -52,9 +52,9 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplication(cmd, *workspace)
+	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil {
-		return err
+		return &cli.FriendlyError{Message: "Unable to parse command"}
 	}
 
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
