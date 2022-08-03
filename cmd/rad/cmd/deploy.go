@@ -109,6 +109,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	environment, err := cli.RequireEnvironmentName(cmd, args, *workspace)
+	if err != nil {
+		return err
+	}
+
 	ok, err := bicep.IsBicepInstalled()
 	if err != nil {
 		return fmt.Errorf("failed to find rad-bicep: %w", err)
@@ -134,10 +139,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
-	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), workspace.Environment)
+	environment = workspace.Scope + "/providers/applications.core/environments/" + environment
+	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)
 	if err != nil {
 		return err
 	}
+
 	progressText := fmt.Sprintf(
 		"Deploying Application into workspace '%v'...\n\n"+
 			"Deployment In Progress...", workspace.Name)

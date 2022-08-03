@@ -18,7 +18,7 @@ func Uninstall(ctx context.Context, kubeContext string) error {
 	if err != nil {
 		return err
 	}
-
+	output.LogInfo("The Radius control plane was uninstalled successfully. Any existing environment metadata will be retained for future installations. Local workspaces are also retained. Use the rad workspace command if updates are needed to your local workspaces.")
 	output.CompleteStep(step)
 	return nil
 }

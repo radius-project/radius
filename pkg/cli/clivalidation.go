@@ -52,6 +52,30 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 	return environmentName, err
 }
 
+func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return "", err
+	}
+
+	// We store the environment id in config, but most commands work with the environment name.
+	if environmentName == "" && workspace.Environment != "" {
+		id, err := resources.Parse(workspace.Environment)
+		if err != nil {
+			return "", err
+		}
+
+		environmentName = id.Name()
+	}
+
+	if environmentName == "" {
+		return "", fmt.Errorf("no environment name provided and no default environment set, " +
+			"either pass in an environment name or set a default environment by using `rad env switch`")
+	}
+
+	return environmentName, err
+}
+
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
