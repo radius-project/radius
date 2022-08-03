@@ -8,6 +8,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -87,7 +88,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	filePath := args[0]
-	err := deploy.ValidateBicepFile(filePath)
+	err := deploy.ValidateBicepFile(filePath) //may need to change this
 	if err != nil {
 		return err
 	}
@@ -114,30 +115,36 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ok, err := bicep.IsBicepInstalled()
-	if err != nil {
-		return fmt.Errorf("failed to find rad-bicep: %w", err)
-	}
+	if path.Ext(filePath) != ".bicep" {
+		//check filepath ends w arm json, and if it does then don't do the bicep stuff
+		//read armjson as map string interface
 
-	if !ok {
-		output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
-		err = bicep.DownloadBicep()
+	} else {
+		ok, err := bicep.IsBicepInstalled()
 		if err != nil {
-			return fmt.Errorf("failed to download rad-bicep: %w", err)
+			return fmt.Errorf("failed to find rad-bicep: %w", err)
 		}
-	}
 
-	err = deploy.ValidateBicepFile(filePath)
-	if err != nil {
-		return err
-	}
+		if !ok {
+			output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
+			err = bicep.DownloadBicep()
+			if err != nil {
+				return fmt.Errorf("failed to download rad-bicep: %w", err)
+			}
+		}
 
-	step := output.BeginStep("Building %s...", filePath)
-	template, err := bicep.Build(filePath)
-	if err != nil {
-		return err
+		err = deploy.ValidateBicepFile(filePath)
+		if err != nil {
+			return err
+		}
+
+		step := output.BeginStep("Building %s...", filePath)
+		template, err := bicep.Build(filePath)
+		if err != nil {
+			return err
+		}
+		output.CompleteStep(step)
 	}
-	output.CompleteStep(step)
 
 	environment := workspace.Scope + "/providers/applications.core/environments/" + environmentName
 	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)
