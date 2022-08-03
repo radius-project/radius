@@ -318,46 +318,33 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldResourceProp *v1.BasicResourceProperties, newResourceProp *v1.BasicResourceProperties) Response {
-	var envID, oldAppID, newAppID resources.ID
-	var err error
-	details := []armerrors.ErrorDetails{}
-	if oldResourceProp.Environment != "" {
-		envID, err = resources.Parse(oldResourceProp.Environment)
-		if err != nil {
-			details = append(details, armerrors.ErrorDetails{
-				Code:    armerrors.InvalidProperties,
-				Message: err.Error(),
-			})
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.BasicResourceProperties, newProp *v1.BasicResourceProperties) Response {
+	newAppEnv := ""
+	if newProp.Application != "" {
+		name := newProp.Application
+		if rid, err := resources.Parse(newProp.Application); err == nil {
+			name = rid.Name()
 		}
+		newAppEnv += fmt.Sprintf("'%s' application", name)
 	}
-	if oldResourceProp.Application != "" {
-		oldAppID, err = resources.Parse(oldResourceProp.Application)
-		if err != nil {
-			details = append(details, armerrors.ErrorDetails{
-				Code:    armerrors.InvalidProperties,
-				Message: err.Error(),
-			})
+	if newProp.Environment != "" {
+		if newAppEnv != "" {
+			newAppEnv += " and "
 		}
-	}
-	if newResourceProp.Application != "" {
-		newAppID, err = resources.Parse(newResourceProp.Application)
-		if err != nil {
-			details = append(details, armerrors.ErrorDetails{
-				Code:    armerrors.InvalidProperties,
-				Message: err.Error(),
-			})
+		name := newProp.Environment
+		if rid, err := resources.Parse(newProp.Environment); err == nil {
+			name = rid.Name()
 		}
+		newAppEnv += fmt.Sprintf("'%s' environmant", name)
 	}
 
-	message := fmt.Sprintf("Attempted to deploy '%s'. Options to resolve the conflict are: to create a new resource, change the name of the '%s' resource definition in the '%s' application or to update the existing resource '%s' in the '%s', change the resource's application (and/or) environment properties to '%s' and '%s' respectively.", resourceID.Name(), resourceID.Name(), newAppID.Name(), resourceID.Name(), oldAppID.Name(), oldAppID.String(), envID.String())
+	message := fmt.Sprintf("Attempted to deploy existing '%s'. Options to resolve the conflict are: to create a new resource, change the name of the '%s' resource in %s or to update the existing resource '%s', use '%s' application and '%s' environment.", resourceID.Name(), resourceID.Name(), newAppEnv, resourceID.Name(), oldProp.Application, oldProp.Environment)
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
 				Message: message,
 				Target:  resourceID.String(),
-				Details: details,
 			},
 		},
 	}
