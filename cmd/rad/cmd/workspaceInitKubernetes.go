@@ -111,7 +111,7 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	if !isRadiusInstalled {
-		return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad env init kubernetes")
+		return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad install kubernetes")
 	}
 
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
