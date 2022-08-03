@@ -6,6 +6,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -246,4 +249,19 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 		args = args[1:]
 	}
 	return results, nil
+}
+
+// Is404Error returns true if the error is a 404 payload from an autorest operation.
+func Is404ErrorForAzureError(err error) bool {
+	var errorResponse v20220315privatepreview.ErrorResponse
+	marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse)
+	if marshallErr != nil {
+		return false
+	}
+
+	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == armerrors.NotFound {
+		return true
+	}
+
+	return false
 }
