@@ -530,26 +530,28 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 	require.NoError(t, err)
 
 	for _, tt := range errTests {
-		expctedResp := &BadRequestResponse{
-			Body: armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    armerrors.Invalid,
-					Message: tt.msg,
-					Target:  resource.String(),
+		t.Run(tt.desc, func(t *testing.T) {
+			expctedResp := &BadRequestResponse{
+				Body: armerrors.ErrorResponse{
+					Error: armerrors.ErrorDetails{
+						Code:    armerrors.Invalid,
+						Message: tt.msg,
+						Target:  resource.String(),
+					},
 				},
-			},
-		}
-		oldResourceProp := &v1.BasicResourceProperties{
-			Application: tt.oldAppID,
-			Environment: tt.oldEnvID,
-		}
-		newResourceProp := &v1.BasicResourceProperties{
-			Application: tt.newAppID,
-			Environment: tt.newEnvID,
-		}
-		resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
+			}
+			oldResourceProp := &v1.BasicResourceProperties{
+				Application: tt.oldAppID,
+				Environment: tt.oldEnvID,
+			}
+			newResourceProp := &v1.BasicResourceProperties{
+				Application: tt.newAppID,
+				Environment: tt.newEnvID,
+			}
+			resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
 
-		require.Equal(t, expctedResp, resp)
+			require.Equal(t, expctedResp, resp)
+		})
 	}
 
 }
