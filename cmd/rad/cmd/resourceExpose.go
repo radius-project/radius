@@ -60,7 +60,7 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 				//ignore errors as we are trying to suggest an application and don't care about the errors in the suggestion process
 				appList, listErr := managementClient.ListApplications(cmd.Context())
 				if listErr != nil {
-					return &cli.FriendlyError{Message: "Unable to expose resource"}
+					return &cli.FriendlyError{Message: "Unable to expose applications"}
 				}
 				msg := fmt.Sprintf("Application %s does not exist.", application)
 				for _, app := range appList {
