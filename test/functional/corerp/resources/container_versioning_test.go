@@ -7,6 +7,7 @@ package resource_test
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -50,7 +51,10 @@ func Test_ContainerVersioning(t *testing.T) {
 			},
 			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				secrets, err := test.Options.K8sClient.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{})
+				label := fmt.Sprintf("radius.dev/application=%s", name)
+				secrets, err := test.Options.K8sClient.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{
+					LabelSelector: label,
+				})
 				require.NoError(t, err)
 				require.Len(t, secrets.Items, 1)
 			},
@@ -77,7 +81,10 @@ func Test_ContainerVersioning(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				secrets, err := test.Options.K8sClient.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{})
+				label := fmt.Sprintf("radius.dev/application=%s", name)
+				secrets, err := test.Options.K8sClient.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{
+					LabelSelector: label,
+				})
 				require.NoError(t, err)
 				require.Len(t, secrets.Items, 0)
 			},
