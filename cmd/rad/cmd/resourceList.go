@@ -34,7 +34,7 @@ func listResources(cmd *cobra.Command, args []string) error {
 
 	applicationName, err := cmd.Flags().GetString("application")
 	if err != nil || applicationName == ""{
-		return &cli.FriendlyError{Message: "Application not specified, can be provided using -a flag"}
+		return &cli.FriendlyError{Message: "application not specified, specify the application by adding -a <name>"}
 	}
 
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
