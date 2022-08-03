@@ -13,9 +13,28 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
+
+type ErrUCPResourceGroupCreationFailed struct {
+	resp *http.Response
+	err  error
+}
+
+func (e *ErrUCPResourceGroupCreationFailed) Error() string {
+	if e.resp == nil {
+		return fmt.Sprintf("failed to create UCP resourceGroup: %s", e.err)
+	}
+
+	return fmt.Sprintf("request to create UCP resourceGroup failed with status: %d, response: %+v", e.resp.StatusCode, e.resp)
+}
+
+func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
+	_, ok := target.(*ErrUCPResourceGroupCreationFailed)
+	return ok
+}
 
 func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
@@ -41,7 +60,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 
 	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper("", kubernetes.UCPType, kc.Context)
 	if err != nil {
-		return "", err
+		return "", &cli.ClusterUnreachableError{Err: err}
 	}
 
 	createRgRequest, err := http.NewRequest(
@@ -49,18 +68,15 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
 		strings.NewReader(`{}`))
 	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+		return "", &ErrUCPResourceGroupCreationFailed{nil, err}
 	}
 	createRgRequest = createRgRequest.WithContext(ctx)
 
 	resp, err := rt.RoundTrip(createRgRequest)
-	if err != nil {
-		return "", fmt.Errorf("failed to create UCP resourceGroup: %w", err)
+	if err != nil || (resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK) {
+		return "", &ErrUCPResourceGroupCreationFailed{resp, err}
 	}
 
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("request to create UCP resourceGroup failed with status: %d, request: %+v", resp.StatusCode, resp)
-	}
 	defer resp.Body.Close()
 	var jsonBody map[string]interface{}
 	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
