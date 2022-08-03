@@ -22,6 +22,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+const (
+	LinkedResourceUpdateErrorFormat = "Attempted to deploy existing resource '%s' which has a different application and/or environment. Options to resolve the conflict are: change the name of the '%s' resource in %s to create a new resource, or use '%s' application and '%s' environment to update the existing resource '%s'."
+)
+
 // Translation of internal representation of health state to user facing values
 var InternalToUserHealthStateTranslation = map[string]string{
 	HealthStateUnknown:       HealthStateUnhealthy,
@@ -335,10 +339,10 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.B
 		if rid, err := resources.Parse(newProp.Environment); err == nil {
 			name = rid.Name()
 		}
-		newAppEnv += fmt.Sprintf("'%s' environmant", name)
+		newAppEnv += fmt.Sprintf("'%s' environment", name)
 	}
 
-	message := fmt.Sprintf("Attempted to deploy existing '%s'. Options to resolve the conflict are: to create a new resource, change the name of the '%s' resource in %s or to update the existing resource '%s', use '%s' application and '%s' environment.", resourceID.Name(), resourceID.Name(), newAppEnv, resourceID.Name(), oldProp.Application, oldProp.Environment)
+	message := fmt.Sprintf(LinkedResourceUpdateErrorFormat, resourceID.Name(), resourceID.Name(), newAppEnv, oldProp.Application, oldProp.Environment, resourceID.Name())
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
