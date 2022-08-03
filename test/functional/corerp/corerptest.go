@@ -46,6 +46,7 @@ type TestStep struct {
 	PostStepVerify         func(ctx context.Context, t *testing.T, ct CoreRPTest)
 	SkipResourceValidation bool
 	SkipObjectValidation   bool
+	SkipResourceDeletion   bool
 }
 
 type CoreRPTest struct {
@@ -198,7 +199,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
 
-                // Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
+		// Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
 		err = validation.SaveLogsForController(ctx, ct.Options.K8sClient, "default", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
@@ -268,7 +269,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
-		if step.CoreRPResources == nil && step.SkipResourceValidation {
+		if (step.CoreRPResources == nil && step.SkipResourceValidation) || step.SkipResourceDeletion {
 			continue
 		}
 		for _, resource := range step.CoreRPResources.Resources {
