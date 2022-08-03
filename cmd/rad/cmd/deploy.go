@@ -115,10 +115,12 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if path.Ext(filePath) != ".bicep" {
-		//check filepath ends w arm json, and if it does then don't do the bicep stuff
-		//read armjson as map string interface
-
+	var template map[string]interface{}
+	if path.Ext(filePath) != ".json" {
+		template, err = deploy.ReadARMJSON(filePath)
+		if err != nil {
+			return err
+		}
 	} else {
 		ok, err := bicep.IsBicepInstalled()
 		if err != nil {
@@ -139,7 +141,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 
 		step := output.BeginStep("Building %s...", filePath)
-		template, err := bicep.Build(filePath)
+		template, err = bicep.Build(filePath)
 		if err != nil {
 			return err
 		}

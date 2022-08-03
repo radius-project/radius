@@ -7,8 +7,10 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"sync"
@@ -30,6 +32,26 @@ func ValidateBicepFile(filePath string) error {
 	}
 
 	return nil
+}
+
+func ReadARMJSON(filePath string) (map[string]interface{}, error) {
+	_, err := os.Stat(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not find file: %w", err)
+	}
+
+	bytes, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read json file: %w", err)
+	}
+
+	var template map[string]interface{}
+	err = json.Unmarshal(bytes, &template)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal json file: %w", err)
+	}
+
+	return template, nil
 }
 
 type Options struct {
