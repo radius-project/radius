@@ -32,7 +32,7 @@ func listResources(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := cmd.Flags().GetString("application")
+	applicationName, err := cli.RequireApplication(cmd, *workspace)
 	if err != nil || applicationName == ""{
 		return &cli.FriendlyError{Message: "application not specified, specify the application by adding -a <name>"}
 	}
