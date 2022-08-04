@@ -90,7 +90,7 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error) {
+func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error) {
 	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 	getResponse, err := client.Get(ctx, resourceName, &generated.GenericResourcesGetOptions{})
 	if err != nil {

@@ -52,10 +52,12 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := cmd.Flags().GetString("application")
-	if err != nil {
-		return &cli.FriendlyError{Message: "Unable to parse application name"}
-	}
+	// The application flag is redundant for show as resources are env scoped
+	// The flag is useful for future behaviors where resources might be rg or subId scoped
+	// applicationName, err := cmd.Flags().GetString("application")
+	// if err != nil {
+	// 	return &cli.FriendlyError{Message: "Unable to parse application name"}
+	// }
 
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
@@ -67,7 +69,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType, resourceName)
+	resourceDetails, err := client.ShowResource(cmd.Context(), resourceType, resourceName)
 	if err != nil {
 		return err
 	}
