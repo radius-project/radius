@@ -134,7 +134,7 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## ResourceStatus
 ### Properties
@@ -161,7 +161,7 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **topic**: string: Topic name of the Azure ServiceBus resource
 ### DaprPubSubGenericResourceProperties
 #### Properties
@@ -189,7 +189,7 @@
 * **metadata**: any (Required): Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **secretStoreName**: string (ReadOnly): The name of the Dapr Secret Store.
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
 
@@ -206,7 +206,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **stateStoreName**: string (ReadOnly): The name of the Dapr State Store
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 ### DaprStateStoreGenericResourceProperties
 #### Properties
 * **kind**: 'generic' (Required): The Dapr StateStore kind
@@ -236,7 +236,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
 
@@ -260,7 +260,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## MongoDatabaseSecrets
 ### Properties
@@ -280,7 +280,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **queue**: string (Required): The name of the queue
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets) (WriteOnly): The secret values for the given RabbitMQMessageQueue resource
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## RabbitMQSecrets
 ### Properties
@@ -300,7 +300,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets) (WriteOnly): The secret values for the given RedisCache resource
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 * **username**: string (ReadOnly): The username for redis
 
 ## RedisCacheSecrets
@@ -321,7 +321,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this connector
 * **server**: string: The fully qualified domain name of the SQL database.
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
 
 ## TrackedResourceTags
 ### Properties
