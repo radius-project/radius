@@ -67,6 +67,17 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Equal(t, true, match)
 	})
 
+	t.Run("Validate rad resource show with no application mentioned", func(t *testing.T) {
+		output, err := cli.ResourceShowNoApplicationFlag(ctx, "containers", "containera")
+		require.NoError(t, err)
+		// We are more interested in the content and less about the formatting, which
+		// is already covered by unit tests. The spaces change depending on the input
+		// and it takes very long to get a feedback from CI.
+		expected := regexp.MustCompile(`RESOURCE    TYPE\ncontainera  applications.core/containers\n`)
+		match := expected.MatchString(output)
+		require.Equal(t, true, match)
+	})
+
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
 		output, err := cli.ResourceLogs(ctx, appName, "containera")
 		require.NoError(t, err)

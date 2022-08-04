@@ -155,6 +155,16 @@ func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resour
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) ResourceShowNoApplicationFlag(ctx context.Context, resourceType string, resourceName string) (string, error) {
+	args := []string{
+		"resource",
+		"show",
+		resourceType,
+		resourceName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) ResourceList(ctx context.Context, applicationName string) (string, error) {
 	args := []string{
 		"resource",
