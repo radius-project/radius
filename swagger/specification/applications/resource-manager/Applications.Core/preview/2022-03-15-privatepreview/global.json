@@ -57,7 +57,8 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of the resource"
+          "description": "Status of the resource",
+          "readOnly": true
         }
       }
     },

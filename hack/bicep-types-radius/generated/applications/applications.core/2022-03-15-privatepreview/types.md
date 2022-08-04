@@ -86,7 +86,7 @@
 * **container**: [Container](#container) (Required): Definition of a container.
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
-* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ContainerPropertiesConnections
 ### Properties
@@ -237,7 +237,7 @@
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **routes**: [GatewayRoute](#gatewayroute)[] (Required): Routes attached to this Gateway
-* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **url**: string (ReadOnly): URL of the gateway resource. Readonly.
 
 ## GatewayPropertiesHostname
@@ -263,7 +263,7 @@
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **scheme**: string: The scheme used for traffic. Readonly.
-* **status**: [ResourceStatus](#resourcestatus): Status of a resource.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
 
 ## TrackedResourceTags
