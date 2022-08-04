@@ -104,14 +104,18 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		return err
 	}
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
+
 		for _, workspaceItem := range section.Items {
 			if workspaceItem.IsSameKubernetesContext(currentKubeContext) {
+				workspaceName := workspaceItem.Name
 				if azProvider == nil {
 					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{}
 				} else {
 					workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
 				}
+				section.Items[workspaceName] = workspaceItem
 			}
+
 		}
 		return nil
 	})
