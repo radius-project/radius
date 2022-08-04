@@ -77,6 +77,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		computedHostname = "unknown"
 	} else if options.Environment.Gateway.PublicEndpointOverride {
 		computedHostname = options.Environment.Gateway.PublicIP
+	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
+		computedHostname = gateway.Properties.Hostname.FullyQualifiedHostname
 	} else {
 		computedHostname = "http://" + hostname
 	}
@@ -263,8 +265,13 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	publicIP := options.Environment.Gateway.PublicIP
 	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
 
+	// Order of precedence for hostname creation:
+	// 1. if publicEndpointOverride is true: hostname = publicIP
+	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname
+	// 3. if publicIP is "": hostname = "" (cannot determine a suitable hostname to use)
+	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
+	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
 	if publicEndpointOverride {
-		// Local Dev scenario
 		urlOverride, err := url.Parse(publicIP)
 		if err != nil {
 			return "", fmt.Errorf("unable to parse given url: %s", publicIP)
@@ -276,15 +283,15 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 		}
 
 		return host, nil
+	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
+		// Trust that the provided FullyQualifiedHostname actually works
+		return gateway.Hostname.FullyQualifiedHostname, nil
 	} else if publicIP == "" {
 		// In the case of no publicIP, return an empty hostname, but don't return an error
 		// Should be improved in https://github.com/project-radius/radius/issues/2196
 		return "", nil
 	} else if gateway.Hostname != nil {
-		if gateway.Hostname.FullyQualifiedHostname != "" {
-			// Use FQDN
-			return gateway.Hostname.FullyQualifiedHostname, nil
-		} else if gateway.Hostname.Prefix != "" {
+		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
 			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, publicIP)
 			return prefixedHostname, nil
