@@ -17,8 +17,8 @@ import (
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// Status of the resource
-	Status *ResourceStatus `json:"status,omitempty"`
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
