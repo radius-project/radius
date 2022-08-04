@@ -278,18 +278,20 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		},
 		Scope:    id,
 		Registry: registry,
+		Name:     workspaceName,
 	}
 
+	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no provider yet.
+	//if no reinstall, then make sure to preserve the provider from existing installation
 	provider := workspaces.AzureProvider{}
 	if azureProvider != nil {
 		provider.SubscriptionID = azureProvider.SubscriptionID
 		provider.ResourceGroup = azureProvider.ResourceGroup
 
-	} else if azProviderFromInstall != nil {
+	} else if azProviderFromInstall != nil && !chartArgs.Reinstall {
 		provider.SubscriptionID = azProviderFromInstall.SubscriptionID
 		provider.ResourceGroup = azProviderFromInstall.ResourceGroup
 	}
-	workspace.ProviderConfig.Azure = &provider
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
@@ -297,7 +299,9 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 		for _, workspaceItem := range section.Items {
 			if workspaceItem.IsSameKubernetesContext(contextName) {
+				workspaceName := workspaceItem.Name
 				workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
+				section.Items[workspaceName] = workspaceItem
 			}
 		}
 
