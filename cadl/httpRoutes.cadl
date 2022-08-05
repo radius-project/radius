@@ -1,0 +1,76 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+// This file allows to use {rootScope} in our paths with a custom resourceOperations object
+import "./customRootScope.cadl";
+import "./types.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+
+@armNamespace
+@serviceTitle("Applications.Core Management APIs")
+@doc("REST API for Applications.Core HttpRoute Resource")
+namespace Applications.Core;
+
+@doc("HttpRoute properties")
+model HttpRouteProperties extends BasicResourceProperties {
+  @doc("Provisioning state of the HttpRoute at the time the operation was called.")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("The resource id of the application linked to HTTP Route resource.")
+  application: string;
+
+  @doc("Sets HttpRoute to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
+  internal?: boolean = false;
+
+  @doc("The internal hostname accepting traffic for the HTTP Route. Readonly.")
+  @visibility("read")
+  hostname?: string;
+
+  @doc("The port number for the HTTP Route. Defaults to 80. Readonly.")
+  @visibility("read")
+  port?: int32 = 80;
+
+  @doc("The scheme used for traffic. Readonly.")
+  scheme?: string;
+
+  @doc("A stable URL that that can be used to route traffic to a resource. Readonly.")
+  @visibility("read")
+  url?: string;
+}
+
+model HttpRouteResource is TrackedResource<HttpRouteProperties> {
+  @doc("HttpRoute name")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("httpRouteName")
+  @path
+  @segment("httpRoute")
+  name: string;
+}
+
+@armResourceOperations
+interface HttpRoute
+  extends Radius.RootScopeResourceOperations<HttpRouteResource, HttpRouteProperties, RootScopeParam> {}
+
+@knownValues(ProvisioningStateKV)
+model ProvisioningState is string {}
+enum ProvisioningStateKV {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
