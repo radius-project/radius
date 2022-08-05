@@ -11,6 +11,8 @@ import "@azure-tools/cadl-providerhub";
 // This file allows to use {rootScope} in our paths with a custom resourceOperations object
 import "./customRootScope.cadl";
 
+import "./types.cadl";
+
 using Cadl.Http;
 using Cadl.Rest;
 using Azure.ResourceManager;
@@ -22,7 +24,7 @@ using Azure.ResourceManager.Radius;
 namespace Applications.Core;
 
 @doc("Gateway properties")
-model GatewayProperties {
+model GatewayProperties extends BasicResourceProperties {
   @doc("Provisioning state of the Gateway at the time the operation was called.")
   @visibility("read")
   provisioningState?: ProvisioningState;
@@ -69,9 +71,9 @@ model GatewayResource is TrackedResource<GatewayProperties> {
   @doc("Gateway name")
   @maxLength(63)
   @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-  @key("GatewayName")
+  @key("gatewayName")
   @path
-  @segment("Gateways")
+  @segment("gateways")
   name: string;
 }
 
