@@ -36,6 +36,7 @@ type ResourceDeploymentClient struct {
 	OperationsClient    azclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
 	AzProvider          *workspaces.AzureProvider
+	AWSProvider         *workspaces.AWSProvider
 }
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
@@ -118,6 +119,15 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() azclients.ProviderConfi
 					Scope: scope,
 				},
 			}
+		}
+	}
+
+	if dc.AWSProvider != nil {
+		providerConfigs.AWS = &providers.AWS{
+			Type: "AWS",
+			Value: providers.Value{
+				Scope: dc.AWSProvider.Scope,
+			},
 		}
 	}
 

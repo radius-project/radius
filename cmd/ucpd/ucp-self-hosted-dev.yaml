@@ -26,6 +26,8 @@ storageProvider:
 
 #Default planes configuration with which ucp starts
 planes:
+  - id: "/planes/aws/aws"
+    properties: {}
   - id: "/planes/radius/local"
     properties:
       resourceProviders:
