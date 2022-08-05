@@ -11,8 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -477,6 +479,83 @@ func Test_AggregateApplicationProvisioningState_ProvisioningAndProvisionedIsProv
 	require.Equal(t, "Resource b is in Provisioning state", aggregateProvisioningStateErrorDetails)
 }
 
+func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
+	errTests := []struct {
+		desc     string
+		oldAppID string
+		oldEnvID string
+		newAppID string
+		newEnvID string
+		msg      string
+	}{
+		{
+			desc:     "application_and_environment_ids",
+			oldAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application",
+			oldEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+			newAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/updated-application",
+			newEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+			msg:      "Attempted to deploy existing resource 'test-container-0' which has a different application and/or environment. Options to resolve the conflict are: change the name of the 'test-container-0' resource in 'updated-application' application and 'test-environment' environment to create a new resource, or use '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application' application and '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment' environment to update the existing resource 'test-container-0'.",
+		}, {
+			desc:     "only_application_id_in_existing_resource",
+			oldAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application",
+			oldEnvID: "",
+			newAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/updated-application",
+			newEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+			msg:      "Attempted to deploy existing resource 'test-container-0' which has a different application and/or environment. Options to resolve the conflict are: change the name of the 'test-container-0' resource in 'updated-application' application and 'test-environment' environment to create a new resource, or use '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application' application and '' environment to update the existing resource 'test-container-0'.",
+		}, {
+			desc:     "only_application_id",
+			oldAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application",
+			oldEnvID: "",
+			newAppID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/updated-application",
+			newEnvID: "",
+			msg:      "Attempted to deploy existing resource 'test-container-0' which has a different application and/or environment. Options to resolve the conflict are: change the name of the 'test-container-0' resource in 'updated-application' application to create a new resource, or use '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/test-application' application and '' environment to update the existing resource 'test-container-0'.",
+		}, {
+			desc:     "only_environment",
+			oldAppID: "",
+			oldEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+			newAppID: "",
+			newEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/updated-environment",
+			msg:      "Attempted to deploy existing resource 'test-container-0' which has a different application and/or environment. Options to resolve the conflict are: change the name of the 'test-container-0' resource in 'updated-environment' environment to create a new resource, or use '' application and '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment' environment to update the existing resource 'test-container-0'.",
+		}, {
+			desc:     "invalid_id",
+			oldAppID: "",
+			oldEnvID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment",
+			newAppID: "",
+			newEnvID: "invalid_id",
+			msg:      "Attempted to deploy existing resource 'test-container-0' which has a different application and/or environment. Options to resolve the conflict are: change the name of the 'test-container-0' resource in 'invalid_id' environment to create a new resource, or use '' application and '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environment/test-environment' environment to update the existing resource 'test-container-0'.",
+		},
+	}
+
+	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
+	require.NoError(t, err)
+
+	for _, tt := range errTests {
+		t.Run(tt.desc, func(t *testing.T) {
+			expctedResp := &BadRequestResponse{
+				Body: armerrors.ErrorResponse{
+					Error: armerrors.ErrorDetails{
+						Code:    armerrors.Invalid,
+						Message: tt.msg,
+						Target:  resource.String(),
+					},
+				},
+			}
+			oldResourceProp := &v1.BasicResourceProperties{
+				Application: tt.oldAppID,
+				Environment: tt.oldEnvID,
+			}
+			newResourceProp := &v1.BasicResourceProperties{
+				Application: tt.newAppID,
+				Environment: tt.newEnvID,
+			}
+			resp := NewLinkedResourceUpdateErrorResponse(resource, oldResourceProp, newResourceProp)
+
+			require.Equal(t, expctedResp, resp)
+		})
+	}
+
+}
+
 func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsProvisioning(t *testing.T) {
 
 	resourceStatuses := map[string]ResourceStatus{
@@ -493,7 +572,6 @@ func Test_AggregateApplicationProvisioningState_NotProvisionedAndProvisionedIsPr
 	require.Equal(t, ProvisioningStateProvisioning, aggregateProvisioningState)
 	require.Equal(t, "Resource b is in NotProvisioned state", aggregateProvisioningStateErrorDetails)
 }
-
 func Test_OKResponse_Empty(t *testing.T) {
 	response := NewOKResponse(nil)
 

@@ -22,6 +22,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+const (
+	LinkedResourceUpdateErrorFormat = "Attempted to deploy existing resource '%s' which has a different application and/or environment. Options to resolve the conflict are: change the name of the '%s' resource in %s to create a new resource, or use '%s' application and '%s' environment to update the existing resource '%s'."
+)
+
 // Translation of internal representation of health state to user facing values
 var InternalToUserHealthStateTranslation = map[string]string{
 	HealthStateUnknown:       HealthStateUnhealthy,
@@ -318,28 +322,33 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(target string, resourceProp *v1.BasicResourceProperties) Response {
-	details := []armerrors.ErrorDetails{}
-	if resourceProp.Environment != "" {
-		details = append(details, armerrors.ErrorDetails{
-			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("environment must be '%s'.", resourceProp.Environment),
-		})
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.BasicResourceProperties, newProp *v1.BasicResourceProperties) Response {
+	newAppEnv := ""
+	if newProp.Application != "" {
+		name := newProp.Application
+		if rid, err := resources.Parse(newProp.Application); err == nil {
+			name = rid.Name()
+		}
+		newAppEnv += fmt.Sprintf("'%s' application", name)
 	}
-	if resourceProp.Application != "" {
-		details = append(details, armerrors.ErrorDetails{
-			Code:    armerrors.InvalidProperties,
-			Message: fmt.Sprintf("application must be '%s'.", resourceProp.Application),
-		})
+	if newProp.Environment != "" {
+		if newAppEnv != "" {
+			newAppEnv += " and "
+		}
+		name := newProp.Environment
+		if rid, err := resources.Parse(newProp.Environment); err == nil {
+			name = rid.Name()
+		}
+		newAppEnv += fmt.Sprintf("'%s' environment", name)
 	}
 
+	message := fmt.Sprintf(LinkedResourceUpdateErrorFormat, resourceID.Name(), resourceID.Name(), newAppEnv, oldProp.Application, oldProp.Environment, resourceID.Name())
 	return &BadRequestResponse{
 		Body: armerrors.ErrorResponse{
 			Error: armerrors.ErrorDetails{
 				Code:    armerrors.Invalid,
-				Message: "Resource update failed because environment and application properties are read-only. The provided environment and application do not match the resource's existing environment and application values. Please use the correct values to update this resource or use a different resource name to create a new resource.",
-				Target:  target,
-				Details: details,
+				Message: message,
+				Target:  resourceID.String(),
 			},
 		},
 	}

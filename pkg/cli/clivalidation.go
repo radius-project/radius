@@ -6,6 +6,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path"
@@ -13,6 +14,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/radrp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -27,6 +30,30 @@ type AzureResource struct {
 
 func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
 	environmentName, err := ReadEnvironmentNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+
+	// We store the environment id in config, but most commands work with the environment name.
+	if environmentName == "" && workspace.Environment != "" {
+		id, err := resources.Parse(workspace.Environment)
+		if err != nil {
+			return "", err
+		}
+
+		environmentName = id.Name()
+	}
+
+	if environmentName == "" {
+		return "", fmt.Errorf("no environment name provided and no default environment set, " +
+			"either pass in an environment name or set a default environment by using `rad env switch`")
+	}
+
+	return environmentName, err
+}
+
+func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspaces.Workspace) (string, error) {
+	environmentName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return "", err
 	}
@@ -246,4 +273,19 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 		args = args[1:]
 	}
 	return results, nil
+}
+
+// Is404Error returns true if the error is a 404 payload from an autorest operation.
+func Is404ErrorForAzureError(err error) bool {
+	var errorResponse v20220315privatepreview.ErrorResponse
+	marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse)
+	if marshallErr != nil {
+		return false
+	}
+
+	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == armerrors.NotFound {
+		return true
+	}
+
+	return false
 }

@@ -75,7 +75,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
 		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID.String(), &old.Properties.BasicResourceProperties), nil
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
 		}
 		// Container is a resource that is asyncly processed. Here, in createOrUpdateContainer, we
 		// don't do the rendering and the deployment. newResource is collected from the request and

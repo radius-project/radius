@@ -131,6 +131,8 @@ type LegacyManagementClient interface {
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
+	ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
+	ListAllResourceOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
 	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error)
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)

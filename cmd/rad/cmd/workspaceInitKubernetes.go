@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -104,6 +105,14 @@ func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	step := output.BeginStep("Creating Workspace...")
+
+	isRadiusInstalled, err := helm.CheckRadiusInstall(kubecontext)
+	if err != nil {
+		return err
+	}
+	if !isRadiusInstalled {
+		return fmt.Errorf("unable to create a workspace. Please install Radius control plane first: rad install kubernetes")
+	}
 
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
 	//
