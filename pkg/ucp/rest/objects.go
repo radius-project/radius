@@ -43,6 +43,21 @@ type ResourceGroupList struct {
 	Value []ResourceGroup `json:"value" yaml:"value"`
 }
 
+type AWSPlane struct {
+	ID         string             `json:"id"`
+	Type       string             `json:"type"`
+	Name       string             `json:"name"`
+	Properties AWSPlaneProperties `json:"properties"`
+}
+
+type AWSPlaneList struct {
+	Value []AWSPlane `json:"value"`
+}
+
+type AWSPlaneProperties struct {
+	// Nothing for now, we just use the ambient credentials in the environment.
+}
+
 // Resource represents a resource within a UCP resource group
 type Resource struct {
 	ID                string `json:"id" yaml:"id"`
