@@ -293,6 +293,19 @@
     }
   },
   "definitions": {
+    "BasicResourceProperties": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource."
+        }
+      },
+      "description": "Basic properties of a Radius resource.",
+      "required": [
+        "status"
+      ]
+    },
     "ConnectionProperties": {
       "type": "object",
       "properties": {
@@ -417,6 +430,11 @@
         "connections",
         "container",
         "extensions"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
       ]
     },
     "ContainerResource": {
@@ -509,6 +527,10 @@
           "x-ms-identifiers": [],
           "x-cadl-name": "Extension[]",
           "description": "Extensions spec of the resource"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource."
         }
       },
       "description": "The updatable properties of the ContainerResource."
@@ -737,6 +759,11 @@
       ],
       "x-ms-discriminator-value": "manualScaling"
     },
+    "OutputResource": {
+      "type": "object",
+      "properties": {},
+      "description": "Properties of an output resource."
+    },
     "PersistentVolume": {
       "type": "object",
       "properties": {
@@ -786,6 +813,24 @@
         "name": "ProvisioningState",
         "modelAsString": true
       }
+    },
+    "ResourceStatus": {
+      "type": "object",
+      "properties": {
+        "outputResources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/OutputResource"
+          },
+          "x-ms-identifiers": [],
+          "x-cadl-name": "OutputResource[]",
+          "description": "Properties of an output resource"
+        }
+      },
+      "description": "Status of a resource.",
+      "required": [
+        "outputResources"
+      ]
     },
     "TcpHealthProbeProperties": {
       "type": "object",

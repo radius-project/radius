@@ -8,8 +8,9 @@ import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 
-import "./types.cadl";
+// This file allows to use {rootScope} in our paths with a custom resourceOperations object
 import "./customRootScope.cadl";
+import "./types.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
@@ -184,9 +185,7 @@ model Container {
 }
 
 @doc("Container properties")
-model ContainerProperties {
-  // allof: BasicResourceProperties
-
+model ContainerProperties extends BasicResourceProperties {
   @doc("The status of the last operation.")
   provisioningState?: ProvisioningState;
 
