@@ -88,10 +88,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	filePath := args[0]
-	err := deploy.ValidateBicepFile(filePath) //may need to change this
-	if err != nil {
-		return err
-	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
 	if err != nil {
@@ -116,7 +112,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	var template map[string]interface{}
-	if path.Ext(filePath) != ".json" {
+	if path.Ext(filePath) == ".json" {
 		template, err = deploy.ReadARMJSON(filePath)
 		if err != nil {
 			return err
