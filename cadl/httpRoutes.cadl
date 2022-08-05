@@ -9,7 +9,6 @@ import "@azure-tools/cadl-providerhub";
 
 // This file allows to use {rootScope} in our paths with a custom resourceOperations object
 import "./customRootScope.cadl";
-
 import "./types.cadl";
 
 using Cadl.Http;
@@ -28,11 +27,11 @@ model HttpRouteProperties extends BasicResourceProperties {
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-@doc("The resource id of the application linked to HTTP Route resource.")
+  @doc("The resource id of the application linked to HTTP Route resource.")
   application: string;
 
   @doc("Sets HttpRoute to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).")
-  internal?:  boolean = false;
+  internal?: boolean = false;
 
   @doc("The internal hostname accepting traffic for the HTTP Route. Readonly.")
   @visibility("read")

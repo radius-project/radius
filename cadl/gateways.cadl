@@ -10,7 +10,6 @@ import "@azure-tools/cadl-providerhub";
 
 // This file allows to use {rootScope} in our paths with a custom resourceOperations object
 import "./customRootScope.cadl";
-
 import "./types.cadl";
 
 using Cadl.Http;
