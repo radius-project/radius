@@ -83,6 +83,7 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 			OperationsClient:    op,
 			RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
 			AzProvider:          workspace.ProviderConfig.Azure,
+			AWSProvider:         workspace.ProviderConfig.AWS,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
