@@ -22,8 +22,7 @@ spec:
     spec:
       serviceAccountName: ucp
       containers:
-      - image: vinayada/ucpd:latest
-      # - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
+      - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
         envFrom:
         - secretRef: 
             name: ucp-aws-provider-credentials

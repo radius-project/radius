@@ -10,7 +10,7 @@ import (
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 )
@@ -28,7 +28,7 @@ func NewListAWSResources(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options.BasePath, req)
+	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +38,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		TypeName: &resourceType,
 	})
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return awsclient.HandleAWSError(err)
 	}
 
 	// TODO there some limitations with listing resources:

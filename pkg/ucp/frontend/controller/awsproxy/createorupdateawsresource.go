@@ -32,7 +32,7 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options.BasePath, req)
+	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
