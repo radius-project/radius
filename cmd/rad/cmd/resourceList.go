@@ -21,7 +21,7 @@ var resourceListCmd = &cobra.Command{
 	Use:     "list [type]",
 	Short:   "Lists resources",
 	Long:    "List all resources of specified type",
-	Example: `rad resource list containers --application icecream-store `,
+	Example: `rad resource list containers --application icecream-store or rad resource list containers -a icecream-store`,
 	RunE:    listResources,
 }
 
