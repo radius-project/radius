@@ -49,10 +49,6 @@ type AWSProvider struct {
 	AccountId string `json:"accountId,omitempty" mapstructure:"accountId" yaml:"accountId,omitempty"`
 }
 
-type AWSProvider struct {
-	Scope string
-}
-
 // Registry represent the configuration for a container registry.
 type Registry struct {
 	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
