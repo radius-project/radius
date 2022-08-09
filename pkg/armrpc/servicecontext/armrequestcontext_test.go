@@ -8,8 +8,8 @@ package servicecontext
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -97,7 +97,7 @@ func TestTopQueryParam(t *testing.T) {
 }
 
 func getTestHTTPRequest() (*http.Request, error) {
-	jsonData, err := ioutil.ReadFile("./testdata/armrpcheaders.json")
+	jsonData, err := os.ReadFile("./testdata/armrpcheaders.json")
 	if err != nil {
 		return nil, err
 	}

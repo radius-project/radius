@@ -9,7 +9,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,7 +41,7 @@ func HelmConfig(builder *strings.Builder, flags *genericclioptions.ConfigFlags) 
 }
 
 func createTempDir() (string, error) {
-	dir, err := ioutil.TempDir("", radiusReleaseName)
+	dir, err := os.MkdirTemp("", radiusReleaseName)
 	if err != nil {
 		return "", fmt.Errorf("error creating temp dir: %s", err)
 	}
@@ -50,7 +49,7 @@ func createTempDir() (string, error) {
 }
 
 func locateChartFile(dirPath string) (string, error) {
-	files, err := ioutil.ReadDir(dirPath)
+	files, err := os.ReadDir(dirPath)
 	if err != nil {
 		return "", err
 	}

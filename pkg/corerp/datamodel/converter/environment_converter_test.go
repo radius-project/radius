@@ -7,7 +7,7 @@ package converter
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -17,7 +17,7 @@ import (
 )
 
 func loadTestData(testfile string) []byte {
-	d, err := ioutil.ReadFile(testfile)
+	d, err := os.ReadFile(testfile)
 	if err != nil {
 		return nil
 	}

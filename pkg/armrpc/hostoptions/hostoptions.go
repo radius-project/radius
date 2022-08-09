@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -57,7 +56,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 }
 
 func loadConfig(configPath string) (*ProviderConfig, error) {
-	buf, err := ioutil.ReadFile(configPath)
+	buf, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}

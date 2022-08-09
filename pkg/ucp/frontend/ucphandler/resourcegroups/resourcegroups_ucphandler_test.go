@@ -7,7 +7,7 @@ package resourcegroups
 import (
 	"bytes"
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -249,7 +249,7 @@ func httpClientWithRoundTripper(statusCode int, response string) *http.Client {
 		Transport: roundTripFunc(func(req *http.Request) *http.Response {
 			return &http.Response{
 				StatusCode: statusCode,
-				Body:       ioutil.NopCloser(bytes.NewBufferString(response)),
+				Body:       io.NopCloser(bytes.NewBufferString(response)),
 			}
 		}),
 	}

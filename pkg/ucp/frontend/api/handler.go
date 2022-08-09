@@ -8,7 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -282,7 +282,7 @@ func internalServerError(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 func readJSONBody(req *http.Request) ([]byte, error) {
 	defer req.Body.Close()
-	data, err := ioutil.ReadAll(req.Body)
+	data, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading request body: %w", err)
 	}

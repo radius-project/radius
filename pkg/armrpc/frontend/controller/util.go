@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -49,7 +49,7 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 	if contentType != "application/json" {
 		return nil, ErrUnsupportedContentType
 	}
-	data, err := ioutil.ReadAll(r.Body)
+	data, err := io.ReadAll(r.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading request body: %w", err)
 	}

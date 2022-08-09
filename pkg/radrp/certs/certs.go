@@ -10,7 +10,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/fullsailor/pkcs7"
@@ -58,7 +58,7 @@ func fetchCert(url string) (*x509.Certificate, error) {
 		return nil, err
 	}
 
-	bytes, err := ioutil.ReadAll(resp.Body)
+	bytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

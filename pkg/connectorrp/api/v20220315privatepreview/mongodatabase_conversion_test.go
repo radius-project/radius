@@ -7,7 +7,7 @@ package v20220315privatepreview
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -23,7 +23,7 @@ func (f *fakeResource) ResourceTypeName() string {
 }
 
 func loadTestData(testfile string) []byte {
-	d, err := ioutil.ReadFile("./testdata/" + testfile)
+	d, err := os.ReadFile("./testdata/" + testfile)
 	if err != nil {
 		return nil
 	}

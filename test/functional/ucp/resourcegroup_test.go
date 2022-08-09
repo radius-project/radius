@@ -8,7 +8,7 @@ package ucp
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -68,7 +68,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 
 	if !existing {
 		require.Equal(t, http.StatusCreated, res.StatusCode)
-	        t.Logf("Resource group: %s created successfully", url)
+		t.Logf("Resource group: %s created successfully", url)
 	} else {
 		require.Equal(t, http.StatusOK, res.StatusCode)
 		t.Logf("Resource group: %s updated successfully", url)
@@ -89,7 +89,7 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 
 	body := result.Body
 	defer body.Close()
-	payload, err := ioutil.ReadAll(body)
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 	var listOfResourceGroups rest.ResourceGroupList
 	err = json.Unmarshal(payload, &listOfResourceGroups)
@@ -111,7 +111,7 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 
 	body := result.Body
 	defer body.Close()
-	payload, err := ioutil.ReadAll(body)
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 	var resourceGroup rest.ResourceGroup
 	err = json.Unmarshal(payload, &resourceGroup)

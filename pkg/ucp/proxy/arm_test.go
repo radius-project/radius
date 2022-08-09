@@ -7,9 +7,9 @@ package proxy
 
 import (
 	"context"
-	"io/ioutil"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -74,7 +74,7 @@ func Test_ARM_Baselines(t *testing.T) {
 func readBaselines() ([]baseline, error) {
 	baselines := []baseline{}
 	base := filepath.Join(".", "testdata", "arm")
-	dirs, err := ioutil.ReadDir(base)
+	dirs, err := os.ReadDir(base)
 	if err != nil {
 		return nil, err
 	}

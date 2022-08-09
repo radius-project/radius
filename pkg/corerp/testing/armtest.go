@@ -9,15 +9,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
+	"os"
 
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 )
 
 func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body interface{}) (*http.Request, error) {
-	jsonData, err := ioutil.ReadFile("./testdata/" + headerFixtureJSONFile)
+	jsonData, err := os.ReadFile("./testdata/" + headerFixtureJSONFile)
 	if err != nil {
 		return nil, err
 	}

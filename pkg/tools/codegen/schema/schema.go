@@ -8,7 +8,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"reflect"
 )
 
@@ -143,7 +143,7 @@ func LoadBytes(b []byte) (*Schema, error) {
 
 // Load loads a Schema from a given file.
 func Load(filename string) (*Schema, error) {
-	b, err := ioutil.ReadFile(filename)
+	b, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
