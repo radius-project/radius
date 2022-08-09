@@ -1,0 +1,1 @@
+curl http://localhost:8001/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/664787032730/regions/us-west-2/providers/AWS.Kinesis/Stream/streamy
