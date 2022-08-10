@@ -7,7 +7,6 @@ package schema
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"regexp"
@@ -88,7 +87,7 @@ func Test_Validation(t *testing.T) {
 					require.Truef(t, ok, "missing validator for %s", resourceType)
 					require.NotNil(t, validator)
 
-					input, err := ioutil.ReadFile(tc.InputFullPath)
+					input, err := os.ReadFile(tc.InputFullPath)
 					require.NoError(t, err)
 
 					validationErrs := validator.ValidateJSON(input)
@@ -110,7 +109,7 @@ func Test_Validation(t *testing.T) {
 					}
 
 					sort.Strings(serialized)
-					expectedText, err := ioutil.ReadFile(tc.ErrorsFullPath)
+					expectedText, err := os.ReadFile(tc.ErrorsFullPath)
 					require.NoError(t, err)
 					expectedText = []byte(strings.TrimSpace(string(expectedText)))
 					expected := strings.Split(strings.ReplaceAll(string(expectedText), "\r\n", "\n"), "\n")
@@ -132,7 +131,7 @@ func findTests(t *testing.T) map[string][]testcase {
 	validTestRegex := regexp.MustCompile(".+-valid.json$")
 	invalidTestRegex := regexp.MustCompile(".+-invalid.json$")
 
-	directories, err := ioutil.ReadDir("testdata")
+	directories, err := os.ReadDir("testdata")
 	require.NoError(t, err)
 
 	for _, directory := range directories {
@@ -143,7 +142,7 @@ func findTests(t *testing.T) map[string][]testcase {
 
 		cases := []testcase{}
 		directoryPath := path.Join("testdata", directory.Name())
-		files, err := ioutil.ReadDir(directoryPath)
+		files, err := os.ReadDir(directoryPath)
 		require.NoError(t, err)
 
 		for _, file := range files {

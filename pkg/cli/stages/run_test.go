@@ -8,7 +8,6 @@ package stages
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -288,10 +287,10 @@ func Test_CanPropagateParameters(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -406,10 +405,10 @@ func Test_CanUsePerStageParameters(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -522,7 +521,7 @@ func Test_CanOverrideStage(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first-dev.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first-dev.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -579,7 +578,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -604,7 +603,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			},
 		},
 		BicepBuildFunc: func(ctx context.Context, deployFile string) (map[string]interface{}, error) {
-			content, err := ioutil.ReadFile(filepath.Join("testdata", "test-bicep-output.json"))
+			content, err := os.ReadFile(filepath.Join("testdata", "test-bicep-output.json"))
 			require.NoError(t, err)
 			deploymentOutput := map[string]interface{}{}
 
@@ -666,13 +665,13 @@ func Test_CanUseParameterFileParameters(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	data, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	data, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "test-parameters.json"), data, 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "test-parameters.json"), data, 0644)
 	require.NoError(t, err)
 
 	options := Options{
@@ -820,10 +819,10 @@ func Test_CanUseBuildResults(t *testing.T) {
 	err := os.MkdirAll(path.Join(tempDir, "iac"), 0755)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "first.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
-	err = ioutil.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
+	err = os.WriteFile(path.Join(tempDir, "iac", "second.bicep"), []byte(""), 0644)
 	require.NoError(t, err)
 
 	options := Options{

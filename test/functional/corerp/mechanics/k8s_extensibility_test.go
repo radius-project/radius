@@ -6,7 +6,6 @@
 package mechanics_test
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +44,7 @@ func loadResources(dir string, suffix string) []unstructured.Unstructured {
 			return nil
 		}
 		var r unstructured.Unstructured
-		b, _ := ioutil.ReadFile(path)
+		b, _ := os.ReadFile(path)
 		_ = yaml.Unmarshal(b, &r.Object)
 		objects = append(objects, r)
 		return nil

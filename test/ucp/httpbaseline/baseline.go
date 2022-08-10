@@ -9,7 +9,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
+	"os"
 	"net/http"
 	"net/http/httptest"
 )
@@ -67,7 +68,7 @@ func NewRequest(r *http.Request) (*Request, error) {
 		}
 
 		request.Body = buf.String()
-		r.Body = ioutil.NopCloser(&buf)
+		r.Body = io.NopCloser(&buf)
 	}
 
 	return &request, nil
@@ -100,14 +101,14 @@ func NewResponse(r *http.Response) (*Response, error) {
 		}
 
 		response.Body = buf.String()
-		r.Body = ioutil.NopCloser(&buf)
+		r.Body = io.NopCloser(&buf)
 	}
 
 	return &response, nil
 }
 
 func ReadRequestFromFile(path string) (Request, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return Request{}, err
 	}
@@ -122,7 +123,7 @@ func ReadRequestFromFile(path string) (Request, error) {
 }
 
 func ReadResponseFromFile(path string) (Response, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return Response{}, err
 	}

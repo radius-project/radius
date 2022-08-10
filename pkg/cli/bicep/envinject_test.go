@@ -8,7 +8,7 @@ package bicep
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -16,7 +16,7 @@ import (
 )
 
 func Test_Env_InjectedIfParamAvailable(t *testing.T) {
-	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-injectid.json"))
+	input, err := os.ReadFile(filepath.Join("testdata", "test-injectid.json"))
 	require.NoError(t, err)
 	template := map[string]interface{}{}
 
@@ -32,7 +32,7 @@ func Test_Env_InjectedIfParamAvailable(t *testing.T) {
 }
 
 func Test_Env_NotInjectedIfNoParamAvailable(t *testing.T) {
-	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-noenv.json"))
+	input, err := os.ReadFile(filepath.Join("testdata", "test-noenv.json"))
 	require.NoError(t, err)
 	template := map[string]interface{}{}
 
@@ -48,7 +48,7 @@ func Test_Env_NotInjectedIfNoParamAvailable(t *testing.T) {
 }
 
 func Test_Env_NotInjectedIfParamAlreadySet(t *testing.T) {
-	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-injectid.json"))
+	input, err := os.ReadFile(filepath.Join("testdata", "test-injectid.json"))
 	require.NoError(t, err)
 	template := map[string]interface{}{}
 

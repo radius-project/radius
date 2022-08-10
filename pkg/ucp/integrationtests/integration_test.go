@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -245,7 +245,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	response, err := ucpClient.httpClient.Do(createPlaneRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusOK, response.StatusCode)
-	registerPlaneResponseBody, err := ioutil.ReadAll(response.Body)
+	registerPlaneResponseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
 	var responsePlane rest.Plane
@@ -274,7 +274,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
 	assert.Equal(t, http.StatusCreated, createResourceGroupResponse.StatusCode)
-	createResourceGroupResponseBody, err := ioutil.ReadAll(createResourceGroupResponse.Body)
+	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
 	var responseResourceGroup rest.ResourceGroup
 	err = json.Unmarshal(createResourceGroupResponseBody, &responseResourceGroup)
@@ -303,7 +303,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 	assert.Equal(t, "http://"+proxyRequest.Host+basePath+testProxyRequestPath, proxyRequestResponse.Header["Location"][0])
 
-	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
+	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]interface{}{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
@@ -327,7 +327,7 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 	assert.Equal(t, http.StatusOK, proxyRequestResponse.StatusCode)
 	assert.Equal(t, apiVersionQueyParam, proxyRequestResponse.Request.URL.RawQuery)
 
-	proxyRequestResponseBody, err := ioutil.ReadAll(proxyRequestResponse.Body)
+	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
 	responseAppList := []map[string]interface{}{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)

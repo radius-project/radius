@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/signal"
@@ -297,8 +296,8 @@ func runPortforward(restconfig *rest.Config, client *k8s.Clientset, replica *cor
 		return err
 	}
 
-	out := ioutil.Discard
-	errOut := ioutil.Discard
+	out := io.Discard
+	errOut := io.Discard
 	if true {
 		out = os.Stdout
 		errOut = os.Stderr

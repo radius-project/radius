@@ -11,7 +11,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"gopkg.in/yaml.v3"
@@ -42,7 +42,7 @@ func NewHostOptionsFromEnvironment(configPath string) (HostOptions, error) {
 }
 
 func loadConfig(configPath string) (*UCPConfig, error) {
-	buf, err := ioutil.ReadFile(configPath)
+	buf, err := os.ReadFile(configPath)
 	if err != nil {
 		return nil, err
 	}

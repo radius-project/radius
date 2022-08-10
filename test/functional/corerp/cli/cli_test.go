@@ -8,7 +8,7 @@ package resource_test
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -116,7 +116,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 				continue
 			}
 
-			content, err := ioutil.ReadAll(response.Body)
+			content, err := io.ReadAll(response.Body)
 			require.NoError(t, err)
 
 			t.Logf("[response] %s", string(content))

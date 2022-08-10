@@ -9,7 +9,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sort"
 
@@ -62,7 +61,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	inputBytes, err := ioutil.ReadFile(inputFile)
+	inputBytes, err := os.ReadFile(inputFile)
 	if err != nil {
 		return fmt.Errorf("failed to read file %q: %w", inputFile, err)
 	}
@@ -73,7 +72,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to unmarshal JSON %q: %w", inputFile, err)
 	}
 
-	resourcesBytes, err := ioutil.ReadFile(resourcesFile)
+	resourcesBytes, err := os.ReadFile(resourcesFile)
 	if err != nil {
 		return fmt.Errorf("failed to read file %q: %w", resourcesFile, err)
 	}
@@ -95,7 +94,7 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
 
-	err = ioutil.WriteFile(outputFile, outputBytes, 0644)
+	err = os.WriteFile(outputFile, outputBytes, 0644)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,6 @@ package data
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"time"
@@ -51,13 +50,13 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	config := embed.NewConfig()
 
 	// Using temp directories for storage
-	dataDir, err := ioutil.TempDir(os.TempDir(), "ucp-etcd-data-*")
+	dataDir, err := os.MkdirTemp(os.TempDir(), "ucp-etcd-data-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary data directory: %w", err)
 	}
 	s.dirs = append(s.dirs, dataDir)
 
-	walDir, err := ioutil.TempDir(os.TempDir(), "ucp-etcd-wal-*")
+	walDir, err := os.MkdirTemp(os.TempDir(), "ucp-etcd-wal-*")
 	if err != nil {
 		return fmt.Errorf("failed to create temporary wal directory: %w", err)
 	}

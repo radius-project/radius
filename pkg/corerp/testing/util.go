@@ -5,10 +5,10 @@
 
 package testing
 
-import "io/ioutil"
+import "os"
 
 func ReadFixture(filename string) []byte {
-	raw, err := ioutil.ReadFile("./testdata/" + filename)
+	raw, err := os.ReadFile("./testdata/" + filename)
 	if err != nil {
 		return nil
 	}

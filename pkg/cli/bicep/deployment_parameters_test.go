@@ -7,7 +7,7 @@ package bicep
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 	"testing/fstest"
@@ -83,7 +83,7 @@ func Test_ParseParameters_File(t *testing.T) {
 		FileSystem: fstest.MapFS{},
 	}
 
-	input, err := ioutil.ReadFile(filepath.Join("testdata", "test-parameters.json"))
+	input, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))
 	require.NoError(t, err)
 
 	template := map[string]interface{}{}

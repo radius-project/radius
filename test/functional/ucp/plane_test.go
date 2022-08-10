@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"testing"
 
@@ -98,7 +98,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 
 	body := result.Body
 	defer body.Close()
-	payload, err := ioutil.ReadAll(body)
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 	var plane rest.Plane
 	err = json.Unmarshal(payload, &plane)
@@ -121,7 +121,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []rest
 
 	body := result.Body
 	defer body.Close()
-	payload, err := ioutil.ReadAll(body)
+	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 	var listOfPlanes rest.PlaneList
 	err = json.Unmarshal(payload, &listOfPlanes)

@@ -9,7 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -65,7 +65,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 		body := result.Body
 		defer body.Close()
-		payload, err := ioutil.ReadAll(body)
+		payload, err := io.ReadAll(body)
 		require.NoError(t, err)
 		require.Empty(t, payload, "response body should be empty")
 	})
@@ -134,7 +134,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 			body := result.Body
 			defer body.Close()
-			payload, err := ioutil.ReadAll(body)
+			payload, err := io.ReadAll(body)
 			require.NoError(t, err)
 
 			if result.StatusCode == http.StatusOK || result.StatusCode == http.StatusNoContent {
