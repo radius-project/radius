@@ -22,7 +22,7 @@ var resourceShowCmd = &cobra.Command{
 	Example: `
 	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
-	# show details of a specified resource
+	# show details of a specified resource in the default environment
 
 	rad resource show containers orders
 	rad resource show gateways orders_gateways
