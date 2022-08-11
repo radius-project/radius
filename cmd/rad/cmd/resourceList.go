@@ -22,7 +22,7 @@ var resourceListCmd = &cobra.Command{
 	Short:   "Lists resources",
 	Long:    "List all resources of specified type",
 	Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores,
+	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
 	# list all resources of a particular type(basic)
 
