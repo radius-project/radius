@@ -77,8 +77,7 @@ jobs:
           committer: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           author: rad-ci-bot <rad-ci-bot@users.noreply.github.com>
           signoff: false
-          branch: radius-types/patch
-          branch-suffix: short-commit-hash
+          branch: radius-types/patch-${{ github.event.pull_request.number }}
           delete-branch: true
           title: |
             Update Radius extensibility provider for Bicep
