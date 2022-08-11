@@ -28,7 +28,7 @@ var resourceShowCmd = &cobra.Command{
 	rad resource show gateways orders_gateways
 	rad resource show httpRoutes orders_routes
 
-	# show details of a particular resource in an application
+	# show details of a specified resource in an application
 	rad resource show containers orders --application icecream-store
 	
 	# show details of a specified resource in an application (shorthand flag)
