@@ -16,24 +16,10 @@ import (
 
 // resourceShowCmd command to show details of a resource
 var resourceShowCmd = &cobra.Command{
-	Use:     "show [resourceType] [resourceName]",
+	Use:     "show [type] [resource]",
 	Short:   "Show RAD resource details",
 	Long:    "Show details of the specified Radius resource",
-	Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
-
-	# show details of a specified resource in the default environment
-
-	rad resource show containers orders
-	rad resource show gateways orders_gateways
-	rad resource show httpRoutes orders_routes
-
-	# show details of a specified resource in an application
-	rad resource show containers orders --application icecream-store
-	
-	# show details of a specified resource in an application (shorthand flag)
-	rad resource show containers orders -a icecream-store 
-	`,
+	Example: `rad resource show --application icecream-store containers orders`,
 	RunE:    showResource,
 }
 
