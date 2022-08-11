@@ -20,7 +20,7 @@ var resourceShowCmd = &cobra.Command{
 	Short:   "Show RAD resource details",
 	Long:    "Show details of the specified Radius resource",
 	Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores,
+	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
 	# show details of a particular resource (basic)
 
