@@ -24,7 +24,7 @@ var resourceListCmd = &cobra.Command{
 	Example: `
 	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
-	# list all resources of a particular type(basic)
+	# list all resources of a particular type in the default environment
 
 	rad resource list containers
 	rad resource list gateways
