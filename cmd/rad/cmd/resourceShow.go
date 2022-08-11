@@ -31,7 +31,7 @@ var resourceShowCmd = &cobra.Command{
 	# show details of a particular resource in an application
 	rad resource show containers orders --application icecream-store
 	
-	# show details of a particular resource in an application (shorthand flag)
+	# show details of a specified resource in an application (shorthand flag)
 	rad resource show containers orders -a icecream-store 
 	`,
 	RunE:    showResource,
