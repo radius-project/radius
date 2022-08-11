@@ -18,10 +18,24 @@ import (
 
 // resourceListCmd command to list resources in an application
 var resourceListCmd = &cobra.Command{
-	Use:     "list [type]",
+	Use:     "list [resourceType]",
 	Short:   "Lists resources",
 	Long:    "List all resources of specified type",
-	Example: `rad resource list containers --application icecream-store `,
+	Example: `
+	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+
+	# list all resources of a specified type in the default environment
+
+	rad resource list containers
+	rad resource list gateways
+	rad resource list httpRoutes
+
+	# list all resources of a specified type in an application
+	rad resource list containers --application icecream-store
+	
+	# list all resources of a specified type in an application (shorthand flag)
+	rad resource list containers -a icecream-store
+	`,
 	RunE:    listResources,
 }
 
