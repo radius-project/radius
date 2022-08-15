@@ -7,9 +7,11 @@ import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 import "@azure-tools/cadl-providerhub";
 
-// This file allows to use {rootScope} in our paths with a custom resourceOperations object
-import "./customRootScope.cadl";
-import "./types.cadl";
+// These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
+import "../customRootScope.cadl";
+import "../aksrootscope.cadl";
+
+import "./global.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
