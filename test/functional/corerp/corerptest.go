@@ -211,7 +211,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
 	defer ct.CleanUpExtensionResources(ct.InitialResources)
-	err = ct.CreateInitialResources(ctx)
+	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
 	success := true
