@@ -375,7 +375,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		if publicEndpoint != "" {
 			return renderers.EnvironmentOptions{
 				Gateway: renderers.GatewayOptions{
-					Hostname: publicEndpoint,
+					PublicEndpointOverride: true,
+					Hostname:               publicEndpoint,
 				},
 				Namespace: namespace,
 			}, nil
