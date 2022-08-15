@@ -75,8 +75,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	var computedHostname string
 	if hostname == "" {
 		computedHostname = "unknown"
-	} else if options.Environment.Gateway.PublicEndpointOverride {
-		computedHostname = options.Environment.Gateway.PublicIP
+	} else if options.Environment.Gateway.Hostname != "" {
+		computedHostname = options.Environment.Gateway.Hostname
 	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
 		computedHostname = gateway.Properties.Hostname.FullyQualifiedHostname
 	} else {
@@ -262,45 +262,68 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 }
 
 func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.RenderOptions) (string, error) {
-	publicIP := options.Environment.Gateway.PublicIP
 	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
+	hostname := options.Environment.Gateway.Hostname
+	externalIP := options.Environment.Gateway.ExternalIP
 
 	// Order of precedence for hostname creation:
-	// 1. if publicEndpointOverride is true: hostname = publicIP
-	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname
-	// 3. if publicIP is "": hostname = "" (cannot determine a suitable hostname to use)
+	// 1. if publicEndpointOverride is true: hostname = hostname.Host()
+	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname.Host()
+	// 3. if publicIP is "" and hostname is provided (from options), hostname = hostname.Host()
+	// 3. if publicIP is "" and hostname is "": hostname = "" (cannot determine a suitable hostname to use)
 	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
 	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
 	if publicEndpointOverride {
-		urlOverride, err := url.Parse(publicIP)
-		if err != nil {
-			return "", fmt.Errorf("unable to parse given url: %s", publicIP)
-		}
-
-		host, _, err := net.SplitHostPort(urlOverride.Host)
-		if err != nil {
-			return "", fmt.Errorf("unable to split host and port from given url: %s", urlOverride.Host)
-		}
-
-		return host, nil
+		return getHostnameFromURL(hostname), nil
 	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
 		// Trust that the provided FullyQualifiedHostname actually works
-		return gateway.Hostname.FullyQualifiedHostname, nil
-	} else if publicIP == "" {
+		return getHostnameFromURL(gateway.Hostname.FullyQualifiedHostname), nil
+	} else if hostname != "" {
+		return getHostnameFromURL(hostname), nil
+	} else if externalIP == "" {
 		// In the case of no publicIP, return an empty hostname, but don't return an error
 		// Should be improved in https://github.com/project-radius/radius/issues/2196
 		return "", nil
 	} else if gateway.Hostname != nil {
 		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
-			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, publicIP)
+			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, externalIP)
 			return prefixedHostname, nil
 		} else {
 			return "", fmt.Errorf("must provide either prefix or fullyQualifiedHostname if hostname is specified")
 		}
 	} else {
 		// Auto-assign hostname: gatewayname.appname.ip.nip.io
-		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, publicIP)
+		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, externalIP)
 		return defaultHostname, nil
 	}
+}
+
+func getHostnameFromURL(providedURL string) string {
+	// Try to parse the provided URL string into a URL struct
+	hostnameURL, err := url.Parse(providedURL)
+	if err != nil {
+		// Can't parse into a URL - just use the original URL
+		return providedURL
+	}
+
+	// Could either be host or host:port
+	hostport := ""
+
+	// Check if provided hostname has a scheme
+	if hostnameURL.IsAbs() {
+		hostport = hostnameURL.Host
+	} else {
+		// For the case where provided hostname doesn't have a scheme,
+		// url.Path will be populated
+		hostport = hostnameURL.Path
+	}
+
+	host, _, err := net.SplitHostPort(hostport)
+	if err != nil {
+		// Can't split host and port - just use the original host
+		return hostport
+	}
+
+	return host
 }

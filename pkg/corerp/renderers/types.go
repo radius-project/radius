@@ -51,7 +51,8 @@ type EnvironmentOptions struct {
 
 type GatewayOptions struct {
 	PublicEndpointOverride bool
-	PublicIP               string
+	Hostname               string
+	ExternalIP             string
 }
 
 type RendererOutput struct {

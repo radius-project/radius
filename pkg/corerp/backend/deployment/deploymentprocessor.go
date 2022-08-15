@@ -375,8 +375,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		if publicEndpoint != "" {
 			return renderers.EnvironmentOptions{
 				Gateway: renderers.GatewayOptions{
-					PublicEndpointOverride: true,
-					PublicIP:               publicEndpoint,
+					Hostname: publicEndpoint,
 				},
 				Namespace: namespace,
 			}, nil
@@ -395,7 +394,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 					return renderers.EnvironmentOptions{
 						Gateway: renderers.GatewayOptions{
 							PublicEndpointOverride: false,
-							PublicIP:               in.IP,
+							Hostname:               in.Hostname,
+							ExternalIP:             in.IP,
 						},
 						Namespace: namespace,
 					}, nil
