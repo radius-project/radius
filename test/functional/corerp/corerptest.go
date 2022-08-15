@@ -206,12 +206,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	})
 
-	t.Logf("Creating secrets if provided")
-	err := ct.CreateSecrets(ctx)
-	if err != nil {
-		t.Errorf("failed to create secrets %v", err)
-	}
-
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
@@ -286,12 +280,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
 		}
-	}
-
-	t.Logf("Deleting secrets")
-	err = ct.DeleteSecrets(ctx)
-	if err != nil {
-		t.Errorf("failed to delete secrets %v", err)
 	}
 
 	// Custom verification is expected to use `t` to trigger its own assertions
