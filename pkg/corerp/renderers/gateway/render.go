@@ -72,20 +72,22 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	outputResources = append(outputResources, gatewayObject)
 
-	var computedHostname string
+	var publicEndpoint string
 	if hostname == "" {
-		computedHostname = "unknown"
-	} else if options.Environment.Gateway.Hostname != "" {
-		computedHostname = options.Environment.Gateway.Hostname
+		publicEndpoint = "unknown"
+	} else if options.Environment.Gateway.PublicEndpointOverride {
+		publicEndpoint = options.Environment.Gateway.Hostname
 	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
-		computedHostname = gateway.Properties.Hostname.FullyQualifiedHostname
+		publicEndpoint = gateway.Properties.Hostname.FullyQualifiedHostname
+	} else if options.Environment.Gateway.Hostname != "" {
+		publicEndpoint = options.Environment.Gateway.Hostname
 	} else {
-		computedHostname = "http://" + hostname
+		publicEndpoint = "http://" + hostname
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
 		"url": {
-			Value: computedHostname,
+			Value: publicEndpoint,
 		},
 	}
 
