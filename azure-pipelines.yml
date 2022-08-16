@@ -147,6 +147,7 @@ stages:
     - script: |
         kubectl get pods -n radius-system
         kubectl describe pods -n radius-system
+        kubectl create secret generic mysecret --from-literal=mysecret=mysecret
       condition: always()
       continueOnError: 'true'
     - script: |
