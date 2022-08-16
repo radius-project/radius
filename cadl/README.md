@@ -18,6 +18,7 @@ You can try a work-in-progress build of the compiler by following the steps in t
 - @cadl-lang/compiler
 - @cadl-lang/openapi3
 - @cadl-lang/rest
+- @cadl-lang/versioning
 
 ## Tracked Resources
 Currently all of our resources are tracked resources. That means that when writing a new resource, each file will have the following:
