@@ -4,6 +4,7 @@
 // ------------------------------------------------------------
 
 import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 import "@azure-tools/cadl-providerhub";
@@ -12,14 +13,18 @@ import "@azure-tools/cadl-providerhub";
 import "../customRootScope.cadl";
 import "../aksrootscope.cadl";
 
+import "./global.cadl";
+
 using Cadl.Http;
 using Cadl.Rest;
+using Cadl.Versioning;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
 @doc("REST API for Applications.Core Environment Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Core;
 
 @discriminator("kind")
@@ -60,10 +65,14 @@ model EnvironmentResource is TrackedResource<EnvironmentProperties> {
 
 @armResourceOperations
 interface Environment
-  extends Radius.RootScopeResourceOperations<EnvironmentResource, EnvironmentProperties, RootScopeParam> {}
+  extends Radius.RootScopeResourceOperations<
+      EnvironmentResource,
+      EnvironmentProperties,
+      RootScopeParam
+    > {}
 
 @knownValues(ProvisioningStateKV)
-model ProvisioningState is string {}
+model ProvisioningState is string;
 enum ProvisioningStateKV {
   Succeeded,
   Failed,

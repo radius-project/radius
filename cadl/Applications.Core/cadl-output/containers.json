@@ -30,11 +30,11 @@
   "securityDefinitions": {
     "azure_auth": {
       "type": "oauth2",
-      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
-      "flow": "implicit",
       "description": "Azure Active Directory OAuth2 Flow.",
+      "flow": "implicit",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
       "scopes": {
-        "user_impersonation": "impersonate your user account"
+        "user_impersonation": ""
       }
     }
   },
@@ -70,7 +70,7 @@
             }
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -107,7 +107,7 @@
             }
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -161,7 +161,7 @@
             }
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -206,7 +206,7 @@
             }
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -248,7 +248,7 @@
             "description": "Resource deleted successfully."
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -280,7 +280,7 @@
             }
           },
           "default": {
-            "description": "Common error response for all Azure Resource Manager APIs to return error details for failed operations.",
+            "description": "An unexpected error response.",
             "schema": {
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
@@ -340,6 +340,7 @@
           "additionalProperties": {
             "type": "string"
           },
+          "x-cadl-name": "Map<string, string>",
           "description": "environment"
         },
         "ports": {
@@ -347,6 +348,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/ContainerPort"
           },
+          "x-cadl-name": "Map<string, ContainerPort>",
           "description": "container ports"
         },
         "readinessProbe": {
@@ -362,6 +364,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/Volume"
           },
+          "x-cadl-name": "Map<string, Volume>",
           "description": "container volumes"
         }
       },
@@ -408,6 +411,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/ConnectionProperties"
           },
+          "x-cadl-name": "Map<string, ConnectionProperties>",
           "description": "Specifies a connection to another resource."
         },
         "container": {
@@ -473,7 +477,8 @@
         },
         "nextLink": {
           "type": "string",
-          "description": "The link to the next page of items"
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation<ContainerResource>"
         }
       },
       "description": "The response of a ContainerResource list operation.",
@@ -489,6 +494,7 @@
           "additionalProperties": {
             "type": "string"
           },
+          "x-cadl-name": "Record<string>",
           "description": "Resource tags."
         },
         "properties": {
@@ -513,6 +519,7 @@
           "additionalProperties": {
             "$ref": "#/definitions/ConnectionProperties"
           },
+          "x-cadl-name": "Map<string, ConnectionProperties>",
           "description": "Specifies a connection to another resource."
         },
         "container": {
@@ -681,6 +688,7 @@
           "additionalProperties": {
             "type": "string"
           },
+          "x-cadl-name": "Map<string, string>",
           "description": "Custom HTTP headers to add to the get request"
         }
       },
