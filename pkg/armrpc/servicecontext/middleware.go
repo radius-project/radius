@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.

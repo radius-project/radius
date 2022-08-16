@@ -13,8 +13,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/stretchr/testify/require"
 )
 

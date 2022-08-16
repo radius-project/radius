@@ -16,8 +16,8 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/stretchr/testify/require"
 )
 

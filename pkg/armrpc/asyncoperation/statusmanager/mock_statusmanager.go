@@ -13,7 +13,7 @@ import (
 	uuid "github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	servicecontext "github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	armerrors "github.com/project-radius/radius/pkg/radrp/armerrors"
+	armerrors "github.com/project-radius/radius/pkg/rp/armerrors"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 

@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
 	renderers "github.com/project-radius/radius/pkg/connectorrp/renderers"
-	outputresource "github.com/project-radius/radius/pkg/radrp/outputresource"
+	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 

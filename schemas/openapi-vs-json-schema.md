@@ -15,7 +15,7 @@ JSON Schema is a vocabulary that allows you to annotate and validate JSON docume
 
 ### How do we use it?
 
-Take a look at `/pkg/radrp/schemas`. We are using this to:
+Take a look at `/pkg/rp/schemas`. We are using this to:
 * Validate JSON seen by the RP,
 * Validate JSON in the K8s webhook,
 * Validate JSON in the rad-bicep compiler, and
@@ -40,12 +40,13 @@ Take a look at `/schemas/rest-api-spec`. We are using this to:
 
 ## Step 1: Generating OpenAPI v2 spec from our JSON Schema
 
-In this step, all the resource schemas in /pkg/radrp/schemas is consumed, and for each resource type we use the [Go Template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/resource_boilerplate.json) to generate:
+In this step, all the resource schemas in /pkg/rp/schemas is consumed, and for each resource type we use the [Go Template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/resource_boilerplate.json) to generate:
 - The corresponding List type, which is a boilerplate container type, and
 - The corresponding API calls GET, PUT, PATCH etc... for each resource.
 
 After that, we append [the header Go template template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/boilerplate.json).
 
+<!-- Outdated -->
 To execute this code generation step, run `make generate-openapi-specs` (or simply do`make generate` to run all the code generation
 
 ## Step 2: Generating the Azure Autorest client from the OpenAPI v2 spec

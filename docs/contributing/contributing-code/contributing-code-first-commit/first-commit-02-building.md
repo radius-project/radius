@@ -14,14 +14,6 @@ You should see output similar to the following:
 
 ```txt
 ➜ make build
-=> Building RP from 'cmd/rp/main.go'
-=> Built RP in './dist/darwin_amd64/release/radius-rp'
-CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
-	go build \
-	-gcflags "" \
-	-ldflags "-s -w -X main.version=edge" \
-	-o ./dist/darwin_amd64/release/radius-rp \
-	./cmd/rp/main.go;
 => Building CLI from 'cmd/rad/main.go'
 => Built CLI in './dist/darwin_amd64/release/rad'
 CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \

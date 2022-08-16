@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
@@ -58,8 +57,8 @@ rad resource logs containers orders --application icecream-store --container dap
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(resourceType, schema.ContainerType) {
-			return fmt.Errorf("only %s is supported", schema.ContainerType)
+		if !strings.EqualFold(resourceType, ContainerType) {
+			return fmt.Errorf("only %s is supported", ContainerType)
 		}
 		follow, err := cmd.Flags().GetBool("follow")
 		if err != nil {

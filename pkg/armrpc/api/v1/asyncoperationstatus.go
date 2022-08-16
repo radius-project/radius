@@ -8,7 +8,7 @@ package v1
 import (
 	"time"
 
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 )
 
 // AsyncOperationStatus represents an OperationStatus resource.
