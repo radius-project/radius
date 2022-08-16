@@ -57,7 +57,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, appName, "containers", "containera")
+		output, err := cli.ResourceShow(ctx, "containers", "containera")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input

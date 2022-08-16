@@ -144,11 +144,11 @@ func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 	return err
 }
 
-func (cli *CLI) ResourceShow(ctx context.Context, applicationName string, resourceType string, resourceName string) (string, error) {
+func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceName string) (string, error) {
 	args := []string{
 		"resource",
 		"show",
-		"-a", applicationName,
+		//"-a", applicationName, TODO: apply when application flag (-a) is re-enabled for rad resource show
 		resourceType,
 		resourceName,
 	}

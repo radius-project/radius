@@ -134,7 +134,7 @@ type ApplicationsManagementClient interface {
 	ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourceOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error)
-	ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error)
+	ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error)
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
 	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
