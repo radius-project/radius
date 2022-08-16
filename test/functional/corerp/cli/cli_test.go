@@ -328,6 +328,36 @@ func Test_CLI_version(t *testing.T) {
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
 }
 
+func Test_CLI_env(t *testing.T) {
+	ctx, cancel := test.GetContext(t)
+	defer cancel()
+
+	options := corerp.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	testEnvName := "newclitestenv"
+	err := cli.EnvInitKubernetes(ctx, testEnvName, "test")
+	require.NoError(t, err)
+
+	output, err := cli.EnvList(ctx)
+	require.NoError(t, err)
+	expected := regexp.MustCompile(`NAME           KIND\nnewclitestenv  \ntest           \n`)
+	match := expected.MatchString(output)
+	require.Equal(t, true, match)
+
+	_, err = cli.EnvSwitch(ctx, "test")
+	require.NoError(t, err)
+
+	err = cli.EnvDelete(ctx, testEnvName)
+	require.NoError(t, err)
+
+	output, err = cli.EnvList(ctx)
+	require.NoError(t, err)
+	expected = regexp.MustCompile(`NAME      KIND\ntest      \n`)
+	match = expected.MatchString(output)
+	require.Equal(t, true, match)
+}
+
 func GetAvailablePort() (int, error) {
 	address, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {

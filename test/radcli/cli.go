@@ -133,6 +133,27 @@ func (cli *CLI) EnvList(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) EnvSwitch(ctx context.Context, environmentName string) (string, error) {
+	args := []string{
+		"env",
+		"switch",
+		environmentName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) EnvInitKubernetes(ctx context.Context, environmentName string, namespace string) error {
+	args := []string{
+		"env",
+		"init",
+		"kubernetes",
+		"-n", namespace,
+		"-e", environmentName,
+	}
+	_, err := cli.RunCommand(ctx, args)
+	return err
+}
+
 func (cli *CLI) EnvDelete(ctx context.Context, environmentName string) error {
 	args := []string{
 		"env",
