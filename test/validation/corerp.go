@@ -47,7 +47,8 @@ type CoreRPResourceSet struct {
 func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
-		return client.DeleteEnv(ctx, resource.Name)
+		_, err := client.DeleteEnv(ctx, resource.Name)
+		return err
 
 		// TODO: this should probably call the CLI, but if you create an
 		// environment via bicep deployment, it will not be reflected in the

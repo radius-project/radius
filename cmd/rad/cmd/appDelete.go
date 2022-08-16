@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -72,10 +73,12 @@ func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, appl
 		return err
 	}
 
-	_, err = client.DeleteApplication(ctx, applicationName)
-	if err != nil {
-		return err
+	appResp, err := client.DeleteApplication(ctx, applicationName)
+	if appResp.RawResponse.StatusCode == 204 {
+		output.LogInfo("Application '%s' does not exist or has already been deleted. Error Status Code: %d", applicationName, appResp.RawResponse.StatusCode)
+	} else if err == nil {
+		output.LogInfo("Application deleted")
 	}
 
-	return nil
+	return err
 }
