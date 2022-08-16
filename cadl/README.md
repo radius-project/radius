@@ -40,7 +40,7 @@ There may be more or less depending on the  resource being modeled
 At the time of writing this, the Radius team's spec has not been approved by ARM. As a result, the Cadl team has created a custom `RootScopeResourceOperations` object. This makes it so that the paths generated for resources are prepended by `{rootScope}` as required in Project Radius.
 
 To utilize this object, do the following:
-1. Import `"./customRootScope.cadl` into the resource file.
+1. Import `customRootScope.cadl` into the resource file.
 2. When creating the `@armResourceOperations` use the `RootScopeResourceOperations` object under the Radius namespace instead of the standard `ResourceOperations` object:
 ```TypeScript
 @armResourceOperations
@@ -49,16 +49,16 @@ interface InterfaceName
 ```
 
 ## Emitting and Compiling
-In the `cadl-project.yaml` the emitter is set to `"@azure-tools/cadl-autorest": true`. This means that we compile to swagger instead of OpenApi3. If you want to compile to OpenApi3, set the emitter to `"@cadl-lang/openapi3": true`.
+In the `cadl-project.yaml` the emitter is set to `"@azure-tools/cadl-autorest": true`. This means that it compiles to swagger instead of OpenApi3. If you want to compile to OpenApi3, set the emitter to `"@cadl-lang/openapi3": true`.
 
-To compile with {rootScope} to a custom file, run the following command in the terminal:
+To compile with {rootScope} to a custom file, import `aksrootscope.cadl` into the resource file and run the following command in the terminal:
 ```TypeScript
-cadl compile {fileName}.cadl --import "./aksrootscope.cadl" --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
+cadl compile {fileName}.cadl --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
 ```
 
-To compile with the ARM compliant spec to a custom file, run the following command in the terminal:
+To compile with the ARM compliant spec to a custom file, import `armrootscope.cadl` into the resource file and run the following command in the terminal:
 ```TypeScript
-cadl compile {fileName}.cadl --import "./armrootscope.cadl" --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
+cadl compile {fileName}.cadl --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
 ```
 
 In both cases replace {fileName} with the file you want to compile.
