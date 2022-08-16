@@ -382,7 +382,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 			}, nil
 		}
 
-		// Find the public IP of the cluster (External IP of the contour-envoy service)
+		// Find the public endpoint of the cluster (External IP or hostname of the contour-envoy service)
 		var services corev1.ServiceList
 		err := dp.k8sClient.List(ctx, &services, &controller_runtime.ListOptions{Namespace: "radius-system"})
 		if err != nil {

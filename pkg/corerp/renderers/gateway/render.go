@@ -7,6 +7,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/url"
@@ -61,29 +62,17 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
-	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options)
-	if err != nil {
+	hostname, publicEndpoint, err := getFQDNAndPublicEndpoint(*gateway, &gateway.Properties, applicationName, options)
+	if err != nil && !errors.Is(err, &ErrNoPublicEndpoint{}) {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	}
+
 	gatewayObject, err := MakeGateway(options, gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	outputResources = append(outputResources, gatewayObject)
-
-	var publicEndpoint string
-	if hostname == "" {
-		publicEndpoint = "unknown"
-	} else if options.Environment.Gateway.PublicEndpointOverride {
-		publicEndpoint = options.Environment.Gateway.Hostname
-	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
-		publicEndpoint = gateway.Properties.Hostname.FullyQualifiedHostname
-	} else if options.Environment.Gateway.Hostname != "" {
-		publicEndpoint = options.Environment.Gateway.Hostname
-	} else {
-		publicEndpoint = "http://" + hostname
-	}
 
 	computedValues := map[string]rp.ComputedValueReference{
 		"url": {
@@ -263,7 +252,7 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 	return resourceID.Name(), nil
 }
 
-func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.RenderOptions) (string, error) {
+func getFQDNAndPublicEndpoint(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.RenderOptions) (fqdn string, publicEndpoint string, err error) {
 	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
 	hostname := options.Environment.Gateway.Hostname
 	externalIP := options.Environment.Gateway.ExternalIP
@@ -276,56 +265,64 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
 	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
 	if publicEndpointOverride {
-		return getHostnameFromURL(hostname), nil
+		// Specified from --public-endpoint-override CLI flag
+		fqdn, _, err := getHostnameAndPublicURL(hostname)
+		return fqdn, hostname, err
 	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
 		// Trust that the provided FullyQualifiedHostname actually works
-		return getHostnameFromURL(gateway.Hostname.FullyQualifiedHostname), nil
+		return getHostnameAndPublicURL(gateway.Hostname.FullyQualifiedHostname)
 	} else if hostname != "" {
-		return getHostnameFromURL(hostname), nil
+		// If the LoadBalancer has a hostname entry
+		return getHostnameAndPublicURL(hostname)
 	} else if externalIP == "" {
-		// In the case of no publicIP, return an empty hostname, but don't return an error
-		// Should be improved in https://github.com/project-radius/radius/issues/2196
-		return "", nil
+		// In the case of no public endpoint, use the application name as the fqdn
+		return applicationName, "unknown", &ErrNoPublicEndpoint{}
 	} else if gateway.Hostname != nil {
+		// Generate a hostname using the external IP
 		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
 			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, externalIP)
-			return prefixedHostname, nil
+			return prefixedHostname, fmt.Sprintf("http://%s", prefixedHostname), nil
 		} else {
-			return "", fmt.Errorf("must provide either prefix or fullyQualifiedHostname if hostname is specified")
+			return "", "", &ErrFQDNOrPrefixRequired{}
 		}
 	} else {
 		// Auto-assign hostname: gatewayname.appname.ip.nip.io
 		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, externalIP)
-		return defaultHostname, nil
+		return defaultHostname, fmt.Sprintf("http://%s", defaultHostname), nil
 	}
 }
 
-func getHostnameFromURL(providedURL string) string {
-	// Try to parse the provided URL string into a URL struct
-	hostnameURL, err := url.Parse(providedURL)
+// getHostnameAndPublicURL returns the hostname and public URL from the public endpoint
+// (adds http:// to a public endpoint if it does not exist already).
+func getHostnameAndPublicURL(publicEndpoint string) (hostname, publicURL string, err error) {
+	// Try to parse the provided string into a URL struct
+	hostnameURL, err := url.Parse(publicEndpoint)
 	if err != nil {
 		// Can't parse into a URL - just use the original URL
-		return providedURL
+		return publicEndpoint, publicEndpoint, nil
 	}
 
 	// Could either be host or host:port
-	hostport := ""
+	authority := ""
 
 	// Check if provided hostname has a scheme
 	if hostnameURL.IsAbs() {
-		hostport = hostnameURL.Host
+		// Has URL scheme
+		authority = hostnameURL.Host
 	} else {
 		// For the case where provided hostname doesn't have a scheme,
 		// url.Path will be populated
-		hostport = hostnameURL.Path
+		authority = hostnameURL.Path
+		hostnameURL.Scheme = "http"
 	}
+	publicURL = hostnameURL.String()
 
-	host, _, err := net.SplitHostPort(hostport)
+	hostname, _, err = net.SplitHostPort(authority)
 	if err != nil {
 		// Can't split host and port - just use the original host
-		return hostport
+		return authority, publicURL, nil
 	}
 
-	return host
+	return hostname, publicURL, nil
 }
