@@ -59,8 +59,6 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 		Radius: helm.RadiusOptions{
 			Reinstall:              chartArgs.Reinstall,
 			ChartPath:              chartArgs.ChartPath,
-			Image:                  chartArgs.Image,
-			Tag:                    chartArgs.Tag,
 			UCPImage:               chartArgs.UcpImage,
 			UCPTag:                 chartArgs.UcpTag,
 			AppCoreImage:           chartArgs.AppCoreImage,

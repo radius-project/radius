@@ -1,8 +1,0 @@
-{
-  "id": "id",
-  "name": "name",
-  "properties": {
-    "kind": "state.sqlserver",
-    "resource": "test"
-  }
-}

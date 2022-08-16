@@ -32,20 +32,8 @@ generate-ucp-crd: generate-controller-gen-installed
 	controller-gen object paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... object:headerFile=./boilerplate.go.txt
 	controller-gen rbac:roleName=manager-role crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
-.PHONY: generate-openapi-specs
-generate-openapi-specs:
-	@echo "$(ARROW) Generating OpenAPI schema manifest..."
-
-	go run cmd/autorest-schema-gen/main.go \
-		--output schemas/rest-api-specs/radius.json \
-		`# We can't just do pkg/rp/schema/*.json because we want to exclude resource-types.json` \
-		pkg/rp/schema/common-types.json \
-		pkg/rp/schema/application.json \
-		pkg/rp/schema/traits.json \
-		pkg/rp/schema/*/*.json
-
 .PHONY: generate-radclient
-generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
+generate-radclient: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
 	autorest --use=@autorest/go@4.0.0-preview.29 \
         --module-version=$(AUTOREST_MODULE_VERSION) \
 		--input-file=schemas/rest-api-specs/radius.json \
@@ -86,7 +74,7 @@ generate-go: generate-mockgen-installed ## Generates go with 'go generate' (Mock
 	go generate -v ./...
 
 .PHONY: generate-bicep-types
-generate-bicep-types: generate-node-installed generate-openapi-specs ## Generate Bicep extensibility types
+generate-bicep-types: generate-node-installed ## Generate Bicep extensibility types
 	@echo "$(ARROW) Generating Bicep extensibility types from OpenAPI specs..."
 	@echo "$(ARROW) Build autorest.bicep..."
 	cd hack/bicep-types-radius/src/autorest.bicep; \

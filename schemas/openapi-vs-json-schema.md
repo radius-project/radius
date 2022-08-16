@@ -46,6 +46,7 @@ In this step, all the resource schemas in /pkg/rp/schemas is consumed, and for e
 
 After that, we append [the header Go template template](https://github.com/project-radius/radius/blob/main/pkg/tools/codegen/schema/boilerplate.json).
 
+<!-- Outdated -->
 To execute this code generation step, run `make generate-openapi-specs` (or simply do`make generate` to run all the code generation
 
 ## Step 2: Generating the Azure Autorest client from the OpenAPI v2 spec
