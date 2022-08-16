@@ -12,9 +12,9 @@ import (
 	"sort"
 
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 type SecretStoreFunc = func(renderers.RendererResource) ([]outputresource.OutputResource, error)

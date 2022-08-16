@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/rp/schema"
 	"github.com/spf13/cobra"
 )
 

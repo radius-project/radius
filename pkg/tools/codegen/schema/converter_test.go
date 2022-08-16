@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/project-radius/radius/pkg/radrp/schema"
+	"github.com/project-radius/radius/pkg/rp/schema"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )

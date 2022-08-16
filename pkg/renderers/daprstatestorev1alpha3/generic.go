@@ -7,9 +7,9 @@ package daprstatestorev1alpha3
 
 import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 func GetDaprStateStoreGeneric(resource renderers.RendererResource) ([]outputresource.OutputResource, error) {

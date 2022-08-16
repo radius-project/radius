@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/renderers/containerv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/dapr"
 	"github.com/project-radius/radius/pkg/renderers/daprhttproutev1alpha3"
@@ -28,6 +27,7 @@ import (
 	"github.com/project-radius/radius/pkg/renderers/rabbitmqv1alpha3"
 	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	"github.com/project-radius/radius/pkg/renderers/redisv1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"

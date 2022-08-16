@@ -8,7 +8,7 @@ package radclient
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 // GetStatus returns the `.properties.status` element of a Radius resource. Will return null if it

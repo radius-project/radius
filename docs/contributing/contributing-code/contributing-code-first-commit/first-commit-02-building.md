@@ -20,7 +20,6 @@ CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 \
 	go build \
 	-gcflags "" \
 	-ldflags "-s -w -X main.version=edge" \
-	-o ./dist/darwin_amd64/release/radius-rp \
 	./cmd/rp/main.go;
 => Building CLI from 'cmd/rad/main.go'
 => Built CLI in './dist/darwin_amd64/release/rad'

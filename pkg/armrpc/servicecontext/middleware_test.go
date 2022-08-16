@@ -14,7 +14,7 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -9,8 +9,8 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	outputresource "github.com/project-radius/radius/pkg/radrp/outputresource"
 	resourcemodel "github.com/project-radius/radius/pkg/resourcemodel"
+	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // MockResourceHandler is a mock of ResourceHandler interface.

@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/rest"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -135,8 +135,9 @@ func handleError(ctx context.Context, w http.ResponseWriter, err error) {
 }
 
 // APINotFoundHandler is the handler when the request url route does not exist
-//     r := mux.NewRouter()
-//     r.NotFoundHandler = APINotFoundHandler()
+//
+//	r := mux.NewRouter()
+//	r.NotFoundHandler = APINotFoundHandler()
 func APINotFoundHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		restResponse := rest.NewNotFoundMessageResponse(fmt.Sprintf("The request '%s %s' is invalid.", r.Method, r.URL.Path))
@@ -147,8 +148,9 @@ func APINotFoundHandler() http.HandlerFunc {
 }
 
 // APIMethodNotAllowedHandler is the handler when the request method does not match the route.
-//     r := mux.NewRouter()
-//     r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
+//
+//	r := mux.NewRouter()
+//	r.MethodNotAllowedHandler = APIMethodNotAllowedHandler()
 func APIMethodNotAllowedHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		target := ""

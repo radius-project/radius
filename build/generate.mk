@@ -38,11 +38,11 @@ generate-openapi-specs:
 
 	go run cmd/autorest-schema-gen/main.go \
 		--output schemas/rest-api-specs/radius.json \
-		`# We can't just do pkg/radrp/schema/*.json because we want to exclude resource-types.json` \
-		pkg/radrp/schema/common-types.json \
-		pkg/radrp/schema/application.json \
-		pkg/radrp/schema/traits.json \
-		pkg/radrp/schema/*/*.json
+		`# We can't just do pkg/rp/schema/*.json because we want to exclude resource-types.json` \
+		pkg/rp/schema/common-types.json \
+		pkg/rp/schema/application.json \
+		pkg/rp/schema/traits.json \
+		pkg/rp/schema/*/*.json
 
 .PHONY: generate-radclient
 generate-radclient: generate-node-installed generate-autorest-installed generate-openapi-specs ## Generates the radclient SDK (Autorest).
