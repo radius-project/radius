@@ -42,8 +42,8 @@ type Options struct {
 	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
 
-	// AsyncOperation
-	AsyncOperation sm.StatusManager
+	// StatusManager
+	StatusManager sm.StatusManager
 }
 
 // Controller is an interface of each operation controller.
@@ -96,7 +96,7 @@ func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 
 // DeploymentProcessor gets the deployment processor for this controller.
 func (b *BaseController) StatusManager() sm.StatusManager {
-	return b.options.AsyncOperation
+	return b.options.StatusManager
 }
 
 // GetResource is the helper to get the resource via storage client.
