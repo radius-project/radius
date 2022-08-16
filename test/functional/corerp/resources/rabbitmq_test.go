@@ -14,9 +14,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// TODO: webapp logs this error:
-// 2022/07/16 20:44:18 Failed to connect to RabbitMQ -  dial tcp 10.96.187.212:5672: connect: connection refused
-// 2022/07/16 20:44:25 Failed to connect to RabbitMQ -  dial tcp 10.96.187.212:5672: connect: connection refused
 func Test_RabbitMQ(t *testing.T) {
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
@@ -35,18 +32,22 @@ func Test_RabbitMQ(t *testing.T) {
 					{
 						Name: "rmq-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "rmq-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "rmq-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "rmq-rmq",
 						Type: validation.RabbitMQMessageQueuesResource,
+						App:  name,
 					},
 				},
 			},

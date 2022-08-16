@@ -14,8 +14,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// FIXME: App is not available.
-// Failed to load logs: container "app" in pod "msql-app-85877f5fdb-q9rxj" is waiting to start: CreateContainerConfigError
 func Test_MicrosoftSQL(t *testing.T) {
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "corerp-resources-microsoft-sql"
@@ -34,6 +32,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 					{
 						Name: "mssql-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

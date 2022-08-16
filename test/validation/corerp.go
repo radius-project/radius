@@ -20,7 +20,7 @@ const (
 	ApplicationsResource = "applications.core/applications"
 	HttpRoutesResource   = "applications.core/httpRoutes"
 	GatewaysResource     = "applications.core/gateways"
-	ContainersResource   = "applications.connector/containers"
+	ContainersResource   = "applications.core/containers"
 
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
 	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
@@ -33,9 +33,9 @@ const (
 )
 
 type CoreRPResource struct {
-	Type    string
-	Name    string
-	AppName string
+	Type string
+	Name string
+	App  string
 }
 
 type CoreRPResourceSet struct {
@@ -68,8 +68,8 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 			require.NotEmpty(t, envs)
 
 			found := false
-			for _, app := range envs {
-				if *app.Name == resource.Name {
+			for _, env := range envs {
+				if *env.Name == resource.Name {
 					found = true
 					continue
 				}
@@ -91,19 +91,19 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
 		} else {
-			t.Logf("skipping validation of resource...")
-			// resources, err := client.ShowResourceByApplication(ctx, resource.AppName, resource.Type)
-			// require.NoError(t, err)
-			// require.NotEmpty(t, resources)
-			// found := false
-			// for _, res := range resources {
-			// 	if *res.Name == resource.Name {
-			// 		found = true
-			// 		continue
-			// 	}
-			// }
+			require.NotEmpty(t, resource.App)
+			appResources, err := client.ListAllResourceOfTypeInApplication(ctx, resource.App, resource.Type)
+			require.NoError(t, err)
+			require.NotEmpty(t, appResources)
+			found := false
+			for _, appResource := range appResources {
+				if *appResource.Name == resource.Name {
+					found = true
+					continue
+				}
+			}
 
-			// require.True(t, found, fmt.Sprintf("resource %s was not found", resource.Name))
+			require.True(t, found, fmt.Sprintf("resource %s with type %s was not found in application %s", resource.Name, resource.Type, resource.App))
 		}
 	}
 }

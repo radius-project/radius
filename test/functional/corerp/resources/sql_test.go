@@ -18,7 +18,7 @@ import (
 func Test_SQL(t *testing.T) {
 	// https://github.com/microsoft/mssql-docker/issues/668
 	if runtime.GOARCH == "arm64" {
-		t.Skip()
+		t.Skip("skipping Test_SQL, unsupported architecture")
 	}
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
@@ -37,18 +37,22 @@ func Test_SQL(t *testing.T) {
 					{
 						Name: "sql-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "sql-db",
 						Type: validation.SQLDatabasesResource,
+						App:  name,
 					},
 					{
 						Name: "sql-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "sql-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

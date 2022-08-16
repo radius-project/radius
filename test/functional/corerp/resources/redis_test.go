@@ -14,9 +14,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// TODO: webapp logs this error:
-// failed to connect with redis instance at corerp-resources-redis-user-secrets-redis-route:80 -
-// dial tcp 10.96.251.170:80: connect: connection refused
 func Test_Redis(t *testing.T) {
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
@@ -35,18 +32,22 @@ func Test_Redis(t *testing.T) {
 					{
 						Name: "rds-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "rds-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "rds-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "rds-rds",
 						Type: validation.RedisCachesResource,
+						App:  name,
 					},
 				},
 			},

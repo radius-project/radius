@@ -32,10 +32,12 @@ func Test_Extender(t *testing.T) {
 					{
 						Name: "extr-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "extr-twilio",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 				},
 			},
