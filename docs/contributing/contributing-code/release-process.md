@@ -40,10 +40,10 @@ Do not start the release until the following scenarios are validated:
    git push --tags
    ```
 
-   Else if on main branch
+   Else if on bicep-extensibility branch
    ```bash
-   git checkout main 
-   git pull origin main
+   git checkout bicep-extensibility
+   git pull origin bicep-extensibility
    # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
@@ -54,8 +54,8 @@ Do not start the release until the following scenarios are validated:
    Next, check the timestamps in the `tools` container of the storage account. There should be new builds of `rad-bicep` and the VS Code extension that correspond to the channel. Look at the paths `tools/bicep/<channel>/<architecture>/` and `tools/vscode/<channel>`. These should reflect the new build.
 
    ```bash
-   az storage blob directory list -c tools -d bicep --account-name radiuspublic --output table
-   az storage blob directory list -c tools -d vscode --account-name radiuspublic --output table
+   az storage blob directory list -c tools -d bicep-extensibility --account-name radiuspublic --output table
+   az storage blob directory list -c tools -d vscode-extensibility --account-name radiuspublic --output table
    ```
 2. In the project-radius/deployment-engine repo:
 
@@ -105,11 +105,6 @@ Do not start the release until the following scenarios are validated:
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
 
-   Next, check the timestamps in the `environment` container of the storage account. There should be new copies of our environment setup assets that correspond to the channel.  Look at the path `environment/<channel>/`. These should reflect the new build.
-
-   ```bash
-   az storage blob directory list -c environment -d <channel> --account-name radiuspublic --output table
-   ```
 
 3. Updating Helm chart
 
