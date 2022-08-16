@@ -39,10 +39,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	opts := ctrl.Options{
-		DataProvider:   s.StorageProvider,
-		SecretClient:   s.SecretClient,
-		KubeClient:     s.KubeClient,
-		AsyncOperation: s.OperationStatusManager,
+		DataProvider:  s.StorageProvider,
+		SecretClient:  s.SecretClient,
+		KubeClient:    s.KubeClient,
+		StatusManager: s.OperationStatusManager,
 	}
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)

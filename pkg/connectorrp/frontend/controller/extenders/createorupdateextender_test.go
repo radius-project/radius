@@ -111,8 +111,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},
@@ -193,8 +193,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},
