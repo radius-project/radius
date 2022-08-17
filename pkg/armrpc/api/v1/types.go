@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 const (

@@ -15,7 +15,7 @@ import (
 
 	"github.com/gorilla/mux"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/swagger"
 	"github.com/stretchr/testify/require"
 )

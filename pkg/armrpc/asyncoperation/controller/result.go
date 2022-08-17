@@ -8,7 +8,7 @@ package controller
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 )
 
 // Result is the response of async operation controller.

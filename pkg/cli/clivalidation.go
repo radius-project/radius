@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -151,7 +151,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-//example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
+// example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("No resource Type provided")

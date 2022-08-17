@@ -21,7 +21,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -123,9 +123,9 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 
 // ValidateRequest validates http.Request and returns []ValidationError if the request is invalid.
 // Known limitation:
-//  - readonly property: go-openapi/middleware doesn't support "readonly" property even though
-//    go-openapi/validate has readonly property check used only for go-swagger.
-//    (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
+//   - readonly property: go-openapi/middleware doesn't support "readonly" property even though
+//     go-openapi/validate has readonly property check used only for go-swagger.
+//     (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
 func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)

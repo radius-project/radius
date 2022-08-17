@@ -1,1 +1,0 @@
-(root).properties: Additional property extra2 is not allowed

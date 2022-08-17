@@ -6,8 +6,8 @@
 package handlers
 
 import (
-	"github.com/project-radius/radius/pkg/radrp/db"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/rp/db"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // mergeProperties combines properties from a resource definition and a potentially existing resource.

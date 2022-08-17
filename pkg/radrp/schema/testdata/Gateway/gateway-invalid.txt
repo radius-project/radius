@@ -1,5 +1,0 @@
-(root).properties.hostname.prefix: Invalid type. Expected: string, given: integer
-(root).properties.hostname.fullyQualifiedHostname: Invalid type. Expected: string, given: boolean
-(root).properties.routes.0.destination: Invalid type. Expected: string, given: boolean
-(root).properties.routes.0.path: Invalid type. Expected: string, given: integer
-(root).properties: Additional property extra1 is not allowed

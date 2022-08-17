@@ -16,7 +16,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/radrp/k8sauth"
+	"github.com/project-radius/radius/pkg/rp/k8sauth"
 	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"

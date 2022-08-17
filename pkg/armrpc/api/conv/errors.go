@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 )
 
 var (
