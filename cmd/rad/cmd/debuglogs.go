@@ -70,7 +70,7 @@ func debugLogs(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	tmpdir, err := ioutil.TempDir("", "radius-debug-logs")
+	tmpdir, err := os.MkdirTemp("", "radius-debug-logs")
 
 	if err != nil {
 		return err
