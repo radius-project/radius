@@ -364,3 +364,30 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }
+
+func Test_Render_EmptyApplicationID(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
+			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+				Type:    "pubsub.kafka",
+				Version: "v1",
+				Metadata: map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	renderer.PubSubs = SupportedPubSubKindValues
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.NoError(t, err)
+}
