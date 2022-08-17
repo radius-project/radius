@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
@@ -181,13 +182,25 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 }
-func (h *Handler) DefaultHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	path := h.getRelativePath(r.URL.Path)
-	restResponse := rest.NewNoResourceMatchResponse(path)
+	restResponse := rest.NewNotFoundResponse(path)
 	err := restResponse.Apply(r.Context(), w, r)
 	if err != nil {
 		internalServerError(r.Context(), w, r, err)
 		return
+	}
+}
+
+func (h *Handler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
+	path := h.getRelativePath(r.URL.Path)
+	target := ""
+	if rID, err := resources.Parse(path); err != nil {
+		target = rID.Type() + "/" + rID.Name()
+	}
+	restResponse := rest.NewMethodNotAllowedResponse(target, fmt.Sprintf("The request method '%s' is invalid.", r.Method))
+	if err := restResponse.Apply(r.Context(), w, r); err != nil {
+		internalServerError(r.Context(), w, r, err)
 	}
 }
 
