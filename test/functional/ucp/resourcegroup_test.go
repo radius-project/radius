@@ -6,20 +6,51 @@
 package ucp
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/test"
+	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
+const ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
+
+var radiusControllerLogSync sync.Once
+
 func Test_ResourceGroup_Operations(t *testing.T) {
+	ctx := context.Background()
+	testOptions := test.NewTestOptions(t)
+
+	logPrefix := os.Getenv(ContainerLogPathEnvVar)
+	if logPrefix == "" {
+		logPrefix = "./logs"
+	}
+
+	// Only start capturing controller logs once.
+	radiusControllerLogSync.Do(func() {
+		err := validation.SaveLogsForController(ctx, testOptions.K8sClient, "radius-system", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %v", err)
+		}
+
+		// Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
+		err = validation.SaveLogsForController(ctx, testOptions.K8sClient, "default", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %v", err)
+		}
+	})
+
 	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
 	require.NoError(t, err, "")
 
