@@ -241,3 +241,29 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }
+
+func Test_Render_EmptyApplicationID(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedSecretStoreKindValues}
+	resource := datamodel.DaprSecretStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			Name: resourceName,
+			Type: "Applications.Connector/daprSecretStores",
+		},
+		Properties: datamodel.DaprSecretStoreProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: environmentID,
+			},
+			Type:    ResourceType,
+			Kind:    resourcekinds.DaprGeneric,
+			Version: daprSecretStoreVersion,
+			Metadata: map[string]interface{}{
+				"foo": "bar",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.NoError(t, err)
+}
