@@ -8,7 +8,7 @@ _Please explain the changes you've made._
 We strive to have all PR being opened based on an issue, where the problem or feature have been discussed prior to implementation.
 -->
 
-Please reference the issue this PR will close: #_[issue number]_
+Fixes: #issue_number
 
 ## Checklist
 
