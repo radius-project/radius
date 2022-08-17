@@ -16,4 +16,8 @@ global:
   radius:
     container: radius.azurecr.io/radius-controller
     tag: latest # Tag for radius-controller image.
+  rp:
+    provider:
+      azure: {}
+    publicEndpointOverride: ''
     
