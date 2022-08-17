@@ -36,7 +36,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 					},
 					{
 						Name: "gnrc-pubsub",
-						Type: validation.DaprPubSubResource,
+						Type: validation.DaprPubSubBrokersResource,
 						App:  name,
 					},
 				},
@@ -76,7 +76,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 					},
 					{
 						Name: "sb-pubsub",
-						Type: validation.DaprPubSubResource,
+						Type: validation.DaprPubSubBrokersResource,
 						App:  name,
 					},
 				},

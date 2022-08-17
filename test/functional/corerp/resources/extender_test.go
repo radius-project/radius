@@ -26,7 +26,7 @@ func Test_Extender(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-extender",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -37,7 +37,6 @@ func Test_Extender(t *testing.T) {
 					{
 						Name: "extr-twilio",
 						Type: validation.HttpRoutesResource,
-						App:  name,
 					},
 				},
 			},

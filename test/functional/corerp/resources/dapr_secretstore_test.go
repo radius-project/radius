@@ -40,7 +40,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					},
 					{
 						Name: "gnrc-scs",
-						Type: validation.DaprSecretStoreResource,
+						Type: validation.DaprSecretStoresResource,
 						App:  name,
 					},
 				},

@@ -41,7 +41,7 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 					},
 					{
 						Name: "dapr-backend-httproute",
-						Type: validation.DaprInvokeHttpRoute,
+						Type: validation.DaprInvokeHttpRoutesResource,
 						App:  name,
 					},
 				},

@@ -36,7 +36,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 					},
 					{
 						Name: "gnrc-sts",
-						Type: validation.DaprStateStoreResource,
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 					},
 				},
@@ -76,7 +76,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 					},
 					{
 						Name: "ts-sts",
-						Type: validation.DaprStateStoreResource,
+						Type: validation.DaprStateStoresResource,
 						App:  name,
 					},
 				},

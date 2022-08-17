@@ -7,6 +7,7 @@ package validation
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -26,10 +27,10 @@ const (
 	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
 	RedisCachesResource           = "applications.connector/redisCaches"
 	SQLDatabasesResource          = "applications.connector/sqlDatabases"
-	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
-	DaprSecretStoreResource       = "applications.connector/daprSecretStores"
-	DaprStateStoreResource        = "applications.connector/daprStateStores"
-	DaprInvokeHttpRoute           = "applications.connector/daprInvokeHttpRoutes"
+	DaprPubSubBrokersResource     = "applications.connector/daprPubSubBrokers"
+	DaprSecretStoresResource      = "applications.connector/daprSecretStores"
+	DaprStateStoresResource       = "applications.connector/daprStateStores"
+	DaprInvokeHttpRoutesResource  = "applications.connector/daprInvokeHttpRoutes"
 )
 
 type CoreRPResource struct {
@@ -56,7 +57,6 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 		return cli.ApplicationDelete(ctx, resource.Name)
 	}
 
-	t.Logf("resource %s is not an application or an environment. skipping...", resource.Name)
 	return nil
 }
 
@@ -91,19 +91,13 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
 		} else {
-			require.NotEmpty(t, resource.App)
-			appResources, err := client.ListAllResourceOfTypeInApplication(ctx, resource.App, resource.Type)
+			res, err := client.ShowResource(ctx, resource.Type, resource.Name)
 			require.NoError(t, err)
-			require.NotEmpty(t, appResources)
-			found := false
-			for _, appResource := range appResources {
-				if *appResource.Name == resource.Name {
-					found = true
-					continue
-				}
-			}
+			require.NotNil(t, res, "resource %s with type %s does not exist", resource.Name, resource.Type)
 
-			require.True(t, found, fmt.Sprintf("resource %s with type %s was not found in application %s", resource.Name, resource.Type, resource.App))
+			if resource.App != "" {
+				require.True(t, strings.HasSuffix(res.Properties["application"].(string), resource.App), "resource %s with type %s was not found in application %s", resource.Name, resource.Type, resource.App)
+			}
 		}
 	}
 }

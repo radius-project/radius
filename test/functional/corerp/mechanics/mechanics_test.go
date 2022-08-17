@@ -61,13 +61,13 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-with-another-resource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicsa",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-with-another-resource",
+						App:  name,
 					},
 				},
 			},
@@ -84,18 +84,18 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-with-another-resource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicsb",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-with-another-resource",
+						App:  name,
 					},
 					{
 						Name: "mechanicsc",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-with-another-resource",
+						App:  name,
 					},
 				},
 			},
@@ -125,13 +125,13 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-withupdatedresource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicsd",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-withupdatedresource",
+						App:  name,
 					},
 				},
 			},
@@ -148,13 +148,13 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-withupdatedresource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicsd",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-withupdatedresource",
+						App:  name,
 					},
 				},
 			},
@@ -196,13 +196,13 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-withtwoseparateresource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicse",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-withtwoseparateresource",
+						App:  name,
 					},
 				},
 			},
@@ -219,18 +219,18 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-redeploy-withtwoseparateresource",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "mechanicse",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-withtwoseparateresource",
+						App:  name,
 					},
 					{
 						Name: "mechanicsf",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-redeploy-withtwoseparateresource",
+						App:  name,
 					},
 				},
 			},
@@ -260,13 +260,13 @@ func Test_CommunicationCycle(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-communication-cycle",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "routea",
 						Type: validation.HttpRoutesResource,
-						App:  "corerp-mechanics-communication-cycle",
+						App:  name,
 					},
 					{
 						Name: "mechanicsg",
@@ -276,12 +276,12 @@ func Test_CommunicationCycle(t *testing.T) {
 					{
 						Name: "routeb",
 						Type: validation.HttpRoutesResource,
-						App:  "corerp-mechanics-communication-cycle",
+						App:  name,
 					},
 					{
 						Name: "cyclea",
 						Type: validation.ContainersResource,
-						App:  "corerp-mechanics-communication-cycle",
+						App:  name,
 					},
 				},
 			},
@@ -311,7 +311,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-mechanics-invalid-resourceids",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 				},
