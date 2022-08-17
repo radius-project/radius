@@ -109,7 +109,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	environment, err := cli.RequireEnvironmentName(cmd, args, *workspace)
+	environmentName, err := cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
@@ -139,15 +139,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 	output.CompleteStep(step)
 
-	environment = workspace.Scope + "/providers/applications.core/environments/" + environment
+	environment := workspace.Scope + "/providers/applications.core/environments/" + environmentName
 	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)
 	if err != nil {
 		return err
 	}
 
 	progressText := fmt.Sprintf(
-		"Deploying Application into workspace '%v'...\n\n"+
-			"Deployment In Progress...", workspace.Name)
+		"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
+			"Deployment In Progress...", filePath, environmentName, workspace.Name)
 
 	_, err = deploy.DeployWithProgress(cmd.Context(), deploy.Options{
 		Workspace:      *workspace,
