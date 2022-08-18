@@ -6,84 +6,52 @@
 package ucp
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
-	"sync"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/test"
-	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
-const ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
-
-var radiusControllerLogSync sync.Once
-
 func Test_ResourceGroup_Operations(t *testing.T) {
-	ctx := context.Background()
-	testOptions := test.NewTestOptions(t)
+	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		// Create resource groups
+		rgID := "/planes/radius/local/resourceGroups/test-rg"
+		rgURL := fmt.Sprintf("%s%s", url, rgID)
 
-	logPrefix := os.Getenv(ContainerLogPathEnvVar)
-	if logPrefix == "" {
-		logPrefix = "./logs"
-	}
+		t.Cleanup(func() {
+			deleteResourceGroup(t, roundTripper, rgURL)
+		})
 
-	// Only start capturing controller logs once.
-	radiusControllerLogSync.Do(func() {
-		err := validation.SaveLogsForController(ctx, testOptions.K8sClient, "radius-system", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
+		createResourceGroup(t, roundTripper, rgURL, false)
+		createResourceGroup(t, roundTripper, rgURL, true)
+
+		// List Resource Groups
+		rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
+		require.GreaterOrEqual(t, len(rgs), 1)
+
+		// Get Resource Group
+		rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
+		expectedResourceGroup := rest.ResourceGroup{
+			ID:   rgID,
+			Name: "test-rg",
 		}
+		require.Equal(t, http.StatusOK, statusCode)
+		assert.DeepEqual(t, expectedResourceGroup, rg)
 
-		// Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
-		err = validation.SaveLogsForController(ctx, testOptions.K8sClient, "default", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
-		}
-	})
-
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
-	require.NoError(t, err, "")
-
-	// Create resource groups
-	rgID := "/planes/radius/local/resourceGroups/test-rg"
-	rgURL := fmt.Sprintf("%s%s", url, rgID)
-
-	t.Cleanup(func() {
+		// Delete Resource Group
 		deleteResourceGroup(t, roundTripper, rgURL)
+
+		// Get Resource Group - Expected Not Found
+		_, statusCode = getResourceGroup(t, roundTripper, rgURL)
+		require.Equal(t, http.StatusNotFound, statusCode)
 	})
-
-	createResourceGroup(t, roundTripper, rgURL, false)
-	createResourceGroup(t, roundTripper, rgURL, true)
-
-	// List Resource Groups
-	rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
-	require.GreaterOrEqual(t, len(rgs), 1)
-
-	// Get Resource Group
-	rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
-	expectedResourceGroup := rest.ResourceGroup{
-		ID:   rgID,
-		Name: "test-rg",
-	}
-	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, expectedResourceGroup, rg)
-
-	// Delete Resource Group
-	deleteResourceGroup(t, roundTripper, rgURL)
-
-	// Get Resource Group - Expected Not Found
-	_, statusCode = getResourceGroup(t, roundTripper, rgURL)
-	require.Equal(t, http.StatusNotFound, statusCode)
+	test.Test(t)
 }
 
 func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string, existing bool) {

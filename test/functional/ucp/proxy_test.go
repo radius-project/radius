@@ -31,68 +31,68 @@ const (
 )
 
 func Test_ProxyOperations(t *testing.T) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
-	require.NoError(t, err, "")
+	test := NewUCPTest(t, "Test_ProxyOperations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		// Start a TestRP in the Radius namespace
+		startTestRP(t, "")
 
-	// Start a TestRP in the Radius namespace
-	startTestRP(t, "")
-
-	// Create a Non UCP-Native Plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
-	nonNativePlaneID := "/planes/testNonNativeType/nonNativePlane"
-	nonNativePlaneURL := fmt.Sprintf("%s%s", url, nonNativePlaneID)
-	nonNativePlane := rest.Plane{
-		ID:   nonNativePlaneID,
-		Type: "System.Planes/testNonNativeType",
-		Name: "nonNativePlane",
-		Properties: rest.PlaneProperties{
-			Kind: "testNonNativeType",
-			URL:  fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
-		},
-	}
-	createPlane(t, roundTripper, nonNativePlaneURL, nonNativePlane, false)
-	t.Cleanup(func() {
-		deletePlane(t, roundTripper, nonNativePlaneURL)
-	})
-
-	rgID := nonNativePlaneID + "/resourceGroups/test-rg"
-	rgURL := fmt.Sprintf("%s%s", url, rgID)
-	createResourceGroup(t, roundTripper, rgURL, false)
-	t.Cleanup(func() {
-		deleteResourceGroup(t, roundTripper, rgURL)
-	})
-
-	// Send a request which will be proxied to the TestRP
-	issueGetRequest(t, roundTripper, url, rgURL, "", "")
-
-	// Create UCP-native plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
-	nativePlaneID := "/planes/testNativeType/testNativePlane"
-	nativeplaneURL := fmt.Sprintf("%s%s", url, nativePlaneID)
-	nativePlane := rest.Plane{
-		ID:   nonNativePlaneID,
-		Type: "System.Planes/testNativeType",
-		Name: "testNativePlane",
-		Properties: rest.PlaneProperties{
-			Kind: rest.PlaneKindUCPNative,
-			ResourceProviders: map[string]string{
-				"Applications.Test": fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
+		// Create a Non UCP-Native Plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
+		nonNativePlaneID := "/planes/testNonNativeType/nonNativePlane"
+		nonNativePlaneURL := fmt.Sprintf("%s%s", url, nonNativePlaneID)
+		nonNativePlane := rest.Plane{
+			ID:   nonNativePlaneID,
+			Type: "System.Planes/testNonNativeType",
+			Name: "nonNativePlane",
+			Properties: rest.PlaneProperties{
+				Kind: "testNonNativeType",
+				URL:  fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
 			},
-		},
-	}
-	createPlane(t, roundTripper, nativeplaneURL, nativePlane, false)
-	t.Cleanup(func() {
-		deletePlane(t, roundTripper, nativeplaneURL)
-	})
+		}
+		createPlane(t, roundTripper, nonNativePlaneURL, nonNativePlane, false)
+		t.Cleanup(func() {
+			deletePlane(t, roundTripper, nonNativePlaneURL)
+		})
 
-	rgID = nativePlaneID + "/resourceGroups/test-rg"
-	rgURL = fmt.Sprintf("%s%s", url, rgID)
-	createResourceGroup(t, roundTripper, rgURL, false)
-	t.Cleanup(func() {
-		deleteResourceGroup(t, roundTripper, rgURL)
-	})
+		rgID := nonNativePlaneID + "/resourceGroups/test-rg"
+		rgURL := fmt.Sprintf("%s%s", url, rgID)
+		createResourceGroup(t, roundTripper, rgURL, false)
+		t.Cleanup(func() {
+			deleteResourceGroup(t, roundTripper, rgURL)
+		})
 
-	// Send a request which will be proxied to the TestRP and verify if the location header is translated by UCP
-	issueGetRequest(t, roundTripper, url, rgURL, "Location", "location-header-value")
-	issueGetRequest(t, roundTripper, url, rgURL, "Azure-Asyncoperation", "async-header-value")
+		// Send a request which will be proxied to the TestRP
+		issueGetRequest(t, roundTripper, url, rgURL, "", "")
+
+		// Create UCP-native plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
+		nativePlaneID := "/planes/testNativeType/testNativePlane"
+		nativeplaneURL := fmt.Sprintf("%s%s", url, nativePlaneID)
+		nativePlane := rest.Plane{
+			ID:   nonNativePlaneID,
+			Type: "System.Planes/testNativeType",
+			Name: "testNativePlane",
+			Properties: rest.PlaneProperties{
+				Kind: rest.PlaneKindUCPNative,
+				ResourceProviders: map[string]string{
+					"Applications.Test": fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
+				},
+			},
+		}
+		createPlane(t, roundTripper, nativeplaneURL, nativePlane, false)
+		t.Cleanup(func() {
+			deletePlane(t, roundTripper, nativeplaneURL)
+		})
+
+		rgID = nativePlaneID + "/resourceGroups/test-rg"
+		rgURL = fmt.Sprintf("%s%s", url, rgID)
+		createResourceGroup(t, roundTripper, rgURL, false)
+		t.Cleanup(func() {
+			deleteResourceGroup(t, roundTripper, rgURL)
+		})
+
+		// Send a request which will be proxied to the TestRP and verify if the location header is translated by UCP
+		issueGetRequest(t, roundTripper, url, rgURL, "Location", "location-header-value")
+		issueGetRequest(t, roundTripper, url, rgURL, "Azure-Asyncoperation", "async-header-value")
+	})
+	test.Test(t)
 }
 
 func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, rgURL string, asyncHeaderName string, asyncHeaderValue string) {
