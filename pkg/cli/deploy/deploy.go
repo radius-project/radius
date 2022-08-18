@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -27,7 +27,7 @@ func ValidateBicepFile(filePath string) error {
 		return fmt.Errorf("could not find file: %w", err)
 	}
 
-	if path.Ext(filePath) != ".bicep" {
+	if !strings.EqualFold(path.Ext(filePath), ".bicep") {
 		return errors.New("file must be a .bicep file")
 	}
 
@@ -35,12 +35,7 @@ func ValidateBicepFile(filePath string) error {
 }
 
 func ReadARMJSON(filePath string) (map[string]interface{}, error) {
-	_, err := os.Stat(filePath)
-	if err != nil {
-		return nil, fmt.Errorf("could not find file: %w", err)
-	}
-
-	bytes, err := ioutil.ReadFile(filePath)
+	bytes, err := os.ReadFile(filePath)
 	if err != nil {
 		return nil, fmt.Errorf("could not read json file: %w", err)
 	}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -20,11 +21,11 @@ import (
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
-	Use:   "deploy [app.bicep]",
+	Use:   "deploy [file]",
 	Short: "Deploy a RAD application",
 	Long: `Deploy a RAD application
 
-The deploy command compiles a .bicep file and deploys it to your default environment (unless otherwise specified).
+The deploy command compiles a .bicep or .json file and deploys it to your default environment (unless otherwise specified).
 	
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
@@ -47,6 +48,9 @@ order the are provided. Parameters appearing later in the argument list will ove
 
 rad deploy myapp.bicep
 
+#deploy a template (json)
+
+rad deploy myapp.json
 
 # deploy to a specific workspace
 
@@ -112,7 +116,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	var template map[string]interface{}
-	if path.Ext(filePath) == ".json" {
+	if strings.EqualFold(path.Ext(filePath), ".json") {
 		template, err = deploy.ReadARMJSON(filePath)
 		if err != nil {
 			return err
