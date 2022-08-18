@@ -347,8 +347,7 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource.",
-          "readOnly": true
+          "description": "Status of a resource."
         }
       },
       "description": "Basic properties of a Radius resource.",
@@ -589,6 +588,10 @@
         "queue": {
           "type": "string",
           "description": "The name of the queue"
+        },
+        "status": {
+          "$ref": "#/definitions/ResourceStatus",
+          "description": "Status of a resource."
         }
       },
       "description": "The updatable properties of the RabbitMQMessageQueueResponseResource."
