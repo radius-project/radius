@@ -15,6 +15,7 @@ import (
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -52,10 +53,18 @@ func setDefault() (string, string) {
 	return defaultDockerReg, imageTag
 }
 
-func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, application string) (string, error) {
+func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
 	var httpproxies contourv1.HTTPProxyList
 
-	err := client.List(ctx, &httpproxies, &runtime_client.ListOptions{Namespace: application})
+	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	if err != nil {
+		return "", err
+	}
+
+	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: label,
+	})
 	if err != nil {
 		return "", err
 	}
