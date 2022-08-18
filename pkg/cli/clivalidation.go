@@ -157,15 +157,16 @@ func RequireResourceType(args []string) (string, error) {
 		return "", errors.New("no resource Type provided")
 	}
 	resourceTypeName := args[0]
-	resources := []string{}
+	supportedTypes := []string{}
 	for _, resourceType := range ucp.ResourceTypesList {
-		resources = append(resources, strings.Split(resourceType, "/")[1])
-		if strings.EqualFold(strings.Split(resourceType, "/")[1], resourceTypeName) {
+		supportedType := strings.Split(resourceType, "/")[1]
+		supportedTypes = append(supportedTypes, supportedType)
+		if strings.EqualFold(supportedType, resourceTypeName) {
 			return resourceType, nil
 		}
 	}
-	return "", fmt.Errorf("not a valid resource Type. available Types are: \n\n" +
-		strings.Join(resources, "\n") + "\n")
+	return "", fmt.Errorf("%s is not a valid resource Type. available Types are: \n\n%s\n",
+		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
 func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource AzureResource, err error) {
