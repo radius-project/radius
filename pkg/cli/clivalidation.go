@@ -154,15 +154,18 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 // example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", errors.New("No resource Type provided")
+		return "", errors.New("no resource Type provided")
 	}
 	resourceTypeName := args[0]
+	resources := []string{}
 	for _, resourceType := range ucp.ResourceTypesList {
+		resources = append(resources, strings.Split(resourceType, "/")[1])
 		if strings.EqualFold(strings.Split(resourceType, "/")[1], resourceTypeName) {
 			return resourceType, nil
 		}
 	}
-	return "", errors.New("Not a valid resource Type")
+	return "", fmt.Errorf("not a valid resource Type. available Types are: \n\n" +
+		strings.Join(resources, "\n") + "\n")
 }
 
 func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource AzureResource, err error) {
