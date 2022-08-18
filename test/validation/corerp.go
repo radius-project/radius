@@ -7,6 +7,7 @@ package validation
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -20,22 +21,23 @@ const (
 	ApplicationsResource = "applications.core/applications"
 	HttpRoutesResource   = "applications.core/httpRoutes"
 	GatewaysResource     = "applications.core/gateways"
-	ContainersResource   = "applications.connector/containers"
+	ContainersResource   = "applications.core/containers"
 
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
 	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
 	RedisCachesResource           = "applications.connector/redisCaches"
 	SQLDatabasesResource          = "applications.connector/sqlDatabases"
-	DaprPubSubResource            = "applications.connector/daprPubSubBrokers"
-	DaprSecretStoreResource       = "applications.connector/daprSecretStores"
-	DaprStateStoreResource        = "applications.connector/daprStateStores"
-	DaprInvokeHttpRoute           = "applications.connector/daprInvokeHttpRoutes"
+	DaprPubSubBrokersResource     = "applications.connector/daprPubSubBrokers"
+	DaprSecretStoresResource      = "applications.connector/daprSecretStores"
+	DaprStateStoresResource       = "applications.connector/daprStateStores"
+	DaprInvokeHttpRoutesResource  = "applications.connector/daprInvokeHttpRoutes"
+	ExtendersResource             = "applications.connector/extenders"
 )
 
 type CoreRPResource struct {
-	Type    string
-	Name    string
-	AppName string
+	Type string
+	Name string
+	App  string
 }
 
 type CoreRPResourceSet struct {
@@ -56,7 +58,6 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 		return cli.ApplicationDelete(ctx, resource.Name)
 	}
 
-	t.Logf("resource %s is not an application or an environment. skipping...", resource.Name)
 	return nil
 }
 
@@ -68,8 +69,8 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 			require.NotEmpty(t, envs)
 
 			found := false
-			for _, app := range envs {
-				if *app.Name == resource.Name {
+			for _, env := range envs {
+				if *env.Name == resource.Name {
 					found = true
 					continue
 				}
@@ -91,19 +92,13 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 
 			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
 		} else {
-			t.Logf("skipping validation of resource...")
-			// resources, err := client.ShowResourceByApplication(ctx, resource.AppName, resource.Type)
-			// require.NoError(t, err)
-			// require.NotEmpty(t, resources)
-			// found := false
-			// for _, res := range resources {
-			// 	if *res.Name == resource.Name {
-			// 		found = true
-			// 		continue
-			// 	}
-			// }
+			res, err := client.ShowResource(ctx, resource.Type, resource.Name)
+			require.NoError(t, err)
+			require.NotNil(t, res, "resource %s with type %s does not exist", resource.Name, resource.Type)
 
-			// require.True(t, found, fmt.Sprintf("resource %s was not found", resource.Name))
+			if resource.App != "" {
+				require.True(t, strings.HasSuffix(res.Properties["application"].(string), resource.App), "resource %s with type %s was not found in application %s", resource.Name, resource.Type, resource.App)
+			}
 		}
 	}
 }

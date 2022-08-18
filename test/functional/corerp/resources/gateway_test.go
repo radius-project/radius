@@ -14,9 +14,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-// FIXME: Frontend container logs this:
-// 2022/07/16 22:38:39 no provider could be found for binding of type -  <nil>
-// 2022/07/16 22:38:47 no provider could be found for binding of type -  <nil>
 func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
@@ -35,22 +32,27 @@ func Test_Gateway(t *testing.T) {
 					{
 						Name: "gtwy-gtwy",
 						Type: validation.GatewaysResource,
+						App:  name,
 					},
 					{
 						Name: "gtwy-front-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "gtwy-front-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "gtwy-back-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "gtwy-back-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

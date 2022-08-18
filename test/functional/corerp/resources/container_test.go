@@ -32,6 +32,7 @@ func Test_Container(t *testing.T) {
 					{
 						Name: "ctnr-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},
@@ -66,10 +67,12 @@ func Test_ContainerHttpRoute(t *testing.T) {
 					{
 						Name: "ctnr-rte-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "ctnr-rte-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 				},
 			},
@@ -105,6 +108,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 					{
 						Name: "ctnr-live-ready",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},
@@ -139,6 +143,7 @@ func Test_ContainerManualScale(t *testing.T) {
 					{
 						Name: "ctnr-manualscale",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

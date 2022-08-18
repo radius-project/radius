@@ -39,6 +39,7 @@ func Test_ContainerVersioning(t *testing.T) {
 					{
 						Name: "friendly-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},
@@ -70,6 +71,7 @@ func Test_ContainerVersioning(t *testing.T) {
 					{
 						Name: "friendly-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

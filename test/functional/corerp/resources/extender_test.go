@@ -26,16 +26,17 @@ func Test_Extender(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-extender",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name: "extr-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "extr-twilio",
-						Type: validation.HttpRoutesResource,
+						Type: validation.ExtendersResource,
 					},
 				},
 			},

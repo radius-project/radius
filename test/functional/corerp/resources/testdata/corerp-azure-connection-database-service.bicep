@@ -14,7 +14,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   properties: {
     environment: environment
   }
-
 }
 
 resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
