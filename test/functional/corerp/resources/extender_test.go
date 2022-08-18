@@ -36,7 +36,7 @@ func Test_Extender(t *testing.T) {
 					},
 					{
 						Name: "extr-twilio",
-						Type: validation.HttpRoutesResource,
+						Type: validation.ExtendersResource,
 					},
 				},
 			},
