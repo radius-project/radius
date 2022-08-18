@@ -8,7 +8,9 @@ package show
 import (
 	"context"
 
+	"github.com/project-radius/radius/cmd/rad/cmd"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/utils"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -18,11 +20,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
-	runner := &Runner{
-		Config:            viper.New(), // TODO: config for real.
-		ConnectionFactory: factory.GetConnectionFactory(),
-	}
+func NewCommand() *cobra.Command {
+	runner := NewRunner()
 
 	cmd := &cobra.Command{
 		Use:   "show [resourceType] [resourceName]",
@@ -48,7 +47,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		RunE: framework.RunCommand(runner),
 	}
 
-	return cmd, runner
+	cmd.PersistentFlags().StringP("type", "t", "", "The resource type")
+	cmd.PersistentFlags().StringP("resource", "r", "", "The resource name")
+	cmd.Flags().StringP("resource-group", "g", "", "Resource Group of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
+	cmd.Flags().StringP("resource-subscription-id", "s", "", "Subscription id of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
+
+	return cmd
 }
 
 type Runner struct {
@@ -60,9 +64,16 @@ type Runner struct {
 	Format            string
 }
 
+func NewRunner() *Runner {
+	return &Runner{
+		ConnectionFactory: connections.DefaultFactory,
+	}
+}
+
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// TODO: get config
-
+	config := utils.ConfigFromContext(cmd.Context())
+	r.Config = config
 	workspace, err := cli.RequireWorkspace(cmd, r.Config)
 	if err != nil {
 		return err
@@ -97,7 +108,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// TODO: create a mock for output.
-	err = output.Write(r.Format, resourceDetails, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	err = output.Write(r.Format, resourceDetails, cmd.RootCmd.OutOrStdout(), objectformats.GetResourceTableFormat())
 	if err != nil {
 		return err
 	}
