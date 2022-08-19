@@ -246,16 +246,6 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error) {
 	secretValues := map[string]interface{}{}
 
-	computedValues := map[string]interface{}{}
-	for k, v := range resourceData.ComputedValues {
-		computedValues[k] = v
-	}
-
-	rendererDependency := renderers.RendererDependency{
-		ResourceID:     resourceData.ID,
-		ComputedValues: computedValues,
-	}
-
 	for k, secretReference := range resourceData.SecretValues {
 		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
 		if err != nil {
@@ -270,7 +260,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, resourceData.ComputedValues, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 			}
