@@ -42,7 +42,7 @@ var (
 	dBUrl     = os.Getenv("TEST_COSMOSDB_URL")
 	masterKey = os.Getenv("TEST_COSMOSDB_MASTERKEY")
 
-	dbName           = "applicationscore"
+	dbName           = "functionaltest-mongodb"
 	dbCollectionName = "functional-test-environments"
 
 	testLocation            = "test-location"

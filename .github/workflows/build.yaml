@@ -79,6 +79,8 @@ jobs:
         if: matrix.target_arch == 'amd64' && matrix.target_os == 'linux'
         env:
           GOTEST_OPTS: '-race'
+          TEST_COSMOSDB_URL:  '${{ secrets.DEPLOY_TEST_COSMOS_URL }}'
+          TEST_COSMOSDB_MASTERKEY: '${{ secrets.DEPLOY_TEST_COSMOS_KEY }}'
         run: |
           make test
       - name: Upload CLI binary
