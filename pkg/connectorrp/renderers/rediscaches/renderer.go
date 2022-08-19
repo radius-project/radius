@@ -33,6 +33,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	properties := resource.Properties
 	secretValues := getProvidedSecretValues(properties)
+	computedValues := getProvidedComputedValues(properties)
 
 	_, err := renderers.ValidateApplicationID(properties.Application)
 	if err != nil {
@@ -41,23 +42,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
-			Resources: []outputresource.OutputResource{},
-			ComputedValues: map[string]renderers.ComputedValueReference{
-				renderers.Host: {
-					Value: resource.Properties.Host,
-				},
-				renderers.Port: {
-					Value: resource.Properties.Port,
-				},
-				renderers.UsernameStringValue: {
-					Value: "",
-				},
-			},
-			SecretValues: secretValues,
+			Resources:      []outputresource.OutputResource{},
+			ComputedValues: computedValues,
+			SecretValues:   secretValues,
 		}, nil
 	} else {
-		// Source resource identifier is provided, currently only Azure resources are expected with non empty resource id
-		rendererOutput, err := RenderAzureResource(properties, secretValues)
+		// Source resource identifier is provided. Currently only Azure resources are expected with non empty resource id
+		rendererOutput, err := renderAzureResource(properties, secretValues, computedValues)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -66,7 +57,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 }
 
-func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
+func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
 	redisCacheID, err := resources.Parse(properties.Resource)
 	if err != nil {
@@ -78,26 +69,36 @@ func RenderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
-	computedValues := map[string]renderers.ComputedValueReference{
-		renderers.Host: {
-			Value: properties.Host,
-		},
-		renderers.Port: {
-			Value: properties.Port,
-		},
-		renderers.UsernameStringValue: {
+	if _, ok := computedValues[renderers.Host]; !ok {
+		computedValues[renderers.Host] = renderers.ComputedValueReference{
 			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisUsernameKey,
-		},
+			PropertyReference: handlers.RedisHostKey,
+		}
 	}
 
-	// Populate connection string reference if a value isn't provided
-	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {
-		secretValues = map[string]rp.SecretValueReference{
-			renderers.PasswordStringHolder: {
-				LocalID:       outputresource.LocalIDAzureRedis,
-				Action:        "listKeys",
-				ValueSelector: "/primaryKey",
+	if _, ok := computedValues[renderers.Port]; !ok {
+		computedValues[renderers.Port] = renderers.ComputedValueReference{
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisPortKey,
+		}
+	}
+
+	if _, ok := secretValues[renderers.PasswordStringHolder]; !ok {
+		secretValues[renderers.PasswordStringHolder] = rp.SecretValueReference{
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		}
+	}
+
+	if _, ok := secretValues[renderers.ConnectionStringValue]; !ok {
+		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: providers.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
 			},
 		}
 	}
@@ -136,4 +137,16 @@ func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[stri
 	}
 
 	return secretValues
+}
+
+func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[string]renderers.ComputedValueReference {
+	computedValues := map[string]renderers.ComputedValueReference{}
+	if properties.Host != "" {
+		computedValues[renderers.Host] = renderers.ComputedValueReference{Value: properties.Host}
+	}
+	if properties.Port != 0 {
+		computedValues[renderers.Port] = renderers.ComputedValueReference{Value: properties.Port}
+	}
+
+	return computedValues
 }

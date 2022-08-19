@@ -147,7 +147,8 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.AzureRedis,
 				Provider: providers.ProviderAzure,
 			},
-			ResourceHandler: handlers.NewAzureRedisHandler(arm),
+			ResourceHandler:        handlers.NewAzureRedisHandler(arm),
+			SecretValueTransformer: &rediscaches.AzureTransformer{},
 		},
 	}
 
