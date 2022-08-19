@@ -165,7 +165,7 @@ func RequireResourceType(args []string) (string, error) {
 			return resourceType, nil
 		}
 	}
-	return "", fmt.Errorf("%s is not a valid resource Type. available Types are: \n\n%s\n",
+	return "", fmt.Errorf("'%s' is not a valid resource Type. Available Types are: \n\n%s\n",
 		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
