@@ -19,7 +19,7 @@ var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
 type AzureTransformer struct {
 }
 
-// Build connection string using primary key for Azure Redis Cache resource
+// Transform builds connection string using primary key for Azure Redis Cache resource
 func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]interface{}, primaryKey interface{}) (interface{}, error) {
 	// Redis connection string format: '{hostName}:{port},password={primaryKey},ssl=True,abortConnect=False'
 	password, ok := primaryKey.(string)
