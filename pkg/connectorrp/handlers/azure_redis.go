@@ -45,7 +45,7 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	}
 	parsedID, err := resources.Parse(properties[RedisResourceIdKey])
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse CosmosDB Mongo Database resource id: %w", err)
+		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Azure Redis Cache resource id: %w", err)
 	}
 	redisClient := clients.NewRedisClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 	cache, err := redisClient.Get(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[RedisNameKey])
