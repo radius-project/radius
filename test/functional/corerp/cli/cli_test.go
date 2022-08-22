@@ -178,7 +178,7 @@ func Test_CLI(t *testing.T) {
 
 func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
-	name := "kubernetes-cli-json"
+	name := "kubernetes-cli"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -188,18 +188,18 @@ func Test_CLI_JSON(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "kubernetes-cli-json",
+						Name: "kubernetes-cli",
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name:    "containera-json",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-json",
+						AppName: "kubernetes-cli",
 					},
 					{
 						Name:    "containerb-json",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-json",
+						AppName: "kubernetes-cli",
 					},
 				},
 			},
