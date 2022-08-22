@@ -13,7 +13,6 @@ import (
 	"net/textproto"
 	"net/url"
 
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
@@ -291,15 +290,15 @@ func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req
 
 // MethodNotAllowedResponse represents an HTTP 405 with an ARM error payload.
 type MethodNotAllowedResponse struct {
-	Body armerrors.ErrorResponse
+	Body ErrorResponse
 }
 
 // NewMethodNotAllowedResponse creates MethodNotAllowedResponse instance.
 func NewMethodNotAllowedResponse(target string, message string) Response {
 	return &MethodNotAllowedResponse{
-		Body: armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Invalid,
+		Body: ErrorResponse{
+			Error: ErrorDetails{
+				Code:    Invalid,
 				Message: message,
 				Target:  target,
 			},

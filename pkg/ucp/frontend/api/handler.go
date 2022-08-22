@@ -184,7 +184,8 @@ func (h *Handler) ProxyPlaneRequest(w http.ResponseWriter, r *http.Request) {
 }
 func (h *Handler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	path := h.getRelativePath(r.URL.Path)
-	restResponse := rest.NewNotFoundResponse(path)
+	// No resource match found
+	restResponse := rest.NewNoResourceMatchResponse(path)
 	err := restResponse.Apply(r.Context(), w, r)
 	if err != nil {
 		internalServerError(r.Context(), w, r, err)
@@ -195,7 +196,7 @@ func (h *Handler) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) MethodNotAllowedHandler(w http.ResponseWriter, r *http.Request) {
 	path := h.getRelativePath(r.URL.Path)
 	target := ""
-	if rID, err := resources.Parse(path); err != nil {
+	if rID, err := resources.Parse(path); err == nil {
 		target = rID.Type() + "/" + rID.Name()
 	}
 	restResponse := rest.NewMethodNotAllowedResponse(target, fmt.Sprintf("The request method '%s' is invalid.", r.Method))
