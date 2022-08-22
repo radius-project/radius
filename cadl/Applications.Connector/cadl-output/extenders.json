@@ -347,7 +347,8 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource."
+          "description": "Status of a resource.",
+          "readOnly": true
         }
       },
       "description": "Basic properties of a Radius resource.",
@@ -553,10 +554,6 @@
         "application": {
           "$ref": "#/definitions/Application",
           "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource."
         }
       },
       "description": "The updatable properties of the ExtenderResponseResource."

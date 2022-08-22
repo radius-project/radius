@@ -347,7 +347,8 @@
       "properties": {
         "status": {
           "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource."
+          "description": "Status of a resource.",
+          "readOnly": true
         }
       },
       "description": "Basic properties of a Radius resource.",
@@ -617,10 +618,6 @@
         "username": {
           "type": "string",
           "description": "The username for redis"
-        },
-        "status": {
-          "$ref": "#/definitions/ResourceStatus",
-          "description": "Status of a resource."
         }
       },
       "description": "The updatable properties of the RedisCacheResponseResource."
