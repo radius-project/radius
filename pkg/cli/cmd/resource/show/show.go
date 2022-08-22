@@ -20,8 +20,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewCommand() *cobra.Command {
-	runner := NewRunner()
+func NewCommand(factory connections.Factory, configInterface utils.ConfigInterface) *cobra.Command {
+	runner := NewRunner(factory, configInterface)
 
 	cmd := &cobra.Command{
 		Use:   "show [resourceType] [resourceName]",
@@ -59,20 +59,22 @@ type Runner struct {
 	Config            *viper.Viper
 	Workspace         *workspaces.Workspace
 	ConnectionFactory connections.Factory
+	ConfigInterface   utils.ConfigInterface
 	ResourceType      string
 	ResourceName      string
 	Format            string
 }
 
-func NewRunner() *Runner {
+func NewRunner(factory connections.Factory, configInterface utils.ConfigInterface) *Runner {
 	return &Runner{
-		ConnectionFactory: connections.DefaultFactory,
+		ConnectionFactory: factory,
+		ConfigInterface: configInterface,
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// TODO: get config
-	config := utils.ConfigFromContext(cmd.Context())
+	config := r.ConfigInterface.ConfigFromContext(cmd.Context())
 	r.Config = config
 	workspace, err := cli.RequireWorkspace(cmd, r.Config)
 	if err != nil {
