@@ -14,7 +14,6 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"testing"
 	"time"
 
@@ -40,16 +39,12 @@ const (
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	appName := test.Name
-	containerName := "containera"
-	if strings.EqualFold(appName, "kubernetes-cli-json") {
-		containerName = "containera-json"
-	}
+	appName := "kubernetes-cli"
 
 	t.Run("Validate rad application show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
-		expected := regexp.MustCompile(`RESOURCE        TYPE\n` + appName + `  applications.core/applications\n`)
+		expected := regexp.MustCompile(`RESOURCE        TYPE\nkubernetes-cli  applications.core/applications\n`)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
@@ -59,28 +54,23 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
-		if strings.EqualFold(appName, "kubernetes-cli") {
-			require.Regexp(t, `containera`, output)
-			require.Regexp(t, `containerb`, output)
-		} else {
-			require.Regexp(t, `containera-json`, output)
-			require.Regexp(t, `containerb-json`, output)
-		}
+		require.Regexp(t, `containera`, output)
+		require.Regexp(t, `containerb`, output)
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, "containers", containerName)
+		output, err := cli.ResourceShow(ctx, "containers", "containera")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
 		// and it takes very long to get a feedback from CI.
-		expected := regexp.MustCompile(`RESOURCE    TYPE\n` + containerName + `  applications.core/containers\n`)
+		expected := regexp.MustCompile(`RESOURCE    TYPE\ncontainera  applications.core/containers\n`)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, appName, containerName)
+		output, err := cli.ResourceLogs(ctx, appName, "containera")
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -97,7 +87,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 
 		done := make(chan error)
 		go func() {
-			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
+			_, err = cli.ResourceExpose(child, appName, "containera", port, 3000)
 			done <- err
 		}()
 
@@ -188,7 +178,7 @@ func Test_CLI(t *testing.T) {
 
 func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
-	name := "kubernetes-cli-json"
+	name := "kubernetes-cli"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -198,26 +188,26 @@ func Test_CLI_JSON(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "kubernetes-cli-json",
+						Name: "kubernetes-cli",
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containera-json",
+						Name:    "containera",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-json",
+						AppName: "kubernetes-cli",
 					},
 					{
-						Name:    "containerb-json",
+						Name:    "containerb",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-json",
+						AppName: "kubernetes-cli",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "containera-json"),
-						validation.NewK8sPodForResource(name, "containerb-json"),
+						validation.NewK8sPodForResource(name, "containera"),
+						validation.NewK8sPodForResource(name, "containerb"),
 					},
 				},
 			},
