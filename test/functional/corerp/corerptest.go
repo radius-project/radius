@@ -189,7 +189,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
-		logPrefix = "./logs"
+		logPrefix = "./logs/corerptest"
 	}
 
 	// Only start capturing controller logs once.

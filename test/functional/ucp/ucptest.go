@@ -50,18 +50,12 @@ func (ucptest UCPTest) Test(t *testing.T) {
 
 	logPrefix := os.Getenv(ContainerLogPathEnvVar)
 	if logPrefix == "" {
-		logPrefix = "./logs"
+		logPrefix = "./logs/ucptest"
 	}
 
 	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
 		err := validation.SaveLogsForController(ctx, ucptest.Options.K8sClient, "radius-system", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
-		}
-
-		// Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
-		err = validation.SaveLogsForController(ctx, ucptest.Options.K8sClient, "default", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}
