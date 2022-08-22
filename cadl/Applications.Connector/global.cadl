@@ -5,6 +5,7 @@ using OpenAPI;
 @doc("Basic properties of a Radius resource.")
 model BasicResourceProperties {
   @doc("Status of a resource.")
+  @visibility("read")
   status: ResourceStatus;
 }
 
