@@ -89,43 +89,9 @@ func UnfoldErrorDetails(d *radclient.ErrorDetail) *radclient.ErrorDetail {
 		return &new
 	}
 
-	// Try to unmarshal as both ErrorResponse and ErrorDetail.
-	// There seems to be some inconsistency in the error format returned from RPs
-	// here. We will try to unmarshal as ErrorResponse first, and if it fails,
-	// we will try to unmarshal as ErrorDetail.
-	// Note, the difference between ErrorResponse and ErrorDetail is that ErrorResponse has an extra level of wrapping with `error`.
-
-	// For example, Cosmos DB is returning an ErrorDetails in response to a 400 for this bicep:
-	// resource cosmosDb 'mongodbDatabases' = {
-	// 	name: 'db'
-	// 	properties: {
-	// 	  resource: {
-	// 		id: 'db2'
-	// 	  }
-	// 	  options: {
-	// 		throughput: 400
-	// 	  }
-	// 	}
-	// }
-	// "details":[{"code":"BadRequest","message":"{\r\n  \"code\": \"BadRequest\",\r\n  \"message\": \"Resource name db in request-uri does not match Resource name db2 in request-body.\\r\\nActivityId: 2c1f5342-0e09-450d-a414-196e02e16085, Microsoft.Azure.Documents.Common/2.14.0\"\r\n}"}]
-	// Counter example, Cosmos DB is returning an ErrorResponse in response to a 400 when the name/id are too long
-	// "details":[{"code":"BadRequest","message":"{\r\n  \"error\": {\r\n    \"code\": \"BadRequest\",\r\n    \"message\": \"<!DOCTYPE HTML PUBLIC \\\"-//W3C//DTD HTML 4.01//EN\\\"\\\"http://www.w3.org/TR/html4/strict.dtd\\\">\\r\\n<HTML><HEAD><TITLE>Bad Request</TITLE>\\r\\n<META HTTP-EQUIV=\\\"Content-Type\\\" Content=\\\"text/html; charset=us-ascii\\\"></HEAD>\\r\\n<BODY><h2>Bad Request - Invalid URL</h2>\\r\\n<hr><p>HTTP Error 400. The request URL is invalid.</p>\\r\\n</BODY></HTML>\\r\\n\"\r\n  }\r\n}"}]
-	// In radius, we always return ErrorResponse for these calls.
 	resp := radclient.ErrorResponse{}
 	err := json.Unmarshal([]byte(*d.Message), &resp)
 	if err != nil || resp.InnerError == nil || cmp.Equal(resp.InnerError, radclient.ErrorDetail{}) {
-		// Try as ErrorDetail directly rather than ErrorResponse
-		details := radclient.ErrorDetail{}
-		err := json.Unmarshal([]byte(*d.Message), &details)
-
-		if err != nil || cmp.Equal(details, radclient.ErrorDetail{}) {
-			return &new
-		}
-
-		// We successfully parse an armerrors.ErrorDetails from the message.
-		// Let's move that information into the structured details.
-		new.Message = nil
-		new.Details = append(new.Details, &details)
 		return &new
 	}
 	// We successfully parse an armerrors.ErrorResponse from the message.

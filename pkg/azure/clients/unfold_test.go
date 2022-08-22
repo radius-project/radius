@@ -130,7 +130,7 @@ func TestUnfoldServiceError(t *testing.T) {
 			}},
 		},
 	}, {
-		name: "message containing just error details works",
+		name: "message with invalid json format persists message",
 		input: azure.ServiceError{
 			Details: []map[string]interface{}{{
 				"code":    to.StringPtr("BadRequest"),
@@ -139,11 +139,8 @@ func TestUnfoldServiceError(t *testing.T) {
 		},
 		expect: ServiceError{
 			Details: []*radclient.ErrorDetail{{
-				Code: to.StringPtr("BadRequest"),
-				Details: []*radclient.ErrorDetail{{
-					Code:    to.StringPtr("BadRequest"),
-					Message: to.StringPtr(`Resource name db in request-uri does not match Resource name db2 in request-body.\r\nActivityId: 1ca0e394-3e49-4498-ba93-5a7785f6dc0b, Microsoft.Azure.Documents.Common/2.14.0`),
-				}},
+				Code:    to.StringPtr("BadRequest"),
+				Message: to.StringPtr(`{ "code": "BadRequest", "message": "Resource name db in request-uri does not match Resource name db2 in request-body.\\r\\nActivityId: 1ca0e394-3e49-4498-ba93-5a7785f6dc0b, Microsoft.Azure.Documents.Common/2.14.0"}`),
 			}},
 		},
 	}, {
