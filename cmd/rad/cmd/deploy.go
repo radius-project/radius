@@ -25,7 +25,7 @@ var deployCmd = &cobra.Command{
 	Short: "Deploy a RAD application",
 	Long: `Deploy a RAD application
 
-The deploy command compiles a .bicep or .json file and deploys it to your default environment (unless otherwise specified).
+The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
 	
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
@@ -48,7 +48,7 @@ order the are provided. Parameters appearing later in the argument list will ove
 
 rad deploy myapp.bicep
 
-#deploy a template (json)
+#deploy an ARM template (json)
 
 rad deploy myapp.json
 
