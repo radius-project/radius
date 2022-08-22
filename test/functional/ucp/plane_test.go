@@ -19,7 +19,7 @@ import (
 )
 
 func Test_Plane_Operations(t *testing.T) {
-	test := NewUCPTest(t, "Test_ProxyOperations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+	test := NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		planeID := "/planes/testType/testPlane"
 		planeURL := fmt.Sprintf("%s%s", url, planeID)
 
