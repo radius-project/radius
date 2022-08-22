@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -39,12 +40,16 @@ const (
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
-	appName := "kubernetes-cli"
+	appName := test.Name
+	containerName := "containera"
+	if strings.EqualFold(appName, "kubernetes-cli-json") {
+		containerName = "containera-json"
+	}
 
 	t.Run("Validate rad application show", func(t *testing.T) {
 		output, err := cli.ApplicationShow(ctx, appName)
 		require.NoError(t, err)
-		expected := regexp.MustCompile(`RESOURCE        TYPE\nkubernetes-cli  applications.core/applications\n`)
+		expected := regexp.MustCompile(`RESOURCE        TYPE\n` + appName + `  applications.core/applications\n`)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
@@ -54,23 +59,28 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.NoError(t, err)
 
 		// Resource ordering can vary so we don't assert exact output.
-		require.Regexp(t, `containera`, output)
-		require.Regexp(t, `containerb`, output)
+		if strings.EqualFold(appName, "kubernetes-cli") {
+			require.Regexp(t, `containera`, output)
+			require.Regexp(t, `containerb`, output)
+		} else {
+			require.Regexp(t, `containera-json`, output)
+			require.Regexp(t, `containerb-json`, output)
+		}
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, "containers", "containera")
+		output, err := cli.ResourceShow(ctx, "containers", containerName)
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
 		// and it takes very long to get a feedback from CI.
-		expected := regexp.MustCompile(`RESOURCE    TYPE\ncontainera  applications.core/containers\n`)
+		expected := regexp.MustCompile(`RESOURCE    TYPE\n` + containerName + `  applications.core/containers\n`)
 		match := expected.MatchString(output)
 		require.Equal(t, true, match)
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
-		output, err := cli.ResourceLogs(ctx, appName, "containera")
+		output, err := cli.ResourceLogs(ctx, appName, containerName)
 		require.NoError(t, err)
 
 		// We don't want to be too fragile so we're not validating the logs in depth
@@ -87,7 +97,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 
 		done := make(chan error)
 		go func() {
-			_, err = cli.ResourceExpose(child, appName, "containera", port, 3000)
+			_, err = cli.ResourceExpose(child, appName, containerName, port, 3000)
 			done <- err
 		}()
 
@@ -178,7 +188,7 @@ func Test_CLI(t *testing.T) {
 
 func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
-	name := "kubernetes-cli"
+	name := "kubernetes-cli-json"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -188,18 +198,18 @@ func Test_CLI_JSON(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "kubernetes-cli",
+						Name: "kubernetes-cli-json",
 						Type: validation.ApplicationsResource,
 					},
 					{
 						Name:    "containera-json",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						AppName: "kubernetes-cli-json",
 					},
 					{
 						Name:    "containerb-json",
 						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						AppName: "kubernetes-cli-json",
 					},
 				},
 			},
