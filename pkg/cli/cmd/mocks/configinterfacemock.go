@@ -38,6 +38,6 @@ func (m *MockConfigInterface) ConfigFromContext(arg0 context.Context) *viper.Vip
 	return ret0
 }
 
-func (m *MockConfigInterfaceRecorder) ConfigFromContext(arg0 interface{}) *gomock.Call {
-	return m.mock.ctrl.RecordCall(m.mock, "DoSomething", reflect.TypeOf((*MockConfigInterface)(nil).ConfigFromContext), arg0)
+func (mr *MockConfigInterfaceRecorder) ConfigFromContext(arg0 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCall(mr.mock, "DoSomething", reflect.TypeOf((*MockConfigInterface)(nil).ConfigFromContext), arg0)
 }

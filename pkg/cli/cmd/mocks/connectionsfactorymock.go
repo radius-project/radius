@@ -40,8 +40,8 @@ func (m *MockConnectionsFactory) CreateDeploymentClient(arg0 context.Context, ar
 	return ret0, ret1
 }
 
-func (m *MockConnectionsFactoryRecorder) CreateDeploymentClient(arg0, arg1 interface{}) *gomock.Call {
-	return m.mock.ctrl.RecordCall(m.mock, "CreateDeploymentClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateDeploymentClient), arg0, arg1)
+func (mr *MockConnectionsFactoryRecorder) CreateDeploymentClient(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCall(mr.mock, "CreateDeploymentClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateDeploymentClient), arg0, arg1)
 }
 
 func (m *MockConnectionsFactory) CreateDiagnosticsClient(arg0 context.Context, arg1 workspaces.Workspace) (clients.DiagnosticsClient, error) {
@@ -51,8 +51,8 @@ func (m *MockConnectionsFactory) CreateDiagnosticsClient(arg0 context.Context, a
 	return ret0, ret1
 }
 
-func (m *MockConnectionsFactoryRecorder) CreateDiagnosticsClient(arg0, arg1 interface{}) *gomock.Call {
-	return m.mock.ctrl.RecordCall(m.mock, "CreateDiagnosticsClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateDiagnosticsClient), arg0, arg1)
+func (mr *MockConnectionsFactoryRecorder) CreateDiagnosticsClient(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCall(mr.mock, "CreateDiagnosticsClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateDiagnosticsClient), arg0, arg1)
 }
 
 func (m *MockConnectionsFactory) CreateApplicationsManagementClient(arg0 context.Context, arg1 workspaces.Workspace) (clients.ApplicationsManagementClient, error) {
@@ -62,8 +62,8 @@ func (m *MockConnectionsFactory) CreateApplicationsManagementClient(arg0 context
 	return ret0, ret1
 }
 
-func (m *MockConnectionsFactoryRecorder) CreateApplicationsManagementClient(arg0, arg1 interface{}) *gomock.Call {
-	return m.mock.ctrl.RecordCall(m.mock, "CreateApplicationsManagementClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateApplicationsManagementClient), arg0, arg1)
+func (mr *MockConnectionsFactoryRecorder) CreateApplicationsManagementClient(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCall(mr.mock, "CreateApplicationsManagementClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateApplicationsManagementClient), arg0, arg1)
 }
 
 func (m *MockConnectionsFactory) CreateServerLifecycleClient(arg0 context.Context, arg1 workspaces.Workspace) (clients.ServerLifecycleClient, error) {
@@ -73,6 +73,6 @@ func (m *MockConnectionsFactory) CreateServerLifecycleClient(arg0 context.Contex
 	return ret0, ret1
 }
 
-func (m *MockConnectionsFactoryRecorder) CreateServerLifecycleClient(arg0, arg1 interface{}) *gomock.Call {
-	return m.mock.ctrl.RecordCall(m.mock, "CreateServerLifecycleClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateServerLifecycleClient), arg0, arg1)
+func (mr *MockConnectionsFactoryRecorder) CreateServerLifecycleClient(arg0, arg1 interface{}) *gomock.Call {
+	return mr.mock.ctrl.RecordCall(mr.mock, "CreateServerLifecycleClient", reflect.TypeOf((*MockConnectionsFactory)(nil).CreateServerLifecycleClient), arg0, arg1)
 }
