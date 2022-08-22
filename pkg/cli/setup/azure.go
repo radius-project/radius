@@ -23,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
 )
 
 // RegisterAzureProviderArgs adds flags to configure Azure provider for cloud resources.
@@ -107,6 +108,10 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 }
 
 func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, error) {
+	authorizer, err := auth.NewAuthorizerFromCLI()
+	if err != nil {
+		return nil, err
+	}
 	subscriptionID, err := cmd.Flags().GetString("provider-azure-subscription")
 	if err != nil {
 		return nil, err
@@ -142,7 +147,20 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		return nil, err
 	}
 	if isValid, _, _ := prompt.UUIDv4Validator(subscriptionID); !isValid {
-		return nil, fmt.Errorf("--provider-azure-subscription is required to configure Azure provider for cloud resources")
+		subs, err := azure.LoadSubscriptionsFromProfile()
+		if err != nil {
+			// Failed to load subscriptions from the user profile, fall back to online.
+			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context(), authorizer)
+			if err != nil {
+				return nil, err
+			}
+		}
+		idx := slices.IndexFunc(subs.Subscriptions, func(c azure.Subscription) bool { return c.DisplayName == subscriptionID })
+		if idx != -1 {
+			subscriptionID = subs.Subscriptions[idx].SubscriptionID
+		} else {
+			return nil, fmt.Errorf("--provider-azure-subscription is required to configure Azure provider for cloud resources")
+		}
 	}
 	if resourceGroup == "" {
 		return nil, fmt.Errorf("--provider-azure-resource-group is required to configure Azure provider for cloud resources")
