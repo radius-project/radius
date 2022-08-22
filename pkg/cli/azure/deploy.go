@@ -177,15 +177,12 @@ func (dc *ResouceDeploymentClient) waitForCompletion(ctx context.Context, future
 
 	err = future.WaitForCompletionRef(ctx, dc.Client.Client)
 	if err != nil {
-		fmt.Println(err.Error())
-
 		return clients.DeploymentResult{}, err
 	}
 
 	deployment, err = future.Result(dc.Client.DeploymentsClient)
 
 	if err != nil {
-		fmt.Println(err.Error())
 		return clients.DeploymentResult{}, err
 	}
 
