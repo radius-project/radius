@@ -47,14 +47,14 @@ func Test_ProxyOperations(t *testing.T) {
 				URL:  fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
 			},
 		}
-		createPlane(t, roundTripper, nonNativePlaneURL, nonNativePlane, false)
+		createPlane(t, roundTripper, nonNativePlaneURL, nonNativePlane)
 		t.Cleanup(func() {
 			deletePlane(t, roundTripper, nonNativePlaneURL)
 		})
 
 		rgID := nonNativePlaneID + "/resourceGroups/test-rg"
 		rgURL := fmt.Sprintf("%s%s", url, rgID)
-		createResourceGroup(t, roundTripper, rgURL, false)
+		createResourceGroup(t, roundTripper, rgURL)
 		t.Cleanup(func() {
 			deleteResourceGroup(t, roundTripper, rgURL)
 		})
@@ -76,14 +76,14 @@ func Test_ProxyOperations(t *testing.T) {
 				},
 			},
 		}
-		createPlane(t, roundTripper, nativeplaneURL, nativePlane, false)
+		createPlane(t, roundTripper, nativeplaneURL, nativePlane)
 		t.Cleanup(func() {
 			deletePlane(t, roundTripper, nativeplaneURL)
 		})
 
 		rgID = nativePlaneID + "/resourceGroups/test-rg"
 		rgURL = fmt.Sprintf("%s%s", url, rgID)
-		createResourceGroup(t, roundTripper, rgURL, false)
+		createResourceGroup(t, roundTripper, rgURL)
 		t.Cleanup(func() {
 			deleteResourceGroup(t, roundTripper, rgURL)
 		})

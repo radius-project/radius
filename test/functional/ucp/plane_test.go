@@ -44,8 +44,8 @@ func Test_Plane_Operations(t *testing.T) {
 			},
 		}
 
-		createPlane(t, roundTripper, planeURL, testPlane, false)
-		createPlane(t, roundTripper, planeURL, testPlane, true)
+		createPlane(t, roundTripper, planeURL, testPlane)
+		createPlane(t, roundTripper, planeURL, testPlane)
 
 		// Get Plane
 		plane, statusCode := getPlane(t, roundTripper, planeURL)
@@ -63,7 +63,7 @@ func Test_Plane_Operations(t *testing.T) {
 	test.Test(t)
 }
 
-func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane rest.Plane, existing bool) {
+func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane rest.Plane) {
 	body, err := json.Marshal(plane)
 	require.NoError(t, err)
 	createRequest, err := http.NewRequest(
@@ -75,13 +75,8 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 	res, err := roundTripper.RoundTrip(createRequest)
 	require.NoError(t, err, "")
 
-	if !existing {
-		require.Equal(t, http.StatusCreated, res.StatusCode)
-		t.Logf("Plane: %s created successfully", url)
-	} else {
-		require.Equal(t, http.StatusOK, res.StatusCode)
-		t.Logf("Plane: %s updated successfully", url)
-	}
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Logf("Plane: %s created/updated successfully", url)
 }
 
 func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Plane, int) {

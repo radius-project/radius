@@ -20,7 +20,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -111,10 +111,10 @@ func Test_ProxyToRP(t *testing.T) {
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-		Address:  rpURL,
+	err = api.Register(ctx, router, controller.Options{
+		DB:       db,
 		BasePath: basePath,
-	}))
+	})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -153,10 +153,10 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-		Address:  rpURL,
+	err = api.Register(ctx, router, controller.Options{
+		DB:       db,
 		BasePath: basePath,
-	}))
+	})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -221,10 +221,10 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
-	err = api.Register(ctx, router, db, ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-		Address:  rpURL,
+	err = api.Register(ctx, router, controller.Options{
+		DB:       db,
 		BasePath: basePath,
-	}))
+	})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
@@ -298,7 +298,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
-	assert.Equal(t, http.StatusCreated, createResourceGroupResponse.StatusCode)
+	assert.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
 	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
 	var responseResourceGroup rest.ResourceGroup

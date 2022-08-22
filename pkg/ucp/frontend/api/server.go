@@ -6,6 +6,7 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -14,10 +15,11 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/frontend/middleware"
-	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
-	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler/planes"
+	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -31,7 +33,6 @@ type ServiceOptions struct {
 	Address                 string
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
-	UcpHandler              ucphandler.UCPHandler
 	DBClient                store.StorageClient
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
@@ -69,7 +70,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.DBClient = dbClient
 	}
 
-	err := Register(ctx, r, s.options.DBClient, s.options.UcpHandler)
+	ctrlOpts := ctrl.Options{
+		BasePath: s.options.BasePath,
+		DB:       s.options.DBClient,
+		Address:  s.options.Address,
+	}
+
+	err := Register(ctx, r, ctrlOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -78,13 +85,13 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err = s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.UcpHandler.Planes, s.options.InitialPlanes)
+	err = s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.InitialPlanes)
 	if err != nil {
 		return nil, err
 	}
 
 	app := http.Handler(r)
-	app = middleware.UseLogValues(app)
+	app = middleware.UseLogValues(app, s.options.BasePath)
 
 	server := &http.Server{
 		Addr:    s.options.Address,
@@ -114,15 +121,27 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 }
 
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
-func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planesUCPHandler planes.PlanesUCPHandler, planes []rest.Plane) error {
+func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
 
 	for _, plane := range planes {
-		bytes, err := json.Marshal(plane)
+		body, err := json.Marshal(plane)
 		if err != nil {
 			return err
 		}
 
-		_, err = planesUCPHandler.CreateOrUpdate(ctx, dbClient, bytes, plane.ID)
+		planesCtrl, err := planes_ctrl.NewCreateOrUpdatePlane(controller.Options{
+			DB: dbClient,
+		})
+		if err != nil {
+			return err
+		}
+
+		request, err := http.NewRequest(http.MethodPut, plane.ID, bytes.NewBuffer(body))
+		if err != nil {
+			return err
+		}
+
+		_, err = planesCtrl.Run(ctx, nil, request)
 		if err != nil {
 			return err
 		}
