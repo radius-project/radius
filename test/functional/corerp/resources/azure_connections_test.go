@@ -27,8 +27,13 @@ func Test_AzureConnections(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
 						Name: containerResourceName,
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 				},
 			},

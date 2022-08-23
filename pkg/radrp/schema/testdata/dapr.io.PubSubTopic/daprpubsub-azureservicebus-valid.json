@@ -1,8 +1,0 @@
-{
-  "id": "id",
-  "name": "name",
-  "properties": {
-    "kind": "pubsub.azure.servicebus",
-    "resource": "test"
-  }
-}

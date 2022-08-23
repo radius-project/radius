@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -151,18 +151,22 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-//example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
+// example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", errors.New("No resource Type provided")
+		return "", errors.New("no resource Type provided")
 	}
 	resourceTypeName := args[0]
+	supportedTypes := []string{}
 	for _, resourceType := range ucp.ResourceTypesList {
-		if strings.EqualFold(strings.Split(resourceType, "/")[1], resourceTypeName) {
+		supportedType := strings.Split(resourceType, "/")[1]
+		supportedTypes = append(supportedTypes, supportedType)
+		if strings.EqualFold(supportedType, resourceTypeName) {
 			return resourceType, nil
 		}
 	}
-	return "", errors.New("Not a valid resource Type")
+	return "", fmt.Errorf("'%s' is not a valid resource Type. Available Types are: \n\n%s\n",
+		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
 func RequireAzureResource(cmd *cobra.Command, args []string) (azureResource AzureResource, err error) {

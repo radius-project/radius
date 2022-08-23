@@ -18,9 +18,9 @@ import (
 
 // resourceListCmd command to list resources in an application
 var resourceListCmd = &cobra.Command{
-	Use:     "list [resourceType]",
-	Short:   "Lists resources",
-	Long:    "List all resources of specified type",
+	Use:   "list [resourceType]",
+	Short: "Lists resources",
+	Long:  "List all resources of specified type",
 	Example: `
 	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
@@ -36,7 +36,7 @@ var resourceListCmd = &cobra.Command{
 	# list all resources of a specified type in an application (shorthand flag)
 	rad resource list containers -a icecream-store
 	`,
-	RunE:    listResources,
+	RunE: listResources,
 }
 
 func init() {
@@ -71,7 +71,7 @@ func listResources(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return &cli.FriendlyError{Message: fmt.Sprintf("Failed to find application %s", applicationName)}
 		}
-		resourceList, err = client.ListAllResourceOfTypeInApplication(cmd.Context(), applicationName, resourceType)
+		resourceList, err = client.ListAllResourcesOfTypeInApplication(cmd.Context(), applicationName, resourceType)
 		if err != nil {
 			return err
 		}

@@ -56,8 +56,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			})
 
 		opts := ctrl.Options{
-			StorageClient:  mds,
-			AsyncOperation: msm,
+			StorageClient: mds,
+			StatusManager: msm,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 				return mDeploymentProcessor
 			},
@@ -92,8 +92,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
 		opts := ctrl.Options{
-			StorageClient:  mds,
-			AsyncOperation: msm,
+			StorageClient: mds,
+			StatusManager: msm,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 				return mDeploymentProcessor
 			},
@@ -128,8 +128,8 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			})
 
 		opts := ctrl.Options{
-			StorageClient:  mds,
-			AsyncOperation: msm,
+			StorageClient: mds,
+			StatusManager: msm,
 			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 				return mDeploymentProcessor
 			},

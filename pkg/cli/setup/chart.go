@@ -10,8 +10,6 @@ import "github.com/spf13/cobra"
 type ChartArgs struct {
 	Reinstall    bool
 	ChartPath    string
-	Image        string // TODO remove when CustomRP is removed
-	Tag          string // TODO remove when CustomRP is removed
 	AppCoreImage string
 	AppCoreTag   string
 	UcpImage     string
@@ -46,14 +44,6 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	if err != nil {
 		return nil, err
 	}
-	image, err := cmd.Flags().GetString("image") // TODO remove when CustomRP is removed
-	if err != nil {
-		return nil, err
-	}
-	tag, err := cmd.Flags().GetString("tag") // TODO remove when CustomRP is removed
-	if err != nil {
-		return nil, err
-	}
 	appcoreImage, err := cmd.Flags().GetString("appcore-image")
 	if err != nil {
 		return nil, err
@@ -78,8 +68,6 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	return &ChartArgs{
 		Reinstall:              reinstall,
 		ChartPath:              chartPath,
-		Image:                  image,
-		Tag:                    tag,
 		AppCoreImage:           appcoreImage,
 		AppCoreTag:             appcoreTag,
 		UcpImage:               ucpImage,

@@ -10,10 +10,9 @@ import (
 	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 const (
@@ -74,21 +73,6 @@ type ComputedValueReference struct {
 	JSONPointer string
 }
 
-// Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
-type RendererDependency struct {
-	// ResourceID is the resource ID of the Radius resource that is the dependency.
-	ResourceID resources.ID
-
-	// Definition is the definition (`properties` node) of the dependency.
-	Definition map[string]interface{}
-
-	// ComputedValues is a map of the computed values and secrets of the dependency.
-	ComputedValues map[string]interface{}
-
-	// OutputResources is a map of the output resource identities of the dependency. The map is keyed on the LocalID of the output resource.
-	OutputResources map[string]resourcemodel.ResourceIdentity
-}
-
 // SecretValueTransformer allows transforming a secret value before passing it on to a Resource
 // that wants to access it.
 //
@@ -97,7 +81,7 @@ type RendererDependency struct {
 // string that application code consumes will include a database name or queue name, etc. Or the different
 // libraries involved might support different connection string formats, and the user has to choose on.
 type SecretValueTransformer interface {
-	Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error)
+	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
 }
 
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient

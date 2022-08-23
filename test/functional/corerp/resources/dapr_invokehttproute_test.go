@@ -15,7 +15,6 @@ import (
 )
 
 func Test_DaprInvokeHttpRoute(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
 	template := "testdata/corerp-resources-dapr-httproute.bicep"
 	name := "dapr-invokehttproute"
 
@@ -33,14 +32,17 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 					{
 						Name: "dapr-frontend",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "dapr-backend",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "dapr-backend-httproute",
-						Type: validation.DaprInvokeHttpRoute,
+						Type: validation.DaprInvokeHttpRoutesResource,
+						App:  name,
 					},
 				},
 			},

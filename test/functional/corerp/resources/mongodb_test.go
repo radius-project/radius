@@ -42,14 +42,14 @@ func Test_MongoDB(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "mdb-app-ctnr",
-						Type:    validation.ContainersResource,
-						AppName: "corerp-resources-mongodb",
+						Name: "mdb-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
-						Name:    "mdb-db",
-						Type:    validation.MongoDatabasesResource,
-						AppName: "corerp-resources-mongodb",
+						Name: "mdb-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
 					},
 				},
 			},
@@ -84,18 +84,22 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 					{
 						Name: "mdb-us-app-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "mdb-us-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "mdb-us-rte",
 						Type: validation.HttpRoutesResource,
+						App:  name,
 					},
 					{
 						Name: "mdb-us-db",
 						Type: validation.MongoDatabasesResource,
+						App:  name,
 					},
 				},
 			},

@@ -14,12 +14,13 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/radrp/schema"
 	"github.com/spf13/cobra"
 )
 
 const (
 	LevenshteinCutoff = 2
+
+	ContainerType = "containers"
 )
 
 var resourceExposeCmd = &cobra.Command{
@@ -79,8 +80,8 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 		if err != nil {
 			return err
 		}
-		if !strings.EqualFold(resourceType, schema.ContainerType) {
-			return fmt.Errorf("only %s is supported", schema.ContainerType)
+		if !strings.EqualFold(resourceType, ContainerType) {
+			return fmt.Errorf("only %s is supported", ContainerType)
 		}
 
 		localPort, err := cmd.Flags().GetInt("port")

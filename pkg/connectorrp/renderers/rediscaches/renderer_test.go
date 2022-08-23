@@ -14,10 +14,12 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/handlers"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,8 +45,6 @@ func Test_Render_Success(t *testing.T) {
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
 				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-				Host:     "hello.com",
-				Port:     1234,
 			},
 		},
 	}
@@ -65,24 +65,37 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, expectedOutputResource, redisCacheOutputResource.Resource)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.UsernameStringValue: {
-			LocalID:           "AzureRedis",
-			PropertyReference: "redisusername",
-		},
 		renderers.Host: {
-			Value: "hello.com",
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisHostKey,
 		},
 		renderers.Port: {
-			Value: int32(1234),
+			LocalID:           outputresource.LocalIDAzureRedis,
+			PropertyReference: handlers.RedisPortKey,
+		},
+	}
+	expectedSecretValues := map[string]rp.SecretValueReference{
+		renderers.PasswordStringHolder: {
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+		},
+		renderers.ConnectionStringValue: {
+			LocalID:       outputresource.LocalIDAzureRedis,
+			Action:        "listKeys",
+			ValueSelector: "/primaryKey",
+			Transformer: resourcemodel.ResourceType{
+				Provider: providers.ProviderAzure,
+				Type:     resourcekinds.AzureRedis,
+			},
 		},
 	}
 
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
-	require.Equal(t, "/primaryKey", output.SecretValues[renderers.PasswordStringHolder].ValueSelector)
-	require.Equal(t, "listKeys", output.SecretValues[renderers.PasswordStringHolder].Action)
+	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Render_UserSpecifiedSecrets(t *testing.T) {
+func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 	ctx := context.Background()
 	renderer := Renderer{}
 
@@ -113,9 +126,6 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		renderers.UsernameStringValue: {
-			Value: "",
-		},
 		renderers.Host: {
 			Value: "hello.com",
 		},

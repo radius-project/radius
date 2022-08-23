@@ -15,8 +15,6 @@ import (
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
-
 	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
 	name := "corerp-resources-dapr-secretstore-generic"
 
@@ -38,10 +36,12 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					{
 						Name: "gnrc-scs-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "gnrc-scs",
-						Type: validation.DaprSecretStoreResource,
+						Type: validation.DaprSecretStoresResource,
+						App:  name,
 					},
 				},
 			},

@@ -21,11 +21,14 @@ const (
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
-	LabelManagedByRadiusRP  = "radius-rp"
-	LabelAADPodIdentity     = "aadpodidbinding"
+	// TODO: Are we removing this too?
+	LabelManagedByRadiusRP = "radius-rp"
+	LabelAADPodIdentity    = "aadpodidbinding"
 
+	// TODO: Are we removing this too?
 	FieldManager      = "radius-rp"
 	AnnotationLocalID = "radius.dev/local-id"
+	ControlPlane      = "radius-control-plane"
 )
 
 // NOTE: the difference between descriptive labels and selector labels

@@ -19,8 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -111,8 +111,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},
@@ -193,8 +193,8 @@ func TestCreateOrUpdateExtender_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},

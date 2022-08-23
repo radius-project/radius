@@ -15,6 +15,8 @@ import (
 )
 
 // resourceShowCmd command to show details of a resource
+// The application flag is redundant for show as resources are env scoped
+// The flag is useful for future behaviors where resources might be rg or subId scoped
 var resourceShowCmd = &cobra.Command{
 	Use:     "show [resourceType] [resourceName]",
 	Short:   "Show RAD resource details",
@@ -52,11 +54,6 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	applicationName, err := cli.RequireApplication(cmd, *workspace)
-	if err != nil {
-		return err
-	}
-
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
 	if err != nil {
 		return err
@@ -67,7 +64,7 @@ func showResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResourceByApplication(cmd.Context(), applicationName, resourceType, resourceName)
+	resourceDetails, err := client.ShowResource(cmd.Context(), resourceType, resourceName)
 	if err != nil {
 		return err
 	}

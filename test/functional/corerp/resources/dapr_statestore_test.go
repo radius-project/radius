@@ -15,8 +15,6 @@ import (
 )
 
 func Test_DaprStateStoreGeneric(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
-
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
 
@@ -34,10 +32,12 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 					{
 						Name: "gnrc-sts-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "gnrc-sts",
-						Type: validation.DaprStateStoreResource,
+						Type: validation.DaprStateStoresResource,
+						App:  name,
 					},
 				},
 			},
@@ -55,8 +55,6 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 }
 
 func Test_DaprStateStoreTableStorage(t *testing.T) {
-	t.Skip("https://github.com/project-radius/radius/issues/3182")
-
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
@@ -74,10 +72,12 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 					{
 						Name: "ts-sts-ctnr",
 						Type: validation.ContainersResource,
+						App:  name,
 					},
 					{
 						Name: "ts-sts",
-						Type: validation.DaprStateStoreResource,
+						Type: validation.DaprStateStoresResource,
+						App:  name,
 					},
 				},
 			},

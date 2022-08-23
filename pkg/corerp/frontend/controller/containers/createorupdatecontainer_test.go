@@ -126,8 +126,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 			}
 
 			ctl, err := NewCreateOrUpdateContainer(opts)
@@ -283,8 +283,8 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 			}
 
 			ctl, err := NewCreateOrUpdateContainer(opts)

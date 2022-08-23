@@ -57,7 +57,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	})
 
 	t.Run("Validate rad resource show", func(t *testing.T) {
-		output, err := cli.ResourceShow(ctx, appName, "containers", "containera")
+		output, err := cli.ResourceShow(ctx, "containers", "containera")
 		require.NoError(t, err)
 		// We are more interested in the content and less about the formatting, which
 		// is already covered by unit tests. The spaces change depending on the input
@@ -148,14 +148,14 @@ func Test_CLI(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containera",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						Name: "containera",
+						Type: validation.ContainersResource,
+						App:  "kubernetes-cli",
 					},
 					{
-						Name:    "containerb",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
+						Name: "containerb",
+						Type: validation.ContainersResource,
+						App:  "kubernetes-cli",
 					},
 				},
 			},
@@ -282,14 +282,14 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name:    "containerc",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-params",
+						Name: "containerc",
+						Type: validation.ContainersResource,
+						App:  "kubernetes-cli-params",
 					},
 					{
-						Name:    "containerd",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli-params",
+						Name: "containerd",
+						Type: validation.ContainersResource,
+						App:  "kubernetes-cli-params",
 					},
 				},
 			},

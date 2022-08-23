@@ -1,0 +1,102 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+// These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
+import "../customRootScope.cadl";
+import "../aksrootscope.cadl";
+
+import "./global.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Versioning;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+
+@armNamespace
+@serviceTitle("Applications.Connector Management APIs")
+@doc("REST API for Applications.Connector RabbitMQMessageQueue Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Applications.Connector;
+
+@doc("RabbitMQMessageQueue connector")
+model RabbitMQMessageQueueResource
+  is TrackedResource<RabbitMQMessageQueueProperties> {
+  @doc("The name of the RabbitMQMessageQueue connector resource")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("rabbitMQMessageQueueName")
+  @path
+  @segment("rabbitMQMessageQueues")
+  name: string;
+}
+
+@doc("RabbitMQMessageQueue connector")
+model RabbitMQMessageQueueResponseResource
+  is TrackedResource<RabbitMQMessageQueueResponseProperties> {
+  @doc("The name of the RabbitMQMessageQueue connector resource")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("rabbitMQMessageQueueName")
+  @path
+  @segment("rabbitMQMessageQueues")
+  name: string;
+}
+
+@doc("The secret values for the given RabbitMQMessageQueue resource")
+model RabbitMQListSecretsResult is RabbitMQSecrets;
+
+@doc("The secret values for the given RabbitMQMessageQueue resource")
+model RabbitMQSecrets {
+  @doc("The connection string used to connect to this RabbitMQ instance")
+  connectionString?: string;
+}
+
+@doc("RabbitMQMessageQueue connector response properties")
+model RabbitMQMessageQueueResponseProperties extends BasicResourceProperties {
+  @doc("Provisioning state of the rabbitMQ message queue connector at the time the operation was called")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Fully qualified resource ID for the environment that the connector is linked to")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the connector is consumed by")
+  application?: Application;
+
+  @doc("The name of the queue")
+  queue: string;
+}
+
+@doc("RabbitMQMessageQueue connector response properties")
+model RabbitMQMessageQueueProperties
+  extends RabbitMQMessageQueueResponseProperties {
+  @doc("Secrets provided by resources,")
+  secrets?: RabbitMQSecrets;
+}
+
+@doc("Lists secrets values for the specified RabbitMQMessageQueue resource")
+@route("/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets")
+op post(
+  @path rootScope: RootScopeParam,
+  @path rabbitMQMessageQueueName: string
+): {
+  @statusCode statusCode: 200;
+  schema: RabbitMQListSecretsResult;
+} | ErrorResponse;
+
+@armResourceOperations
+interface RabbitMQMessageQueues
+  extends Radius.RootScopeResourceOperations<
+      RabbitMQMessageQueueResponseResource,
+      RabbitMQMessageQueueResponseProperties,
+      RootScopeParam
+    > {}

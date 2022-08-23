@@ -61,14 +61,14 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByType(ctx context.C
 }
 
 // ListAllResourceOfTypeInApplication lists the resources of a particular type in an application
-func (amc *ARMApplicationsManagementClient) ListAllResourceOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
+func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInApplication(ctx context.Context, applicationName string, resourceType string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	resourceList, err := amc.ListAllResourcesByType(ctx, resourceType)
 	if err != nil {
 		return nil, err
 	}
 	for _, resource := range resourceList {
-		isResourceWithApplication := isResourceWithApplication(ctx, resource, applicationName)
+		isResourceWithApplication := isResourceInApplication(ctx, resource, applicationName)
 		if isResourceWithApplication {
 			results = append(results, resource)
 		}
@@ -80,7 +80,7 @@ func (amc *ARMApplicationsManagementClient) ListAllResourceOfTypeInApplication(c
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx context.Context, applicationName string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
 	for _, resourceType := range ResourceTypesList {
-		resourceList, err := amc.ListAllResourceOfTypeInApplication(ctx, applicationName, resourceType)
+		resourceList, err := amc.ListAllResourcesOfTypeInApplication(ctx, applicationName, resourceType)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +90,37 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesByApplication(ctx co
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowResourceByApplication(ctx context.Context, applicationName string, resourceType string, resourceName string) (generated.GenericResource, error) {
+// ListAllResourcesByEnvironment lists the all the resources of a particular environment
+func (amc *ARMApplicationsManagementClient) ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	for _, resourceType := range ResourceTypesList {
+		resourceList, err := amc.ListAllResourcesOfTypeInEnvironment(ctx, environmentName, resourceType)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, resourceList...)
+	}
+
+	return results, nil
+}
+
+// ListAllResourcesByTypeInEnvironment lists the all the resources of a particular type in an environment
+func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error) {
+	results := []generated.GenericResource{}
+	resourceList, err := amc.ListAllResourcesByType(ctx, resourceType)
+	if err != nil {
+		return nil, err
+	}
+	for _, resource := range resourceList {
+		isResourceWithApplication := isResourceInEnvironment(ctx, resource, environmentName)
+		if isResourceWithApplication {
+			results = append(results, resource)
+		}
+	}
+	return results, nil
+}
+
+func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error) {
 	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
 	getResponse, err := client.Get(ctx, resourceName, &generated.GenericResourcesGetOptions{})
 	if err != nil {
@@ -178,7 +208,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return response, nil
 }
 
-func isResourceWithApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
+func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
 	obj, found := resource.Properties["application"]
 	// A resource may not have an application associated with it.
 	if !found {
@@ -194,6 +224,27 @@ func isResourceWithApplication(ctx context.Context, resource generated.GenericRe
 	}
 
 	if strings.EqualFold(idParsed.Name(), applicationName) {
+		return true
+	}
+	return false
+}
+
+func isResourceInEnvironment(ctx context.Context, resource generated.GenericResource, environmentName string) bool {
+	obj, found := resource.Properties["environment"]
+	// A resource may not have an environment associated with it.
+	if !found {
+		return false
+	}
+	associatedEnvId, ok := obj.(string)
+	if !ok || associatedEnvId == "" {
+		return false
+	}
+	idParsed, err := resources.Parse(associatedEnvId)
+	if err != nil {
+		return false
+	}
+
+	if strings.EqualFold(idParsed.Name(), environmentName) {
 		return true
 	}
 	return false

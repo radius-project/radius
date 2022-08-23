@@ -13,20 +13,17 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
-	RedisBaseName      = "azureredis"
-	RedisNameKey       = "redisname"
-	RedisResourceIdKey = "redisid"
-	RedisPortKey       = "redisport"
-	RedisHostKey       = "redishost"
-	RedisUsernameKey   = "redisusername"
-	// On Azure, RedisUsername is empty.
-	RedisUsername            = ""
+	RedisBaseName            = "azureredis"
+	RedisNameKey             = "redisname"
+	RedisResourceIdKey       = "redisid"
+	RedisPortKey             = "redisport"
+	RedisHostKey             = "redishost"
 	RedisConnectionStringKey = "redisconnectionstring"
 	RedisPasswordKey         = "redispassword"
 )
@@ -64,7 +61,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	properties[RedisNameKey] = *cache.Name
 	properties[RedisHostKey] = *cache.HostName
 	properties[RedisPortKey] = fmt.Sprintf("%d", *cache.Properties.SslPort)
-	properties[RedisUsernameKey] = RedisUsername
 
 	return outputResourceIdentity, properties, nil
 }

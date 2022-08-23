@@ -172,6 +172,32 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 }
 
 func Test_ProxyToRP_ResourceGroupDoesNotExist(t *testing.T) {
+	ucp, ucpClient, db := initialize(t)
+	// Send a request that will be proxied to the RP
+	sendProxyRequest_ResourceGroupDoesNotExist(t, ucp, ucpClient, db)
+}
+
+func Test_MethodNotAllowed(t *testing.T) {
+	ucp, ucpClient, _ := initialize(t)
+	// Send a request that will be proxied to the RP
+	request, err := http.NewRequest("DELETE", ucp.URL+basePath+"/planes", nil)
+	require.NoError(t, err)
+	response, err := ucpClient.httpClient.Do(request)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusMethodNotAllowed, response.StatusCode)
+}
+
+func Test_NotFound(t *testing.T) {
+	ucp, ucpClient, _ := initialize(t)
+	// Send a request that will be proxied to the RP
+	request, err := http.NewRequest("GET", ucp.URL+basePath+"/abc", nil)
+	require.NoError(t, err)
+	response, err := ucpClient.httpClient.Do(request)
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, response.StatusCode)
+}
+
+func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClient) {
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)
 	rp := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -206,8 +232,7 @@ func Test_ProxyToRP_ResourceGroupDoesNotExist(t *testing.T) {
 	// Register RP with UCP
 	registerRP(t, ucp, ucpClient, db, true)
 
-	// Send a request that will be proxied to the RP
-	sendProxyRequest_ResourceGroupDoesNotExist(t, ucp, ucpClient, db)
+	return ucp, ucpClient, db
 }
 
 func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient, ucpNative bool) {

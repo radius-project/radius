@@ -55,8 +55,8 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 			})
 
 		opts := ctrl.Options{
-			StorageClient:  mds,
-			AsyncOperation: msm,
+			StorageClient: mds,
+			StatusManager: msm,
 		}
 
 		ctl, err := NewListExtenders(opts)
@@ -125,8 +125,8 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			opts := ctrl.Options{
-				StorageClient:  mds,
-				AsyncOperation: msm,
+				StorageClient: mds,
+				StatusManager: msm,
 			}
 
 			ctl, err := NewListExtenders(opts)

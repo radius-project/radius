@@ -3,6 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 import "@azure-tools/cadl-providerhub";
@@ -15,12 +16,14 @@ import "./global.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
+using Cadl.Versioning;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
 @doc("REST API for Applications.Core HttpRoute Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Core;
 
 @doc("HttpRoute properties")
@@ -63,10 +66,14 @@ model HttpRouteResource is TrackedResource<HttpRouteProperties> {
 
 @armResourceOperations
 interface HttpRoute
-  extends Radius.RootScopeResourceOperations<HttpRouteResource, HttpRouteProperties, RootScopeParam> {}
+  extends Radius.RootScopeResourceOperations<
+      HttpRouteResource,
+      HttpRouteProperties,
+      RootScopeParam
+    > {}
 
 @knownValues(ProvisioningStateKV)
-model ProvisioningState is string {}
+model ProvisioningState is string;
 enum ProvisioningStateKV {
   Succeeded,
   Failed,

@@ -8,8 +8,8 @@ package handlers
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/radrp/db"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
+	"github.com/project-radius/radius/pkg/rp/db"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 type PutOptions struct {
@@ -33,6 +33,7 @@ type DeleteOptions struct {
 }
 
 // ResourceHandler interface defines the methods that every output resource will implement
+//
 //go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/handlers github.com/project-radius/radius/pkg/handlers ResourceHandler
 type ResourceHandler interface {
 	Put(ctx context.Context, options *PutOptions) (map[string]string, error)

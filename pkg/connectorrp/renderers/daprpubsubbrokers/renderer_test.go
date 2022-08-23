@@ -16,9 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radrp/armerrors"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp/armerrors"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	"gotest.tools/assert"
@@ -363,4 +363,31 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_EmptyApplicationID(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			BasicResourceProperties: v1.BasicResourceProperties{
+				Environment: environmentID,
+			},
+			Kind: resourcekinds.DaprGeneric,
+			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+				Type:    "pubsub.kafka",
+				Version: "v1",
+				Metadata: map[string]interface{}{
+					"foo": "bar",
+				},
+			},
+		},
+	}
+	renderer.PubSubs = SupportedPubSubKindValues
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.NoError(t, err)
 }

@@ -7,8 +7,8 @@ package rp
 
 import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/radrp/outputresource"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
