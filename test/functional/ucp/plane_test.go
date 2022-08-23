@@ -13,55 +13,54 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
 func Test_Plane_Operations(t *testing.T) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
-	require.NoError(t, err, "")
+	test := NewUCPTest(t, "Test_Plane_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		planeID := "/planes/testType/testPlane"
+		planeURL := fmt.Sprintf("%s%s", url, planeID)
 
-	planeID := "/planes/testType/testPlane"
-	planeURL := fmt.Sprintf("%s%s", url, planeID)
+		// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
+		planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes", url))
+		require.Equal(t, 2, len(planes))
 
-	// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
-	planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes", url))
-	require.Equal(t, 2, len(planes))
+		t.Cleanup(func() {
+			deletePlane(t, roundTripper, planeURL)
+		})
 
-	t.Cleanup(func() {
-		deletePlane(t, roundTripper, planeURL)
-	})
-
-	// Create Plane
-	testPlane := rest.Plane{
-		ID:   planeID,
-		Type: "System.Planes/testType",
-		Name: "testPlane",
-		Properties: rest.PlaneProperties{
-			Kind: rest.PlaneKindUCPNative,
-			ResourceProviders: map[string]string{
-				"example.com": "http://localhost:8000",
+		// Create Plane
+		testPlane := rest.Plane{
+			ID:   planeID,
+			Type: "System.Planes/testType",
+			Name: "testPlane",
+			Properties: rest.PlaneProperties{
+				Kind: rest.PlaneKindUCPNative,
+				ResourceProviders: map[string]string{
+					"example.com": "http://localhost:8000",
+				},
 			},
-		},
-	}
+		}
 
-	createPlane(t, roundTripper, planeURL, testPlane, false)
-	createPlane(t, roundTripper, planeURL, testPlane, true)
+		createPlane(t, roundTripper, planeURL, testPlane, false)
+		createPlane(t, roundTripper, planeURL, testPlane, true)
 
-	// Get Plane
-	plane, statusCode := getPlane(t, roundTripper, planeURL)
-	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, testPlane, plane)
+		// Get Plane
+		plane, statusCode := getPlane(t, roundTripper, planeURL)
+		require.Equal(t, http.StatusOK, statusCode)
+		assert.DeepEqual(t, testPlane, plane)
 
-	// Delete Plane
-	deletePlane(t, roundTripper, planeURL)
+		// Delete Plane
+		deletePlane(t, roundTripper, planeURL)
 
-	// Get Plane - Expected Not Found
-	_, statusCode = getPlane(t, roundTripper, planeURL)
-	require.Equal(t, http.StatusNotFound, statusCode)
+		// Get Plane - Expected Not Found
+		_, statusCode = getPlane(t, roundTripper, planeURL)
+		require.Equal(t, http.StatusNotFound, statusCode)
 
+	})
+	test.Test(t)
 }
 
 func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane rest.Plane, existing bool) {
@@ -78,7 +77,7 @@ func createPlane(t *testing.T, roundTripper http.RoundTripper, url string, plane
 
 	if !existing {
 		require.Equal(t, http.StatusCreated, res.StatusCode)
-	        t.Logf("Plane: %s created successfully", url)
+		t.Logf("Plane: %s created successfully", url)
 	} else {
 		require.Equal(t, http.StatusOK, res.StatusCode)
 		t.Logf("Plane: %s updated successfully", url)
