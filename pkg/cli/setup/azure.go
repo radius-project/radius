@@ -159,7 +159,7 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		if idx != -1 {
 			subscriptionID = subs.Subscriptions[idx].SubscriptionID
 		} else {
-			return nil, fmt.Errorf("--provider-azure-subscription is required to configure Azure provider for cloud resources")
+			return nil, fmt.Errorf("valid --provider-azure-subscription is required to configure Azure provider for cloud resources")
 		}
 	}
 	if resourceGroup == "" {
