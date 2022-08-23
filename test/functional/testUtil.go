@@ -122,7 +122,9 @@ func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, con
 	}
 
 	// Run the port-forward with the desired configuration
-	go forwarder.ForwardPorts()
+	go func() {
+		errorChan <- forwarder.ForwardPorts()
+	}()
 
 	<-readyChan
 	ports, err := forwarder.GetPorts()
