@@ -18,6 +18,7 @@ You can try a work-in-progress build of the compiler by following the steps in t
 - @cadl-lang/compiler
 - @cadl-lang/openapi3
 - @cadl-lang/rest
+- @cadl-lang/versioning
 
 ## Tracked Resources
 Currently all of our resources are tracked resources. That means that when writing a new resource, each file will have the following:
@@ -52,12 +53,12 @@ In the `cadl-project.yaml` the emitter is set to `"@azure-tools/cadl-autorest": 
 
 To compile with {rootScope} to a custom file, import `aksrootscope.cadl` into the resource file and run the following command in the terminal:
 ```TypeScript
-cadl compile {fileName}.cadl --option "@azure-tools/cadlautorest.output-file={fileName}.json"
+cadl compile {fileName}.cadl --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
 ```
 
 To compile with the ARM compliant spec to a custom file, import `armrootscope.cadl` into the resource file and run the following command in the terminal:
 ```TypeScript
-cadl compile {fileName}.cadl --option "@azure-tools/cadlautorest.output-file={fileName}.json"
+cadl compile {fileName}.cadl --option "@azure-tools/cadl-autorest.output-file={fileName}.json"
 ```
 
 In both cases replace {fileName} with the file you want to compile.

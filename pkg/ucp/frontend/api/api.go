@@ -82,7 +82,8 @@ func Register(ctx context.Context, router *mux.Router, client store.StorageClien
 	p = fmt.Sprintf("%s%s", baseURL, planeItemPath)
 	router.PathPrefix(p).HandlerFunc(h.ProxyPlaneRequest)
 
-	router.NotFoundHandler = http.HandlerFunc(h.DefaultHandler)
+	router.NotFoundHandler = http.HandlerFunc(h.NotFoundHandler)
+	router.MethodNotAllowedHandler = http.HandlerFunc(h.MethodNotAllowedHandler)
 
 	return nil
 }

@@ -19,7 +19,7 @@ var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
 type AzureTransformer struct {
 }
 
-func (t *AzureTransformer) Transform(ctx context.Context, dependency renderers.RendererDependency, value interface{}) (interface{}, error) {
+func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]interface{}, value interface{}) (interface{}, error) {
 	// Mongo uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
 	//
 	// The connection strings that come back from CosmosDB don't include the database name.
@@ -34,7 +34,7 @@ func (t *AzureTransformer) Transform(ctx context.Context, dependency renderers.R
 		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
 	}
 
-	databaseName, ok := dependency.ComputedValues[renderers.DatabaseNameValue].(string)
+	databaseName, ok := computedValues[renderers.DatabaseNameValue].(string)
 	if !ok {
 		return nil, errors.New("expected the databaseName to be a string")
 	}

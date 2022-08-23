@@ -104,8 +104,21 @@ interface ResourceListByParent<TResource, TRootParams> {
 }
 
 interface RootScopeResourceOperations<TResource, TProperties, TRootParams>
-  extends ResourceRead<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
-    ResourceCreate<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
-    ResourceUpdate<TResource, TProperties, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
-    ResourceDelete<TResource, RootScopeResourceInstanceParameters<TResource, TRootParams>>,
+  extends ResourceRead<
+      TResource,
+      RootScopeResourceInstanceParameters<TResource, TRootParams>
+    >,
+    ResourceCreate<
+      TResource,
+      RootScopeResourceInstanceParameters<TResource, TRootParams>
+    >,
+    ResourceUpdate<
+      TResource,
+      TProperties,
+      RootScopeResourceInstanceParameters<TResource, TRootParams>
+    >,
+    ResourceDelete<
+      TResource,
+      RootScopeResourceInstanceParameters<TResource, TRootParams>
+    >,
     ResourceListByParent<TResource, TRootParams> {}

@@ -13,46 +13,45 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
 
 func Test_ResourceGroup_Operations(t *testing.T) {
-	url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine("", "")
-	require.NoError(t, err, "")
+	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		// Create resource groups
+		rgID := "/planes/radius/local/resourceGroups/test-rg"
+		rgURL := fmt.Sprintf("%s%s", url, rgID)
 
-	// Create resource groups
-	rgID := "/planes/radius/local/resourceGroups/test-rg"
-	rgURL := fmt.Sprintf("%s%s", url, rgID)
+		t.Cleanup(func() {
+			deleteResourceGroup(t, roundTripper, rgURL)
+		})
 
-	t.Cleanup(func() {
+		createResourceGroup(t, roundTripper, rgURL, false)
+		createResourceGroup(t, roundTripper, rgURL, true)
+
+		// List Resource Groups
+		rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
+		require.GreaterOrEqual(t, len(rgs), 1)
+
+		// Get Resource Group
+		rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
+		expectedResourceGroup := rest.ResourceGroup{
+			ID:   rgID,
+			Name: "test-rg",
+		}
+		require.Equal(t, http.StatusOK, statusCode)
+		assert.DeepEqual(t, expectedResourceGroup, rg)
+
+		// Delete Resource Group
 		deleteResourceGroup(t, roundTripper, rgURL)
+
+		// Get Resource Group - Expected Not Found
+		_, statusCode = getResourceGroup(t, roundTripper, rgURL)
+		require.Equal(t, http.StatusNotFound, statusCode)
 	})
-
-	createResourceGroup(t, roundTripper, rgURL, false)
-	createResourceGroup(t, roundTripper, rgURL, true)
-
-	// List Resource Groups
-	rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
-	require.GreaterOrEqual(t, len(rgs), 1)
-
-	// Get Resource Group
-	rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
-	expectedResourceGroup := rest.ResourceGroup{
-		ID:   rgID,
-		Name: "test-rg",
-	}
-	require.Equal(t, http.StatusOK, statusCode)
-	assert.DeepEqual(t, expectedResourceGroup, rg)
-
-	// Delete Resource Group
-	deleteResourceGroup(t, roundTripper, rgURL)
-
-	// Get Resource Group - Expected Not Found
-	_, statusCode = getResourceGroup(t, roundTripper, rgURL)
-	require.Equal(t, http.StatusNotFound, statusCode)
+	test.Test(t)
 }
 
 func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string, existing bool) {

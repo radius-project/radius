@@ -88,9 +88,10 @@ func UnfoldErrorDetails(d *radclient.ErrorDetail) *radclient.ErrorDetail {
 	if new.Message == nil {
 		return &new
 	}
+
 	resp := radclient.ErrorResponse{}
 	err := json.Unmarshal([]byte(*d.Message), &resp)
-	if err != nil || cmp.Equal(resp.InnerError, radclient.ErrorDetail{}) {
+	if err != nil || resp.InnerError == nil || cmp.Equal(resp.InnerError, radclient.ErrorDetail{}) {
 		return &new
 	}
 	// We successfully parse an armerrors.ErrorResponse from the message.

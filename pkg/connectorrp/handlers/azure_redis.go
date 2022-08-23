@@ -19,14 +19,11 @@ import (
 )
 
 const (
-	RedisBaseName      = "azureredis"
-	RedisNameKey       = "redisname"
-	RedisResourceIdKey = "redisid"
-	RedisPortKey       = "redisport"
-	RedisHostKey       = "redishost"
-	RedisUsernameKey   = "redisusername"
-	// On Azure, RedisUsername is empty.
-	RedisUsername            = ""
+	RedisBaseName            = "azureredis"
+	RedisNameKey             = "redisname"
+	RedisResourceIdKey       = "redisid"
+	RedisPortKey             = "redisport"
+	RedisHostKey             = "redishost"
 	RedisConnectionStringKey = "redisconnectionstring"
 	RedisPasswordKey         = "redispassword"
 )
@@ -64,7 +61,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	properties[RedisNameKey] = *cache.Name
 	properties[RedisHostKey] = *cache.HostName
 	properties[RedisPortKey] = fmt.Sprintf("%d", *cache.Properties.SslPort)
-	properties[RedisUsernameKey] = RedisUsername
 
 	return outputResourceIdentity, properties, nil
 }

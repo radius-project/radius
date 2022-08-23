@@ -288,6 +288,42 @@ func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req
 	return nil
 }
 
+// MethodNotAllowedResponse represents an HTTP 405 with an ARM error payload.
+type MethodNotAllowedResponse struct {
+	Body ErrorResponse
+}
+
+// NewMethodNotAllowedResponse creates MethodNotAllowedResponse instance.
+func NewMethodNotAllowedResponse(target string, message string) Response {
+	return &MethodNotAllowedResponse{
+		Body: ErrorResponse{
+			Error: ErrorDetails{
+				Code:    Invalid,
+				Message: message,
+				Target:  target,
+			},
+		},
+	}
+}
+
+func (r *MethodNotAllowedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusMethodNotAllowed), ucplog.LogHTTPStatusCode, http.StatusMethodNotAllowed)
+	bytes, err := json.MarshalIndent(r.Body, "", "  ")
+	if err != nil {
+		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
+	}
+
+	w.Header().Add("Content-Type", "application/json")
+	w.WriteHeader(http.StatusMethodNotAllowed)
+	_, err = w.Write(bytes)
+	if err != nil {
+		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
+	}
+
+	return nil
+}
+
 // ConflictResponse represents an HTTP 409 with an ARM error payload.
 //
 // This is used for delete operations.

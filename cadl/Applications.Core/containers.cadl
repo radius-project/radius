@@ -4,9 +4,10 @@
 // ------------------------------------------------------------
 
 import "@cadl-lang/rest";
-import "@azure-tools/cadl-providerhub";
+import "@cadl-lang/versioning";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
 
 // These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
 import "../customRootScope.cadl";
@@ -16,12 +17,14 @@ import "./global.cadl";
 
 using Cadl.Http;
 using Cadl.Rest;
+using Cadl.Versioning;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 
 @armNamespace
 @serviceTitle("Applications.Core Management APIs")
 @doc("REST API for Applications.Core Container Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Core;
 
 @doc("Specifies a listening port for the container")
@@ -216,10 +219,14 @@ model ContainerResource is TrackedResource<ContainerProperties> {
 
 @armResourceOperations
 interface Containers
-  extends Radius.RootScopeResourceOperations<ContainerResource, ContainerProperties, RootScopeParam> {}
+  extends Radius.RootScopeResourceOperations<
+      ContainerResource,
+      ContainerProperties,
+      RootScopeParam
+    > {}
 
 @knownValues(ProvisioningStateKV)
-model ProvisioningState is string {}
+model ProvisioningState is string;
 enum ProvisioningStateKV {
   Succeeded,
   Failed,
@@ -231,34 +238,34 @@ enum ProvisioningStateKV {
 }
 
 @knownValues(PortProtocolKV)
-model PortProtocol is string {}
+model PortProtocol is string;
 enum PortProtocolKV {
   TCP,
   UDP,
 }
 
 @knownValues(ManagedStoreKV)
-model ManagedStore is string {}
+model ManagedStore is string;
 enum ManagedStoreKV {
   memory,
   disk,
 }
 
 @knownValues(VolumeRbacKV)
-model VolumeRbac is string {}
+model VolumeRbac is string;
 enum VolumeRbacKV {
   read,
   write,
 }
 
 @knownValues(KindKV)
-model Kind is string {}
+model Kind is string;
 enum KindKV {
   azure,
 }
 
 @knownValues(DaprProtocolKV)
-model DaprProtocol is string {}
+model DaprProtocol is string;
 enum DaprProtocolKV {
   http,
   grpc,
