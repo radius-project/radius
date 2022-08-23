@@ -92,7 +92,7 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					err = testGatewayWithPortforward(t, ctx, ct, hostname, remotePort, retries)
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {
@@ -109,7 +109,7 @@ func Test_Gateway(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortforward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
 	portChan := make(chan int)
