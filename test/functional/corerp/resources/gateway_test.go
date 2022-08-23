@@ -22,6 +22,8 @@ import (
 )
 
 const (
+	remotePort   = 8080
+	retries      = 3
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
 )
@@ -87,22 +89,10 @@ func Test_Gateway(t *testing.T) {
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
-				var remotePort int
-				if hostname == "localhost" {
-					// contour-envoy runs on port 80 by default in local scenario
-					remotePort = 80
-				} else {
-					remotePort = 8080
-				}
-
 				// Set up pod port-forwarding for contour-envoy
-				localHostname := "localhost"
-				localPort := 8888
-
-				retries := 3
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					err = testGatewayWithPortforward(t, ctx, ct, hostname, localHostname, localPort, remotePort, retries)
+					err = testGatewayWithPortforward(t, ctx, ct, hostname, remotePort, retries)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {
@@ -119,18 +109,19 @@ func Test_Gateway(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortforward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname, localHostname string, localPort, remotePort, retries int) error {
+func testGatewayWithPortforward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
 	stopChan := make(chan struct{})
 	readyChan := make(chan struct{})
+	portChan := make(chan int)
 	errorChan := make(chan error)
 
-	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, localHostname, localPort, remotePort, stopChan, readyChan, errorChan)
+	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, readyChan, portChan, errorChan)
 
 	select {
 	case err := <-errorChan:
 		return fmt.Errorf("portforward failed with error: %s", err)
-	case <-readyChan:
-		baseURL := fmt.Sprintf("http://%s:%d", localHostname, localPort)
+	case localPort := <-portChan:
+		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
 		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {

@@ -79,7 +79,7 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, stopChan chan struct{}, readyChan chan struct{}, errorChan chan error) {
+func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan, readyChan chan struct{}, portChan chan int, errorChan chan error) {
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
 
@@ -110,20 +110,27 @@ func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, con
 		return
 	}
 
-	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 
 	tw := TestWriter{t}
 	out, errOut := tw, tw
 
-	forwarder, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
+	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf(":%d", remotePort)}, stopChan, readyChan, out, errOut)
 	if err != nil {
 		errorChan <- err
 		return
 	}
 
 	// Run the port-forward with the desired configuration
-	errorChan <- forwarder.ForwardPorts()
+	go forwarder.ForwardPorts()
+
+	<-readyChan
+	ports, err := forwarder.GetPorts()
+	if err != nil {
+		errorChan <- err
+	}
+
+	portChan <- int(ports[0].Local)
 }
 
 func NewTestLogger(t *testing.T) *log.Logger {
