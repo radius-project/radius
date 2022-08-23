@@ -176,48 +176,6 @@ func Test_CLI(t *testing.T) {
 	test.Test(t)
 }
 
-func Test_CLI_JSON(t *testing.T) {
-	template := "testdata/corerp-kubernetes-cli.json"
-	name := "kubernetes-cli"
-
-	requiredSecrets := map[string]map[string]string{}
-
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
-		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
-			CoreRPResources: &validation.CoreRPResourceSet{
-				Resources: []validation.CoreRPResource{
-					{
-						Name: "kubernetes-cli",
-						Type: validation.ApplicationsResource,
-					},
-					{
-						Name:    "containera",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
-					},
-					{
-						Name:    "containerb",
-						Type:    validation.ContainersResource,
-						AppName: "kubernetes-cli",
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sPodForResource(name, "containera"),
-						validation.NewK8sPodForResource(name, "containerb"),
-					},
-				},
-			},
-			PostStepVerify: verifyCLIBasics,
-		},
-	}, requiredSecrets)
-
-	test.Test(t)
-}
-
 func Test_CLI_Delete(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
