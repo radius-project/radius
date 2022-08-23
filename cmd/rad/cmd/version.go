@@ -18,8 +18,17 @@ var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Prints the versions of the rad cli",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		outFormat, _ := cmd.Flags().GetString("output")
-		writeVersionString(outFormat, cmd.OutOrStdout())
+		cli, err := cmd.Flags().GetBool("cli")
+		if err != nil {
+			return err
+		}
+
+		if !cli {
+			outFormat, _ := cmd.Flags().GetString("output")
+			writeVersionString(outFormat, cmd.OutOrStdout())
+		} else {
+			output.LogInfo(version.Version())
+		}
 		return nil
 	},
 }
@@ -58,4 +67,5 @@ func writeVersionString(format string, w io.Writer) {
 
 func init() {
 	RootCmd.AddCommand(versionCmd)
+	versionCmd.Flags().Bool("cli", false, "Use this flag to only show the rad CLI version")
 }
