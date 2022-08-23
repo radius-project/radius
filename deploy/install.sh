@@ -88,7 +88,7 @@ checkHttpRequestCLI() {
 
 checkExistingRadius() {
     if [ -f "$RADIUS_CLI_FILE" ]; then
-        version=$(rad version --cli)
+        version=$($RADIUS_CLI_FILE version --cli)
         echo -e "\nRadius CLI is detected. Current version: ${version}"
         #TODO $RADIUS_CLI_FILE --version
         echo -e "Reinstalling Radius CLI - ${RADIUS_CLI_FILE}...\n"
