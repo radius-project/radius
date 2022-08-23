@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-radclient generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -32,28 +32,13 @@ generate-ucp-crd: generate-controller-gen-installed
 	controller-gen object paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... object:headerFile=./boilerplate.go.txt
 	controller-gen rbac:roleName=manager-role crd paths=./pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1/... output:crd:dir=./deploy/Chart/crds/ucpd
 
-.PHONY: generate-radclient
-generate-radclient: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
-	autorest --use=@autorest/go@4.0.0-preview.29 \
-        --module-version=$(AUTOREST_MODULE_VERSION) \
-		--input-file=schemas/rest-api-specs/radius.json \
-		--tag=package-2018-09-01-preview \
-		--go  \
-		--gomod-root=. \
-		--output-folder=./pkg/azure/radclient \
-		--modelerfour.lenient-model-deduplication \
-		--license-header=MICROSOFT_MIT_NO_VERSION \
-		--file-prefix=zz_generated_ \
-		--azure-arm \
-		--verbose
-
 .PHONY: generate-genericcliclient
 generate-genericcliclient: generate-node-installed generate-autorest-installed
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/cli/clients_new/README.md --tag=2022-03-15-privatepreview
 
 .PHONY: generate-rad-corerp-client
-generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the radclient SDK (Autorest).
+generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
 
