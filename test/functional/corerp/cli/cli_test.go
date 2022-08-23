@@ -328,6 +328,24 @@ func Test_CLI_version(t *testing.T) {
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
 }
 
+func Test_CLI_Only_version(t *testing.T) {
+	ctx, cancel := test.GetContext(t)
+	defer cancel()
+
+	options := corerp.NewTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	output, err := cli.CliVersion(ctx)
+	require.NoError(t, err)
+
+	// Matching logic:
+	//
+	// Version: any work or number characters or hyphen or dot
+	matcher := `([a-zA-Z0-9-\.]+)`
+	expected := regexp.MustCompile(matcher)
+	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
+}
+
 func GetAvailablePort() (int, error) {
 	address, err := net.ResolveTCPAddr("tcp", "localhost:0")
 	if err != nil {
