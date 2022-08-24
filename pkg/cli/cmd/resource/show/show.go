@@ -7,21 +7,21 @@ package show
 
 import (
 	"context"
+	"fmt"
+	"strings"
 
-	"github.com/project-radius/radius/cmd/rad/cmd"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/utils"
+	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
-func NewCommand(factory connections.Factory, configInterface utils.ConfigInterface) *cobra.Command {
-	runner := NewRunner(factory, configInterface)
+func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:   "show [resourceType] [resourceName]",
@@ -47,36 +47,35 @@ func NewCommand(factory connections.Factory, configInterface utils.ConfigInterfa
 		RunE: framework.RunCommand(runner),
 	}
 
-	cmd.PersistentFlags().StringP("type", "t", "", "The resource type")
-	cmd.PersistentFlags().StringP("resource", "r", "", "The resource name")
-	cmd.Flags().StringP("resource-group", "g", "", "Resource Group of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
-	cmd.Flags().StringP("resource-subscription-id", "s", "", "Subscription id of the resource. This parameter is required if the resource type is a Microsoft Azure resource.")
+	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
+	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
+	cmd.Flags().StringP("output", "o", "", outputDescription)
+	cmd.Flags().StringP("type", "t", "", "The resource type")
+	cmd.Flags().StringP("resource", "r", "", "The resource name")
 
-	return cmd
+	return cmd, runner
 }
 
 type Runner struct {
-	Config            *viper.Viper
-	Workspace         *workspaces.Workspace
+	ConfigHolder      *shared.ConfigHolder
 	ConnectionFactory connections.Factory
-	ConfigInterface   utils.ConfigInterface
+	Output            output.Interface
+	Workspace         *workspaces.Workspace
 	ResourceType      string
 	ResourceName      string
 	Format            string
 }
 
-func NewRunner(factory connections.Factory, configInterface utils.ConfigInterface) *Runner {
+func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory,
-		ConfigInterface: configInterface,
+		ConnectionFactory: factory.GetConnectionFactory(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// TODO: get config
-	config := r.ConfigInterface.ConfigFromContext(cmd.Context())
-	r.Config = config
-	workspace, err := cli.RequireWorkspace(cmd, r.Config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
@@ -99,7 +98,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -109,8 +108,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	// TODO: create a mock for output.
-	err = output.Write(r.Format, resourceDetails, cmd.RootCmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	err = r.Output.Write(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
 	if err != nil {
 		return err
 	}

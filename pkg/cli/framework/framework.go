@@ -8,12 +8,37 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
+//go:generate mockgen -destination=./mock_framework.go -package=framework -self_package github.com/project-radius/radius/pkg/cli/framework github.com/project-radius/radius/pkg/cli/framework Factory
+
+// Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
 	GetConnectionFactory() connections.Factory
+	GetConfigHolder() *shared.ConfigHolder
+	GetOutput() output.Interface
+}
+
+type Impl struct {
+	ConnectionFactory connections.Factory
+	ConfigHolder      *shared.ConfigHolder
+	Output            output.Interface
+}
+
+func (i *Impl) GetConnectionFactory() connections.Factory {
+	return i.ConnectionFactory
+}
+
+func (i *Impl) GetConfigHolder() *shared.ConfigHolder {
+	return i.ConfigHolder
+}
+
+func (i *Impl) GetOutput() output.Interface {
+	return i.Output
 }
 
 type Runner interface {

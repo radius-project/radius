@@ -1,0 +1,13 @@
+workspaces:
+  default: kind-kind
+  items:
+    kind-kind:
+      connection:
+        context: kind-kind
+        kind: kubernetes
+      environment: /planes/radius/local/resourceGroups/kind-kind/providers/Applications.Core/environments/test
+      scope: /planes/radius/local/resourceGroups/kind-kind
+      providerConfig:
+        azure:
+          subscriptionid: ""
+          resourcegroup: ""

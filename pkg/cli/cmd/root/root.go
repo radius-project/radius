@@ -16,7 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/resource"
-	"github.com/project-radius/radius/pkg/cli/cmd/utils"
+	"github.com/project-radius/radius/pkg/cli/cmd/shared"
+	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
@@ -24,8 +26,8 @@ import (
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
 var RootCmd = NewCommand()
 
-var configHolderKey = utils.NewContextKey("config")
-var configHolder = &utils.ConfigHolder{}
+var configHolderKey = shared.NewContextKey("config")
+var configHolder = &shared.ConfigHolder{}
 
 func init() {
 	cobra.OnInitialize(initConfig)
@@ -34,7 +36,12 @@ func init() {
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
-	resourceCmd := resource.NewCommand()
+
+	resourceCmd := resource.NewCommand(&framework.Impl{
+		connections.DefaultFactory,
+		configHolder,
+		&output.OutputWriter{RootCmd.OutOrStdout()},
+	})
 	RootCmd.AddCommand(resourceCmd)
 }
 
