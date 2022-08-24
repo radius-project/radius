@@ -14,6 +14,7 @@ import (
 const (
 	ProgressFailed    = "Failed"
 	ProgressCompleted = "Completed"
+	ProgressRetrying  = "Retrying"
 )
 
 var ProgressDefaultSpinner = []string{".  ", ".. ", "..."}

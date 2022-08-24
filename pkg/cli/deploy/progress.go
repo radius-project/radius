@@ -52,6 +52,7 @@ type InteractiveListener struct {
 	Spinner      []string
 	mutex        sync.Mutex
 	entries      []Entry
+	errors       []string
 	spinnerIndex int
 	writerDone   *sync.WaitGroup
 }
@@ -71,6 +72,14 @@ func (listener *InteractiveListener) addEntry(format string) int {
 
 	listener.entries = append(listener.entries, Entry{Format: format})
 	return len(listener.entries) - 1
+}
+
+func (listener *InteractiveListener) addError(format string) int {
+	listener.mutex.Lock()
+	defer listener.mutex.Unlock()
+
+	listener.errors = append(listener.errors, format)
+	return len(listener.errors) - 1
 }
 
 func (listener *InteractiveListener) updateEntry(index int, state string, format string) {
@@ -105,6 +114,11 @@ func (listener *InteractiveListener) Run() {
 					fmt.Fprintf(writer.Newline(), entry.Format+"\n", entry.FinalState)
 				}
 			}
+
+			for _, er := range listener.errors {
+				fmt.Fprintf(writer.Newline(), er+"\n")
+			}
+
 			listener.mutex.Unlock()
 		}
 
@@ -145,8 +159,9 @@ func (listener *InteractiveListener) Run() {
 			listener.updateEntry(line, output.ProgressFailed, output.FormatResourceForProgressDisplay(update.Resource))
 		case clients.StatusCompleted:
 			listener.updateEntry(line, output.ProgressCompleted, output.FormatResourceForProgressDisplay(update.Resource))
-		case clients.StatusFailing:
-			listener.updateEntry(line, output.ProgressCompleted, output.FormatResourceForProgressDisplay(update.Resource))
+		case clients.StatusRetrying:
+			listener.updateEntry(line, output.ProgressRetrying, output.FormatResourceForProgressDisplay(update.Resource))
+			listener.addError(update.Message)
 		}
 	}
 

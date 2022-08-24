@@ -53,13 +53,14 @@ type ResourceStatus string
 const (
 	StatusStarted   ResourceStatus = "Started"
 	StatusFailed    ResourceStatus = "Failed"
-	StatusFailing   ResourceStatus = "Failing"
+	StatusRetrying  ResourceStatus = "Failing"
 	StatusCompleted ResourceStatus = "Completed"
 )
 
 type ResourceProgress struct {
 	Resource ucpresources.ID
 	Status   ResourceStatus
+	Message  string
 }
 
 type DeploymentOutput struct {
