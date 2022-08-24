@@ -75,8 +75,7 @@ func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, appl
 
 	appResp, err := client.DeleteApplication(ctx, applicationName)
 	if appResp.RawResponse.StatusCode == 204 {
-		return &cli.FriendlyError{Message: fmt.Sprintf("Application '%s' does not exist or has already been deleted.", applicationName)}
-		// output.LogInfo("Application '%s' does not exist or has already been deleted. Error Status Code: %d", applicationName, appResp.RawResponse.StatusCode)
+		output.LogInfo("Application '%s' does not exist or has already been deleted.", applicationName)
 	} else if err == nil {
 		output.LogInfo("Application deleted")
 	}
