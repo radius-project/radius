@@ -38,7 +38,7 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/project-radius/radius/pkg/azure/radclient"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
@@ -130,7 +130,7 @@ func CreateAPIServerConnection(context string, overrideURL string) (string, *arm
 		return "", nil, err
 	}
 
-	return baseURL, arm.NewConnection(baseURL, &radclient.AnonymousCredential{}, &arm.ConnectionOptions{
+	return baseURL, arm.NewConnection(baseURL, &aztoken.AnonymousCredential{}, &arm.ConnectionOptions{
 		HTTPClient: &KubernetesTransporter{Client: roundTripper},
 	}), nil
 }

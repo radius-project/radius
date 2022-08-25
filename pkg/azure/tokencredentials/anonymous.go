@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package radclient
+package tokencredentials
 
 import (
 	"context"

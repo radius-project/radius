@@ -10,7 +10,6 @@ import (
 	"io"
 	"os"
 
-	"github.com/project-radius/radius/pkg/azure/radclient"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -20,11 +19,11 @@ import (
 
 // NOTE: parameters in the template engine follow the structure:
 //
-// {
-//   "parameter1Name": {
-//     "value": ...
-//   }
-// }
+//	{
+//	  "parameter1Name": {
+//	    "value": ...
+//	  }
+//	}
 //
 // Each parameter can have additional metadata besides the mandatory 'value' key.
 //
@@ -117,16 +116,6 @@ type LogsOptions struct {
 type LogStream struct {
 	Name   string
 	Stream io.ReadCloser
-}
-
-// LegacyManagementClient is used to interface with management features like listing applications and resources.
-type LegacyManagementClient interface {
-	ListApplications(ctx context.Context) (*radclient.ApplicationList, error)
-	ShowApplication(ctx context.Context, applicationName string) (*radclient.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) error
-
-	ShowResource(ctx context.Context, applicationName, resourceType, resourceName, resourceGroup, resourceSubscriptionID string) (interface{}, error)
-	ListAllResourcesByApplication(ctx context.Context, applicationName string) (*radclient.RadiusResourceList, error)
 }
 
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.

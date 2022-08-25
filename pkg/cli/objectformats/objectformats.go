@@ -9,25 +9,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
-func GetApplicationTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "APPLICATION",
-				JSONPath: "{ .name }",
-			},
-			{
-				Heading:  "PROVISIONING_STATE",
-				JSONPath: "{ .properties.status.provisioningState }",
-			},
-			{
-				Heading:  "HEALTH_STATE",
-				JSONPath: "{ .properties.status.healthState }",
-			},
-		},
-	}
-}
-
 func GetApplicationStatusTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{

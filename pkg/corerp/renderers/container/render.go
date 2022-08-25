@@ -25,7 +25,6 @@ import (
 	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/renderers/volumev1alpha3"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -42,7 +41,18 @@ const (
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
+
+	PersistentVolumeKindAzureFileShare = "azure.com.fileshare"
+	PersistentVolumeKindAzureKeyVault  = "azure.com.keyvault"
 )
+
+// GetSupportedKinds returns a list of supported volume kinds
+func GetSupportedKinds() []string {
+	keys := []string{}
+	keys = append(keys, PersistentVolumeKindAzureFileShare)
+	keys = append(keys, PersistentVolumeKindAzureKeyVault)
+	return keys
+}
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
 type Renderer struct {
@@ -282,13 +292,13 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			properties := dependencies[volume.Persistent.Source]
 
 			switch properties.Definition["kind"] {
-			case volumev1alpha3.PersistentVolumeKindAzureFileShare:
+			case PersistentVolumeKindAzureFileShare:
 				// Create spec for persistent volume
 				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volume.Persistent, resource.Name, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("unable to create persistent volume spec for volume: %s - %s", volumeName, err.Error()))
 				}
-			case volumev1alpha3.PersistentVolumeKindAzureKeyVault:
+			case PersistentVolumeKindAzureKeyVault:
 				// Make Managed Identity
 				managedIdentity := r.makeManagedIdentity(ctx, resource, applicationName)
 				outputResources = append(outputResources, managedIdentity)
@@ -323,7 +333,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
 			default:
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, volumev1alpha3.GetSupportedKinds()))
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, GetSupportedKinds()))
 			}
 
 			// Add the volume mount to the Container spec
