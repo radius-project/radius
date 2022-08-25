@@ -253,10 +253,6 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 }
 
 func getFQDNAndPublicEndpoint(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.RenderOptions) (fqdn string, publicEndpoint string, err error) {
-	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
-	hostname := options.Environment.Gateway.Hostname
-	externalIP := options.Environment.Gateway.ExternalIP
-
 	// Order of precedence for hostname creation:
 	// 1. if publicEndpointOverride is true: hostname = hostname.Host()
 	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname.Host()
@@ -264,31 +260,31 @@ func getFQDNAndPublicEndpoint(resource datamodel.Gateway, gateway *datamodel.Gat
 	// 3. if publicIP is "" and hostname is "": hostname = "" (cannot determine a suitable hostname to use)
 	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
 	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
-	if publicEndpointOverride {
+	if options.Environment.Gateway.PublicEndpointOverride {
 		// Specified from --public-endpoint-override CLI flag
-		fqdn, _, err := getHostnameAndPublicURL(hostname)
-		return fqdn, hostname, err
+		fqdn, _, err := getHostnameAndPublicURL(options.Environment.Gateway.Hostname)
+		return fqdn, options.Environment.Gateway.Hostname, err
 	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
 		// Trust that the provided FullyQualifiedHostname actually works
 		return getHostnameAndPublicURL(gateway.Hostname.FullyQualifiedHostname)
-	} else if hostname != "" {
+	} else if options.Environment.Gateway.Hostname != "" {
 		// If the LoadBalancer has a hostname entry
-		return getHostnameAndPublicURL(hostname)
-	} else if externalIP == "" {
+		return getHostnameAndPublicURL(options.Environment.Gateway.Hostname)
+	} else if options.Environment.Gateway.ExternalIP == "" {
 		// In the case of no public endpoint, use the application name as the fqdn
 		return applicationName, "unknown", &ErrNoPublicEndpoint{}
 	} else if gateway.Hostname != nil {
 		// Generate a hostname using the external IP
 		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
-			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, externalIP)
+			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, options.Environment.Gateway.ExternalIP)
 			return prefixedHostname, fmt.Sprintf("http://%s", prefixedHostname), nil
 		} else {
 			return "", "", &ErrFQDNOrPrefixRequired{}
 		}
 	} else {
 		// Auto-assign hostname: gatewayname.appname.ip.nip.io
-		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, externalIP)
+		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, options.Environment.Gateway.ExternalIP)
 		return defaultHostname, fmt.Sprintf("http://%s", defaultHostname), nil
 	}
 }
