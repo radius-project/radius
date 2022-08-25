@@ -58,7 +58,7 @@ func NewDefaultClusterOptions() ClusterOptions {
 			Tag:          tag,
 			AppCoreTag:   tag,
 			UCPTag:       tag,
-			DETag:        "pr-207",
+			DETag:        tag,
 		},
 	}
 }
