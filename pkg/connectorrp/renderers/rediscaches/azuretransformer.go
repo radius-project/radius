@@ -10,8 +10,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/handlers"
 )
 
 var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
