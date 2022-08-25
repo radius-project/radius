@@ -110,12 +110,16 @@ func Test_Gateway(t *testing.T) {
 }
 
 func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
-	readyChan := make(chan struct{})
+
+	// portChan will be populated with the assigned port once the port-forward connection is opened on it
 	portChan := make(chan int)
+
+	// errorChan will contain any errors created from initializing the port-forwarding session
 	errorChan := make(chan error)
 
-	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, readyChan, portChan, errorChan)
+	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
 
 	select {
 	case err := <-errorChan:
