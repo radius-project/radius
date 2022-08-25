@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/mitchellh/mapstructure"
 	"github.com/stretchr/testify/require"
 )
@@ -47,44 +46,6 @@ func TestDecodeMap_WithoutTimeDecodeHook(t *testing.T) {
 	require.Error(t, err)
 }
 
-// // Timestamp struct
-// type Timestamp struct {
-// 	time.Time
-// 	rfc3339 bool
-// }
-
-// // MatshalJSON is the custom marshaller function for Timestamp
-// func (t Timestamp) MarshalJSON() ([]byte, error) {
-// 	if t.rfc3339 {
-// 		return t.Time.MarshalJSON()
-// 	}
-// 	return t.formatUnix()
-// }
-
-// // MatshalJSON is the custom marshaller function for Timestamp
-// func (t *Timestamp) UnmarshalJSON(data []byte) error {
-// 	err := t.Time.UnmarshalJSON(data)
-// 	if err != nil {
-// 		return t.parseUnix(data)
-// 	}
-// 	t.rfc3339 = true
-// 	return nil
-// }
-
-// func (t Timestamp) formatUnix() ([]byte, error) {
-// 	sec := float64(t.Time.UnixNano()) * float64(time.Nanosecond) / float64(time.Second)
-// 	return strconv.AppendFloat(nil, sec, 'f', -1, 64), nil
-// }
-
-// func (t *Timestamp) parseUnix(data []byte) error {
-// 	f, err := strconv.ParseFloat(string(data), 64)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	t.Time = time.Unix(0, int64(f*float64(time.Second/time.Nanosecond)))
-// 	return nil
-// }
-
 func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 	out := &TestTime{}
 	cfg := &mapstructure.DecoderConfig{
@@ -97,40 +58,38 @@ func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 	decoder, err := mapstructure.NewDecoder(cfg)
 	require.NoError(t, err)
 
+	now, err := time.Parse(time.RFC3339, "2022-09-01T15:00:00Z")
+	require.NoError(t, err)
+
 	testCases := []struct {
 		desc string
-		ts   time.Time
+		obj  map[string]interface{}
 	}{
 		{
 			"time-now",
-			time.Now(),
+			map[string]interface{}{
+				"name":      "time-string",
+				"createdAt": "2022-09-01T15:00:00Z",
+			},
 		},
 		{
-			"time-unix-date",
-			time.Unix(time.Now().Unix(), 0),
+			"time-unix-float",
+			map[string]interface{}{
+				"name":      "time-unix-float",
+				"createdAt": float64(now.UnixMilli()),
+			},
+		},
+		{
+			"time-unix-int",
+			map[string]interface{}{
+				"name":      "time-unix-int",
+				"createdAt": int64(now.UnixMilli()),
+			},
 		},
 	}
-
-	for idx, tc := range testCases {
-		t.Run(tc.desc, func(t *testing.T) {
-			test := Test{
-				Flag: idx,
-				Data: &TestTime{
-					Name:      uuid.NewString(),
-					CreatedAt: &tc.ts,
-				},
-			}
-
-			// this marshals unix time as string all the time
-			jsv, _ := json.Marshal(test)
-			i := make(map[string]interface{})
-
-			err = json.Unmarshal(jsv, &i)
-			require.NoError(t, err)
-
-			err = decoder.Decode(i["Data"])
-			require.NoError(t, err)
-			require.True(t, out.CreatedAt.Equal(tc.ts))
-		})
+	for _, tt := range testCases {
+		err = decoder.Decode(tt.obj)
+		require.NoError(t, err)
+		require.Equal(t, now, out.CreatedAt.UTC())
 	}
 }
