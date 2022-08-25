@@ -119,7 +119,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 // Render is the WorkloadRenderer implementation for containerized workload.
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
-	if !ok {
+	if ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 

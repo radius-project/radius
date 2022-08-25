@@ -245,6 +245,7 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 				progressChan <- clients.ResourceProgress{
 					Resource: id,
 					Status:   next,
+					Message:  *operation.Properties.StatusMessage.Status,
 				}
 			}
 		}
