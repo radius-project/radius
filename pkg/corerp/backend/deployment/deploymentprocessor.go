@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 
@@ -369,19 +371,34 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 }
 
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
-	if dp.k8sClient != nil {
-		// If the public endpoint override is specified (Local Dev scenario), then use it.
-		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
-		if publicEndpoint != "" {
-			return renderers.EnvironmentOptions{
-				Gateway: renderers.GatewayOptions{
-					PublicEndpointOverride: true,
-					Hostname:               publicEndpoint,
-				},
-				Namespace: namespace,
-			}, nil
+	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+	if publicEndpointOverride != "" {
+		// Check if publicEndpointOverride can be parsed into a URL
+		// and if this URL contains a scheme
+		publicEndpointURL, err := url.Parse(publicEndpointOverride)
+		if err == nil && publicEndpointURL.IsAbs() {
+			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
 		}
 
+		hostname, port, err := net.SplitHostPort(publicEndpointOverride)
+		if err != nil {
+			// If net.SplitHostPort throws an error, then use
+			// publicEndpointOverride as the host
+			hostname = publicEndpointOverride
+			port = ""
+		}
+
+		return renderers.EnvironmentOptions{
+			Gateway: renderers.GatewayOptions{
+				PublicEndpointOverride: true,
+				Hostname:               hostname,
+				Port:                   port,
+			},
+			Namespace: namespace,
+		}, nil
+	}
+
+	if dp.k8sClient != nil {
 		// Find the public endpoint of the cluster (External IP or hostname of the contour-envoy service)
 		var services corev1.ServiceList
 		err := dp.k8sClient.List(ctx, &services, &controller_runtime.ListOptions{Namespace: "radius-system"})

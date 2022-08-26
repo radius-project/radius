@@ -52,6 +52,7 @@ type EnvironmentOptions struct {
 type GatewayOptions struct {
 	PublicEndpointOverride bool
 	Hostname               string
+	Port                   string
 	ExternalIP             string
 }
 
