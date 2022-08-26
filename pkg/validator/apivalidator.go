@@ -19,7 +19,7 @@ import (
 
 const (
 	UCPEndpointType = "ucp"
-	UCPApiVersion   = "2022-03-15-privatepreview"
+	UCPApiVersion   = "2022-09-01-privatepreview"
 )
 
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.

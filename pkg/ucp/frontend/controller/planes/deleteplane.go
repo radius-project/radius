@@ -11,6 +11,7 @@ import (
 	http "net/http"
 
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -37,7 +38,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
-	existingPlane := rest.Plane{}
+	existingPlane := datamodel.Plane{}
 	etag, err := p.GetResource(ctx, resourceId.String(), &existingPlane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {

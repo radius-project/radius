@@ -10,6 +10,8 @@ import (
 	http "net/http"
 
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -49,16 +51,24 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	return ok, nil
 }
 
-func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (rest.PlaneList, error) {
-	listOfPlanes := rest.PlaneList{}
+func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
+	logger := ucplog.GetLogger(ctx)
+	apiVersion := ctrl.GetAPIVersion(logger, req)
+	listOfPlanes := []interface{}{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
-			var plane rest.Plane
+			var plane datamodel.Plane
 			err := item.As(&plane)
 			if err != nil {
-				return rest.PlaneList{}, err
+				return nil, err
 			}
-			listOfPlanes.Value = append(listOfPlanes.Value, plane)
+
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+			if err != nil {
+				return nil, err
+			}
+
+			listOfPlanes = append(listOfPlanes, versioned)
 		}
 	}
 	return listOfPlanes, nil

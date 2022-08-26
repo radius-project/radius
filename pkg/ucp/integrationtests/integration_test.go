@@ -17,8 +17,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -45,12 +47,14 @@ const (
 	azureURL                  = "127.0.0.1:9443"
 	testProxyRequestPath      = "/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications"
 	testProxyRequestAzurePath = "/subscriptions/sid/resourceGroups/rg1/providers/Microsoft.Network/virtualNetworks/vnet1"
-	apiVersionQueyParam       = "api-version=2022-03-15-privatepreview"
+	apiVersionQueyParam       = "api-version=2022-09-01-privatepreview"
 	testUCPNativePlaneID      = "/planes/radius/local"
 	testAzurePlaneID          = "/planes/azure/azurecloud"
 	basePath                  = "/apis/api.ucp.dev/v1alpha3"
 )
 
+var planeKindUCPNative v20220901privatepreview.PlaneKind = v20220901privatepreview.PlaneKindUCPNative
+var planeKindAzure v20220901privatepreview.PlaneKind = v20220901privatepreview.PlaneKindAzure
 var applicationList = []map[string]interface{}{
 	{
 		"Name": "app1",
@@ -60,31 +64,32 @@ var applicationList = []map[string]interface{}{
 	},
 }
 
-var testUCPNativePlane = rest.Plane{
-	ID:   testUCPNativePlaneID,
-	Name: "local",
-	Type: "System.Planes/radius",
-	Properties: rest.PlaneProperties{
-		ResourceProviders: map[string]string{
-			"Applications.Core": "http://" + rpURL,
+var testUCPNativePlane = v20220901privatepreview.PlaneResource{
+	ID:   to.Ptr(testUCPNativePlaneID),
+	Name: to.Ptr("local"),
+	Type: to.Ptr("System.Planes/radius"),
+	Properties: &v20220901privatepreview.PlaneResourceProperties{
+		ResourceProviders: map[string]*string{
+			"Applications.Core": to.Ptr("http://" + rpURL),
 		},
-		Kind: rest.PlaneKindUCPNative,
+		Kind: &planeKindUCPNative,
 	},
 }
 
-var testAzurePlane = rest.Plane{
-	ID:   testAzurePlaneID,
-	Name: "azurecloud",
-	Type: "System.Planes/azure",
-	Properties: rest.PlaneProperties{
-		Kind: rest.PlaneKindAzure,
-		URL:  "http://" + azureURL,
+var testAzurePlane = v20220901privatepreview.PlaneResource{
+	ID:   to.Ptr(testAzurePlaneID),
+	Name: to.Ptr("azurecloud"),
+	Type: to.Ptr("System.Planes/azure"),
+	Properties: &v20220901privatepreview.PlaneResourceProperties{
+		Kind: &planeKindAzure,
+		URL:  to.Ptr("http://" + azureURL),
 	},
 }
 
-var testResourceGroup = rest.ResourceGroup{
-	Name: "rg1",
-	ID:   testUCPNativePlaneID + "/resourceGroups/rg1",
+var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
+	Name: to.Ptr("rg1"),
+	ID:   to.Ptr(testUCPNativePlaneID + "/resourceGroups/rg1"),
+	Type: to.Ptr(""),
 }
 
 func Test_ProxyToRP(t *testing.T) {
@@ -273,7 +278,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	registerPlaneResponseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
-	var responsePlane rest.Plane
+	var responsePlane v20220901privatepreview.PlaneResource
 	err = json.Unmarshal(registerPlaneResponseBody, &responsePlane)
 	require.NoError(t, err)
 	if ucpNative {
@@ -301,7 +306,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 	assert.Equal(t, http.StatusOK, createResourceGroupResponse.StatusCode)
 	createResourceGroupResponseBody, err := io.ReadAll(createResourceGroupResponse.Body)
 	require.NoError(t, err)
-	var responseResourceGroup rest.ResourceGroup
+	var responseResourceGroup v20220901privatepreview.ResourceGroupResource
 	err = json.Unmarshal(createResourceGroupResponseBody, &responseResourceGroup)
 	require.NoError(t, err)
 	assert.Equal(t, testResourceGroup, responseResourceGroup)
