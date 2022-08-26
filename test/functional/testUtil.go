@@ -15,6 +15,7 @@ import (
 
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	k8s "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/portforward"
@@ -52,10 +53,19 @@ func setDefault() (string, string) {
 	return defaultDockerReg, imageTag
 }
 
-func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, application string) (string, error) {
+// GetHostnameForHTTPProxy finds the fqdn set on the root HTTPProxy of the specified application
+func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, namespace, application string) (string, error) {
 	var httpproxies contourv1.HTTPProxyList
 
-	err := client.List(ctx, &httpproxies, &runtime_client.ListOptions{Namespace: application})
+	label, err := labels.Parse(fmt.Sprintf("radius.dev/application=%s", application))
+	if err != nil {
+		return "", err
+	}
+
+	err = client.List(ctx, &httpproxies, &runtime_client.ListOptions{
+		Namespace:     namespace,
+		LabelSelector: label,
+	})
 	if err != nil {
 		return "", err
 	}
@@ -70,7 +80,8 @@ func GetHostnameForHTTPProxy(ctx context.Context, client runtime_client.Client, 
 	return "", fmt.Errorf("could not find root proxy in list of cluster HTTPProxies")
 }
 
-func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, localHostname string, localPort, remotePort int, stopChan chan struct{}, readyChan chan struct{}, errorChan chan error) {
+// ExposeIngress creates a port-forward session and sends the (assigned) local port to portChan
+func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, config *rest.Config, remotePort int, stopChan chan struct{}, portChan chan int, errorChan chan error) {
 	serviceName := "contour-envoy"
 	label := "app.kubernetes.io/component=envoy"
 
@@ -101,20 +112,32 @@ func ExposeIngress(t *testing.T, ctx context.Context, client *k8s.Clientset, con
 		return
 	}
 
-	ports := []string{fmt.Sprintf("%d:%d", localPort, remotePort)}
 	dialer := spdy.NewDialer(upgrader, &http.Client{Transport: transport}, http.MethodPost, url)
 
 	tw := TestWriter{t}
 	out, errOut := tw, tw
 
-	forwarder, err := portforward.NewOnAddresses(dialer, []string{localHostname}, ports, stopChan, readyChan, out, errOut)
+	readyChan := make(chan struct{})
+	forwarder, err := portforward.New(dialer, []string{fmt.Sprintf(":%d", remotePort)}, stopChan, readyChan, out, errOut)
 	if err != nil {
 		errorChan <- err
 		return
 	}
 
 	// Run the port-forward with the desired configuration
-	errorChan <- forwarder.ForwardPorts()
+	go func() {
+		errorChan <- forwarder.ForwardPorts()
+	}()
+
+	// Wait for the forwarder to be ready, then get the assigned port
+	<-readyChan
+	ports, err := forwarder.GetPorts()
+	if err != nil {
+		errorChan <- err
+	}
+
+	// Send the assigned port to then portChan channel
+	portChan <- int(ports[0].Local)
 }
 
 func NewTestLogger(t *testing.T) *log.Logger {
