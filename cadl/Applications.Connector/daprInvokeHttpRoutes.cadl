@@ -1,0 +1,64 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+// These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
+import "../customRootScope.cadl";
+import "../aksrootscope.cadl";
+
+import "./global.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Versioning;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+
+@armNamespace
+@serviceTitle("Applications.Connector Management APIs")
+@doc("REST API for Applications.Connector DaprInvokeHttpRoute Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Applications.Connector;
+
+@doc("DaprInvokeHttpRoute properties")
+@discriminator("kind")
+
+model DaprInvokeHttpRoutesProperties extends BasicResourceProperties {
+  @doc("Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("Fully qualified resource ID for the application that the connector is consumed by")
+  application?: Application;
+
+  @doc("The resource id of the environment linked to the daprInvokeHttpRoute connector")
+  environment: string;
+
+  @doc("The Dapr appIdd used for the route")
+  topic?: string;
+}
+
+model DaprInvokeHttpRouteResource is TrackedResource<DaprInvokeHttpRouteProperties> {
+  @doc("DaprInvokeHttpRoute name")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("daprInvokeHttpRouteName")
+  @path
+  @segment("daprInvokeHttpRoutes")
+  name: string;
+}
+
+@armResourceOperations
+interface DaprInvokeHttpRoute
+  extends Radius.RootScopeResourceOperations<
+      DaprInvokeHttpRouteResource,
+      DaprInvokeHttpRouteProperties,
+      RootScopeParam
+    > {}
