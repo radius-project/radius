@@ -28,6 +28,8 @@ import (
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
+
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 )
 
 const (
@@ -364,8 +366,9 @@ func DeleteAppWithoutDeletingResources(t *testing.T, ctx context.Context, option
 	client := options.ManagementClient
 	require.IsType(t, client, &ucp.ARMApplicationsManagementClient{})
 	appManagementClient := client.(*ucp.ARMApplicationsManagementClient)
-	appDeleteClient := v20220315privatepreview.NewApplicationsClient(appManagementClient.Connection, appManagementClient.RootScope)
+	appDeleteClient, err := v20220315privatepreview.NewApplicationsClient(appManagementClient.RootScope, &aztoken.AnonymousCredential{}, appManagementClient.ClientOptions)
+	require.NoError(t, err)
 	// We don't care about the response for tests
-	_, err := appDeleteClient.Delete(ctx, applicationName, nil)
+	_, err = appDeleteClient.Delete(ctx, applicationName, nil)
 	return err
 }

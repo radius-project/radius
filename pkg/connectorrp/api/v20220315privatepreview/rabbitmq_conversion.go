@@ -86,17 +86,13 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueProperties{
-		RabbitMQMessageQueueResponseProperties: RabbitMQMessageQueueResponseProperties{
-			BasicResourceProperties: BasicResourceProperties{
-				Status: &ResourceStatus{
-					OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
-				},
-			},
-			ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
-			Environment:       to.StringPtr(rabbitmq.Properties.Environment),
-			Application:       to.StringPtr(rabbitmq.Properties.Application),
-			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
+		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
+		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
+		Application:       to.StringPtr(rabbitmq.Properties.Application),
+		Queue:             to.StringPtr(rabbitmq.Properties.Queue),
 	}
 	if (rabbitmq.Properties.Secrets != datamodel.RabbitMQSecrets{}) {
 		dst.Properties.Secrets = &RabbitMQSecrets{
@@ -121,10 +117,8 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueResponseProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),

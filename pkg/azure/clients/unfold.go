@@ -156,5 +156,5 @@ func extractString(o interface{}) *string {
 	if sp, ok := o.(*string); ok {
 		return sp
 	}
-	return to.StringPtr(fmt.Sprintf("%v", o))
+	return to.Ptr(fmt.Sprintf("%v", o))
 }

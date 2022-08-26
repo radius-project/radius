@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/google/go-cmp/cmp"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -125,7 +125,7 @@ func TestUnfoldServiceError(t *testing.T) {
 			name: "nested once",
 			input: azure.ServiceError{
 				Details: []map[string]interface{}{{
-					"code":    to.StringPtr("DownstreamEndpointError"),
+					"code":    to.Ptr("DownstreamEndpointError"),
 					"message": `{"error": { "code": "BadRequest" }}`,
 				}},
 			},
@@ -218,7 +218,7 @@ func TestTryUnfoldServiceError(t *testing.T) {
 			name: "nested once",
 			input: &azure.ServiceError{
 				Details: []map[string]interface{}{{
-					"code":    to.StringPtr("DownstreamEndpointError"),
+					"code":    to.Ptr("DownstreamEndpointError"),
 					"message": `{"error": { "code": "BadRequest" }}`,
 				}},
 			},

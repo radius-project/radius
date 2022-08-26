@@ -15,7 +15,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
@@ -250,7 +250,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 		return "", err
 	}
 	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
-		Location: to.StringPtr(*location.Name),
+		Location: to.Ptr(*location.Name),
 	})
 	if err != nil {
 		return "", err

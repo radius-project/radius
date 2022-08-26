@@ -57,7 +57,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	return converted, nil
 }
 
-//ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
 func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) error {
 	daprPubSub, ok := src.(*datamodel.DaprPubSubBroker)
 	if !ok {
@@ -70,30 +70,33 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.SystemData = fromSystemDataModel(daprPubSub.SystemData)
 	dst.Location = to.StringPtr(daprPubSub.Location)
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
-	props := &DaprPubSubBrokerProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
-			},
-		},
-		ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
-		Environment:       to.StringPtr(daprPubSub.Properties.Environment),
-		Application:       to.StringPtr(daprPubSub.Properties.Application),
-		Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
-		Topic:             to.StringPtr(daprPubSub.Properties.Topic),
-	}
+
 	switch daprPubSub.Properties.Kind {
 	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
 		dst.Properties = &DaprPubSubAzureServiceBusResourceProperties{
-			DaprPubSubBrokerProperties: *props,
-			Resource:                   to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
+			Status: &ResourceStatus{
+				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
+			Application:       to.StringPtr(daprPubSub.Properties.Application),
+			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
+			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
+			Resource:          to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
 		}
 	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
-			DaprPubSubBrokerProperties: *props,
-			Type:                       to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
-			Version:                    to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
-			Metadata:                   daprPubSub.Properties.DaprPubSubGeneric.Metadata,
+			Status: &ResourceStatus{
+				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
+			Application:       to.StringPtr(daprPubSub.Properties.Application),
+			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
+			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
+			Type:              to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
+			Version:           to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
+			Metadata:          daprPubSub.Properties.DaprPubSubGeneric.Metadata,
 		}
 	default:
 		return errors.New("Kind of DaprPubSubBroker is not specified.")

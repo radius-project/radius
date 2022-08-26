@@ -7,9 +7,11 @@ package validation
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/stretchr/testify/require"
@@ -48,10 +50,16 @@ type CoreRPResourceSet struct {
 func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, client clients.ApplicationsManagementClient, resource CoreRPResource) error {
 	if resource.Type == EnvironmentsResource {
 		t.Logf("deleting environment: %s", resource.Name)
-		envResp, err := client.DeleteEnv(ctx, resource.Name)
-		if err == nil && envResp.RawResponse.StatusCode == 204 {
+
+		var respFromCtx *http.Response
+		ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+		_, err := client.DeleteEnv(ctxWithResp, resource.Name)
+
+		if respFromCtx.StatusCode == 204 {
 			output.LogInfo("Environment '%s' does not exist or has already been deleted.", resource.Name)
 		}
+
 		return err
 
 		// TODO: this should probably call the CLI, but if you create an

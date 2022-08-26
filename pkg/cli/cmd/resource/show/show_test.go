@@ -112,16 +112,10 @@ func Test_Run(t *testing.T) {
 }
 
 func CreateContainerResource() generated.GenericResource {
-	resource := generated.Resource{
-		ID:   &ResourceID,
-		Name: &ResourceName,
-		Type: &ResourceType,
-	}
-
-	trackedResource := generated.TrackedResource{
-		Resource: resource,
+	return generated.GenericResource{
+		ID:       &ResourceID,
+		Name:     &ResourceName,
+		Type:     &ResourceType,
 		Location: &Location,
 	}
-
-	return generated.GenericResource{TrackedResource: trackedResource}
 }

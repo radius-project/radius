@@ -56,10 +56,8 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Location = to.StringPtr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	dst.Properties = &DaprSecretStoreProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprSecretStore.Properties.Environment),

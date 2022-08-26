@@ -18,7 +18,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -562,7 +562,7 @@ func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultV
 			CSI: &corev1.CSIVolumeSource{
 				Driver: "secrets-store.csi.k8s.io",
 				// We will support only Read operations
-				ReadOnly: to.BoolPtr(true),
+				ReadOnly: to.Ptr(true),
 				VolumeAttributes: map[string]string{
 					"secretProviderClass": secretProviderClassName,
 				},

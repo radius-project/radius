@@ -10,9 +10,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"os"
 	"net/http"
 	"net/http/httptest"
+	"os"
 )
 
 // headersToExclude is a set of header values to skip in test comparisons. These either vary per-request or add noise.

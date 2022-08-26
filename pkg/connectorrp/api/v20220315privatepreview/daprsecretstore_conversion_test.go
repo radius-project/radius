@@ -70,6 +70,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "secretstores.hashicorp.vault", *versionedResource.Properties.Type)
 		require.Equal(t, "v1", *versionedResource.Properties.Version)
 		require.Equal(t, "bar", versionedResource.Properties.Metadata["foo"])
+
 		if payload == "daprsecretstoreresource.json" {
 			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
