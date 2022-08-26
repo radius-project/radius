@@ -41,6 +41,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	# show details of a specified resource in an application (shorthand flag)
 	rad resource show containers orders -a icecream-store 
 	`,
+		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
 
