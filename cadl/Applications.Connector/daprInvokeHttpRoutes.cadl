@@ -29,8 +29,7 @@ namespace Applications.Connector;
 
 @doc("DaprInvokeHttpRoute properties")
 @discriminator("kind")
-
-model DaprInvokeHttpRoutesProperties extends BasicResourceProperties {
+model DaprInvokeHttpRouteProperties extends BasicResourceProperties {
   @doc("Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
