@@ -41,7 +41,7 @@ model DaprInvokeHttpRouteProperties extends BasicResourceProperties {
   environment: string;
 
   @doc("The Dapr appId used for the route")
-  topic?: string;
+  appId: string;
 }
 
 model DaprInvokeHttpRouteResource is TrackedResource<DaprInvokeHttpRouteProperties> {
