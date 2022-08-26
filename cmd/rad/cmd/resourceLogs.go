@@ -42,7 +42,7 @@ rad resource logs containers orders --application icecream-store --follow
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
 rad resource logs containers orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
+		config := ConfigHolder.ConfigFromContext(cmd.Context())
 		workspace, err := cli.RequireWorkspace(cmd, config)
 		if err != nil {
 			return err

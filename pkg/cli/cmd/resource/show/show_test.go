@@ -12,8 +12,8 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -38,7 +38,10 @@ func Test_Validate(t *testing.T) {
 		{
 			Input:         []string{"containers", "foo", "-o", "table"},
 			ExpectedValid: true,
-			ConfigHolder:  shared.ConfigHolder{"", config},
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

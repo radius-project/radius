@@ -27,7 +27,7 @@ func init() {
 }
 
 func listWorkspaces(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
+	config := ConfigHolder.ConfigFromContext(cmd.Context())
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {

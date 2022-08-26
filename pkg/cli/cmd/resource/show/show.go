@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -42,8 +41,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	# show details of a specified resource in an application (shorthand flag)
 	rad resource show containers orders -a icecream-store 
 	`,
-		Args: cobra.ExactArgs(0),
-
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -57,7 +54,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder      *shared.ConfigHolder
+	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace

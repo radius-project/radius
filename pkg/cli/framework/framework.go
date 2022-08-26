@@ -8,7 +8,6 @@ package framework
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
@@ -17,13 +16,13 @@ import (
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
 	GetConnectionFactory() connections.Factory
-	GetConfigHolder() *shared.ConfigHolder
+	GetConfigHolder() *ConfigHolder
 	GetOutput() output.Interface
 }
 
 type Impl struct {
 	ConnectionFactory connections.Factory
-	ConfigHolder      *shared.ConfigHolder
+	ConfigHolder      *ConfigHolder
 	Output            output.Interface
 }
 
@@ -31,7 +30,7 @@ func (i *Impl) GetConnectionFactory() connections.Factory {
 	return i.ConnectionFactory
 }
 
-func (i *Impl) GetConfigHolder() *shared.ConfigHolder {
+func (i *Impl) GetConfigHolder() *ConfigHolder {
 	return i.ConfigHolder
 }
 

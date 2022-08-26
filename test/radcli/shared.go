@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,7 +19,7 @@ import (
 type ValidateInput struct {
 	Input         []string
 	ExpectedValid bool
-	ConfigHolder  shared.ConfigHolder
+	ConfigHolder  framework.ConfigHolder
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -36,7 +35,10 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
 	for _, testcase := range testcases {
 		t.Run(strings.Join(testcase.Input, " "), func(t *testing.T) {
-			framework := &framework.Impl{nil, &testcase.ConfigHolder, nil}
+			framework := &framework.Impl{
+				ConnectionFactory: nil,
+				ConfigHolder:      &testcase.ConfigHolder,
+				Output:            nil}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
 

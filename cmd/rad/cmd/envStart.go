@@ -23,7 +23,7 @@ func init() {
 }
 
 func envStart(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
+	config := ConfigHolder.ConfigFromContext(cmd.Context())
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
