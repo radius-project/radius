@@ -39,3 +39,38 @@ func (r *Runner) Run(cmd *cobra.Command, args []string) error {
 	return nil
 }
 ```
+
+Here's a useful template for testing the new command.
+```go
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+func Test_CommandValidation(t *testing.T) {
+	radcli.SharedCommandValidation(t, NewCommand)
+}
+
+func Test_Validate(t *testing.T) {
+	config := radcli.LoadConfigWithWorkspace()
+	testcases := []radcli.ValidateInput{
+		
+	}
+	radcli.SharedValidateValidation(t, NewCommand, testcases)
+}
+
+func Test_Run(t *testing.T) {
+	t.Run("Validate Scenario 1", func(t *testing.T) {
+		
+	})
+	t.Run("Validate Scenario 2", func(t *testing.T) {
+		
+	})
+	t.Run("Validate Scenario 3", func(t *testing.T) {
+		
+	})
+	t.Run("Validate Scenario i", func(t *testing.T) {
+		
+	})
+}
+```
