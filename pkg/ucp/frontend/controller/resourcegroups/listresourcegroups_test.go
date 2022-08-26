@@ -9,7 +9,11 @@ import (
 	http "net/http"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -42,19 +46,11 @@ func Test_ListResourceGroups(t *testing.T) {
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
 	testResourceGroupName := "test-rg"
 
-	expectedResourceGroupList := rest.ResourceGroupList{
-		Value: []rest.ResourceGroup{
-			{
-				ID:   testResourceGroupID,
-				Name: testResourceGroupName,
-			},
+	rg := datamodel.ResourceGroup{
+		TrackedResource: v1.TrackedResource{
+			ID:   testResourceGroupID,
+			Name: testResourceGroupName,
 		},
-	}
-	expectedResponse := rest.NewOKResponse(expectedResourceGroupList)
-
-	rg := rest.ResourceGroup{
-		ID:   testResourceGroupID,
-		Name: testResourceGroupName,
 	}
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -71,5 +67,14 @@ func Test_ListResourceGroups(t *testing.T) {
 	require.NoError(t, err)
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)
+
+	resourceGroup := v20220901privatepreview.ResourceGroupResource{
+		ID:   &testResourceGroupID,
+		Name: &testResourceGroupName,
+		Type: to.Ptr(""),
+	}
+	expectedResourceGroupList := []interface{}{&resourceGroup}
+	expectedResponse := rest.NewOKResponse(expectedResourceGroupList)
+
 	assert.DeepEqual(t, expectedResponse, actualResponse)
 }

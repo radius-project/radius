@@ -10,6 +10,8 @@ import (
 	http "net/http"
 
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -55,16 +57,24 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 	return ok, nil
 }
 
-func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (rest.ResourceGroupList, error) {
-	listOfResourceGroups := rest.ResourceGroupList{}
+func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
+	listOfResourceGroups := []interface{}{}
+	logger := ucplog.GetLogger(ctx)
+	apiVersion := ctrl.GetAPIVersion(logger, req)
 	if result != nil && len(result.Items) > 0 {
 		for _, item := range result.Items {
-			var rg rest.ResourceGroup
+			var rg datamodel.ResourceGroup
 			err := item.As(&rg)
 			if err != nil {
 				return listOfResourceGroups, err
 			}
-			listOfResourceGroups.Value = append(listOfResourceGroups.Value, rg)
+
+			versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+			if err != nil {
+				return nil, err
+			}
+
+			listOfResourceGroups = append(listOfResourceGroups, versioned)
 		}
 	}
 	return listOfResourceGroups, nil

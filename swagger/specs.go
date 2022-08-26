@@ -19,6 +19,7 @@ var (
 	//go:embed specification/common-types/resource-management/v2/types.json
 	SpecFiles embed.FS
 
-	//go:embed specification/ucp/resource-manager/UCP/preview/2022-03-15-privatepreview/*.json
+	//go:embed specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/*.json
+	//go:embed specification/common-types/resource-management/v2/types.json
 	SpecFilesUCP embed.FS
 )

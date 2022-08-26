@@ -12,13 +12,16 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Options represents controller options.
@@ -133,7 +136,7 @@ func (c *BaseController) DeleteResource(ctx context.Context, id string, etag str
 
 // Responds with an HTTP 500
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	var response rest.Response
 	// Try to use the ARM format to send back the error info
@@ -225,4 +228,16 @@ func ConfigureDefaultHandlers(router *mux.Router, opts Options) {
 	b := NewBaseController(opts)
 	router.NotFoundHandler = http.HandlerFunc(b.NotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(b.MethodNotAllowedHandler)
+}
+
+// GetAPIVersion extracts the API version from the request or returns the default version
+func GetAPIVersion(logger logr.Logger, req *http.Request) string {
+	apiVersion := req.URL.Query().Get("api-version")
+	if apiVersion == "" {
+		apiVersion = versions.DefaultAPIVersion
+		logger.Info("No API version specified in request %s. Using default %s", req.URL.Path, apiVersion)
+	} else {
+		logger.Info("Using specified API version %s for %s", apiVersion, req.URL.Path)
+	}
+	return apiVersion
 }

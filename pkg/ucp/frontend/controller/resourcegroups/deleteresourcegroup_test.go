@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -33,9 +35,11 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	rg := rest.ResourceGroup{
-		ID:   "/planes/radius/local/resourceGroups/default",
-		Name: "default",
+	rg := datamodel.ResourceGroup{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local/resourceGroups/default",
+			Name: "default",
+		},
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -73,9 +77,11 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	rg := rest.ResourceGroup{
-		ID:   "/planes/radius/local/resourceGroups/default",
-		Name: "default",
+	rg := datamodel.ResourceGroup{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local/resourceGroups/default",
+			Name: "default",
+		},
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -86,7 +92,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	})
 
 	// This is corresponding to Get for all resources within the resource group
-	envResource := rest.Resource{
+	envResource := datamodel.Resource{
 		ID:   "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/my-env",
 		Name: "my-env",
 		Type: "Applications.Core/environments",
