@@ -21,8 +21,8 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -274,11 +274,11 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 	// Add volumes
 	volumes := []corev1.Volume{}
-	for volumeName, volume := range cc.Container.Volumes {
+	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
-		switch volume.Kind {
+		switch volumeProperties.Kind {
 		case datamodel.Ephemeral:
-			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, volume.Ephemeral)
+			volumeSpec, volumeMountSpec, err := r.makeEphemeralVolume(volumeName, volumeProperties.Ephemeral)
 			if err != nil {
 				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
@@ -289,12 +289,12 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		case datamodel.Persistent:
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
-			properties := dependencies[volume.Persistent.Source]
+			properties := dependencies[volumeProperties.Persistent.Source]
 
 			switch properties.Definition["kind"] {
 			case PersistentVolumeKindAzureFileShare:
 				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volume.Persistent, resource.Name, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volumeProperties.Persistent, resource.Name, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("unable to create persistent volume spec for volume: %s - %s", volumeName, err.Error()))
 				}
@@ -328,7 +328,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
 				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
 				// Create spec for secret store
-				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volume.Persistent, secretProviderClassName, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, secretProviderClassName, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -358,7 +358,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, secretData, conv.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volume.Kind))
+			return outputresource.OutputResource{}, []outputresource.OutputResource{}, secretData, conv.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
 	}
 

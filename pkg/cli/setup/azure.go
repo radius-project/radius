@@ -6,6 +6,7 @@
 package setup
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -17,11 +18,11 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/marstr/randname"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/handlers"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 )
@@ -296,7 +297,7 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
 			// only generate a random name if the default doesn't exist already or existence check fails
-			defaultRgName = handlers.GenerateRandomName("radius", "rg")
+			defaultRgName = generateRandomName("radius", "rg")
 		}
 
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
@@ -324,4 +325,15 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		name = *rgList[index].Name
 	}
 	return name, nil
+}
+
+// GenerateRandomName generates a string with the specified prefix and a random 5-character suffix.
+func generateRandomName(prefix string, affixes ...string) string {
+	b := bytes.NewBufferString(prefix)
+	b.WriteRune('-')
+	for _, affix := range affixes {
+		b.WriteString(affix)
+		b.WriteRune('-')
+	}
+	return randname.GenerateWithPrefix(b.String(), 5)
 }

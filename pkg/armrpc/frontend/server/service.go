@@ -14,11 +14,10 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/authentication"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	kubeclient "github.com/project-radius/radius/pkg/kubernetes/client"
-	"github.com/project-radius/radius/pkg/renderers"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	qprovider "github.com/project-radius/radius/pkg/ucp/queue/provider"
-
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
