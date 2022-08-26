@@ -52,11 +52,12 @@ func (mr *MockApplicationsManagementClientMockRecorder) DeleteApplication(arg0, 
 }
 
 // DeleteEnv mocks base method.
-func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 string) error {
+func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 string) (v20220315privatepreview.EnvironmentsDeleteResponse, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteEnv", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(v20220315privatepreview.EnvironmentsDeleteResponse)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // DeleteEnv indicates an expected call of DeleteEnv.
