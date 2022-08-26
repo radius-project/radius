@@ -196,6 +196,14 @@ func (cli *CLI) Version(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) CliVersion(ctx context.Context) (string, error) {
+	args := []string{
+		"version",
+		"--cli",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 	description := "rad " + strings.Join(args, " ")
 	args = cli.appendStandardArgs(args)

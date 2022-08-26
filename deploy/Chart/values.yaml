@@ -2,9 +2,6 @@ global:
   engine:
     image: radius.azurecr.io/deployment-engine
     tag: latest
-  extensibility:
-    image: radius.azurecr.io/bicep-extensibility
-    tag: latest
   appcorerp:
     image: radius.azurecr.io/appcore-rp
     tag: latest # Tag for appcore-rp image.

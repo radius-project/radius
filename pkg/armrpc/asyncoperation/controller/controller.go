@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
-	"github.com/project-radius/radius/pkg/renderers"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 

@@ -278,24 +278,24 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) error {
+func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsDeleteResponse, error) {
 	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
-		return err
+		return corerp.EnvironmentsDeleteResponse{}, err
 	}
 	for _, application := range applicationsWithEnv {
 		_, err := amc.DeleteApplication(ctx, *application.Name)
 		if err != nil {
-			return err
+			return corerp.EnvironmentsDeleteResponse{}, err
 		}
 	}
 	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 
-	_, err = envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	envResp, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
 	if err != nil {
-		return err
+		return corerp.EnvironmentsDeleteResponse{}, err
 	}
 
-	return nil
+	return envResp, err
 
 }

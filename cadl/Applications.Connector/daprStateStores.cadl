@@ -1,0 +1,99 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+// These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
+import "../customRootScope.cadl";
+import "../aksrootscope.cadl";
+
+import "./global.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Versioning;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+
+@armNamespace
+@serviceTitle("Applications.Connector Management APIs")
+@doc("REST API for Applications.Connector DaprStateStore Resource")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Applications.Connector;
+
+@doc("DaprStateStore properties")
+@discriminator("kind")
+model DaprStateStoreProperties extends BasicResourceProperties {
+  @doc("Provisioning state of the DaprStateStore connector at the time the operation was called")
+  @visibility("read")
+  provisioningState?: ProvisioningState;
+
+  @doc("The resource id of the environment linked to the DaprStateStore connector")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the connector is consumed by")
+  application?: Application;
+
+  @doc("The name of the Dapr State Store")
+  @visibility("read")
+  stateStoreName?: string;
+}
+
+@doc("DaprStateStoreSqlServer properties")
+model DaprStateStoreSqlServerResourceProperties
+  extends DaprStateStoreProperties {
+  @doc("The DaprStateStoreProperties kind")
+  kind: "state.sqlserver";
+
+  @doc("The resource id of the Azure SQL Database the daprStateStore resource is connected to.")
+  resource: string;
+}
+
+@doc("DaprStateStoreAzureTableStorage properties")
+model DaprStateStoreAzureTableStorageResourceProperties
+  extends DaprStateStoreProperties {
+  @doc("The DaprStateStoreProperties kind")
+  kind: "state.azure.tablestorage";
+
+  @doc("The resource id of the Azure Storage Table the daprStateStore resource is connected to.")
+  resource: string;
+}
+
+@doc("DaprStateStore generic resource properties")
+model DaprStateStoreGenericResourceProperties extends DaprStateStoreProperties {
+  @doc("The DaprStateStoreProperties kind")
+  kind: "generic";
+
+  @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
+  metadata: object;
+
+  @doc("Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.")
+  type: string;
+
+  @doc("Dapr component version")
+  version: string;
+}
+
+model DaprStateStoreResource is TrackedResource<DaprStateStoreProperties> {
+  @doc("DaprStateStore name")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @key("daprStateStoreName")
+  @path
+  @segment("daprStateStores")
+  name: string;
+}
+
+@armResourceOperations
+interface DaprStateStore
+  extends Radius.RootScopeResourceOperations<
+      DaprStateStoreResource,
+      DaprStateStoreProperties,
+      RootScopeParam
+    > {}
