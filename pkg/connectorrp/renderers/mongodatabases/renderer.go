@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -90,7 +89,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 			Action:        "listConnectionStrings",
 			ValueSelector: "/connectionStrings/0/connectionString",
 			Transformer: resourcemodel.ResourceType{
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureCosmosDBMongo,
 			},
 		}
@@ -104,7 +103,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 		LocalID: outputresource.LocalIDAzureCosmosAccount,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureCosmosAccount,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Resource: map[string]string{
 			handlers.CosmosDBAccountIDKey:   cosmosMongoAccountID.String(),
@@ -117,7 +116,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretVal
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureCosmosDBMongo,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Resource: map[string]string{
 			handlers.CosmosDBAccountIDKey:    cosmosMongoAccountID.String(),

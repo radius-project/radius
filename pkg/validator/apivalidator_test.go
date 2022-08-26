@@ -14,8 +14,8 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/swagger"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +59,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 		contentFilePath string
 		url             string
 		responseCode    int
-		validationErr   *armerrors.ErrorResponse
+		validationErr   *v1.ErrorResponse
 	}{
 		{
 			desc:         "not found route",
@@ -69,8 +69,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			apiVersion:   "2022-03-15-privatepreview",
 			url:          "http://localhost:8080/providers/applications.core/notfound",
 			responseCode: http.StatusNotFound,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "NotFound",
 					Message: "The request 'GET /providers/applications.core/notfound' is invalid.",
 				},
@@ -84,8 +84,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			apiVersion:   "2022-03-15-privatepreview",
 			url:          "http://localhost:8080/providers/applications.core/operations",
 			responseCode: http.StatusMethodNotAllowed,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "BadRequest",
 					Message: "The request method 'PUT' is invalid.",
 				},
@@ -163,8 +163,8 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "InvalidApiVersionParameter",
 					Message: "API version '2022-06-20-privatepreview' for type 'applications.core/environments' is not supported. The supported api-versions are '2022-03-15-privatepreview'.",
 				},
@@ -179,12 +179,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-invalid-missing-location.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.location in body is required",
@@ -202,12 +202,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-invalid-missing-kind.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.properties.compute.kind in body is required",
@@ -225,12 +225,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-invalid-missing-locationandkind.json",
 			url:             resourceIDUrl,
 			responseCode:    http.StatusBadRequest,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidProperties",
 							Message: "$.location in body is required",
@@ -252,12 +252,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-invalid-json.json",
 			url:             resourceIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "The request content was invalid and could not be deserialized.",
@@ -275,12 +275,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             longarmIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should be at most 63 chars long",
@@ -298,12 +298,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             longucpIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/largeEnvName14161820222426283032343638404244464850525456586062646668707274767880828486889092949698100102104106108120122124126128130",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should be at most 63 chars long",
@@ -321,12 +321,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             underscorearmIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env_name0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
@@ -344,12 +344,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             underscoreucpIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/env_name0",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
@@ -367,12 +367,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             digitarmIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/0env",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
@@ -390,12 +390,12 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			contentFilePath: "put-environments-valid.json",
 			url:             digitucpIDUrl,
 			responseCode:    400,
-			validationErr: &armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
+			validationErr: &v1.ErrorResponse{
+				Error: v1.ErrorDetails{
 					Code:    "HttpRequestPayloadAPISpecValidationFailed",
 					Target:  "applications.core/environments/0env",
 					Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
-					Details: []armerrors.ErrorDetails{
+					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
 							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
@@ -450,7 +450,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 			require.Equal(t, tc.responseCode, w.Result().StatusCode, "%s", w.Body.String())
 
 			if w.Result().StatusCode != http.StatusAccepted {
-				armErr := &armerrors.ErrorResponse{}
+				armErr := &v1.ErrorResponse{}
 				err := json.Unmarshal(w.Body.Bytes(), armErr)
 				require.NoError(t, err)
 				require.Equal(t, tc.validationErr, armErr)

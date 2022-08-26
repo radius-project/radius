@@ -13,44 +13,44 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/to"
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/google/go-cmp/cmp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 func TestUnfoldErrorDetails(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
-		input  armerrors.ErrorDetails
-		expect armerrors.ErrorDetails
+		input  v1.ErrorDetails
+		expect v1.ErrorDetails
 	}{
 		{
 			name: "no msg",
-			input: armerrors.ErrorDetails{
+			input: v1.ErrorDetails{
 				Code: "code",
 			},
-			expect: armerrors.ErrorDetails{
+			expect: v1.ErrorDetails{
 				Code: "code",
 			},
 		},
 		{
 			name: "wrapped none",
-			input: armerrors.ErrorDetails{
+			input: v1.ErrorDetails{
 				Code:    "code",
 				Message: "message",
 			},
-			expect: armerrors.ErrorDetails{
+			expect: v1.ErrorDetails{
 				Code:    "code",
 				Message: "message",
 			},
 		},
 		{
 			name: "wrapped once",
-			input: armerrors.ErrorDetails{
+			input: v1.ErrorDetails{
 				Code:    "code",
 				Message: `{"error": {"code": "inner-code", "message": "inner-message" }}`,
 			},
-			expect: armerrors.ErrorDetails{
+			expect: v1.ErrorDetails{
 				Code: "code",
-				Details: []armerrors.ErrorDetails{{
+				Details: []v1.ErrorDetails{{
 					Code:    "inner-code",
 					Message: "inner-message",
 				}},
@@ -58,7 +58,7 @@ func TestUnfoldErrorDetails(t *testing.T) {
 		},
 		{
 			name: "wrapped twice", // This case does really happens in `rad deploy` calls.
-			input: armerrors.ErrorDetails{
+			input: v1.ErrorDetails{
 				Code: "code",
 				Message: `
                           {
@@ -68,11 +68,11 @@ func TestUnfoldErrorDetails(t *testing.T) {
                             }
                           }`,
 			},
-			expect: armerrors.ErrorDetails{
+			expect: v1.ErrorDetails{
 				Code: "code",
-				Details: []armerrors.ErrorDetails{{
+				Details: []v1.ErrorDetails{{
 					Code: "first-level",
-					Details: []armerrors.ErrorDetails{{
+					Details: []v1.ErrorDetails{{
 						Code:    "second-level",
 						Message: "I kid you not",
 					}},
@@ -81,20 +81,20 @@ func TestUnfoldErrorDetails(t *testing.T) {
 		},
 		{
 			name: "details[*].message wrapped once",
-			input: armerrors.ErrorDetails{
+			input: v1.ErrorDetails{
 				Code:    "DownstreamEndpointError",
 				Message: "Please refer to additional info for details",
-				Details: []armerrors.ErrorDetails{{
+				Details: []v1.ErrorDetails{{
 					Code:    "Downstream",
 					Message: `{"error": {"code": "BadRequest", "message": "Validation error" }}`,
 					Target:  "",
 				}}},
-			expect: armerrors.ErrorDetails{
+			expect: v1.ErrorDetails{
 				Code:    "DownstreamEndpointError",
 				Message: "Please refer to additional info for details",
-				Details: []armerrors.ErrorDetails{{
+				Details: []v1.ErrorDetails{{
 					Code: "Downstream",
-					Details: []armerrors.ErrorDetails{{
+					Details: []v1.ErrorDetails{{
 						Code:    "BadRequest",
 						Message: "Validation error",
 					}},
@@ -130,9 +130,9 @@ func TestUnfoldServiceError(t *testing.T) {
 				}},
 			},
 			expect: ServiceError{
-				Details: []*armerrors.ErrorDetails{{
+				Details: []*v1.ErrorDetails{{
 					Code: "DownstreamEndpointError",
-					Details: []armerrors.ErrorDetails{{
+					Details: []v1.ErrorDetails{{
 						Code: "BadRequest",
 					}},
 				}},
@@ -148,9 +148,9 @@ func TestUnfoldServiceError(t *testing.T) {
 		// 		}},
 		// 	},
 		// 	expect: ServiceError{
-		// 		Details: []*armerrors.ErrorDetails{{
+		// 		Details: []*v1.ErrorDetails{{
 		// 			Code: "DownstreamEndpointError",
-		// 			Details: []armerrors.ErrorDetails{{
+		// 			Details: []v1.ErrorDetails{{
 		// 				Code: "BadRequest",
 		// 			}},
 		// 		}},
@@ -169,7 +169,7 @@ func TestTryUnfoldErrorResponse(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		input  error
-		expect *armerrors.ErrorDetails
+		expect *v1.ErrorDetails
 	}{
 		{
 			name:  "generic err",
@@ -180,13 +180,13 @@ func TestTryUnfoldErrorResponse(t *testing.T) {
 			input: fmt.Errorf("%w", errors.New("generic err")),
 		},
 		// {
-		// 	name: "wrapped *armerrors.ErrorResponse",
-		// 	input: fmt.Errorf("%w", &armerrors.ErrorResponse{
-		// 		Error: armerrors.ErrorDetails{
+		// 	name: "wrapped *v1.ErrorResponse",
+		// 	input: fmt.Errorf("%w", &v1.ErrorResponse{
+		// 		Error: v1.ErrorDetails{
 		// 			Code:    "code",
 		// 			Message: "message",
 		// 		}}),
-		// 	expect: &armerrors.ErrorDetails{
+		// 	expect: &v1.ErrorDetails{
 		// 		Code:    "code",
 		// 		Message: "message",
 		// 	},
@@ -223,9 +223,9 @@ func TestTryUnfoldServiceError(t *testing.T) {
 				}},
 			},
 			expect: &ServiceError{
-				Details: []*armerrors.ErrorDetails{{
+				Details: []*v1.ErrorDetails{{
 					Code: "DownstreamEndpointError",
-					Details: []armerrors.ErrorDetails{{
+					Details: []v1.ErrorDetails{{
 						Code: "BadRequest",
 					}},
 				}},

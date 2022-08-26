@@ -15,8 +15,6 @@ import (
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -132,33 +130,4 @@ func GetShortenedTargetPortName(name string) string {
 // GetDefaultPort() returns the default HTTP port (80)
 func GetDefaultPort() int32 {
 	return 80
-}
-
-// MakeScrapedSecretName creates a Secret scraped from input values passed through
-// from the deployment template.
-func MakeScrapedSecretName(appName string, resourceKind string, resourceName string) string {
-	return strings.ToLower(appName + "-" + resourceKind + "-" + resourceName)
-}
-
-func MakeScrapedSecret(resource *unstructured.Unstructured, stringData map[string]string) *corev1.Secret {
-	resourceKind := resource.GetKind()
-	resourceName := resource.GetAnnotations()[LabelRadiusResource]
-	appName := resource.GetAnnotations()[LabelRadiusApplication]
-
-	return &corev1.Secret{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Secret",
-			APIVersion: corev1.SchemeGroupVersion.String(),
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      MakeScrapedSecretName(appName, resourceKind, resourceName),
-			Namespace: resource.GetNamespace(),
-			Labels:    MakeDescriptiveLabels(appName, resourceName),
-			Annotations: map[string]string{
-				AnnotationLocalID: outputresource.LocalIDScrapedSecret,
-			},
-		},
-		Type:       corev1.SecretTypeOpaque,
-		StringData: stringData,
-	}
 }

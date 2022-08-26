@@ -16,11 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 )
@@ -65,7 +63,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, resourcemodel.NewARMIdentity(
 		&resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureSqlServer,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server",
 		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
@@ -76,7 +74,7 @@ func Test_Render_Success(t *testing.T) {
 	require.Equal(t, resourcemodel.NewARMIdentity(
 		&resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureSqlServerDatabase,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		}, "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Sql/servers/test-server/databases/test-database",
 		clients.GetAPIVersionFromUserAgent(sql.UserAgent())),
 		databaseResource.Identity)
@@ -114,7 +112,7 @@ func Test_Render_MissingResource(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, renderers.ErrorResourceOrServerNameMissingFromResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
@@ -138,7 +136,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to an Azure SQL Database", err.(*conv.ErrClientRP).Message)
 }
 
@@ -162,6 +160,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

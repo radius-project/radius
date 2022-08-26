@@ -15,7 +15,7 @@ import (
 	connector "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -90,7 +90,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 
 	for i := range output.Resources {
-		if output.Resources[i].ResourceType.Provider != providers.ProviderKubernetes {
+		if output.Resources[i].ResourceType.Provider != resourcemodel.ProviderKubernetes {
 			// Not a Kubernetes resource
 			continue
 		}

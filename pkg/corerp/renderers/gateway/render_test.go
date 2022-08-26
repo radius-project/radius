@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
@@ -261,7 +260,7 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
 	require.Equal(t, err.(*conv.ErrClientRP).Message, "must have at least one route when declaring a Gateway resource")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)

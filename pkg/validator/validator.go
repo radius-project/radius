@@ -21,7 +21,7 @@ import (
 	"github.com/go-openapi/spec"
 	"github.com/go-openapi/strfmt"
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -131,7 +131,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	params, err := v.findParam(req)
 	if err != nil {
 		return []ValidationError{{
-			Code:    armerrors.InvalidRequestContent,
+			Code:    v1.CodeInvalidRequestContent,
 			Message: "failed to parse route: " + err.Error(),
 		}}
 	}
@@ -143,7 +143,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	content, err := io.ReadAll(req.Body)
 	if err != nil {
 		return []ValidationError{{
-			Code:    armerrors.InvalidRequestContent,
+			Code:    v1.CodeInvalidRequestContent,
 			Message: "failed to read body content: " + err.Error(),
 		}}
 	}
@@ -178,7 +178,7 @@ func parseResult(result error) []ValidationError {
 		valErr, ok := e.(*oai_errors.Validation)
 		if ok {
 			ve := ValidationError{
-				Code:    armerrors.InvalidRequestContent,
+				Code:    v1.CodeInvalidRequestContent,
 				Message: valErr.Error(),
 			}
 
@@ -194,7 +194,7 @@ func parseResult(result error) []ValidationError {
 					// definition name of the body schema. This replaces the definition name with $ to avoid the confusion.
 					// For example, "EnvironmentResource.properties.compute.kind" -> "$.properties.compute.kind"
 					name := valErr.Name[:period]
-					ve.Code = armerrors.InvalidProperties
+					ve.Code = v1.CodeInvalidProperties
 					ve.Message = strings.ReplaceAll(ve.Message, name, "$")
 				}
 			}

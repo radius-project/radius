@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -99,6 +98,7 @@ const (
 	ProvisioningStateAccepted     ProvisioningState = "Accepted"
 	ProvisioningStateSucceeded    ProvisioningState = "Succeeded"
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateProvisioned  ProvisioningState = "Provisioned"
 	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateCanceled     ProvisioningState = "Canceled"
 	ProvisioningStateUndefined    ProvisioningState = "Undefined"
@@ -131,13 +131,6 @@ type InternalMetadata struct {
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
-
-	// ComputedValues map is any resource values that will be needed for more operations.
-	// For example; database name to generate secrets for cosmos DB.
-	ComputedValues map[string]interface{} `json:"computedValues,omitempty"`
-
-	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
-	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
 }
 
 // BasicResourceProperties is the basic resource model for radius resources.

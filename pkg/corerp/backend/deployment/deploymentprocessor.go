@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	connector_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
@@ -34,7 +35,6 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/db"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -241,7 +241,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			ResourceType: outputResource.ResourceType,
 			Identity:     outputResource.Identity,
 			Status: outputresource.OutputResourceStatus{
-				ProvisioningState:        db.Provisioned,
+				ProvisioningState:        string(v1.ProvisioningStateProvisioned),
 				ProvisioningErrorDetails: "",
 			},
 		}
