@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -138,9 +138,9 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 	}
 }
 
-func CreateResourceGroup(resourceGroupName string) v20220315privatepreview.ResourceGroupResource {
+func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
-	return v20220315privatepreview.ResourceGroupResource{
+	return v20220901privatepreview.ResourceGroupResource{
 		Name: &resourceGroupName,
 		ID:   &id,
 	}

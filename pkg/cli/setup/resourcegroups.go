@@ -58,15 +58,16 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 		return "", errors.New("only kubernetes connections are supported right now")
 	}
 
-	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper("", kubernetes.UCPType, kc.Context)
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper(kc.Overrides.UCP, kubernetes.UCPType, kc.Context)
 	if err != nil {
 		return "", &cli.ClusterUnreachableError{Err: err}
 	}
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
+		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, "2022-09-01-privatepreview"),
 		strings.NewReader(`{}`))
+
 	if err != nil {
 		return "", &ErrUCPResourceGroupCreationFailed{nil, err}
 	}

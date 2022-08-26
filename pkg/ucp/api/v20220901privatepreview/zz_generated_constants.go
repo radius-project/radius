@@ -7,10 +7,10 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package v20220901privatepreview
 
 const (
-	moduleName = "v20220315privatepreview"
+	moduleName = "v20220901privatepreview"
 	moduleVersion = "v0.0.1"
 )
 
@@ -32,6 +32,7 @@ func PossibleCredentialStorageKindValues() []CredentialStorageKind {
 type PlaneKind string
 
 const (
+	PlaneKindAWS PlaneKind = "AWS"
 	PlaneKindAzure PlaneKind = "Azure"
 	PlaneKindUCPNative PlaneKind = "UCPNative"
 )
@@ -39,6 +40,7 @@ const (
 // PossiblePlaneKindValues returns the possible values for the PlaneKind const type.
 func PossiblePlaneKindValues() []PlaneKind {
 	return []PlaneKind{	
+		PlaneKindAWS,
 		PlaneKindAzure,
 		PlaneKindUCPNative,
 	}

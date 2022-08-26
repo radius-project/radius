@@ -27,8 +27,6 @@ import (
 
 const (
 	APIVersionQueryKey = "api-version"
-
-	rootScopeParam = "rootScope"
 )
 
 var (
@@ -47,7 +45,7 @@ type ValidationError struct {
 // Validator validates HTTP request.
 type Validator interface {
 	// ValidateRequest validates a http request and returns all the errors.
-	ValidateRequest(req *http.Request) []ValidationError
+	ValidateRequest(req *http.Request, ignoreUndefinedPath bool) []ValidationError
 }
 
 type validator struct {
@@ -55,6 +53,7 @@ type validator struct {
 	APIVersion string
 
 	rootScopePrefix string
+	rootScopeParam  string
 	specDoc         *loads.Document
 	paramCache      map[string]map[string]spec.Parameter
 	paramCacheMu    *sync.RWMutex
@@ -92,7 +91,12 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	}
 
 	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
-	scopePath := strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+rootScopeParam+"}", 1)
+	var scopePath string
+	if v.rootScopeParam == "" {
+		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, v.rootScopeParam, 1)
+	} else {
+		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+v.rootScopeParam+"}", 1)
+	}
 
 	// Iterate loaded paths to find the matched route.
 	for k := range v.specDoc.Analyzer.AllPaths() {
@@ -109,7 +113,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
 	if rID, err := resources.Parse(req.URL.Path); err == nil {
-		routeParams = append(routeParams, middleware.RouteParam{Name: rootScopeParam, Value: rID.RootScope()})
+		routeParams = append(routeParams, middleware.RouteParam{Name: v.rootScopeParam, Value: rID.RootScope()})
 	}
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
@@ -126,14 +130,16 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 //   - readonly property: go-openapi/middleware doesn't support "readonly" property even though
 //     go-openapi/validate has readonly property check used only for go-swagger.
 //     (xeipuuv/gojsonschema and kin-openapi doesn't support readonly either)
-func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
+func (v *validator) ValidateRequest(req *http.Request, ignoreUndefinedPath bool) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
-		return []ValidationError{{
-			Code:    v1.CodeInvalidRequestContent,
-			Message: "failed to parse route: " + err.Error(),
-		}}
+		if err.Error() == ErrUndefinedRoute.Error() && !ignoreUndefinedPath {
+			return []ValidationError{{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: "failed to parse route: " + err.Error(),
+			}}
+		}
 	}
 
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)

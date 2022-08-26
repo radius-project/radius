@@ -11,7 +11,6 @@ import (
 	"github.com/golang/mock/gomock"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -31,17 +30,18 @@ func Test_ListPlanes(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	path := "/planes"
+	rootScope := "/planes"
+	url := rootScope + "?api-version=2022-09-01-privatepreview"
 	var query store.Query
-	query.RootScope = path
+	query.RootScope = rootScope
 	query.IsScopeQuery = true
 
-	expectedPlaneList := rest.PlaneList{}
+	expectedPlaneList := []interface{}{}
 	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)
 
-	request, err := http.NewRequest(http.MethodGet, path, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 	actualResponse, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)

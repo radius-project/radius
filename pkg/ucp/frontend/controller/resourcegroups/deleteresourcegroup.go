@@ -13,9 +13,9 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -35,13 +35,14 @@ func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, er
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
+
 	resourceID, err := resources.ParseScope(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	existingRG := rest.ResourceGroup{}
-	etag, err := r.GetResource(ctx, resourceID.String(), &existingRG)
+	existingResource := datamodel.ResourceGroup{}
+	etag, err := r.GetResource(ctx, resourceID.String(), &existingResource)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := armrpc_rest.NewNoContentResponse()
@@ -74,7 +75,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 	return restResponse, nil
 }
 
-func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (rest.ResourceList, error) {
+func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (datamodel.ResourceList, error) {
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var query store.Query
 	query.RootScope = path
@@ -83,16 +84,16 @@ func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.Storag
 
 	result, err := e.StorageClient().Query(ctx, query)
 	if err != nil {
-		return rest.ResourceList{}, err
+		return datamodel.ResourceList{}, err
 	}
 
 	if result == nil || len(result.Items) == 0 {
-		return rest.ResourceList{}, nil
+		return datamodel.ResourceList{}, nil
 	}
 
-	listOfResources := rest.ResourceList{}
+	listOfResources := datamodel.ResourceList{}
 	for _, item := range result.Items {
-		var resource rest.Resource
+		var resource datamodel.Resource
 		err = item.As(&resource)
 		if err != nil {
 			return listOfResources, err

@@ -13,6 +13,7 @@ import (
 
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -86,8 +87,8 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			return nil, err
 		}
 
-		existingPlane := rest.Plane{}
-		_, err = p.GetResource(ctx, rgID.String(), &existingPlane)
+		existingRG := datamodel.ResourceGroup{}
+		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
 				return armrpc_rest.NewNotFoundResponse(rgID), nil
@@ -152,7 +153,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	requestInfo := proxy.UCPRequestInfo{
 		PlaneURL:   proxyURL,
-		PlaneKind:  plane.Properties.Kind,
+		PlaneKind:  string(plane.Properties.Kind),
 		PlaneID:    planePath,
 		HTTPScheme: httpScheme,
 		// The Host field in the request that the client makes to UCP contains the UCP Host address

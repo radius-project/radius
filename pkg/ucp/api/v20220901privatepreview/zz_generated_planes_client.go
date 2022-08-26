@@ -7,7 +7,7 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package v20220901privatepreview
 
 import (
 	"context"
@@ -54,7 +54,7 @@ pl: pl,
 
 // CreateOrUpdate - Create or update a Plane.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // plane - plane details
@@ -89,6 +89,9 @@ func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, pla
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, plane)
 }
@@ -104,7 +107,7 @@ func (client *PlanesClient) createOrUpdateHandleResponse(resp *http.Response) (P
 
 // Delete - Delete a Plane.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // options - PlanesClientDeleteOptions contains the optional parameters for the PlanesClient.Delete method.
@@ -138,13 +141,16 @@ func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType s
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // Get - Gets the properties of a UCP Plane.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // options - PlanesClientGetOptions contains the optional parameters for the PlanesClient.Get method.
@@ -178,6 +184,9 @@ func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType stri
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
@@ -193,7 +202,7 @@ func (client *PlanesClient) getHandleResponse(resp *http.Response) (PlanesClient
 
 // List - List all planes.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // options - PlanesClientListOptions contains the optional parameters for the PlanesClient.List method.
 func (client *PlanesClient) List(ctx context.Context, options *PlanesClientListOptions) (PlanesClientListResponse, error) {
 	req, err := client.listCreateRequest(ctx, options)
@@ -217,6 +226,9 @@ func (client *PlanesClient) listCreateRequest(ctx context.Context, options *Plan
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }

@@ -7,7 +7,7 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package v20220901privatepreview
 
 import (
 	"encoding/json"
@@ -314,7 +314,12 @@ func (e *ErrorResponse) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type PlaneResource.
 func (p PlaneResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "id", p.ID)
+	populate(objectMap, "location", p.Location)
+	populate(objectMap, "name", p.Name)
 	populate(objectMap, "properties", p.Properties)
+	populate(objectMap, "tags", p.Tags)
+	populate(objectMap, "type", p.Type)
 	return json.Marshal(objectMap)
 }
 
@@ -327,8 +332,23 @@ func (p *PlaneResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "id":
+				err = unpopulate(val, "ID", &p.ID)
+				delete(rawMsg, key)
+		case "location":
+				err = unpopulate(val, "Location", &p.Location)
+				delete(rawMsg, key)
+		case "name":
+				err = unpopulate(val, "Name", &p.Name)
+				delete(rawMsg, key)
 		case "properties":
 				err = unpopulate(val, "Properties", &p.Properties)
+				delete(rawMsg, key)
+		case "tags":
+				err = unpopulate(val, "Tags", &p.Tags)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, "Type", &p.Type)
 				delete(rawMsg, key)
 		}
 		if err != nil {

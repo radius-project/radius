@@ -44,7 +44,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath)
+	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
 	if err != nil {
 		return err
 	}

@@ -7,7 +7,7 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package v20220901privatepreview
 
 import (
 	"context"
@@ -54,7 +54,7 @@ pl: pl,
 
 // CreateOrUpdate - Create or update a ResourceGroup.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // resourceGroupName - The name of the resource group
@@ -95,6 +95,9 @@ func (client *ResourceGroupsClient) createOrUpdateCreateRequest(ctx context.Cont
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, resourceGroup)
 }
@@ -110,7 +113,7 @@ func (client *ResourceGroupsClient) createOrUpdateHandleResponse(resp *http.Resp
 
 // Delete - Delete a ResourceGroup.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // resourceGroupName - The name of the resource group
@@ -149,13 +152,16 @@ func (client *ResourceGroupsClient) deleteCreateRequest(ctx context.Context, pla
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // Get - Gets the properties of a UCP ResourceGroup.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // resourceGroupName - The name of the resource group
@@ -194,6 +200,9 @@ func (client *ResourceGroupsClient) getCreateRequest(ctx context.Context, planeT
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
@@ -209,7 +218,7 @@ func (client *ResourceGroupsClient) getHandleResponse(resp *http.Response) (Reso
 
 // List - List all resource groups.
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-03-15-privatepreview
+// Generated from API version 2022-09-01-privatepreview
 // planeType - The type of the plane
 // planeName - The name of the plane
 // options - ResourceGroupsClientListOptions contains the optional parameters for the ResourceGroupsClient.List method.
@@ -243,6 +252,9 @@ func (client *ResourceGroupsClient) listCreateRequest(ctx context.Context, plane
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }

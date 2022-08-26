@@ -18,8 +18,8 @@ import (
 )
 
 const (
-	UCPEndpointType = "ucp"
-	UCPApiVersion   = "2022-03-15-privatepreview"
+	UCPEndpointType = "ucp/ucp"
+	UCPApiVersion   = "2022-09-01-privatepreview"
 )
 
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
@@ -45,7 +45,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			errs := v.ValidateRequest(r)
+			errs := v.ValidateRequest(r, false)
 			if errs != nil {
 				resp := validationFailedResponse(rID.Type()+"/"+rID.Name(), errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -65,8 +65,7 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			endpointType := UCPEndpointType
-			// TODO: Currently, UCP APIs do not support versioning. Using a dummy version here
-			apiVersion := UCPApiVersion
+			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
 			v, ok := loader.GetValidator(endpointType, apiVersion)
 			if !ok {
 				resp := unsupportedAPIVersionResponse(apiVersion, endpointType, loader.SupportedVersions(endpointType))
@@ -76,7 +75,7 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			errs := v.ValidateRequest(r)
+			errs := v.ValidateRequest(r, true)
 			if errs != nil {
 				resp := validationFailedResponse(endpointType, errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
