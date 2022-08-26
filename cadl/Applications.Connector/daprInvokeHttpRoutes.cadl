@@ -40,7 +40,7 @@ model DaprInvokeHttpRouteProperties extends BasicResourceProperties {
   @doc("The resource id of the environment linked to the daprInvokeHttpRoute connector")
   environment: string;
 
-  @doc("The Dapr appIdd used for the route")
+  @doc("The Dapr appId used for the route")
   topic?: string;
 }
 
