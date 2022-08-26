@@ -36,8 +36,6 @@ const (
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
 var DefaultFactory = &impl{}
 
-//go:generate mockgen -destination=./mock_factory.go -package=connections -self_package github.com/project-radius/radius/pkg/cli/connections github.com/project-radius/radius/pkg/cli/connections Factory
-
 // ConnectionFactory is a mockable abstraction for our client-server interations.
 type Factory interface {
 	CreateDeploymentClient(ctx context.Context, workspace workspaces.Workspace) (clients.DeploymentClient, error)

@@ -95,21 +95,6 @@ func (mr *MockApplicationsManagementClientMockRecorder) GetEnvDetails(arg0, arg1
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvDetails", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvDetails), arg0, arg1)
 }
 
-// ListAllResourceOfTypeInApplication mocks base method.
-func (m *MockApplicationsManagementClient) ListAllResourceOfTypeInApplication(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAllResourceOfTypeInApplication", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]generated.GenericResource)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListAllResourceOfTypeInApplication indicates an expected call of ListAllResourceOfTypeInApplication.
-func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourceOfTypeInApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourceOfTypeInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourceOfTypeInApplication), arg0, arg1, arg2)
-}
-
 // ListAllResourcesByApplication mocks base method.
 func (m *MockApplicationsManagementClient) ListAllResourcesByApplication(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
@@ -125,6 +110,21 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByApplic
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByApplication), arg0, arg1)
 }
 
+// ListAllResourcesByEnvironment mocks base method.
+func (m *MockApplicationsManagementClient) ListAllResourcesByEnvironment(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllResourcesByEnvironment", arg0, arg1)
+	ret0, _ := ret[0].([]generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllResourcesByEnvironment indicates an expected call of ListAllResourcesByEnvironment.
+func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByEnvironment(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByEnvironment), arg0, arg1)
+}
+
 // ListAllResourcesByType mocks base method.
 func (m *MockApplicationsManagementClient) ListAllResourcesByType(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
@@ -138,6 +138,36 @@ func (m *MockApplicationsManagementClient) ListAllResourcesByType(arg0 context.C
 func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesByType(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesByType", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesByType), arg0, arg1)
+}
+
+// ListAllResourcesOfTypeInApplication mocks base method.
+func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInApplication(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllResourcesOfTypeInApplication", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllResourcesOfTypeInApplication indicates an expected call of ListAllResourcesOfTypeInApplication.
+func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesOfTypeInApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesOfTypeInApplication", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesOfTypeInApplication), arg0, arg1, arg2)
+}
+
+// ListAllResourcesOfTypeInEnvironment mocks base method.
+func (m *MockApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(arg0 context.Context, arg1, arg2 string) ([]generated.GenericResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAllResourcesOfTypeInEnvironment", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]generated.GenericResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAllResourcesOfTypeInEnvironment indicates an expected call of ListAllResourcesOfTypeInEnvironment.
+func (mr *MockApplicationsManagementClientMockRecorder) ListAllResourcesOfTypeInEnvironment(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAllResourcesOfTypeInEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListAllResourcesOfTypeInEnvironment), arg0, arg1, arg2)
 }
 
 // ListApplications mocks base method.

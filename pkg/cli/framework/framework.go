@@ -14,8 +14,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-//go:generate mockgen -destination=./mock_framework.go -package=framework -self_package github.com/project-radius/radius/pkg/cli/framework github.com/project-radius/radius/pkg/cli/framework Factory
-
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
 	GetConnectionFactory() connections.Factory

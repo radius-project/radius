@@ -6,18 +6,26 @@
 package show
 
 import (
+	"context"
 	"testing"
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/cmd/shared"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
-	"github.com/spf13/cobra"
 	"github.com/stretchr/testify/require"
+)
+
+var (
+	ResourceID   = "/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/containers/containera-app-with-resources"
+	ResourceName = "containera-app-with-resources"
+	ResourceType = "applications.core/containers"
+	Location     = "global"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -37,47 +45,51 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	config := radcli.LoadConfigWithWorkspace()
-	testcases := []radcli.ValidateInput{
-		{
-			Input:         []string{"containers", "foo", "-o", "table"},
-			ExpectedValid: true,
-			ConfigHolder:  shared.ConfigHolder{"", config},
-			ConnectionsFactoryMock:  connections.MockFactory{},
-			OutputInterfaceMock:     output.MockInterface{},
-			AppManagementClientMock: clients.MockApplicationsManagementClient{},
-			InitMocks:     InitShowMocks,
-			InitScenario:  InitShowValidContainerScenario,
-		},
-	}
-	for _, testcase := range testcases {
-		framework := &framework.Impl{nil, &testcase.ConfigHolder, nil}
-		cmd, runner := NewCommand(framework)
-		cmd.SetArgs(testcase.Input)
+	t.Run("Validate rad resource show valid container resource", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 
-		err := cmd.ParseFlags(testcase.Input)
-		require.NoError(t, err, "flag parsing failed")
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			ShowResource(gomock.Any(), "containers", "foo").
+			Return(CreateContainerResource(), nil).Times(1)
 
-		radcli.RunCommand(t, cmd, runner, testcase)
-	}
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			Output:            outputSink,
+			Workspace:         &workspaces.Workspace{},
+			ResourceType:      "containers",
+			ResourceName:      "foo",
+			Format:            "table",
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []interface{}{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     CreateContainerResource(),
+				Options: objectformats.GetResourceTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+	})
 }
 
-func InitShowMocks(t *testing.T, input *radcli.ValidateInput) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
+func CreateContainerResource() generated.GenericResource {
+	resource := generated.Resource{
+		ID:   &ResourceID,
+		Name: &ResourceName,
+		Type: &ResourceType,
+	}
 
-	input.ConnectionsFactoryMock = *connections.NewMockFactory(ctrl)
-	input.AppManagementClientMock = *clients.NewMockApplicationsManagementClient(ctrl)
-	input.OutputInterfaceMock = *output.NewMockInterface(ctrl)
-}
+	trackedResource := generated.TrackedResource{
+		Resource: resource,
+		Location: &Location,
+	}
 
-// func initScenarios(connectionsFactoryMock *connections.MockFactory, outputInterfaceMock *output.MockInterface, appManagementClientMock *clients.MockApplicationsManagementClient, cmd *cobra.Command, runner Runner) {
-func InitShowValidContainerScenario(t *testing.T, input *radcli.ValidateInput, cmd *cobra.Command, runner framework.Runner) {
-	showRunner, ok := runner.(*Runner)
-	require.EqualValues(t, ok, true)
-
-	resourceDetails := radcli.CreateContainerResource()
-	input.ConnectionsFactoryMock.EXPECT().CreateApplicationsManagementClient(cmd.Context(), showRunner.Workspace).Return(input.AppManagementClientMock, nil)
-	input.AppManagementClientMock.EXPECT().ShowResource(gomock.Any(), "containers", "foo").Return(resourceDetails, nil)
-	input.OutputInterfaceMock.EXPECT().Write(showRunner.Format, resourceDetails, objectformats.GetResourceTableFormat()).Return(nil)
+	return generated.GenericResource{TrackedResource: trackedResource}
 }
