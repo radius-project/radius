@@ -375,7 +375,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		// Check if publicEndpointOverride contains a scheme,
 		// and if so, throw an error to the user
 		if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
-			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
+			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		}
 
 		hostname, port, err := net.SplitHostPort(publicEndpointOverride)

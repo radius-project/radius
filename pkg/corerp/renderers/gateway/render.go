@@ -264,8 +264,8 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	// Handle the explicit override case (return)
 	// Handle the explicit FQDN case (return)
 	// Select the 'base' hostname (convert IP to hostname)
-	// Prepend the prefix, if one is specified
 	// If a prefix is not specified and the LoadBalancer provided an IP, then prepend with the gateway name
+	// Prepend the prefix, if one is specified
 	// Return the (possibly altered) hostname
 
 	if options.PublicEndpointOverride {
@@ -283,6 +283,13 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 	var baseHostname string
 	if options.ExternalIP != "" {
 		baseHostname = fmt.Sprintf("%s.%s.nip.io", applicationName, options.ExternalIP)
+
+		// If no prefix was specified, and the LoadBalancer provided us an ExternalIP,
+		// prepend the hostname with the Gateway name (for uniqueness)
+		if gateway.Hostname == nil || gateway.Hostname.Prefix == "" {
+			// Auto-assign hostname: gatewayname.appname.ip.nip.io
+			return fmt.Sprintf("%s.%s", resource.Name, baseHostname), nil
+		}
 	} else if options.Hostname != "" {
 		baseHostname = options.Hostname
 	} else {
@@ -296,16 +303,9 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
 			return fmt.Sprintf("%s.%s", gateway.Hostname.Prefix, baseHostname), nil
-		} else if gateway.Hostname.FullyQualifiedHostname == "" {
+		} else {
 			return "", &ErrFQDNOrPrefixRequired{}
 		}
-	}
-
-	// If no prefix was specified, and the LoadBalancer provided us an ExternalIP,
-	// prepend the hostname with the Gateway name (for uniqueness)
-	if options.ExternalIP != "" {
-		// Auto-assign hostname: gatewayname.appname.ip.nip.io
-		return fmt.Sprintf("%s.%s", resource.Name, baseHostname), nil
 	}
 
 	return baseHostname, nil

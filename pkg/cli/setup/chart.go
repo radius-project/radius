@@ -5,7 +5,12 @@
 
 package setup
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
 
 type ChartArgs struct {
 	Reinstall    bool
@@ -63,6 +68,8 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	publicEndpointOverride, err := cmd.Flags().GetString("public-endpoint-override")
 	if err != nil {
 		return nil, err
+	} else if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
+		return nil, fmt.Errorf("a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
 	}
 
 	return &ChartArgs{
