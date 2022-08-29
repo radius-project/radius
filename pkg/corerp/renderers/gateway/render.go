@@ -64,10 +64,10 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options.Environment.Gateway)
 
 	var publicEndpoint string
-	if err != nil && !errors.Is(err, &ErrNoPublicEndpoint{}) {
-		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
-	} else if errors.Is(err, &ErrNoPublicEndpoint{}) {
+	if errors.Is(err, &ErrNoPublicEndpoint{}) {
 		publicEndpoint = "unknown"
+	} else if err != nil {
+		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	} else {
 		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
 	}
