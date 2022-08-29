@@ -938,7 +938,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
 		require.Error(t, err)
-		require.EqualError(t, err, "a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
+		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		require.Equal(t, options, renderers.EnvironmentOptions{})
 	})
 }
