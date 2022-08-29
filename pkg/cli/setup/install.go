@@ -10,10 +10,11 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) (bool, error) {
-	step := output.BeginStep("Installing Radius...")
+	step := output.BeginStep("Installing Radius %s...", version.Version())
 	foundExisting, err := helm.InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
 		return false, err
