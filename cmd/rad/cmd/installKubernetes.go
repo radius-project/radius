@@ -88,7 +88,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 
-	config := ConfigHolder.ConfigFromContext(ctx)
+	config := ConfigFromContext(ctx)
 	section, err := cli.ReadWorkspaceSection(config)
 	if err != nil {
 		return err

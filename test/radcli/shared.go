@@ -6,10 +6,9 @@
 package radcli
 
 import (
-	"strings"
+	"bytes"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -17,6 +16,7 @@ import (
 )
 
 type ValidateInput struct {
+	Name          string
 	Input         []string
 	ExpectedValid bool
 	ConfigHolder  framework.ConfigHolder
@@ -34,7 +34,7 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
 	for _, testcase := range testcases {
-		t.Run(strings.Join(testcase.Input, " "), func(t *testing.T) {
+		t.Run(testcase.Name, func(t *testing.T) {
 			framework := &framework.Impl{
 				ConnectionFactory: nil,
 				ConfigHolder:      &testcase.ConfigHolder,
@@ -55,10 +55,36 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 	}
 }
 
-func LoadConfigWithWorkspace() *viper.Viper {
-	v, err := cli.LoadConfig("./testdata/config.yaml")
-	if err != nil {
-		return nil
-	}
+func LoadConfigWithWorkspace(t *testing.T) *viper.Viper {
+
+	var yamlData = []byte(`
+workspaces: 
+  default: kind-kind
+  items: 
+    kind-kind: 
+      connection: 
+        context: kind-kind
+        kind: kubernetes
+      environment: /planes/radius/local/resourceGroups/kind-kind/providers/Applications.Core/environments/test
+      scope: /planes/radius/local/resourceGroups/kind-kind
+`)
+
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(bytes.NewBuffer(yamlData))
+	require.NoError(t, err)
+	return v
+}
+
+func LoadConfigWithoutWorkspace(t *testing.T) *viper.Viper {
+
+	var yamlData = []byte(`
+workspaces: 
+`)
+
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(bytes.NewBuffer(yamlData))
+	require.NoError(t, err)
 	return v
 }

@@ -37,7 +37,7 @@ func init() {
 }
 
 func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {

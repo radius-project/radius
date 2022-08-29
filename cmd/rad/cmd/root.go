@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -33,7 +34,7 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 
-var ConfigHolderKey = framework.NewContextKey("config")
+var ConfigHolderKey = NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
@@ -109,4 +110,19 @@ func initConfig() {
 	}
 
 	ConfigHolder.Config = v
+}
+
+type contextKey string
+
+func NewContextKey(purpose string) contextKey {
+	return contextKey("radius context " + purpose)
+}
+
+func ConfigFromContext(ctx context.Context) *viper.Viper {
+	holder := ctx.Value(NewContextKey("config")).(*framework.ConfigHolder)
+	if holder == nil {
+		return nil
+	}
+
+	return holder.Config
 }

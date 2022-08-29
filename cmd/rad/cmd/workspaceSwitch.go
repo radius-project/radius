@@ -25,7 +25,7 @@ func init() {
 }
 
 func switchWorkspace(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 	workspaceName, err := cli.ReadWorkspaceNameArgs(cmd, args)
 	if err != nil {
 		return err

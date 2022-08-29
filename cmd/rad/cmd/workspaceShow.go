@@ -24,7 +24,7 @@ func init() {
 }
 
 func showWorkspace(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {

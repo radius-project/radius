@@ -110,7 +110,7 @@ func init() {
 }
 
 func deployApplication(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err

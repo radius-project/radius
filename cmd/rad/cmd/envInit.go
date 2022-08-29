@@ -58,7 +58,7 @@ func (k EnvKind) String() string {
 }
 
 func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 
 	interactive, err := cmd.Flags().GetBool("interactive")
 	if err != nil {

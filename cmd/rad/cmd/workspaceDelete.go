@@ -28,7 +28,7 @@ func init() {
 }
 
 func deleteWorkspace(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 
 	workspace, err := cli.RequireWorkspaceArgs(cmd, config, args)
 	if err != nil {

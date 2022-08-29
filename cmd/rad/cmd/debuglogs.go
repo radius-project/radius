@@ -40,7 +40,7 @@ func init() {
 }
 
 func debugLogs(cmd *cobra.Command, args []string) error {
-	config := ConfigHolder.ConfigFromContext(cmd.Context())
+	config := ConfigFromContext(cmd.Context())
 
 	w, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {

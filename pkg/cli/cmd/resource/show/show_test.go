@@ -33,14 +33,43 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	config := radcli.LoadConfigWithWorkspace()
+	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Input:         []string{"containers", "foo", "-o", "table"},
+			Name:          "Valid Show Command",
+			Input:         []string{"containers", "foo"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         config,
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command without workspace",
+			Input:         []string{"containers", "foo", "-o", "table"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithoutWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with invalid resource type",
+			Input:         []string{"invalidResourceType", "foo"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with in sufficient args",
+			Input:         []string{"containers"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
 			},
 		},
 	}
