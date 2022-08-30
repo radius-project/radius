@@ -118,6 +118,8 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
+//go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients ApplicationsManagementClient
+
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
 	ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
