@@ -29,7 +29,9 @@ func envStart(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	//nolint:all
 	lifecycle, err := connections.DefaultFactory.CreateServerLifecycleClient(cmd.Context(), *workspace)
+	//nolint:all
 	if err != nil {
 		return err
 	}
