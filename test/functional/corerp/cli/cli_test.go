@@ -41,6 +41,8 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	appName := test.Name
+	t.Logf("appName: %s", appName)
+	t.Logf(`RESOURCE        TYPE\n` + appName + `  applications.core/applications\n`)
 	containerName := "containera"
 	if strings.EqualFold(appName, "kubernetes-cli-json") {
 		containerName = "containera-json"
