@@ -47,7 +47,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command without workspace",
-			Input:         []string{"containers", "foo", "-o", "table"},
+			Input:         []string{"containers", "foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
