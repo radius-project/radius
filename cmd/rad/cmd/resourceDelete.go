@@ -8,6 +8,7 @@ package cmd
 import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,10 +42,14 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = client.DeleteResource(cmd.Context(), resourceType, resourceName)
-	if err != nil {
-		return err
+	resResp, err := client.DeleteResource(cmd.Context(), resourceType, resourceName)
+	if err == nil {
+		if resResp.RawResponse.StatusCode == 204 {
+			output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", resourceName, resourceType)
+		} else if err == nil {
+			output.LogInfo("Resource deleted")
+		}
 	}
 
-	return nil
+	return err
 }
