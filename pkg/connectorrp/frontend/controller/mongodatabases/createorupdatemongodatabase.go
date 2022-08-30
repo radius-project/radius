@@ -17,8 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -81,8 +81,8 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	}
 
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
-	newResource.InternalMetadata.ComputedValues = deploymentOutput.ComputedValues
-	newResource.InternalMetadata.SecretValues = deploymentOutput.SecretValues
+	newResource.ComputedValues = deploymentOutput.ComputedValues
+	newResource.SecretValues = deploymentOutput.SecretValues
 
 	if database, ok := deploymentOutput.ComputedValues[renderers.DatabaseNameValue].(string); ok {
 		newResource.Properties.Database = database

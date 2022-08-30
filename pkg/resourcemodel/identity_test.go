@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
@@ -19,7 +18,7 @@ var values = []ResourceIdentity{
 	{
 		ResourceType: &ResourceType{
 			Type:     resourcekinds.AzureCosmosAccount,
-			Provider: providers.ProviderAzure,
+			Provider: ProviderAzure,
 		},
 		Data: ARMIdentity{
 			ID:         "/some/id",
@@ -29,7 +28,7 @@ var values = []ResourceIdentity{
 	{
 		ResourceType: &ResourceType{
 			Type:     resourcekinds.Deployment,
-			Provider: providers.ProviderKubernetes,
+			Provider: ProviderKubernetes,
 		},
 		Data: KubernetesIdentity{
 			Kind:       "Deployment",
@@ -41,7 +40,7 @@ var values = []ResourceIdentity{
 	{
 		ResourceType: &ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: ProviderAzureKubernetesService,
 		},
 		Data: AADPodIdentityIdentity{
 			AKSClusterName: "test-cluster",

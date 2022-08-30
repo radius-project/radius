@@ -16,6 +16,9 @@ type MongoDatabase struct {
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
 
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
+
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
@@ -32,6 +35,9 @@ type MongoDatabaseResponse struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
+
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
 }
 
 func (mongo MongoDatabase) ResourceTypeName() string {

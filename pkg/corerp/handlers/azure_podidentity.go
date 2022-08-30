@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -133,7 +132,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 	resource.Identity = resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
 			AKSClusterName: handler.arm.K8sClusterName,
@@ -179,7 +178,7 @@ func (handler *azurePodIdentityHandler) GetResourceIdentity(ctx context.Context,
 	identity := resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
 			AKSClusterName: handler.arm.K8sClusterName,

@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -34,7 +33,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				LocalID: outputresource.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				Identity: resourcemodel.ResourceIdentity{},
 			},
@@ -63,7 +62,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				LocalID: outputresource.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 		},

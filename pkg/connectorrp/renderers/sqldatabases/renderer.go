@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -89,7 +88,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 
 	serverResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureSqlServer,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	serverResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServer,
@@ -99,7 +98,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	}
 	databaseResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureSqlServerDatabase,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	databaseResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServerDatabase,

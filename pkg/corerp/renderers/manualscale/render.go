@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -47,7 +47,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		switch e.Kind {
 		case datamodel.ManualScaling:
 			for _, ores := range output.Resources {
-				if ores.ResourceType.Provider != providers.ProviderKubernetes {
+				if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
 					// Not a Kubernetes resource
 					continue
 				}

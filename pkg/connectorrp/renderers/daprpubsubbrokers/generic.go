@@ -9,7 +9,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -52,7 +51,7 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprPubSubB
 		LocalID: outputresource.LocalIDDaprComponent,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprComponent,
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 		Resource: &daprGenericResource,
 	}

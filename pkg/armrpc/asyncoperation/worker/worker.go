@@ -23,7 +23,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -163,8 +162,8 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
 				opLogger.V(radlogger.Error).Info(errMsg)
-				failed := ctrl.NewFailedResult(armerrors.ErrorDetails{
-					Code:    armerrors.Internal,
+				failed := ctrl.NewFailedResult(v1.ErrorDetails{
+					Code:    v1.CodeInternal,
 					Message: errMsg,
 				})
 				w.completeOperation(ctx, msgreq, failed, asyncCtrl.StorageClient())
@@ -281,11 +280,11 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 	}
 }
 
-func extractError(err error) armerrors.ErrorDetails {
+func extractError(err error) v1.ErrorDetails {
 	if clientErr, ok := err.(*conv.ErrClientRP); ok {
-		return armerrors.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
+		return v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
 	} else {
-		return armerrors.ErrorDetails{Code: armerrors.Internal, Message: err.Error()}
+		return v1.ErrorDetails{Code: v1.CodeInternal, Message: err.Error()}
 	}
 }
 
@@ -311,7 +310,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 	}
 }
 
-func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *armerrors.ErrorDetails) error {
+func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	rID, err := resources.Parse(req.ResourceID)

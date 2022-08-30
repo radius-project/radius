@@ -8,9 +8,9 @@ package controller
 import (
 	"context"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -29,7 +29,7 @@ func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: err.Error()}), err
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
 
 	id, err := resources.Parse(request.ResourceID)
@@ -48,7 +48,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 
 	deploymentDataModel, ok := dataModel.(rp.DeploymentDataModel)
 	if !ok {
-		return ctrl.NewFailedResult(armerrors.ErrorDetails{Message: "deployment data model conversion error"}), nil
+		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
 
 	err = c.DeploymentProcessor().Delete(ctx, id, deploymentDataModel.OutputResources())

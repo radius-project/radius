@@ -15,10 +15,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -40,7 +38,7 @@ func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options r
 		Resource: &deployment,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.Deployment,
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 		LocalID: outputresource.LocalIDDeployment,
 	}
@@ -175,7 +173,7 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
 	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.(*conv.ErrClientRP).Message)
 }
 

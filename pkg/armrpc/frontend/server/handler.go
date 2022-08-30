@@ -16,9 +16,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 const (
@@ -137,31 +136,31 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	// if the error is due to api conversion failure return bad resquest
 	switch v := err.(type) {
 	case *conv.ErrModelConversion:
-		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
 			},
 		})
 	case *conv.ErrClientRP:
-		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
+		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
 				Code:    v.Code,
 				Message: v.Message,
 			},
 		})
 	default:
 		if err.Error() == conv.ErrInvalidModelConversion.Error() {
-			response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 					Message: err.Error(),
 				},
 			})
 		} else {
-			response = rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    armerrors.Internal,
+			response = rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeInternal,
 					Message: err.Error(),
 				},
 			})
@@ -169,9 +168,9 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	}
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		body := armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
+		body := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},
 		}

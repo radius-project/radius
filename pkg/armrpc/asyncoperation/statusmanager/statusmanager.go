@@ -15,7 +15,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -38,7 +37,7 @@ type StatusManager interface {
 	// QueueAsyncOperation creates an async operation status object and queue async operation.
 	QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error
 	// Update updates an async operation status.
-	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *armerrors.ErrorDetails) error
+	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error
 	// Delete deletes an async operation status.
 	Delete(ctx context.Context, id resources.ID, operationID uuid.UUID) error
 }
@@ -115,7 +114,7 @@ func (aom *statusManager) Get(ctx context.Context, id resources.ID, operationID 
 	return aos, nil
 }
 
-func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *armerrors.ErrorDetails) error {
+func (aom *statusManager) Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error {
 	opID := aom.operationStatusResourceID(id, operationID)
 
 	obj, err := aom.storeClient.Get(ctx, opID)

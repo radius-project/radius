@@ -15,10 +15,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -138,10 +138,10 @@ func TestDeleteRabbitMQMessageQueue_20220315PrivatePreview(t *testing.T) {
 				// We return either 200 or 204 without a response body for success.
 				require.Empty(t, payload, "response body should be empty")
 			} else {
-				armerr := armerrors.ErrorResponse{}
+				armerr := v1.ErrorResponse{}
 				err = json.Unmarshal(payload, &armerr)
 				require.NoError(t, err)
-				require.Equal(t, armerrors.PreconditionFailed, armerr.Error.Code)
+				require.Equal(t, v1.CodePreconditionFailed, armerr.Error.Code)
 				require.NotEmpty(t, armerr.Error.Target)
 			}
 		})

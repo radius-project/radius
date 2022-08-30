@@ -12,8 +12,8 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -92,33 +92,33 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 }
 
 func invalidResourceIDResponse(id string) rest.Response {
-	return rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Code:    armerrors.Invalid,
+	return rest.NewBadRequestARMResponse(v1.ErrorResponse{
+		Error: v1.ErrorDetails{
+			Code:    v1.CodeInvalid,
 			Message: fmt.Sprintf("Invalid Resource ID: %s", id),
 		},
 	})
 }
 
 func unsupportedAPIVersionResponse(apiVersion, resourceType string, supportedAPIVersions []string) rest.Response {
-	return rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Code:    armerrors.InvalidApiVersionParameter,
+	return rest.NewBadRequestARMResponse(v1.ErrorResponse{
+		Error: v1.ErrorDetails{
+			Code:    v1.CodeInvalidApiVersionParameter,
 			Message: fmt.Sprintf("API version '%s' for type '%s' is not supported. The supported api-versions are '%s'.", apiVersion, resourceType, strings.Join(supportedAPIVersions, ", ")),
 		},
 	})
 }
 
 func validationFailedResponse(qualifiedName string, valErrs []ValidationError) rest.Response {
-	errDetails := []armerrors.ErrorDetails{}
+	errDetails := []v1.ErrorDetails{}
 
 	for _, verr := range valErrs {
-		errDetails = append(errDetails, armerrors.ErrorDetails{Code: verr.Code, Message: verr.Message})
+		errDetails = append(errDetails, v1.ErrorDetails{Code: verr.Code, Message: verr.Message})
 	}
 
-	resp := rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-		Error: armerrors.ErrorDetails{
-			Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+	resp := rest.NewBadRequestARMResponse(v1.ErrorResponse{
+		Error: v1.ErrorDetails{
+			Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 			Target:  qualifiedName,
 			Message: "HTTP request payload failed validation against API specification with one or more errors. Please see details for more information.",
 			Details: errDetails,
