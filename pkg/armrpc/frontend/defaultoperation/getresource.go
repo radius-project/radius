@@ -20,18 +20,18 @@ import (
 // GetResource is the controller implementation to get a resource.
 type GetResource[T conv.DataModelInterface] struct {
 	ctrl.BaseController
-	outputConverter OutputConverter[T]
+	outputConverter conv.OutputConverter[T]
 }
 
-// NewGetResource creates a new GetResource.
-func NewGetResource[T conv.DataModelInterface](opts ctrl.Options, outputConverter OutputConverter[T]) (ctrl.Controller, error) {
+// NewGetResource creates a new GetResource controller instance.
+func NewGetResource[T conv.DataModelInterface](opts ctrl.Options, outputConverter conv.OutputConverter[T]) (ctrl.Controller, error) {
 	return &GetResource[T]{
 		BaseController:  ctrl.NewBaseController(opts),
 		outputConverter: outputConverter,
 	}, nil
 }
 
-// Run executes the operation
+// Run fetches the resource from the datastore.
 func (e *GetResource[T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 

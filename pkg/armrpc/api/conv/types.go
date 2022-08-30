@@ -18,3 +18,6 @@ type VersionedModelInterface interface {
 	// ConvertTo converts versioned model to version agnostic datamodel.
 	ConvertTo() (DataModelInterface, error)
 }
+
+// OutputConverter is the function to convert data model to version agnostic model.
+type OutputConverter[T DataModelInterface] func(model *T, version string) (VersionedModelInterface, error)

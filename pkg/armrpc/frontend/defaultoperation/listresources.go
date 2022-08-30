@@ -20,17 +20,18 @@ import (
 // ListResources is the controller implementation to get the list of resources in resource group.
 type ListResources[T conv.DataModelInterface] struct {
 	ctrl.BaseController
-	outputConverter OutputConverter[T]
+	outputConverter conv.OutputConverter[T]
 }
 
-// NewListResources creates a new ListResources.
-func NewListResources[T conv.DataModelInterface](opts ctrl.Options, outputConverter OutputConverter[T]) (ctrl.Controller, error) {
+// NewListResources creates a new ListResources instance.
+func NewListResources[T conv.DataModelInterface](opts ctrl.Options, outputConverter conv.OutputConverter[T]) (ctrl.Controller, error) {
 	return &ListResources[T]{
 		BaseController:  ctrl.NewBaseController(opts),
 		outputConverter: outputConverter,
 	}, nil
 }
 
+// Run fetches the list of all resources in resourcegroups.
 func (e *ListResources[T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
