@@ -97,14 +97,14 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing Radius %s to namespace: %s", version, RadiusSystemNamespace)
+		output.LogInfo("Installing Radius %s control plane to namespace: %s", version, RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
 			return false, fmt.Errorf("failed to run radius helm install, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		output.LogInfo("Reinstalling Radius %s to namespace: %s", version, RadiusSystemNamespace)
+		output.LogInfo("Reinstalling Radius %s control plane to namespace: %s", version, RadiusSystemNamespace)
 
 		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
 		if err != nil {
