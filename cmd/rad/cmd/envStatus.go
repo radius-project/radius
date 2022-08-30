@@ -39,6 +39,7 @@ func envStatus(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	
 
 	status, columns, err := lifecycle.GetStatus(cmd.Context())
 	if err != nil {
