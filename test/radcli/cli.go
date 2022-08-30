@@ -151,8 +151,6 @@ func (cli *CLI) ResourceShow(ctx context.Context, resourceType string, resourceN
 		//"-a", applicationName, TODO: apply when application flag (-a) is re-enabled for rad resource show
 		resourceType,
 		resourceName,
-		"-o",
-		"table",
 	}
 	return cli.RunCommand(ctx, args)
 }

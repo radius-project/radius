@@ -33,10 +33,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
-	cmd.Flags().StringP("output", "o", "", outputDescription)
-	cmd.Flags().StringP("type", "t", "", "The resource type")
-	cmd.Flags().StringP("resource", "r", "", "The resource name")
+	// Define your flags here
+	cmd.Flags().StringP("flagName", "k (flag's shorthand notation like w for workspace)", "", "What does the flag ask for")
 
 	return cmd, runner
 }

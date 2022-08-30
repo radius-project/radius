@@ -47,7 +47,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
-	cmd.Flags().StringP("output", "o", "", outputDescription)
+	cmd.Flags().StringP("output", "o", output.DefaultFormat, outputDescription)
 	cmd.Flags().StringP("type", "t", "", "The resource type")
 	cmd.Flags().StringP("resource", "r", "", "The resource name")
 
