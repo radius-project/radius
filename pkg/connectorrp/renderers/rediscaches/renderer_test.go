@@ -14,11 +14,9 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 )
@@ -85,7 +83,7 @@ func Test_Render_Success(t *testing.T) {
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureRedis,
 			},
 		},
@@ -214,7 +212,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*conv.ErrClientRP).Message)
 }
 
@@ -241,7 +239,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to an Azure Redis Cache", err.(*conv.ErrClientRP).Message)
 }
 
@@ -268,6 +266,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

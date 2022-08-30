@@ -14,19 +14,19 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestARMRequestCtx(t *testing.T) {
 
-	outOfBoundsTopParamError := armerrors.ErrorDetails{
-		Code:    armerrors.Invalid,
+	outOfBoundsTopParamError := v1.ErrorDetails{
+		Code:    v1.CodeInvalid,
 		Message: fmt.Sprintf("unexpected error: %v", ErrTopQueryParamOutOfBounds),
 	}
 
-	invalidTopParamError := armerrors.ErrorDetails{
-		Code:    armerrors.Invalid,
+	invalidTopParamError := v1.ErrorDetails{
+		Code:    v1.CodeInvalid,
 		Message: "unexpected error: strconv.Atoi: parsing \"xyz\": invalid syntax",
 	}
 
@@ -36,7 +36,7 @@ func TestARMRequestCtx(t *testing.T) {
 		code int
 		ok   bool
 		body string
-		err  armerrors.ErrorDetails
+		err  v1.ErrorDetails
 	}{
 		{
 			"get-env-success",
@@ -44,7 +44,7 @@ func TestARMRequestCtx(t *testing.T) {
 			http.StatusOK,
 			true,
 			"00001b53-0000-0000-0000-00006235a42c",
-			armerrors.ErrorDetails{},
+			v1.ErrorDetails{},
 		},
 		{
 			"out-of-bounds-top-query-param",
@@ -85,7 +85,7 @@ func TestARMRequestCtx(t *testing.T) {
 			assert.Equal(t, tt.code, w.Code)
 
 			if !tt.ok {
-				errResp := &armerrors.ErrorResponse{}
+				errResp := &v1.ErrorResponse{}
 				_ = json.Unmarshal(w.Body.Bytes(), errResp)
 				assert.Equal(t, tt.err, errResp.Error)
 			} else {

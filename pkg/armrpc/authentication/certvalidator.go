@@ -11,9 +11,9 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 const (
@@ -55,9 +55,9 @@ func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
 	err := resp.Apply(req.Context(), w, req)
 	if err != nil {
 		// Responds with an HTTP 500
-		body := armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
+		body := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},
 		}

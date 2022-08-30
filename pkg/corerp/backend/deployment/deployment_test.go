@@ -22,12 +22,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -61,34 +59,34 @@ func setup(t *testing.T) SharedMocks {
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Deployment,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Secret,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRoleAssignment,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Service,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 		},
 		map[string]bool{
-			providers.ProviderKubernetes: true,
-			providers.ProviderAzure:      true,
+			resourcemodel.ProviderKubernetes: true,
+			resourcemodel.ProviderAzure:      true,
 		})
 
 	return SharedMocks{
@@ -128,7 +126,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 			LocalID: outputresource.LocalIDService,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 		},
 	}
@@ -520,7 +518,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -564,7 +562,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -605,7 +603,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "linked application ID \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" for resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" has invalid application resource type.", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -786,7 +784,7 @@ func Test_Deploy(t *testing.T) {
 		expectedIdentity := resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			Data: resourcemodel.KubernetesIdentity{
 				Name:       expectedKubernetesproperties[handlers.ResourceName],

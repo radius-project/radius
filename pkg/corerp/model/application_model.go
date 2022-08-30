@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"k8s.io/client-go/kubernetes"
@@ -55,11 +54,11 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
-		providers.ProviderKubernetes: true,
+		resourcemodel.ProviderKubernetes: true,
 	}
 	if arm != nil {
-		supportedProviders[providers.ProviderAzure] = true
-		supportedProviders[providers.ProviderAzureKubernetesService] = true
+		supportedProviders[resourcemodel.ProviderAzure] = true
+		supportedProviders[resourcemodel.ProviderAzureKubernetesService] = true
 	}
 
 	radiusResourceModel := []RadiusResourceModel{
@@ -87,49 +86,49 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Kubernetes,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Deployment,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Secret,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Gateway,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.KubernetesHTTPRoute,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.SecretProviderClass,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
@@ -141,7 +140,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
 			SecretValueTransformer: &renderers.AzureTransformer{},
@@ -149,28 +148,28 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 		},
@@ -179,7 +178,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureCosmosDBMongo,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
 	   			SecretValueTransformer: &mongodbv1alpha3.AzureTransformer{},
@@ -187,84 +186,84 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.DaprStateStoreAzureStorage,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureCosmosAccount,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureCosmosDBSQL,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzurePodIdentity,
-	   				Provider: providers.ProviderAzureKubernetesService,
+	   				Provider: resourcemodel.ProviderAzureKubernetesService,
 	   			},
 	   			ResourceHandler: handlers.NewAzurePodIdentityHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureSqlServer,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewARMHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureSqlServerDatabase,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewARMHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureRoleAssignment,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureRedis,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureRedisHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureFileShare,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureFileShareHandler(arm),
 	   		},
 	   		{
 	   			ResourceType: resourcemodel.ResourceType{
 	   				Type:     resourcekinds.AzureFileShareStorageAccount,
-	   				Provider: providers.ProviderAzure,
+	   				Provider: resourcemodel.ProviderAzure,
 	   			},
 	   			ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm),
 	   		},

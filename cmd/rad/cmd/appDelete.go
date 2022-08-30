@@ -74,10 +74,12 @@ func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, appl
 	}
 
 	appResp, err := client.DeleteApplication(ctx, applicationName)
-	if appResp.RawResponse.StatusCode == 204 {
-		output.LogInfo("Application '%s' does not exist or has already been deleted.", applicationName)
-	} else if err == nil {
-		output.LogInfo("Application deleted")
+	if err == nil {
+		if appResp.RawResponse.StatusCode == 204 {
+			output.LogInfo("Application '%s' does not exist or has already been deleted.", applicationName)
+		} else {
+			output.LogInfo("Application deleted")
+		}
 	}
 
 	return err

@@ -11,7 +11,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -46,7 +45,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Resource: map[string]string{
 			handlers.ResourceName:            resource.Name,

@@ -20,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -34,7 +33,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Resource: map[string]string{
 			handlers.ResourceName:            "test-pub-sub-topic",
@@ -73,7 +72,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 		},

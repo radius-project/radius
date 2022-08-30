@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -29,11 +28,11 @@ import (
 func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (ApplicationModel, error) {
 	// Configure the providers supported by the appmodel
 	supportedProviders := map[string]bool{
-		providers.ProviderKubernetes: true,
+		resourcemodel.ProviderKubernetes: true,
 	}
 	if arm != nil {
-		supportedProviders[providers.ProviderAzure] = true
-		supportedProviders[providers.ProviderAzureKubernetesService] = true
+		supportedProviders[resourcemodel.ProviderAzure] = true
+		supportedProviders[resourcemodel.ProviderAzureKubernetesService] = true
 	}
 
 	radiusResourceModel := []RadiusResourceModel{
@@ -85,14 +84,14 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprComponent,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8s),
 		},
@@ -102,7 +101,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
 			SecretValueTransformer: &mongodatabases.AzureTransformer{},
@@ -110,42 +109,42 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureSqlServer,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureSqlServerDatabase,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRedis,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler:        handlers.NewAzureRedisHandler(arm),
 			SecretValueTransformer: &rediscaches.AzureTransformer{},

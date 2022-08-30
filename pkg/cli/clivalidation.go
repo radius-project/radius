@@ -12,10 +12,10 @@ import (
 	"path"
 	"strings"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -287,7 +287,7 @@ func Is404ErrorForAzureError(err error) bool {
 		return false
 	}
 
-	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == armerrors.NotFound {
+	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == v1.CodeNotFound {
 		return true
 	}
 

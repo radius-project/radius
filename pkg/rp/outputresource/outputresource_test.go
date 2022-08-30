@@ -8,7 +8,6 @@ package outputresource
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
@@ -27,7 +26,7 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 	testResource1 := OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -35,7 +34,7 @@ func TestGetDependencies_MissingLocalID(t *testing.T) {
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: testResource1.LocalID}},
 	}
@@ -50,7 +49,7 @@ func TestGetDependencies_Empty(t *testing.T) {
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -79,7 +78,7 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -87,7 +86,7 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
@@ -96,7 +95,7 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 		LocalID: LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},

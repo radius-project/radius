@@ -7,8 +7,6 @@ package v1
 
 import (
 	"time"
-
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 )
 
 // AsyncOperationStatus represents an OperationStatus resource.
@@ -29,5 +27,5 @@ type AsyncOperationStatus struct {
 	EndTime *time.Time `json:"endTime,omitempty"`
 
 	// Error represents the error occured during provisioning.
-	Error *armerrors.ErrorDetails `json:"error,omitempty"`
+	Error *ErrorDetails `json:"error,omitempty"`
 }

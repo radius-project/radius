@@ -11,10 +11,9 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/stretchr/testify/require"
 )
 
@@ -59,7 +58,7 @@ func TestRunWithUnsupportedAPIVersion(t *testing.T) {
 	switch v := resp.(type) {
 	case *rest.NotFoundResponse:
 		armerr := v.Body
-		require.Equal(t, armerrors.InvalidResourceType, armerr.Error.Code)
+		require.Equal(t, v1.CodeInvalidResourceType, armerr.Error.Code)
 	default:
 		require.Truef(t, false, "should not return error")
 	}

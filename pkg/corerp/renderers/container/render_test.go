@@ -20,11 +20,9 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -193,7 +191,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, apiv1.CodeInvalid)
 	require.Equal(t, err.(*conv.ErrClientRP).Message, "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
@@ -536,7 +534,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				"TargetLocalID": resourcemodel.NewARMIdentity(
 					&resourcemodel.ResourceType{
 						Type:     "dummy",
-						Provider: providers.ProviderAzure,
+						Provider: resourcemodel.ProviderAzure,
 					},
 					makeResourceID(t, "TargetResourceType", "TargetResource").String(),
 					"2020-01-01"),
@@ -573,7 +571,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
 			Deployed: false,
@@ -590,7 +588,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
 			Deployed: false,
@@ -614,7 +612,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
 			Deployed: false,
@@ -638,7 +636,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzurePodIdentity,
-				Provider: providers.ProviderAzureKubernetesService,
+				Provider: resourcemodel.ProviderAzureKubernetesService,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -702,7 +700,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
 			Deployed: false,
@@ -951,7 +949,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 				outputresource.LocalIDSecretProviderClass: {
 					ResourceType: &resourcemodel.ResourceType{
 						Type:     resourcekinds.SecretProviderClass,
-						Provider: providers.ProviderKubernetes,
+						Provider: resourcemodel.ProviderKubernetes,
 					},
 					Data: resourcemodel.KubernetesIdentity{
 						Kind:       "SecretProviderClass",

@@ -16,10 +16,9 @@ import (
 	"github.com/google/uuid"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/providers"
-	"github.com/project-radius/radius/pkg/rp/rest"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -87,8 +86,8 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 
 	providerConfig := dc.GetProviderConfigs()
 
-	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, providers.Deployment{
-		Properties: &providers.DeploymentProperties{
+	future, err := dc.Client.CreateOrUpdate(ctx, resourceId, azclients.Deployment{
+		Properties: &azclients.DeploymentProperties{
 			Template:       options.Template,
 			Parameters:     options.Parameters,
 			ProviderConfig: providerConfig,
@@ -103,14 +102,14 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 	return &future, nil
 }
 
-func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig {
-	var providerConfigs providers.ProviderConfig
+func (dc *ResouceDeploymentClient) GetProviderConfigs() azclients.ProviderConfig {
+	var providerConfigs azclients.ProviderConfig
 	if dc.AzProvider != nil {
 		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
 			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
-			providerConfigs.Az = &providers.Az{
+			providerConfigs.Az = &azclients.Az{
 				Type: "AzureResourceManager",
-				Value: providers.Value{
+				Value: azclients.Value{
 					Scope: scope,
 				},
 			}
@@ -119,17 +118,17 @@ func (dc *ResouceDeploymentClient) GetProviderConfigs() providers.ProviderConfig
 
 	if dc.RadiusResourceGroup != "" {
 		scope := "/planes/radius/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Radius = &providers.Radius{
+		providerConfigs.Radius = &azclients.Radius{
 			Type: "Radius",
-			Value: providers.Value{
+			Value: azclients.Value{
 				Scope: scope,
 			},
 		}
 
 		scope = "/planes/deployments/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Deployments = &providers.Deployments{
+		providerConfigs.Deployments = &azclients.Deployments{
 			Type: "Microsoft.Resources",
-			Value: providers.Value{
+			Value: azclients.Value{
 				Scope: scope,
 			},
 		}
@@ -224,7 +223,7 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 				continue
 			}
 
-			provisioningState := rest.OperationStatus(*operation.Properties.ProvisioningState)
+			provisioningState := v1.ProvisioningState(*operation.Properties.ProvisioningState)
 			id, err := ucpresources.Parse(*operation.Properties.TargetResource.ID)
 			if err != nil {
 				return err
@@ -232,9 +231,9 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 			current := status[id.String()]
 
 			next := clients.StatusStarted
-			if rest.SuccededStatus == provisioningState {
+			if v1.ProvisioningStateSucceeded == provisioningState {
 				next = clients.StatusCompleted
-			} else if rest.IsTeminalStatus(provisioningState) {
+			} else if provisioningState.IsTerminal() {
 				next = clients.StatusFailed
 			}
 
