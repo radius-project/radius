@@ -207,6 +207,15 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
+func RequireUCPResourceGroup(cmd *cobra.Command) (string, error) {
+	group, err := cmd.Flags().GetString("group")
+	if err != nil {
+		return "", err
+	}
+
+	return group, nil
+}
+
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
 // or specified as a positional arg, or specified using the 'workspace' flag.
 func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string) (*workspaces.Workspace, error) {
