@@ -128,7 +128,7 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 	case datamodel.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
 	default:
-		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatpreview supports only kubernetes.
+		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatepreview supports only kubernetes.
 	}
 
 	return &k
