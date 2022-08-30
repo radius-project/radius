@@ -20,14 +20,14 @@ import (
 // GetResource is the controller implementation to get a resource.
 type GetResource[T conv.DataModelInterface] struct {
 	ctrl.BaseController
-	modelConverter ToVersionedModel[T]
+	outputConverter OutputConverter[T]
 }
 
 // NewGetResource creates a new GetResource.
-func NewGetResource[T conv.DataModelInterface](opts ctrl.Options, modelConverter ToVersionedModel[T]) (ctrl.Controller, error) {
+func NewGetResource[T conv.DataModelInterface](opts ctrl.Options, outputConverter OutputConverter[T]) (ctrl.Controller, error) {
 	return &GetResource[T]{
-		BaseController: ctrl.NewBaseController(opts),
-		modelConverter: modelConverter,
+		BaseController:  ctrl.NewBaseController(opts),
+		outputConverter: outputConverter,
 	}, nil
 }
 
@@ -41,6 +41,6 @@ func (e *GetResource[T]) Run(ctx context.Context, req *http.Request) (rest.Respo
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	versioned, _ := e.modelConverter(existingResource, serviceCtx.APIVersion)
+	versioned, _ := e.outputConverter(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

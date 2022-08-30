@@ -20,14 +20,14 @@ import (
 // ListResources is the controller implementation to get the list of resources in resource group.
 type ListResources[T conv.DataModelInterface] struct {
 	ctrl.BaseController
-	modelConverter ToVersionedModel[T]
+	outputConverter OutputConverter[T]
 }
 
 // NewListResources creates a new ListResources.
-func NewListResources[T conv.DataModelInterface](opts ctrl.Options, modelConverter ToVersionedModel[T]) (ctrl.Controller, error) {
+func NewListResources[T conv.DataModelInterface](opts ctrl.Options, outputConverter OutputConverter[T]) (ctrl.Controller, error) {
 	return &ListResources[T]{
-		BaseController: ctrl.NewBaseController(opts),
-		modelConverter: modelConverter,
+		BaseController:  ctrl.NewBaseController(opts),
+		outputConverter: outputConverter,
 	}, nil
 }
 
@@ -58,7 +58,7 @@ func (e *ListResources[T]) createPaginationResponse(ctx context.Context, req *ht
 		if err := item.As(resource); err != nil {
 			return nil, err
 		}
-		versioned, err := e.modelConverter(resource, serviceCtx.APIVersion)
+		versioned, err := e.outputConverter(resource, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}
