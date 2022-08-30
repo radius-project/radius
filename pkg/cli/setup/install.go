@@ -14,7 +14,7 @@ import (
 )
 
 func Install(ctx context.Context, clusterOptions helm.ClusterOptions, kubeContext string) (bool, error) {
-	step := output.BeginStep("Installing Radius %s control plane...", version.Version())
+	step := output.BeginStep("Installing Radius version %s control plane...", version.Version())
 	foundExisting, err := helm.InstallOnCluster(ctx, clusterOptions, kubeContext)
 	if err != nil {
 		return false, err
