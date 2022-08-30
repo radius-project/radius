@@ -46,7 +46,7 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 	if err == nil {
 		if resResp.RawResponse.StatusCode == 204 {
 			output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", resourceName, resourceType)
-		} else if err == nil {
+		} else {
 			output.LogInfo("Resource deleted")
 		}
 	}
