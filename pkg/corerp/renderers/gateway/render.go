@@ -286,7 +286,7 @@ func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayPropertie
 
 		// If no prefix was specified, and the LoadBalancer provided us an ExternalIP,
 		// prepend the hostname with the Gateway name (for uniqueness)
-		if gateway.Hostname == nil || gateway.Hostname.Prefix == "" {
+		if gateway.Hostname == nil {
 			// Auto-assign hostname: gatewayname.appname.ip.nip.io
 			return fmt.Sprintf("%s.%s", resource.Name, baseHostname), nil
 		}
