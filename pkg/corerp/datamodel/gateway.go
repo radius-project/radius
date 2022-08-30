@@ -25,7 +25,7 @@ type Gateway struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (g *Gateway) ResourceTypeName() string {
+func (g Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
 }
 

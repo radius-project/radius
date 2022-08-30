@@ -11,10 +11,12 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	defaultoperation "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
@@ -69,16 +71,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
 		{
-			ParentRouter:   envRTSubrouter,
-			ResourceType:   env_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: env_ctrl.NewListEnvironments,
+			ParentRouter: envRTSubrouter,
+			ResourceType: env_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.EnvironmentDataModelToVersioned)
+			},
 		},
 		{
-			ParentRouter:   envResourceRouter,
-			ResourceType:   env_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: env_ctrl.NewGetEnvironment,
+			ParentRouter: envResourceRouter,
+			ResourceType: env_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.EnvironmentDataModelToVersioned)
+			},
 		},
 		{
 			ParentRouter:   envResourceRouter,
@@ -99,16 +105,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: env_ctrl.NewDeleteEnvironment,
 		},
 		{
-			ParentRouter:   hrtSubrouter,
-			ResourceType:   hrt_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: hrt_ctrl.NewListHTTPRoutes,
+			ParentRouter: hrtSubrouter,
+			ResourceType: hrt_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.HTTPRouteDataModelToVersioned)
+			},
 		},
 		{
-			ParentRouter:   hrtResourceRouter,
-			ResourceType:   hrt_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: hrt_ctrl.NewGetHTTPRoute,
+			ParentRouter: hrtResourceRouter,
+			ResourceType: hrt_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.HTTPRouteDataModelToVersioned)
+			},
 		},
 		{
 			ParentRouter:   hrtResourceRouter,
@@ -130,16 +140,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		},
 		// Container resource handlers
 		{
-			ParentRouter:   ctrRTSubrouter,
-			ResourceType:   ctr_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: ctr_ctrl.NewListContainers,
+			ParentRouter: ctrRTSubrouter,
+			ResourceType: ctr_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.ContainerDataModelToVersioned)
+			},
 		},
 		{
-			ParentRouter:   ctrResourceRouter,
-			ResourceType:   ctr_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: ctr_ctrl.NewGetContainer,
+			ParentRouter: ctrResourceRouter,
+			ResourceType: ctr_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.ContainerDataModelToVersioned)
+			},
 		},
 		{
 			ParentRouter:   ctrResourceRouter,
@@ -161,16 +175,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		},
 		// Applications resource handler registration.
 		{
-			ParentRouter:   appRTSubrouter,
-			ResourceType:   app_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: app_ctrl.NewListApplications,
+			ParentRouter: appRTSubrouter,
+			ResourceType: app_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.ApplicationDataModelToVersioned)
+			},
 		},
 		{
-			ParentRouter:   appResourceRouter,
-			ResourceType:   app_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: app_ctrl.NewGetApplication,
+			ParentRouter: appResourceRouter,
+			ResourceType: app_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.ApplicationDataModelToVersioned)
+			},
 		},
 		{
 			ParentRouter:   appResourceRouter,
@@ -192,16 +210,20 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		},
 		// Gateway resource handler registration.
 		{
-			ParentRouter:   gtwyRTSubrouter,
-			ResourceType:   gtwy_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: gtwy_ctrl.NewListGateways,
+			ParentRouter: gtwyRTSubrouter,
+			ResourceType: gtwy_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.GatewayDataModelToVersioned)
+			},
 		},
 		{
-			ParentRouter:   gtwyResourceRouter,
-			ResourceType:   gtwy_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: gtwy_ctrl.NewGetGateway,
+			ParentRouter: gtwyResourceRouter,
+			ResourceType: gtwy_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.GatewayDataModelToVersioned)
+			},
 		},
 		{
 			ParentRouter:   gtwyResourceRouter,
