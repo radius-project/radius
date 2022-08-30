@@ -19,6 +19,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/version"
 )
 
 const (
@@ -89,20 +90,21 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 
 	histClient := helm.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
+	version := version.Version()
 
 	// See: https://github.com/helm/helm/blob/281380f31ccb8eb0c86c84daf8bcbbd2f82dc820/cmd/helm/upgrade.go#L99
 	// The upgrade client's install option doesn't seem to work, so we have to check the history of releases manually
 	// and invoke the install client.
 	_, err = histClient.Run(radiusReleaseName)
 	if errors.Is(err, driver.ErrReleaseNotFound) {
-		output.LogInfo("Installing Radius to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Installing Radius version %s control plane to namespace: %s", version, RadiusSystemNamespace)
 
 		err = runRadiusHelmInstall(helmConf, helmChart)
 		if err != nil {
 			return false, fmt.Errorf("failed to run radius helm install, err: \n%w\nhelm output:\n%s", err, helmOutput.String())
 		}
 	} else if options.Reinstall {
-		output.LogInfo("Reinstalling Radius to namespace: %s", RadiusSystemNamespace)
+		output.LogInfo("Reinstalling Radius version %s control plane to namespace: %s", version, RadiusSystemNamespace)
 
 		err = runRadiusHelmUpgrade(helmConf, radiusReleaseName, helmChart)
 		if err != nil {
