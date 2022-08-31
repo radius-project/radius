@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package gateway
+package defaultoperation
 
 import (
 	"context"
@@ -19,22 +19,30 @@ import (
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
-
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
-func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
+type testResourceList struct {
+	NextLink *string               `json:"nextLink,omitempty"`
+	Value    []*testVersionedModel `json:"value,omitempty"`
+}
+
+func TestListResourcesRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, gtwyDataModel, expectedOutput := getTestModels20220315privatepreview()
+	testResourceDataModel := &testDataModel{
+		Name: "ResourceName",
+	}
+	expectedOutput := &testVersionedModel{
+		Name: "ResourceName",
+	}
 
 	t.Run("list zero resources", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -50,7 +58,7 @@ func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewListGateways(opts)
+		ctl, err := NewListResources(opts, resourceToVersioned)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
@@ -58,28 +66,28 @@ func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.GatewayResourceList{}
+		actualOutput := &testResourceList{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, 0, len(actualOutput.Value))
 		require.Nil(t, actualOutput.NextLink)
 	})
 
-	listGtwysCases := []struct {
+	listEnvsCases := []struct {
 		desc       string
 		dbCount    int
 		batchCount int
 		top        string
 		skipToken  bool
 	}{
-		{"list-gtwys-more-items-than-top", 10, 5, "5", true},
-		{"list-gtwys-less-items-than-top", 5, 5, "10", false},
-		{"list-gtwys-no-top", 5, 5, "", false},
+		{"list-envs-more-items-than-top", 10, 5, "5", true},
+		{"list-envs-less-items-than-top", 5, 5, "10", false},
+		{"list-envs-no-top", 5, 5, "", false},
 	}
 
-	for _, tt := range listGtwysCases {
+	for _, tt := range listEnvsCases {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
 
 			q := req.URL.Query()
 			q.Add("top", tt.top)
@@ -98,7 +106,7 @@ func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 					Metadata: store.Metadata{
 						ID: uuid.New().String(),
 					},
-					Data: gtwyDataModel,
+					Data: testResourceDataModel,
 				}
 				items = append(items, item)
 			}
@@ -117,7 +125,7 @@ func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 				StorageClient: mStorageClient,
 			}
 
-			ctl, err := NewListGateways(opts)
+			ctl, err := NewListResources(opts, resourceToVersioned)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
@@ -125,7 +133,7 @@ func TestListGatewayRun_20220315PrivatePreview(t *testing.T) {
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-			actualOutput := &v20220315privatepreview.GatewayResourceList{}
+			actualOutput := &testResourceList{}
 			_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			require.Equal(t, tt.batchCount, len(actualOutput.Value))
 			require.Equal(t, expectedOutput, actualOutput.Value[0])

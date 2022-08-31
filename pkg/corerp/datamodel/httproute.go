@@ -28,7 +28,7 @@ type HTTPRoute struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (h *HTTPRoute) ResourceTypeName() string {
+func (h HTTPRoute) ResourceTypeName() string {
 	return "Applications.Core/httpRoutes"
 }
 

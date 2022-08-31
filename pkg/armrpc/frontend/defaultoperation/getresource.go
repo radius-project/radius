@@ -3,42 +3,44 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package containers
+package defaultoperation
 
 import (
 	"context"
 	"errors"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-var _ ctrl.Controller = (*GetContainer)(nil)
-
-// GetContainer is the controller implementation to get the container resource.
-type GetContainer struct {
+// GetResource is the controller implementation to get a resource.
+type GetResource[T conv.DataModelInterface] struct {
 	ctrl.BaseController
+	outputConverter conv.OutputConverter[T]
 }
 
-// NewGetContainer creates a new instance of GetContainer.
-func NewGetContainer(opts ctrl.Options) (ctrl.Controller, error) {
-	return &GetContainer{ctrl.NewBaseController(opts)}, nil
+// NewGetResource creates a new GetResource controller instance.
+func NewGetResource[T conv.DataModelInterface](opts ctrl.Options, outputConverter conv.OutputConverter[T]) (ctrl.Controller, error) {
+	return &GetResource[T]{
+		BaseController:  ctrl.NewBaseController(opts),
+		outputConverter: outputConverter,
+	}, nil
 }
 
-func (e *GetContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+// Run fetches the resource from the datastore.
+func (e *GetResource[T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.ContainerResource{}
+	existingResource := new(T)
 	_, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
-	versioned, _ := converter.ContainerDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := e.outputConverter(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

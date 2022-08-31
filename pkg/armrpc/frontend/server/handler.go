@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
 )
@@ -93,7 +93,7 @@ func ConfigureDefaultHandlers(
 			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
-			HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
+			HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
 		}, ctrlOpts)
 		if err != nil {
 			return err
@@ -106,7 +106,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationStatuses,
-		HandlerFactory: default_ctrl.NewGetOperationStatus,
+		HandlerFactory: defaultoperation.NewGetOperationStatus,
 	}, ctrlOpts)
 	if err != nil {
 		return err
@@ -117,7 +117,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationResult,
-		HandlerFactory: default_ctrl.NewGetOperationResult,
+		HandlerFactory: defaultoperation.NewGetOperationResult,
 	}, ctrlOpts)
 	if err != nil {
 		return err

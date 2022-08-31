@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package httproutes
+package defaultoperation
 
 import (
 	"context"
@@ -13,26 +13,72 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
-
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
-func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
+const (
+	testAPIVersion        = "2022-03-15-privatepreview"
+	testRequestHeaderFile = "requestheaders.json"
+)
+
+type testDataModel struct {
+	Name string `json:"name"`
+}
+
+func (e testDataModel) ResourceTypeName() string {
+	return "Applications.Test/resource"
+}
+
+type testVersionedModel struct {
+	Name string `json:"name"`
+}
+
+func (v *testVersionedModel) ConvertFrom(src conv.DataModelInterface) error {
+	dm := src.(*testDataModel)
+	v.Name = dm.Name
+	return nil
+}
+
+func (v *testVersionedModel) ConvertTo() (conv.DataModelInterface, error) {
+	return nil, nil
+}
+
+func resourceToVersioned(model *testDataModel, version string) (conv.VersionedModelInterface, error) {
+	switch version {
+	case testAPIVersion:
+		versioned := &testVersionedModel{}
+		if err := versioned.ConvertFrom(model); err != nil {
+			return nil, err
+		}
+		return versioned, nil
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func TestGetResourceRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	ctx := context.Background()
 
-	_, hrtDataModel, expectedOutput := getTestModels20220315privatepreview()
+	testResourceDataModel := &testDataModel{
+		Name: "ResourceName",
+	}
+	expectedOutput := &testVersionedModel{
+		Name: "ResourceName",
+	}
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -46,18 +92,18 @@ func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetHTTPRoute(opts)
+		ctl, err := NewGetResource(opts, resourceToVersioned)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		require.Equal(t, http.StatusNotFound, w.Result().StatusCode)
+		require.Equal(t, 404, w.Result().StatusCode)
 	})
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -66,7 +112,7 @@ func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return &store.Object{
 					Metadata: store.Metadata{ID: id},
-					Data:     hrtDataModel,
+					Data:     testResourceDataModel,
 				}, nil
 			})
 
@@ -74,15 +120,15 @@ func TestGetHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetHTTPRoute(opts)
+		ctl, err := NewGetResource(opts, resourceToVersioned)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
-		require.Equal(t, http.StatusOK, w.Result().StatusCode)
+		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.HTTPRouteResource{}
+		actualOutput := &testVersionedModel{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedOutput, actualOutput)
