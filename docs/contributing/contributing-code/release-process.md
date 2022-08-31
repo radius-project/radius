@@ -133,18 +133,22 @@ Do not start the release until the following scenarios are validated:
    You can find this file in the storage account under `version/stable.txt`.
 
 5. Update the project-radius/docs repository
-
-   TODO confirm this process with PM team as of 0.12. Currently they use v0.X as their branch name, would like for these to be consistent.
    
-   1. Create a new branch named `v0.12` from `main`, using the release version number.
-   1. Update the branch information for the docs. Example: https://github.com/project-radius/radius/commit/f4b81b8881d590fbf077280db6a05482ed44188b
-   1. Within `docs/config.toml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
-   1. Within `.github/workflows/website.yml` update the branch to be the new `v0.12` branch you created above.
-   1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` and "edge-radius" to "radius".
-   1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number, and delete commands for unstable/version commands, including all sub-headers.
+   1. Create a new branch named `v0.12` from `edge`, using the release version number.
+   1. Within `.github/workflows/website.yaml`:
+      - Change `branches` to the new branch (`v0.12`) instead of `edge`
+      - Change `app-name` to `radius` instead of `radius-edge`
+      - Change `publish-profile` to `secrets.DOCS_SITE_PUBLISHPROFILE` instead of `EDGE_...`
+      - Change `ALGOLIA_INDEX_NAME` to `radapp-dev` instead of `radapp-dev-edge`
+   1. Within `docs/config.toml`:
+      - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
+      - Change `version` to `v0.12` instead of `edge`
+      - Change `chart_version` (Helm chart) to `0.12.0`
+   1. Within `docs/layouts/partials/hooks/body-end.html`:
+      - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
+   1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
    1. Commit and push updates to be the new `v0.12` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
-
 
 ### Post release verification
 
