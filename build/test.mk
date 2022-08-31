@@ -24,7 +24,7 @@ test-get-envtools:
 
 .PHONY: test-validate-cli
 test-validate-cli: ## Run cli integration tests
-	CGO_ENABLED=1 go test -coverpkg= ./pkg/cli/cmd/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 go test -coverpkg= ./pkg/cli/cmd/... ./cmd/rad/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
