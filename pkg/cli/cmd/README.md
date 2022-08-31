@@ -8,6 +8,8 @@ Each command is its own page to discourage accidentally sharing code between com
 Any functionality that needs to be shared should be moved to another location outside of
 `pkg/cli/cmd`.
 
+Make sure to run `make test-validate-cli` to get the test coverage for the file you have added tests.
+
 ## Template
 
 Here's a useful template for a new (blank) command.
