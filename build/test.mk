@@ -22,6 +22,10 @@ test: test-get-envtools ## Runs unit tests, excluding kubernetes controller test
 test-get-envtools:
 	$(call go-install-tool,$(ENV_SETUP),sigs.k8s.io/controller-runtime/tools/setup-envtest@latest)
 
+.PHONY: test-validate-cli
+test-validate-cli: ## Run cli integration tests
+	CGO_ENABLED=1 go test -coverpkg= ./pkg/cli/cmd/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+
 .PHONY: test-functional-azure
 test-functional-azure: ## Runs Azure functional tests
 	CGO_ENABLED=1 go test ./test/functional/azure/... -timeout ${TEST_TIMEOUT} -v -parallel 20 $(GOTEST_OPTS)
