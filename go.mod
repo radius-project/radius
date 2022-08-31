@@ -5,14 +5,12 @@ go 1.18
 require (
 	github.com/Azure/azure-sdk-for-go v56.3.0+incompatible
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.19.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v0.11.0
+	github.com/Azure/azure-sdk-for-go/sdk/to v0.1.5
 	github.com/Azure/go-autorest/autorest v0.11.20
 	github.com/Azure/go-autorest/autorest/azure/auth v0.5.7
 	github.com/Azure/go-autorest/autorest/azure/cli v0.4.4
 	github.com/Azure/go-autorest/autorest/to v0.4.0
-	github.com/Azure/secrets-store-csi-driver-provider-azure v1.0.0
 	github.com/fatih/color v1.13.0
-	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
 	github.com/go-logr/logr v1.2.3
 	github.com/go-logr/zapr v1.2.0
 	github.com/go-openapi/errors v0.20.2
@@ -43,8 +41,6 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/vippsas/go-cosmosdb v0.0.0-20200428065936-29dab535353d
 	github.com/xeipuuv/gojsonpointer v0.0.0-20190905194746-02993c407bfb
-	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415
-	github.com/xeipuuv/gojsonschema v1.2.0
 	go.mongodb.org/mongo-driver v1.9.1
 	go.opentelemetry.io/otel v0.20.0
 	go.opentelemetry.io/otel/exporters/metric/prometheus v0.20.0
@@ -71,7 +67,6 @@ require (
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/internal v0.7.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/to v0.1.5 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Azure/go-autorest v14.2.0+incompatible // indirect
 	github.com/Azure/go-autorest/autorest/adal v0.9.15 // indirect
@@ -163,11 +158,12 @@ require (
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
-	github.com/texttheater/golang-levenshtein/levenshtein v0.0.0-20200805054039-cae8b0eaed6c // indirect
 	github.com/tmc/grpc-websocket-proxy v0.0.0-20201229170055-e5319fda7802 // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect
 	github.com/xdg-go/scram v1.0.2 // indirect
 	github.com/xdg-go/stringprep v1.0.2 // indirect
+	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
+	github.com/xeipuuv/gojsonschema v1.2.0 // indirect
 	github.com/xiang90/probing v0.0.0-20190116061207-43a291ad63a2 // indirect
 	github.com/youmark/pkcs8 v0.0.0-20181117223130-1be2e3e5546d // indirect
 	go.etcd.io/bbolt v1.3.6 // indirect
@@ -187,7 +183,6 @@ require (
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
-	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
@@ -219,7 +214,6 @@ require (
 	github.com/mattn/go-runewidth v0.0.13 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
 	github.com/moby/term v0.0.0-20210619224110-3f7ff695adc6 // indirect
-	github.com/pkg/browser v0.0.0-20210115035449-ce105d075bb4 // indirect
 	github.com/projectcontour/contour v1.20.1
 	github.com/prometheus/client_golang v1.12.1 // indirect
 	github.com/rubenv/sql-migrate v1.1.0 // indirect

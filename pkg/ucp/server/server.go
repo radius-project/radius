@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
-	"github.com/project-radius/radius/pkg/ucp/frontend/ucphandler"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -27,7 +26,6 @@ const (
 
 type Options struct {
 	Port                   string
-	UCPHandler             ucphandler.UCPHandler
 	DBClient               store.StorageClient
 	StorageProviderOptions dataprovider.StorageProviderOptions
 	TLSCertDir             string
@@ -70,10 +68,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 	clientconfigSource := hosting.NewAsyncValue()
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
-			Address: ":" + options.Port,
-			UcpHandler: ucphandler.NewUCPHandler(ucphandler.UCPHandlerOptions{
-				BasePath: options.BasePath,
-			}),
+			Address:                ":" + options.Port,
 			DBClient:               options.DBClient,
 			ClientConfigSource:     clientconfigSource,
 			TLSCertDir:             options.TLSCertDir,

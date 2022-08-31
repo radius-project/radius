@@ -28,8 +28,8 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 			deleteResourceGroup(t, roundTripper, rgURL)
 		})
 
-		createResourceGroup(t, roundTripper, rgURL, false)
-		createResourceGroup(t, roundTripper, rgURL, true)
+		createResourceGroup(t, roundTripper, rgURL)
+		createResourceGroup(t, roundTripper, rgURL)
 
 		// List Resource Groups
 		rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
@@ -54,7 +54,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 	test.Test(t)
 }
 
-func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string, existing bool) {
+func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) {
 	createRequest, err := http.NewRequest(
 		http.MethodPut,
 		url,
@@ -65,13 +65,8 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 	res, err := roundTripper.RoundTrip(createRequest)
 	require.NoError(t, err, "")
 
-	if !existing {
-		require.Equal(t, http.StatusCreated, res.StatusCode)
-		t.Logf("Resource group: %s created successfully", url)
-	} else {
-		require.Equal(t, http.StatusOK, res.StatusCode)
-		t.Logf("Resource group: %s updated successfully", url)
-	}
+	require.Equal(t, http.StatusOK, res.StatusCode)
+	t.Logf("Resource group: %s created/updated successfully", url)
 }
 
 func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []rest.ResourceGroup {
