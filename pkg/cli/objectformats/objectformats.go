@@ -92,6 +92,10 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 				JSONPath: "{ .Connection.kind }",
 			},
 			{
+				Heading:  "KUBECONTEXT",
+				JSONPath: "{ .Connection.context }",
+			},
+			{
 				Heading:  "ENVIRONMENT",
 				JSONPath: "{ .Environment }",
 			},
