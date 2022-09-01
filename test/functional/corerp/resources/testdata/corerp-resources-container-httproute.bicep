@@ -27,6 +27,9 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     container: {
       image: magpieimage
+      env: {
+        rteUrl: httproute.properties.url
+      }
       ports: {
         web: {
           containerPort: port
