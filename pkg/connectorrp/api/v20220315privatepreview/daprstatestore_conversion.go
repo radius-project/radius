@@ -56,7 +56,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 	return converted, nil
 }
 
-//ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource.
+// ConvertFrom converts from version-agnostic datamodel to the versioned DaprStateStore resource.
 func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) error {
 	daprStateStore, ok := src.(*datamodel.DaprStateStore)
 	if !ok {
@@ -70,35 +70,44 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	dst.Location = to.StringPtr(daprStateStore.Location)
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 
-	props := &DaprStateStoreProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
-			},
-		},
-		ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
-		Environment:       to.StringPtr(daprStateStore.Properties.Environment),
-		Application:       to.StringPtr(daprStateStore.Properties.Application),
-		Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-		StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
-	}
 	switch daprStateStore.Properties.Kind {
 	case datamodel.DaprStateStoreKindAzureTableStorage:
 		dst.Properties = &DaprStateStoreAzureTableStorageResourceProperties{
-			DaprStateStoreProperties: *props,
-			Resource:                 to.StringPtr(daprStateStore.Properties.DaprStateStoreAzureTableStorage.Resource),
+			Status: &ResourceStatus{
+				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
+			Application:       to.StringPtr(daprStateStore.Properties.Application),
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
+			Resource:          to.StringPtr(daprStateStore.Properties.DaprStateStoreAzureTableStorage.Resource),
 		}
 	case datamodel.DaprStateStoreKindStateSqlServer:
 		dst.Properties = &DaprStateStoreSQLServerResourceProperties{
-			DaprStateStoreProperties: *props,
-			Resource:                 to.StringPtr(daprStateStore.Properties.DaprStateStoreSQLServer.Resource),
+			Status: &ResourceStatus{
+				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
+			Application:       to.StringPtr(daprStateStore.Properties.Application),
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
+			Resource:          to.StringPtr(daprStateStore.Properties.DaprStateStoreSQLServer.Resource),
 		}
 	case datamodel.DaprStateStoreKindGeneric:
 		dst.Properties = &DaprStateStoreGenericResourceProperties{
-			DaprStateStoreProperties: *props,
-			Type:                     to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Type),
-			Version:                  to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Version),
-			Metadata:                 daprStateStore.Properties.DaprStateStoreGeneric.Metadata,
+			Status: &ResourceStatus{
+				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
+			Application:       to.StringPtr(daprStateStore.Properties.Application),
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
+			Type:              to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Type),
+			Version:           to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Version),
+			Metadata:          daprStateStore.Properties.DaprStateStoreGeneric.Metadata,
 		}
 	default:
 		return errors.New("Kind of DaprStateStore is not specified.")

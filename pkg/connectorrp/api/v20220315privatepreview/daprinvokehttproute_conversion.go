@@ -52,10 +52,8 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	dst.Location = to.StringPtr(daprHttpRoute.Location)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),

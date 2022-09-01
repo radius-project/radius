@@ -80,18 +80,14 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(extender.Location)
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
-		ExtenderResponseProperties: ExtenderResponseProperties{
-			BasicResourceProperties: BasicResourceProperties{
-				Status: &ResourceStatus{
-					OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
-				},
-			},
-			ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
-			Environment:          to.StringPtr(extender.Properties.Environment),
-			Application:          to.StringPtr(extender.Properties.Application),
-			AdditionalProperties: extender.Properties.AdditionalProperties,
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
-		Secrets: extender.Properties.Secrets,
+		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
+		Environment:          to.StringPtr(extender.Properties.Environment),
+		Application:          to.StringPtr(extender.Properties.Application),
+		AdditionalProperties: extender.Properties.AdditionalProperties,
+		Secrets:              extender.Properties.Secrets,
 	}
 	return nil
 }
@@ -110,10 +106,8 @@ func (dst *ExtenderResponseResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.Location = to.StringPtr(extender.Location)
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderResponseProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
 		Environment:          to.StringPtr(extender.Properties.Environment),

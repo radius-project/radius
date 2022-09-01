@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/pkg/cli/builders"
@@ -271,13 +271,13 @@ func Test_CanPropagateParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 				},
 			},
 			{
 				Name: "second",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 				},
 			},
 		},
@@ -383,7 +383,7 @@ func Test_CanUsePerStageParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 					Parameters: map[string]string{
 						"paramStage1": "value1",
 					},
@@ -392,7 +392,7 @@ func Test_CanUsePerStageParameters(t *testing.T) {
 			{
 				Name: "second",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 					Parameters: map[string]string{
 						"paramStage2": "value2",
 					},
@@ -504,12 +504,12 @@ func Test_CanOverrideStage(t *testing.T) {
 				Bicep: &radyaml.BicepStage{
 					// NOTE: we don't create this file, so the test will fail
 					// if the code tries to use it.
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 				},
 				Profiles: map[string]radyaml.Profile{
 					"dev": {
 						Bicep: &radyaml.BicepStage{
-							Template: to.StringPtr("iac/first-dev.bicep"),
+							Template: to.Ptr("iac/first-dev.bicep"),
 						},
 					},
 				},
@@ -544,7 +544,7 @@ func Test_CanOverrideStage(t *testing.T) {
 				Name:     "first",
 				Profiles: manifest.Stages[0].Profiles,
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first-dev.bicep"),
+					Template: to.Ptr("iac/first-dev.bicep"),
 				},
 			},
 			Input:  map[string]map[string]interface{}{},
@@ -568,7 +568,7 @@ func Test_CanUseDeploymentTemplateParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 				},
 			},
 		},
@@ -654,8 +654,8 @@ func Test_CanUseParameterFileParameters(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template:      to.StringPtr("iac/first.bicep"),
-					ParameterFile: to.StringPtr("iac/test-parameters.json"),
+					Template:      to.Ptr("iac/first.bicep"),
+					ParameterFile: to.Ptr("iac/test-parameters.json"),
 				},
 			},
 		},
@@ -797,7 +797,7 @@ func Test_CanUseBuildResults(t *testing.T) {
 			{
 				Name: "first",
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/first.bicep"),
+					Template: to.Ptr("iac/first.bicep"),
 				},
 			},
 			{
@@ -809,7 +809,7 @@ func Test_CanUseBuildResults(t *testing.T) {
 					},
 				},
 				Bicep: &radyaml.BicepStage{
-					Template: to.StringPtr("iac/second.bicep"),
+					Template: to.Ptr("iac/second.bicep"),
 				},
 			},
 		},

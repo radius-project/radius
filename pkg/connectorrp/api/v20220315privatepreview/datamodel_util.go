@@ -8,7 +8,7 @@ package v20220315privatepreview
 import (
 	"time"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -67,11 +67,11 @@ func unmarshalTimeString(ts string) *time.Time {
 
 func fromSystemDataModel(s v1.SystemData) *SystemData {
 	return &SystemData{
-		CreatedBy:          to.StringPtr(s.CreatedBy),
-		CreatedByType:      (*CreatedByType)(to.StringPtr(s.CreatedByType)),
+		CreatedBy:          to.Ptr(s.CreatedBy),
+		CreatedByType:      (*CreatedByType)(to.Ptr(s.CreatedByType)),
 		CreatedAt:          unmarshalTimeString(s.CreatedAt),
-		LastModifiedBy:     to.StringPtr(s.LastModifiedBy),
-		LastModifiedByType: (*CreatedByType)(to.StringPtr(s.LastModifiedByType)),
+		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
+		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
 	}
 }

@@ -75,7 +75,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) GetResourceNativeIdentit
 	identityName := properties[UserAssignedIdentityNameKey]
 	msiClient := clients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
 	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.arm.ResourceGroup, identityName, msi.Identity{
-		Location: to.StringPtr(*rgLocation),
+		Location: to.Ptr(*rgLocation),
 	})
 	if err != nil {
 		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
