@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
@@ -22,12 +21,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create -g resourcegroupname",
-		Short: "create RAD resource group",
+		Use:   "delete -g resourcegroupname",
+		Short: "delete RAD resource group",
 		Long:  "`Manage radius resource groups. This is NOT the same as Azure resource groups`",
 		Example: `
 	radius resource group is a radius concept that is used to organize and manage resources. 
-	rad group create -g rg_prod
+	rad group delete -g rg_prod
 	`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -69,14 +68,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	_, ok := workspace.Connection["context"].(string)
 	if !ok {
-		return fmt.Errorf("cannot create the resource group. workspace %q has invalid context", workspaceName)
+		return fmt.Errorf("Please use a workspace with valid kubernetes context. %q has invalid context", workspaceName)
 	}
 	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
-	if err != nil {
-		return fmt.Errorf("failed to create resource group: %w", err)
-	}
-	if resourcegroup == "" {
-		return fmt.Errorf("cannot create resource group without specifying its name. use -g to provide the name")
+	if err != nil || resourcegroup == "" {
+		return fmt.Errorf("please specify a resource group name using -g: %w", err)
 	}
 
 	r.UCPResourceGroup = resourcegroup
@@ -91,13 +87,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	workspaceName := r.Workspace.Name
 	contextName, _ := r.Workspace.Connection["context"].(string)
 
-	output.LogInfo("creating resource group %q in workspace %q ...", resourcegroup, workspaceName)
-	id, err := setup.CreateWorkspaceResourceGroup(ctx, &workspaces.KubernetesConnection{Context: contextName}, resourcegroup)
-	if err != nil {
-		return err
-	}
+	output.LogInfo("deleting resource group %q in workspace %q ...", resourcegroup, workspaceName)
+	//TODO
 
-	output.LogInfo("resource group %q created", id)
+	output.LogInfo("resource group %q deleted", resourcegroup)
 	return nil
 
 }
