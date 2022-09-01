@@ -8,6 +8,8 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"path"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -19,11 +21,11 @@ import (
 
 // deployCmd represents the deploy command
 var deployCmd = &cobra.Command{
-	Use:   "deploy [app.bicep]",
+	Use:   "deploy [file]",
 	Short: "Deploy a RAD application",
 	Long: `Deploy a RAD application
 
-The deploy command compiles a .bicep file and deploys it to your default environment (unless otherwise specified).
+The deploy command compiles a Bicep or ARM template and deploys it to your default environment (unless otherwise specified).
 	
 You can combine Radius types as as well as other types that are available in Bicep such as Azure resources. See
 the Radius documentation for information about describing your application and resources with Bicep.
@@ -42,10 +44,13 @@ You can specify parameters using multiple sources. Parameters can be overridden 
 order the are provided. Parameters appearing later in the argument list will override those defined earlier.
 `,
 	Example: `
-# deploy a template (basic)
+# deploy a Bicep template
 
 rad deploy myapp.bicep
 
+# deploy an ARM template (json)
+
+rad deploy myapp.json
 
 # deploy to a specific workspace
 
@@ -87,10 +92,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	filePath := args[0]
-	err := deploy.ValidateBicepFile(filePath)
-	if err != nil {
-		return err
-	}
 
 	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
 	if err != nil {
@@ -114,30 +115,38 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	ok, err := bicep.IsBicepInstalled()
-	if err != nil {
-		return fmt.Errorf("failed to find rad-bicep: %w", err)
-	}
-
-	if !ok {
-		output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
-		err = bicep.DownloadBicep()
+	var template map[string]interface{}
+	if strings.EqualFold(path.Ext(filePath), ".json") {
+		template, err = deploy.ReadARMJSON(filePath)
 		if err != nil {
-			return fmt.Errorf("failed to download rad-bicep: %w", err)
+			return err
 		}
-	}
+	} else {
+		ok, err := bicep.IsBicepInstalled()
+		if err != nil {
+			return fmt.Errorf("failed to find rad-bicep: %w", err)
+		}
 
-	err = deploy.ValidateBicepFile(filePath)
-	if err != nil {
-		return err
-	}
+		if !ok {
+			output.LogInfo(fmt.Sprintf("Downloading Bicep for channel %s...", version.Channel()))
+			err = bicep.DownloadBicep()
+			if err != nil {
+				return fmt.Errorf("failed to download rad-bicep: %w", err)
+			}
+		}
 
-	step := output.BeginStep("Building %s...", filePath)
-	template, err := bicep.Build(filePath)
-	if err != nil {
-		return err
+		err = deploy.ValidateBicepFile(filePath)
+		if err != nil {
+			return err
+		}
+
+		step := output.BeginStep("Building %s...", filePath)
+		template, err = bicep.Build(filePath)
+		if err != nil {
+			return err
+		}
+		output.CompleteStep(step)
 	}
-	output.CompleteStep(step)
 
 	environment := workspace.Scope + "/providers/applications.core/environments/" + environmentName
 	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)

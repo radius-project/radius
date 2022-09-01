@@ -7,10 +7,12 @@ package deploy
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path"
+	"strings"
 	"sync"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -25,11 +27,26 @@ func ValidateBicepFile(filePath string) error {
 		return fmt.Errorf("could not find file: %w", err)
 	}
 
-	if path.Ext(filePath) != ".bicep" {
+	if !strings.EqualFold(path.Ext(filePath), ".bicep") {
 		return errors.New("file must be a .bicep file")
 	}
 
 	return nil
+}
+
+func ReadARMJSON(filePath string) (map[string]interface{}, error) {
+	bytes, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("could not read json file: %w", err)
+	}
+
+	var template map[string]interface{}
+	err = json.Unmarshal(bytes, &template)
+	if err != nil {
+		return nil, fmt.Errorf("could not unmarshal json file: %w", err)
+	}
+
+	return template, nil
 }
 
 type Options struct {
