@@ -44,11 +44,11 @@ You can specify parameters using multiple sources. Parameters can be overridden 
 order the are provided. Parameters appearing later in the argument list will override those defined earlier.
 `,
 	Example: `
-# deploy a template (basic)
+# deploy a Bicep template
 
 rad deploy myapp.bicep
 
-#deploy an ARM template (json)
+# deploy an ARM template (json)
 
 rad deploy myapp.json
 
