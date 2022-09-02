@@ -340,6 +340,10 @@
             "description": "The resource id of the application linked to Gateway resource.",
             "type": "string"
           },
+          "port": {
+            "description": "Sets the port for the Gateway to listen on.",
+            "type": "integer"
+          },
           "internal": {
             "description": "Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).",
             "type": "boolean"

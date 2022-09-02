@@ -805,6 +805,7 @@ func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", g.Application)
 	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "internal", g.Internal)
+	populate(objectMap, "port", g.Port)
 	populate(objectMap, "provisioningState", g.ProvisioningState)
 	populate(objectMap, "routes", g.Routes)
 	populate(objectMap, "status", g.Status)
@@ -829,6 +830,9 @@ func (g *GatewayProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "internal":
 				err = unpopulate(val, "Internal", &g.Internal)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &g.Port)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &g.ProvisioningState)

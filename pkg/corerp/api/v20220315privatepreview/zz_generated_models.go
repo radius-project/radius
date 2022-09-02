@@ -433,6 +433,9 @@ type GatewayProperties struct {
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
 
+	// Sets the port for the Gateway to listen on.
+	Port *int32 `json:"port,omitempty"`
+
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
