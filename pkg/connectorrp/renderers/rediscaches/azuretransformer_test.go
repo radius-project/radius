@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -19,8 +19,8 @@ func Test_Transform_Success(t *testing.T) {
 	redisTransformer := AzureTransformer{}
 
 	testComputedValues := map[string]interface{}{
-		handlers.RedisHostKey: "test-hostname",
-		handlers.RedisPortKey: "1234",
+		renderers.Host: "test-hostname",
+		renderers.Port: "1234",
 	}
 	testPrimaryKey := "test-password"
 	expectedConnectionString := "test-hostname:1234,password=test-password,ssl=True,abortConnect=False"
@@ -44,8 +44,8 @@ func Test_Transform_Error(t *testing.T) {
 			"Invalid primary key format",
 			1234,
 			map[string]interface{}{
-				handlers.RedisHostKey: "test-hostname",
-				handlers.RedisPortKey: "1234",
+				renderers.Host: "test-hostname",
+				renderers.Port: "1234",
 			},
 			"expected the access key to be a string",
 		},
@@ -53,7 +53,7 @@ func Test_Transform_Error(t *testing.T) {
 			"Missing hostname",
 			"test-password",
 			map[string]interface{}{
-				handlers.RedisPortKey: "1234",
+				renderers.Port: "1234",
 			},
 			"hostname is required to build Redis connection string",
 		},
@@ -61,7 +61,7 @@ func Test_Transform_Error(t *testing.T) {
 			"Missing port",
 			"test-password",
 			map[string]interface{}{
-				handlers.RedisHostKey: "test-hostname",
+				renderers.Host: "test-hostname",
 			},
 			"port is required to build Redis connection string",
 		},
