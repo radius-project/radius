@@ -7,8 +7,12 @@ package radcli
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -45,6 +49,13 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			err := cmd.ParseFlags(testcase.Input)
 			require.NoError(t, err, "flag parsing failed")
 
+			err = cmd.ValidateArgs(cmd.Flags().Args())
+			if testcase.ExpectedValid && err != nil {
+				require.NoError(t, err, "validation should have passed but it failed")
+			} else if !testcase.ExpectedValid && err != nil {
+				return
+			}
+
 			err = runner.Validate(cmd, cmd.Flags().Args())
 			if testcase.ExpectedValid {
 				require.NoError(t, err, "validation should have passed but it failed")
@@ -55,18 +66,22 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 	}
 }
 
+const (
+	TestWorkspaceName = "test-workspace"
+)
+
 func LoadConfigWithWorkspace(t *testing.T) *viper.Viper {
 
 	var yamlData = []byte(`
 workspaces: 
-  default: kind-kind
+  default: test-workspace
   items: 
-    kind-kind: 
+    test-workspace: 
       connection: 
-        context: kind-kind
+        context: test-context
         kind: kubernetes
-      environment: /planes/radius/local/resourceGroups/kind-kind/providers/Applications.Core/environments/test
-      scope: /planes/radius/local/resourceGroups/kind-kind
+      environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment
+      scope: /planes/radius/local/resourceGroups/test-resource-group
 `)
 
 	v := viper.New()
@@ -87,4 +102,24 @@ workspaces:
 	err := v.ReadConfig(bytes.NewBuffer(yamlData))
 	require.NoError(t, err)
 	return v
+}
+
+func Create404Error() error {
+	code := armrpcv1.CodeNotFound
+	return &azcore.ResponseError{
+		ErrorCode:  code,
+		StatusCode: 404,
+	}
+}
+
+func CreateResource(resourceType string, resourceName string) generated.GenericResource {
+	id := fmt.Sprintf("/planes/radius/local/resourcegroups/test-environment/providers/%s/%s", resourceType, resourceName)
+	location := "global"
+
+	return generated.GenericResource{
+		ID:       &id,
+		Name:     &resourceName,
+		Type:     &resourceType,
+		Location: &location,
+	}
 }

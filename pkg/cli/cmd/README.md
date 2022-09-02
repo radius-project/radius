@@ -20,40 +20,54 @@ Here's a useful template for a new (blank) command.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-import "github.com/spf13/cobra"
+package list
+
+import (
+	"context"
+
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/spf13/cobra"
+)
 
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "",
-		Short: "",
-		Long:  "",
+		Use:     "",
+		Short:   "",
+		Long:    "",
 		Example: ``,
-		Args: cobra.ExactArgs(),
-		RunE: framework.RunCommand(runner),
+		Args:    cobra.ExactArgs(2),
+		RunE:    framework.RunCommand(runner),
 	}
 
-	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	// Define your flags here
+	commonflags.AddOutputFlag(cmd)
 	cmd.Flags().StringP("flagName", "k (flag's shorthand notation like w for workspace)", "", "What does the flag ask for")
 
 	return cmd, runner
 }
 
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
+	ConfigHolder *framework.ConfigHolder
+	Output       output.Interface
+	Format       string
+	Workspace    *workspaces.Workspace
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
@@ -69,31 +83,42 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func (r *Runner) Run(cmd *cobra.Command, args []string) error {
-	err = r.Output.Write(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
-	}
-
+func (r *Runner) Run(ctx context.Context) error {
+	// Implement your command here
 	return nil
 }
 ```
 
 Here's a useful template for testing the new command.
+
 ```go
 // ------------------------------------------------------------
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
+package show
+
+import (
+	"testing"
+
+	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/test/radcli"
+)
+
 func Test_CommandValidation(t *testing.T) {
 	radcli.SharedCommandValidation(t, NewCommand)
 }
 
 func Test_Validate(t *testing.T) {
-	config := radcli.LoadConfigWithWorkspace()
+	config := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
-		
+		{
+			Name:          "example validation test",
+			Input:         []string{"show", "-s", "cool-value"},
+			ExpectedValid: true,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
