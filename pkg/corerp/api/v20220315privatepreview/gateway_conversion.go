@@ -49,6 +49,7 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
+			Port:     to.Int32(src.Properties.Port),
 			Hostname: hostname,
 			Routes:   routes,
 			URL:      to.String(src.Properties.URL),

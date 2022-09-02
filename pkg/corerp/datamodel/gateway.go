@@ -37,9 +37,6 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
 	g.SecretValues = do.SecretValues
-	if port, ok := do.ComputedValues["port"].(int32); ok {
-		g.Properties.Port = port
-	}
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		g.Properties.URL = url
 	}
