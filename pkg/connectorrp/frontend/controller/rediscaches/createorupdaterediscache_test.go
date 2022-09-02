@@ -27,73 +27,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureRedis,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRedis,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Identity: resourcemodel.ResourceIdentity{},
-			},
-		},
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.ConnectionStringValue: {Value: "test-connection-string"},
-			renderers.PasswordStringHolder:  {Value: "testpassword"},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.UsernameStringValue: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: "redisusername",
-			},
-			renderers.Host: {
-				Value: "myrediscache.redis.cache.windows.net",
-			},
-			renderers.Port: {
-				Value: int32(10255),
-			},
-		},
-	}
-
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureRedis,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRedis,
-					Provider: resourcemodel.ProviderAzure,
-				},
-			},
-		},
-		ComputedValues: map[string]interface{}{
-			renderers.UsernameStringValue: "redisusername",
-			renderers.Host:                "myrediscache.redis.cache.windows.net",
-			renderers.Port:                int32(10255),
-		},
-	}
-
-	return rendererOutput, deploymentOutput
-}
-
-func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deployment.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureRedis,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRedis,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Identity: resourcemodel.ResourceIdentity{},
-			},
-		},
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.ConnectionStringValue: {Value: "test-connection-string"},
-			renderers.PasswordStringHolder:  {Value: "testpassword"},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
+func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers.RendererOutput, deployment.DeploymentOutput) {
+	var computedValues map[string]renderers.ComputedValueReference
+	var portValue interface{}
+	if buildComputedValueReferences {
+		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.Host: {
 				LocalID:           outputresource.LocalIDAzureRedis,
 				PropertyReference: handlers.RedisHostKey,
@@ -102,7 +40,38 @@ func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deploy
 				LocalID:           outputresource.LocalIDAzureRedis,
 				PropertyReference: handlers.RedisPortKey,
 			},
+		}
+
+		portValue = "10255"
+	} else {
+		portValue = int32(10255)
+
+		computedValues = map[string]renderers.ComputedValueReference{
+			renderers.Host: {
+				Value: "myrediscache.redis.cache.windows.net",
+			},
+			renderers.Port: {
+				Value: portValue,
+			},
+		}
+	}
+
+	rendererOutput := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{
+			{
+				LocalID: outputresource.LocalIDAzureRedis,
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureRedis,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				Identity: resourcemodel.ResourceIdentity{},
+			},
 		},
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {Value: "test-connection-string"},
+			renderers.PasswordStringHolder:  {Value: "testpassword"},
+		},
+		ComputedValues: computedValues,
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
@@ -117,7 +86,7 @@ func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deploy
 		},
 		ComputedValues: map[string]interface{}{
 			renderers.Host: "myrediscache.redis.cache.windows.net",
-			renderers.Port: "10255",
+			renderers.Port: portValue,
 		},
 	}
 
@@ -130,7 +99,7 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
-	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs(false)
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -151,7 +120,7 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
 			if testcase.azureResource {
-				rendererOutput, deploymentOutput = getDeploymentProcessorOutputsAzureRedis()
+				rendererOutput, deploymentOutput = getDeploymentProcessorOutputs(true)
 			}
 
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
