@@ -15,6 +15,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/project-radius/radius/pkg/rp/armerrors"
 )
 
 const (
@@ -34,6 +36,22 @@ func NewCLI(t *testing.T, configFilePath string) *CLI {
 	}
 }
 
+type CliError struct {
+	Message string
+	Code    string
+}
+
+func (err *CliError) Error() string {
+	return fmt.Sprintf("code %v: err %v", err.Code, err.Message)
+}
+
+func NewCliError(message string, code string) *CliError {
+	err := new(CliError)
+	err.Message = message
+	err.Code = code
+	return err
+}
+
 // Deploy runs the rad deploy command.
 func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters ...string) error {
 	// Check if the template file path exists
@@ -50,8 +68,13 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 		args = append(args, "--parameters", parameter)
 	}
 
-	_, err := cli.RunCommand(ctx, args)
-	return err
+	out, cliErr := cli.RunCommand(ctx, args)
+	if cliErr != nil {
+		if strings.Contains(out, "BadRequest") {
+			return NewCliError(cliErr.Error(), armerrors.Invalid)
+		}
+	}
+	return cliErr
 }
 
 func (cli *CLI) ApplicationDeploy(ctx context.Context) error {
