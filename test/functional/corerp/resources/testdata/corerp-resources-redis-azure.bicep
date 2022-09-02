@@ -3,9 +3,6 @@ import radius as radius
 param magpieimage string
 param environment string
 
-param location string = resourceGroup().location
-param resourceIdentifier string = newGuid()
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
   name: 'corerp-resources-redis-azure'
   location: 'global'
@@ -30,11 +27,6 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         path: '/healthz'
       }
     }
-    connections: {
-      redis: {
-        source: redis.id
-      }
-    }
   }
 }
 
@@ -44,20 +36,6 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   properties: {
     environment: environment
     application: app.id
-    resource: redisCache.id
-  }
-}
-
-resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
-  name: 'redis-${resourceIdentifier}'
-  location: location
-  properties: {
-    enableNonSslPort: false
-    minimumTlsVersion: '1.2'
-    sku: {
-      family: 'C'
-      capacity: 1
-      name: 'Basic'
-    }
+    resource: '/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Cache/Redis/redis-radiustest'
   }
 }
