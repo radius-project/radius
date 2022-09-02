@@ -93,53 +93,6 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 	return rendererOutput, deploymentOutput
 }
 
-func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deployment.DeploymentOutput) {
-	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureRedis,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRedis,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Identity: resourcemodel.ResourceIdentity{},
-			},
-		},
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.ConnectionStringValue: {Value: "test-connection-string"},
-			renderers.PasswordStringHolder:  {Value: "testpassword"},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.Host: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisHostKey,
-			},
-			renderers.Port: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisPortKey,
-			},
-		},
-	}
-
-	deploymentOutput := deployment.DeploymentOutput{
-		Resources: []outputresource.OutputResource{
-			{
-				LocalID: outputresource.LocalIDAzureRedis,
-				ResourceType: resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureRedis,
-					Provider: resourcemodel.ProviderAzure,
-				},
-			},
-		},
-		ComputedValues: map[string]interface{}{
-			renderers.Host: "myrediscache.redis.cache.windows.net",
-			renderers.Port: "10255",
-		},
-	}
-
-	return rendererOutput, deploymentOutput
-}
-
 func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
