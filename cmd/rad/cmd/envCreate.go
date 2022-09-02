@@ -8,6 +8,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
@@ -15,6 +16,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var envCreateCmd = &cobra.Command{
@@ -96,6 +99,35 @@ func createEnvResource(cmd *cobra.Command, args []string) error {
 	fmt.Println(resGroup)
 	fmt.Println(environmentName)
 
+	step := output.BeginStep("Creating Environment...")
+	fmt.Println(workspace.Scope)
+
+	scopeId, err := resources.Parse(workspace.Scope)
+	if err != nil {
+		return err
+	}
+
+	//fmt.Println(scopeId)
+	//fmt.Println(scopeId.FindScope(resources.ResourceGroupsSegment))
+
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	if err != nil {
+		return err
+	}
+
+	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
+		ws := section.Items[strings.ToLower(workspace.Name)]
+		ws.Environment = environmentID
+		section.Items[strings.ToLower(workspace.Name)] = ws
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	output.LogInfo("Set %q as current environment for workspace %q", environmentName, workspace.Name)
+
+	output.CompleteStep(step)
 	return nil
 
 }
