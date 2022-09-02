@@ -29,6 +29,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "create [envType]",
 		Short: "create workspace",
 		Long:  "Show details of the specified Radius resource",
+		Args:  cobra.MinimumNArgs(1),
 		Example: `
 	# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
 	rad workspace create kubernetes -w myworkspace --context aks
@@ -61,6 +62,10 @@ func NewRunner(factory framework.Factory) *Runner {
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
+
+	if args[0] != "kubernetes" {
+		return fmt.Errorf("currently we support only kubernetes")
+	}
 
 	force, err := cmd.Flags().GetBool("force")
 	if err != nil {
@@ -130,18 +135,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("the kubeconfig does not contain a context called %q", kubecontext)
 		}
 	}
-	/*
 
-		workspace = &workspaces.Workspace{
-			Connection: map[string]interface{}{
-				"kind":    "kubernetes",
-				"context": contextName,
-			},
-			Scope:    id,
-			Registry: registry,
-			Name:     workspaceName,
-		}
-	*/
 	r.Workspace = &workspaces.Workspace{
 		Connection: map[string]interface{}{
 			"kind":    "kubernetes",
