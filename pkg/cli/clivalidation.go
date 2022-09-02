@@ -278,7 +278,7 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 		return "", err
 	}
 
-	if len(args) > 0 {
+	if len(args) > 1 {
 		if name != "" {
 			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
 		}
