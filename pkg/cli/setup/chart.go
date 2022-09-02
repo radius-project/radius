@@ -5,7 +5,12 @@
 
 package setup
 
-import "github.com/spf13/cobra"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/spf13/cobra"
+)
 
 type ChartArgs struct {
 	Reinstall    bool
@@ -31,7 +36,7 @@ func RegisterPersistantChartArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("appcore-tag", "", "Specify Application.Core RP image tag to use")
 	cmd.PersistentFlags().String("ucp-image", "", "Specify the UCP image to use")
 	cmd.PersistentFlags().String("ucp-tag", "", "Specify the UCP tag to use")
-	cmd.PersistentFlags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster. It must be in the format: <protocol>://<hostname>[:<port>]. Ex: 'http://localhost:9000'")
+	cmd.PersistentFlags().String("public-endpoint-override", "", "Specify the public IP address or hostname of the Kubernetes cluster. It must be in the format: <hostname>[:<port>]. Ex: 'localhost:9000'")
 }
 
 // ParseChartArgs the arguments we provide for installation of the Helm chart.
@@ -63,6 +68,8 @@ func ParseChartArgs(cmd *cobra.Command) (*ChartArgs, error) {
 	publicEndpointOverride, err := cmd.Flags().GetString("public-endpoint-override")
 	if err != nil {
 		return nil, err
+	} else if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
+		return nil, fmt.Errorf("a URL is not accepted here. Please specify the public endpoint override in the form <hostname>[:<port>]. Ex: 'localhost:9000'")
 	}
 
 	return &ChartArgs{

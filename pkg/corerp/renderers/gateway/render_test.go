@@ -26,10 +26,11 @@ import (
 )
 
 const (
-	applicationName   = "test-application"
-	resourceName      = "test-gateway"
-	testPublicIP      = "86.753.099.99"
-	testPublicIPEmpty = ""
+	applicationName = "test-application"
+	resourceName    = "test-gateway"
+	testExternalIP  = "86.753.099.99"
+	testHostname    = "a3cce48e78bc14ae6b0be72e4a33a6e3-797173506.us-west-2.elb.amazonaws.com"
+	testPort        = "8080"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -72,7 +73,7 @@ func Test_GetDependencyIDs_Success(t *testing.T) {
 	require.ElementsMatch(t, expectedAzureResourceIDs, resourceIDs)
 }
 
-func Test_Render_WithNoHostname(t *testing.T) {
+func Test_Render_WithIPAndNoHostname(t *testing.T) {
 	r := &Renderer{}
 
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
@@ -82,21 +83,21 @@ func Test_Render_WithNoHostname(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
 
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
-func Test_Render_WithPrefix(t *testing.T) {
+func Test_Render_WithIPAndPrefix(t *testing.T) {
 	r := &Renderer{}
 
 	prefix := "prefix"
@@ -110,24 +111,25 @@ func Test_Render_WithPrefix(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
 
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, testPublicIP)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", prefix, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
 
-func Test_Render_WithFQHostname(t *testing.T) {
+func Test_Render_WithIPAndFQHostname(t *testing.T) {
 	r := &Renderer{}
 
 	expectedHostname := "test-fqdn.contoso.com"
+	expectedPublicEndpoint := "http://test-fqdn.contoso.com"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			FullyQualifiedHostname: expectedHostname,
@@ -138,13 +140,13 @@ func Test_Render_WithFQHostname(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["url"].Value)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -152,7 +154,8 @@ func Test_Render_WithFQHostname(t *testing.T) {
 func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	r := &Renderer{}
 
-	expectedHostname := "http://test-fqdn.contoso.com"
+	expectedHostname := "test-fqdn.contoso.com"
+	expectedPublicEndpoint := "http://test-fqdn.contoso.com"
 	prefix := "test-prefix"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		Hostname: &datamodel.GatewayPropertiesHostname{
@@ -165,13 +168,13 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, expectedHostname, output.ComputedValues["url"].Value)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
 	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
 }
@@ -179,8 +182,6 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 func Test_Render_PublicEndpointOverride(t *testing.T) {
 	r := &Renderer{}
 
-	publicIP := "http://www.contoso.com:32323"
-	expectedFqdn := "www.contoso.com"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
@@ -188,22 +189,71 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(publicIP, true)
+	environmentOptions := GetEnvironmentOptions(testHostname, "", testPort, true)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, publicIP, output.ComputedValues["url"].Value)
+	require.Equal(t, "http://"+testHostname+":"+testPort, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
+	validateGateway(t, output.Resources, testHostname, expectedIncludes)
+}
+
+func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
+	r := &Renderer{}
+
+	expectedPublicEndpoint := "this_CouldbeAnyString"
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Hostname: &datamodel.GatewayPropertiesHostname{
+			Prefix:                 "test",
+			FullyQualifiedHostname: "testagain",
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(expectedPublicEndpoint, testExternalIP, "", true)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, "http://"+expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedPublicEndpoint, expectedIncludes)
+}
+
+func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
+	r := &Renderer{}
+
+	expectedPublicEndpoint := "www.contoso.com"
+	expectedFQDN := "www.contoso.com"
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(expectedFQDN, "", "", true)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, "http://"+expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
 }
 
 func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 	r := &Renderer{}
 
-	publicIP := "http://localhost:32323"
-	expectedFqdn := "localhost"
+	expectedFQDN := "localhost"
+	expectedPublicEndpoint := "http://localhost:8080"
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
@@ -211,15 +261,114 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(publicIP, true)
+	environmentOptions := GetEnvironmentOptions(expectedFQDN, "", testPort, true)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, publicIP, output.ComputedValues["url"].Value)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+}
+
+func Test_Render_Hostname(t *testing.T) {
+	r := &Renderer{}
+
+	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(testHostname, "", "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, testHostname, expectedIncludes)
+}
+
+func Test_Render_Hostname_WithPort(t *testing.T) {
+	r := &Renderer{}
+
+	expectedFQDN := "www.contoso.com"
+	expectedPublicEndpoint := "http://www.contoso.com:32434"
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(expectedFQDN, "", "32434", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+}
+
+func Test_Render_Hostname_WithPrefix(t *testing.T) {
+	r := &Renderer{}
+
+	prefix := "test"
+	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
+	expectedPublicEndpoint := fmt.Sprintf("http://%s", expectedFQDN)
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Hostname: &datamodel.GatewayPropertiesHostname{
+			Prefix: prefix,
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(testHostname, "", "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+}
+
+func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
+	r := &Renderer{}
+
+	prefix := "test"
+	expectedFQDN := fmt.Sprintf("%s.%s", prefix, testHostname)
+	expectedPublicEndpoint := fmt.Sprintf("http://%s:%s", expectedFQDN, testPort)
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Hostname: &datamodel.GatewayPropertiesHostname{
+			Prefix: prefix,
+		},
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(testHostname, "", testPort, false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -235,7 +384,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.NoError(t, err)
 	appName := appId.Name()
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIPEmpty, false)
+	environmentOptions := GetEnvironmentOptions("", "", "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
@@ -256,7 +405,7 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
@@ -270,41 +419,40 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 func Test_Render_FQDNOverride(t *testing.T) {
 	r := &Renderer{}
 
-	publicIP := "a3cce48e78bc14ae6b0be72e4a33a6e4-797173506.us-west-2.elb.amazonaws.com"
-	expectedFqdn := "a3cce48e78bc14ae6b0be72e4a33a6e4-797173506.us-west-2.elb.amazonaws.com"
+	expectedPublicEndpoint := fmt.Sprintf("http://%s", testHostname)
 	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{
-			FullyQualifiedHostname: publicIP,
+			FullyQualifiedHostname: testHostname,
 		},
 	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(publicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 2)
 	require.Empty(t, output.SecretValues)
-	require.Equal(t, publicIP, output.ComputedValues["url"].Value)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFqdn, expectedIncludes)
+	validateGateway(t, output.Resources, testHostname, expectedIncludes)
 }
 
 func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 	r := &Renderer{}
 
-	properties := datamodel.GatewayProperties{
+	properties, _ := makeTestGateway(datamodel.GatewayProperties{
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		Hostname: &datamodel.GatewayPropertiesHostname{},
-	}
+	})
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
@@ -334,8 +482,8 @@ func Test_Render_Single_Route(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -387,8 +535,8 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -443,8 +591,8 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -520,8 +668,8 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -616,8 +764,8 @@ func Test_Render_WithDependencies(t *testing.T) {
 		},
 	}
 
-	environmentOptions := GetEnvironmentOptions(testPublicIP, false)
-	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testPublicIP)
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
 	expectedURL := "http://" + expectedHostname
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
@@ -791,11 +939,13 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 	return properties, includes
 }
 
-func GetEnvironmentOptions(publicIP string, publicEndpointOverride bool) renderers.EnvironmentOptions {
+func GetEnvironmentOptions(hostname, externalIP, port string, publicEndpointOverride bool) renderers.EnvironmentOptions {
 	environmentOptions := renderers.EnvironmentOptions{
 		Gateway: renderers.GatewayOptions{
 			PublicEndpointOverride: publicEndpointOverride,
-			PublicIP:               publicIP,
+			Hostname:               hostname,
+			Port:                   port,
+			ExternalIP:             externalIP,
 		},
 		Namespace: applicationName,
 	}

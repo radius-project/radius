@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"strings"
 
@@ -369,20 +370,34 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 }
 
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
-	if dp.k8sClient != nil {
-		// If the public endpoint override is specified (Local Dev scenario), then use it.
-		publicEndpoint := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
-		if publicEndpoint != "" {
-			return renderers.EnvironmentOptions{
-				Gateway: renderers.GatewayOptions{
-					PublicEndpointOverride: true,
-					PublicIP:               publicEndpoint,
-				},
-				Namespace: namespace,
-			}, nil
+	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+	if publicEndpointOverride != "" {
+		// Check if publicEndpointOverride contains a scheme,
+		// and if so, throw an error to the user
+		if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
+			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		}
 
-		// Find the public IP of the cluster (External IP of the contour-envoy service)
+		hostname, port, err := net.SplitHostPort(publicEndpointOverride)
+		if err != nil {
+			// If net.SplitHostPort throws an error, then use
+			// publicEndpointOverride as the host
+			hostname = publicEndpointOverride
+			port = ""
+		}
+
+		return renderers.EnvironmentOptions{
+			Gateway: renderers.GatewayOptions{
+				PublicEndpointOverride: true,
+				Hostname:               hostname,
+				Port:                   port,
+			},
+			Namespace: namespace,
+		}, nil
+	}
+
+	if dp.k8sClient != nil {
+		// Find the public endpoint of the cluster (External IP or hostname of the contour-envoy service)
 		var services corev1.ServiceList
 		err := dp.k8sClient.List(ctx, &services, &controller_runtime.ListOptions{Namespace: "radius-system"})
 		if err != nil {
@@ -395,7 +410,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 					return renderers.EnvironmentOptions{
 						Gateway: renderers.GatewayOptions{
 							PublicEndpointOverride: false,
-							PublicIP:               in.IP,
+							Hostname:               in.Hostname,
+							ExternalIP:             in.IP,
 						},
 						Namespace: namespace,
 					}, nil

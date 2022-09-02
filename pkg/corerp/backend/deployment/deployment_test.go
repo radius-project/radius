@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -893,5 +894,49 @@ func Test_Delete(t *testing.T) {
 
 		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
 		require.NoError(t, err)
+	})
+}
+
+func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, nil, nil, nil, nil}
+
+	radiusSystemNamespace := "radius-system"
+
+	t.Run("Verify getEnvOptions succeeds (host:port)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "localhost:8000")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.NoError(t, err)
+
+		require.True(t, options.Gateway.PublicEndpointOverride)
+		require.Equal(t, options.Gateway.Hostname, "localhost")
+		require.Equal(t, options.Gateway.Port, "8000")
+		require.Equal(t, options.Gateway.ExternalIP, "")
+	})
+
+	t.Run("Verify getEnvOptions succeeds (host)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "www.contoso.com")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.NoError(t, err)
+
+		require.True(t, options.Gateway.PublicEndpointOverride)
+		require.Equal(t, options.Gateway.Hostname, "www.contoso.com")
+		require.Equal(t, options.Gateway.Port, "")
+		require.Equal(t, options.Gateway.ExternalIP, "")
+	})
+
+	t.Run("Verify getEnvOptions fails (URL)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "http://localhost:8000")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.Error(t, err)
+		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
+		require.Equal(t, options, renderers.EnvironmentOptions{})
 	})
 }
