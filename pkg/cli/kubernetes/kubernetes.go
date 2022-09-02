@@ -17,13 +17,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/runtime"
+	k8s_runtime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	applycorev1 "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/discovery"
@@ -38,7 +39,6 @@ import (
 	"k8s.io/kubectl/pkg/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/output"
 )
 
@@ -53,10 +53,13 @@ const (
 	UCPAPIServerBasePath     = "/apis/api.ucp.dev/v1alpha3"
 	UCPType                  = "api.ucp.dev"
 	BicepType                = "api.bicep.dev"
+
+	module  = "v20220315privatepreview"
+	version = "v0.0.1"
 )
 
 var (
-	Scheme = runtime.NewScheme()
+	Scheme = k8s_runtime.NewScheme()
 )
 
 func init() {
@@ -120,19 +123,25 @@ func CreateRestRoundTripper(context string, group string, overrideURL string) (h
 	return NewLocationRewriteRoundTripper(merged.Host, client), err
 }
 
-func CreateAPIServerConnection(context string, overrideURL string) (string, *arm.Connection, error) {
-	var baseURL string
-	var err error
-	var roundTripper http.RoundTripper
-
-	baseURL, roundTripper, err = GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev", context)
+func CreateAPIServerPipeline(context string, overrideURL string) (string, runtime.Pipeline, error) {
+	baseURL, transporter, err := CreateAPIServerTransporter(context, overrideURL)
 	if err != nil {
-		return "", nil, err
+		return baseURL, runtime.Pipeline{}, err
 	}
 
-	return baseURL, arm.NewConnection(baseURL, &aztoken.AnonymousCredential{}, &arm.ConnectionOptions{
-		HTTPClient: &KubernetesTransporter{Client: roundTripper},
-	}), nil
+	pipeline := runtime.NewPipeline(module, version, runtime.PipelineOptions{}, &policy.ClientOptions{
+		Cloud: cloud.Configuration{
+			Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+				cloud.ResourceManager: {
+					Endpoint: baseURL,
+					Audience: "https://management.core.windows.net",
+				},
+			},
+		},
+		Transport: transporter,
+	})
+
+	return baseURL, pipeline, nil
 }
 
 func GetBaseUrlForDeploymentEngine(overrideURL string) string {
@@ -224,7 +233,7 @@ func CreateTypedClient(context string) (*k8s.Clientset, *rest.Config, error) {
 	return client, merged, err
 }
 
-func CreateRuntimeClient(context string, scheme *runtime.Scheme) (client.Client, error) {
+func CreateRuntimeClient(context string, scheme *k8s_runtime.Scheme) (client.Client, error) {
 	merged, err := GetConfig(context)
 	if err != nil {
 		return nil, err
@@ -390,4 +399,13 @@ func NewLocationRewriteRoundTripper(prefix string, inner http.RoundTripper) *Loc
 
 	// If we get here it's likely not a fully-qualified URL. Treat it as a hostname.
 	return &LocationRewriteRoundTripper{Inner: inner, Host: prefix}
+}
+
+func CreateAPIServerTransporter(kubeContext string, overrideURL string) (string, policy.Transporter, error) {
+	baseURL, roundTripper, err := GetBaseUrlAndRoundTripper(overrideURL, "api.ucp.dev", kubeContext)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return baseURL, &KubernetesTransporter{Client: roundTripper}, nil
 }

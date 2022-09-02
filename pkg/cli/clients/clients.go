@@ -12,7 +12,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -118,6 +117,8 @@ type LogStream struct {
 	Stream io.ReadCloser
 }
 
+//go:generate mockgen -destination=./mock_applicationsclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients ApplicationsManagementClient
+
 // ApplicationsManagementClient is used to interface with management features like listing resources by app, show details of a resource.
 type ApplicationsManagementClient interface {
 	ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error)
@@ -126,13 +127,13 @@ type ApplicationsManagementClient interface {
 	ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error)
 	ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error)
-	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error)
-	ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error)
+	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesClientDeleteResponse, error)
+	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error)
+	DeleteApplication(ctx context.Context, applicationName string) (corerp.ApplicationsClientDeleteResponse, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
-	DeleteEnv(ctx context.Context, envName string) (v20220315privatepreview.EnvironmentsDeleteResponse, error)
+	DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsClientDeleteResponse, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

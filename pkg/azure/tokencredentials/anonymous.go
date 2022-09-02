@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 )
 
 var _ azcore.TokenCredential = &AnonymousCredential{}
@@ -28,12 +27,12 @@ func (pf PolicyFunc) Do(req *policy.Request) (*http.Response, error) {
 	return pf(req)
 }
 
-func (*AnonymousCredential) NewAuthenticationPolicy(options runtime.AuthenticationOptions) policy.Policy {
+func (*AnonymousCredential) NewAuthenticationPolicy(options policy.BearerTokenOptions) policy.Policy {
 	return PolicyFunc(func(req *policy.Request) (*http.Response, error) {
 		return req.Next()
 	})
 }
 
-func (a *AnonymousCredential) GetToken(ctx context.Context, options policy.TokenRequestOptions) (*azcore.AccessToken, error) {
-	return nil, nil
+func (a *AnonymousCredential) GetToken(ctx context.Context, options policy.TokenRequestOptions) (azcore.AccessToken, error) {
+	return azcore.AccessToken{}, nil
 }

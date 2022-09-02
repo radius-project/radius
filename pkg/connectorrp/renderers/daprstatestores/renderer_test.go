@@ -17,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -98,7 +97,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*conv.ErrClientRP).Message)
 }
 
@@ -122,7 +121,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*conv.ErrClientRP).Message)
 }
 
@@ -148,7 +147,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, fmt.Sprintf("state.azure.cosmosdb is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedStateStoreKindValues)), err.(*conv.ErrClientRP).Message)
 }
 
@@ -231,7 +230,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*conv.ErrClientRP).Message)
 }
 
@@ -260,7 +259,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
@@ -290,7 +289,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
 }
 
@@ -316,7 +315,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreKindValues
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }
 

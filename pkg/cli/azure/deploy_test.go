@@ -10,7 +10,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,17 +22,17 @@ func Test_GetProviderConfigs(t *testing.T) {
 		AzProvider:          &workspaces.AzureProvider{},
 	}
 
-	var expectedConfig providers.ProviderConfig
+	var expectedConfig clients.ProviderConfig
 
-	expectedConfig.Radius = &providers.Radius{
+	expectedConfig.Radius = &clients.Radius{
 		Type: "Radius",
-		Value: providers.Value{
+		Value: clients.Value{
 			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
-	expectedConfig.Deployments = &providers.Deployments{
+	expectedConfig.Deployments = &clients.Deployments{
 		Type: "Microsoft.Resources",
-		Value: providers.Value{
+		Value: clients.Value{
 			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
 		},
 	}
@@ -54,24 +53,24 @@ func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 		},
 	}
 
-	var expectedConfig providers.ProviderConfig
+	var expectedConfig clients.ProviderConfig
 
-	expectedConfig.Az = &providers.Az{
+	expectedConfig.Az = &clients.Az{
 		Type: "AzureResourceManager",
-		Value: providers.Value{
+		Value: clients.Value{
 			Scope: "/subscriptions/dummy/resourceGroups/" + "azrg",
 		},
 	}
 
-	expectedConfig.Radius = &providers.Radius{
+	expectedConfig.Radius = &clients.Radius{
 		Type: "Radius",
-		Value: providers.Value{
+		Value: clients.Value{
 			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
-	expectedConfig.Deployments = &providers.Deployments{
+	expectedConfig.Deployments = &clients.Deployments{
 		Type: "Microsoft.Resources",
-		Value: providers.Value{
+		Value: clients.Value{
 			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
 		},
 	}

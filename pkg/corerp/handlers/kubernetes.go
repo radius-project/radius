@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -117,7 +116,7 @@ func (handler *kubernetesHandler) GetResourceIdentity(ctx context.Context, resou
 	identity := resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resource.ResourceType.Type,
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 		Data: resourcemodel.KubernetesIdentity{
 			Name:       item.GetName(),
@@ -192,7 +191,7 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputres
 }
 
 func convertToUnstructured(resource outputresource.OutputResource) (unstructured.Unstructured, error) {
-	if resource.ResourceType.Provider != providers.ProviderKubernetes {
+	if resource.ResourceType.Provider != resourcemodel.ProviderKubernetes {
 		return unstructured.Unstructured{}, errors.New("wrong resource type")
 	}
 

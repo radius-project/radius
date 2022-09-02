@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -20,16 +20,13 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -193,7 +190,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, armerrors.Invalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, apiv1.CodeInvalid)
 	require.Equal(t, err.(*conv.ErrClientRP).Message, "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
@@ -465,7 +462,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source:                makeResourceID(t, "ResourceType", "A").String(),
-				DisableDefaultEnvVars: to.BoolPtr(true),
+				DisableDefaultEnvVars: to.Ptr(true),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -536,7 +533,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				"TargetLocalID": resourcemodel.NewARMIdentity(
 					&resourcemodel.ResourceType{
 						Type:     "dummy",
-						Provider: providers.ProviderAzure,
+						Provider: resourcemodel.ProviderAzure,
 					},
 					makeResourceID(t, "TargetResourceType", "TargetResource").String(),
 					"2020-01-01"),
@@ -573,7 +570,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
 			Deployed: false,
@@ -590,7 +587,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
 			Deployed: false,
@@ -614,7 +611,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
 			Deployed: false,
@@ -638,7 +635,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzurePodIdentity,
-				Provider: providers.ProviderAzureKubernetesService,
+				Provider: resourcemodel.ProviderAzureKubernetesService,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -702,7 +699,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(testARMID, expectedRole),
 			Deployed: false,
@@ -770,7 +767,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 				envVarName2: envVarValue2,
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Ephemeral,
 					Ephemeral: &datamodel.EphemeralVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -843,7 +840,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -898,7 +895,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	require.Equal(t, volumes[0].VolumeSource.AzureFile.ShareName, testShareName)
 
 	// Verify Kubernetes secret
-	secret := secretResource.Resource.(*corev1.Secret)
+	secret := secretResource.Resource.(*v1.Secret)
 	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
 	require.NoError(t, err)
 }
@@ -916,7 +913,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -951,7 +948,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 				outputresource.LocalIDSecretProviderClass: {
 					ResourceType: &resourcemodel.ResourceType{
 						Type:     resourcekinds.SecretProviderClass,
-						Provider: providers.ProviderKubernetes,
+						Provider: resourcemodel.ProviderKubernetes,
 					},
 					Data: resourcemodel.KubernetesIdentity{
 						Kind:       "SecretProviderClass",
@@ -1024,9 +1021,9 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 				Kind: datamodel.HTTPGetHealthProbe,
 				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					Path:          "/healthz",
 					ContainerPort: 8080,
@@ -1101,9 +1098,9 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 				Kind: datamodel.TCPHealthProbe,
 				TCP: &datamodel.TCPHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					ContainerPort: 8080,
 				},
@@ -1169,9 +1166,9 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 				Kind: datamodel.ExecHealthProbe,
 				Exec: &datamodel.ExecHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					Command: "a b c",
 				},

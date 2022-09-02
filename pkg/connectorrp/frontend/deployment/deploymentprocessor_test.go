@@ -20,12 +20,10 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -58,14 +56,14 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 			LocalID: outputresource.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 		},
 		{
 			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -84,7 +82,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 				Action:        "listConnectionStrings",
 				ValueSelector: "/connectionStrings/0/connectionString",
 				Transformer: resourcemodel.ResourceType{
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 					Type:     resourcekinds.AzureCosmosDBMongo,
 				},
 			},
@@ -124,14 +122,14 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 			LocalID: outputresource.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 		},
 		{
 			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -150,7 +148,7 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 				Action:        "listConnectionStrings",
 				ValueSelector: "/connectionStrings/0/connectionString",
 				Transformer: resourcemodel.ResourceType{
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 					Type:     resourcekinds.AzureCosmosDBMongo,
 				},
 			},
@@ -238,21 +236,21 @@ func setup(t *testing.T) SharedMocks {
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				ResourceHandler: mockResourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosDBMongo,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				ResourceHandler: mockResourceHandler,
 			},
 		},
 		map[string]bool{
-			providers.ProviderKubernetes: true,
-			providers.ProviderAzure:      true,
+			resourcemodel.ProviderKubernetes: true,
+			resourcemodel.ProviderAzure:      true,
 		})
 
 	return SharedMocks{
@@ -334,7 +332,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &resource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "provided environment id \"invalid-id\" is not a valid id.", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -395,7 +393,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &resource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "provided environment id type \"Applications.Core/env\" is not a valid type.", err.(*conv.ErrClientRP).Message)
 
 	})
@@ -408,7 +406,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "environment \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0\" does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -447,7 +445,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -461,8 +459,8 @@ func Test_Render(t *testing.T) {
 			},
 			[]model.OutputResourceModel{},
 			map[string]bool{
-				providers.ProviderKubernetes: true,
-				providers.ProviderAzure:      false,
+				resourcemodel.ProviderKubernetes: true,
+				resourcemodel.ProviderAzure:      false,
 			},
 		)
 
@@ -476,7 +474,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := mockdp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
 	})
 }
@@ -490,7 +488,7 @@ func Test_Deploy(t *testing.T) {
 		expectedCosmosMongoDBIdentity := resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Data: resourcemodel.ARMIdentity{},
 		}
@@ -498,7 +496,7 @@ func Test_Deploy(t *testing.T) {
 		expectedCosmosMongoAccountIdentity := resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Data: resourcemodel.ARMIdentity{},
 		}
@@ -531,7 +529,7 @@ func Test_Deploy(t *testing.T) {
 		resourceID, _, testRendererOutput := buildTestMongoResource()
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "failed to access connected Azure resource", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -570,7 +568,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 
 	testResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureCosmosAccount,
@@ -604,7 +602,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	expectedCosmosAccountIdentity := resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureCosmosAccount,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Data: resourcemodel.ARMIdentity{},
 	}
@@ -630,7 +628,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	outputResource := outputresource.OutputResource{
 		LocalID:      "test-local-id",
@@ -664,7 +662,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	outputResource := outputresource.OutputResource{
 		LocalID:      "test-local-id",
@@ -704,12 +702,12 @@ func Test_Delete(t *testing.T) {
 			LocalID: outputresource.LocalIDAzureCosmosAccount,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosAccount,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				Data: resourcemodel.ARMIdentity{},
 			},
@@ -718,12 +716,12 @@ func Test_Delete(t *testing.T) {
 			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosDBMongo,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				Data: resourcemodel.ARMIdentity{},
 			},
@@ -758,12 +756,12 @@ func Test_Delete(t *testing.T) {
 				LocalID: outputresource.LocalIDAzureCosmosDBMongo,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureCosmosDBMongo,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				Identity: resourcemodel.ResourceIdentity{
 					ResourceType: &resourcemodel.ResourceType{
 						Type:     resourcekinds.AzureCosmosDBMongo,
-						Provider: providers.ProviderAzure,
+						Provider: resourcemodel.ProviderAzure,
 					},
 					Data: resourcemodel.ARMIdentity{},
 				},
@@ -785,7 +783,7 @@ func Test_Delete(t *testing.T) {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     "foo",
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 		}

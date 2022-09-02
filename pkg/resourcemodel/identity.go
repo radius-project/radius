@@ -9,14 +9,22 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+)
+
+// Providers supported by Radius
+// The RP will be able to support a resource only if the corresponding provider is configured with the RP
+const (
+	ProviderAzure = "azure"
+	// This is a special case for support AAD Pod Identity which is not an ARM resource but a modification of an AKS Cluster
+	ProviderAzureKubernetesService = "aks"
+	ProviderKubernetes             = "kubernetes"
 )
 
 // ResourceType determines the type of the resource and the provider domain for the resource
@@ -89,30 +97,30 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 }
 
 func (r ResourceIdentity) RequireARM() (string, string, error) {
-	if r.ResourceType.Provider == providers.ProviderAzure {
+	if r.ResourceType.Provider == ProviderAzure {
 		data := r.Data.(ARMIdentity)
 		return data.ID, data.APIVersion, nil
 	}
 
-	return "", "", fmt.Errorf("expected an %q provider, was %q", providers.ProviderAzure, r.ResourceType.Provider)
+	return "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
-	if r.ResourceType.Provider == providers.ProviderKubernetes {
+	if r.ResourceType.Provider == ProviderKubernetes {
 		data := r.Data.(KubernetesIdentity)
 		return schema.FromAPIVersionAndKind(data.APIVersion, data.Kind), data.Namespace, data.Name, nil
 	}
 
-	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q provider, was %q", providers.ProviderKubernetes, r.ResourceType.Provider)
+	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q provider, was %q", ProviderKubernetes, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) RequireAADPodIdentity() (string, string, string, error) {
-	if r.ResourceType.Provider == providers.ProviderAzureKubernetesService {
+	if r.ResourceType.Provider == ProviderAzureKubernetesService {
 		data := r.Data.(AADPodIdentityIdentity)
 		return data.AKSClusterName, data.Name, data.Namespace, nil
 	}
 
-	return "", "", "", fmt.Errorf("expected an %q provider, was %q", providers.ProviderAzure, r.ResourceType.Provider)
+	return "", "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
@@ -121,17 +129,17 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	}
 
 	switch r.ResourceType.Provider {
-	case providers.ProviderAzure:
+	case ProviderAzure:
 		a, _ := r.Data.(ARMIdentity)
 		b, _ := other.Data.(ARMIdentity)
 		return a == b
 
-	case providers.ProviderKubernetes:
+	case ProviderKubernetes:
 		a, _ := r.Data.(KubernetesIdentity)
 		b, _ := other.Data.(KubernetesIdentity)
 		return a == b
 
-	case providers.ProviderAzureKubernetesService:
+	case ProviderAzureKubernetesService:
 		a, _ := r.Data.(AADPodIdentityIdentity)
 		b, _ := other.Data.(AADPodIdentityIdentity)
 		return a == b
@@ -147,23 +155,23 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		return nil
 	}
 	switch r.ResourceType.Provider {
-	case providers.ProviderAzure:
+	case ProviderAzure:
 		// We can't report an error here so this is best-effort.
 		data := r.Data.(ARMIdentity)
-		id, err := azresources.Parse(data.ID)
+		id, err := resources.Parse(data.ID)
 		if err != nil {
 			return []interface{}{radlogger.LogFieldResourceID, data.ID}
 		}
 
 		return []interface{}{
 			radlogger.LogFieldResourceID, data.ID,
-			radlogger.LogFieldSubscriptionID, id.SubscriptionID,
-			radlogger.LogFieldResourceGroup, id.ResourceGroup,
+			radlogger.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
+			radlogger.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
 			radlogger.LogFieldResourceType, id.Type(),
 			radlogger.LogFieldResourceName, id.QualifiedName(),
 		}
 
-	case providers.ProviderKubernetes:
+	case ProviderKubernetes:
 		data := r.Data.(KubernetesIdentity)
 		return []interface{}{
 			radlogger.LogFieldResourceName, data.Name,
@@ -172,7 +180,7 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 			radlogger.LogFieldResourceKind, resourcekinds.Kubernetes,
 		}
 
-	case providers.ProviderAzureKubernetesService:
+	case ProviderAzureKubernetesService:
 		return nil
 
 	default:
@@ -195,7 +203,7 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 	r.ResourceType = data.ResourceType
 
 	switch r.ResourceType.Provider {
-	case providers.ProviderAzure:
+	case ProviderAzure:
 		identity := ARMIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
 		if err != nil {
@@ -204,7 +212,7 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 		r.Data = identity
 		return nil
 
-	case providers.ProviderKubernetes:
+	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
 		if err != nil {
@@ -213,7 +221,7 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 		r.Data = identity
 		return nil
 
-	case providers.ProviderAzureKubernetesService:
+	case ProviderAzureKubernetesService:
 		identity := AADPodIdentityIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
 		if err != nil {
@@ -246,7 +254,7 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	r.ResourceType = data.ResourceType
 
 	switch r.ResourceType.Provider {
-	case providers.ProviderAzure:
+	case ProviderAzure:
 		identity := ARMIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
 		if err != nil {
@@ -255,7 +263,7 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
-	case providers.ProviderKubernetes:
+	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
 		if err != nil {
@@ -264,7 +272,7 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
-	case providers.ProviderAzureKubernetesService:
+	case ProviderAzureKubernetesService:
 		identity := AADPodIdentityIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
 		if err != nil {

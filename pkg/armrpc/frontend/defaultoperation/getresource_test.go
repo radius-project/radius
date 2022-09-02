@@ -1,0 +1,136 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package defaultoperation
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/stretchr/testify/require"
+)
+
+const (
+	testAPIVersion        = "2022-03-15-privatepreview"
+	testRequestHeaderFile = "requestheaders.json"
+)
+
+type testDataModel struct {
+	Name string `json:"name"`
+}
+
+func (e testDataModel) ResourceTypeName() string {
+	return "Applications.Test/resource"
+}
+
+type testVersionedModel struct {
+	Name string `json:"name"`
+}
+
+func (v *testVersionedModel) ConvertFrom(src conv.DataModelInterface) error {
+	dm := src.(*testDataModel)
+	v.Name = dm.Name
+	return nil
+}
+
+func (v *testVersionedModel) ConvertTo() (conv.DataModelInterface, error) {
+	return nil, nil
+}
+
+func resourceToVersioned(model *testDataModel, version string) (conv.VersionedModelInterface, error) {
+	switch version {
+	case testAPIVersion:
+		versioned := &testVersionedModel{}
+		if err := versioned.ConvertFrom(model); err != nil {
+			return nil, err
+		}
+		return versioned, nil
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func TestGetResourceRun(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	mStorageClient := store.NewMockStorageClient(mctrl)
+	ctx := context.Background()
+
+	testResourceDataModel := &testDataModel{
+		Name: "ResourceName",
+	}
+	expectedOutput := &testVersionedModel{
+		Name: "ResourceName",
+	}
+
+	t.Run("get non-existing resource", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewGetResource(opts, resourceToVersioned)
+
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 404, w.Result().StatusCode)
+	})
+
+	t.Run("get existing resource", func(t *testing.T) {
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id},
+					Data:     testResourceDataModel,
+				}, nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewGetResource(opts, resourceToVersioned)
+
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		require.Equal(t, 200, w.Result().StatusCode)
+
+		actualOutput := &testVersionedModel{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+
+		require.Equal(t, expectedOutput, actualOutput)
+	})
+}

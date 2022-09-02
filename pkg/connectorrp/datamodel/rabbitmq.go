@@ -20,6 +20,9 @@ type RabbitMQMessageQueue struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
+
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
 }
 
 type RabbitMQMessageQueueResponse struct {
@@ -32,6 +35,9 @@ type RabbitMQMessageQueueResponse struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
+
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
 }
 
 func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {

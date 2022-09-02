@@ -8,12 +8,11 @@ package sqldatabases
 import (
 	"context"
 
-	"github.com/Azure/azure-sdk-for-go/services/preview/sql/mgmt/2015-05-01-preview/sql"
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/sql/mgmt/sql"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -89,7 +88,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 
 	serverResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureSqlServer,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	serverResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServer,
@@ -99,7 +98,7 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	}
 	databaseResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureSqlServerDatabase,
-		Provider: providers.ProviderAzure,
+		Provider: resourcemodel.ProviderAzure,
 	}
 	databaseResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureSqlServerDatabase,

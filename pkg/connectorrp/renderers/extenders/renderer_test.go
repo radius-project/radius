@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/stretchr/testify/require"
 )
 
@@ -97,6 +96,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }

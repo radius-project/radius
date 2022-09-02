@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/go-autorest/autorest/azure"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -60,8 +59,8 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 		return fmt.Errorf("failed to get managed cluster details for cluster %s in the resource group %s: %w", handler.arm.K8sClusterName, handler.arm.K8sResourceGroup, err)
 	}
 
-	managedCluster.PodIdentityProfile.Enabled = to.BoolPtr(true)
-	managedCluster.PodIdentityProfile.AllowNetworkPluginKubenet = to.BoolPtr(false)
+	managedCluster.PodIdentityProfile.Enabled = to.Ptr(true)
+	managedCluster.PodIdentityProfile.AllowNetworkPluginKubenet = to.Ptr(false)
 
 	podIdentityName := properties[PodIdentityNameKey]
 	podNamespace := properties[PodNamespaceKey]
@@ -69,9 +68,9 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 		Name:      &podIdentityName,
 		Namespace: &podNamespace, // Note: The pod identity namespace specified here has to match the namespace in which the application is deployed
 		Identity: &containerservice.UserAssignedIdentity{
-			ResourceID: to.StringPtr(managedIdentityProperties[UserAssignedIdentityIDKey]),
-			ClientID:   to.StringPtr(managedIdentityProperties[UserAssignedIdentityClientIDKey]),
-			ObjectID:   to.StringPtr(managedIdentityProperties[UserAssignedIdentityPrincipalIDKey]),
+			ResourceID: to.Ptr(managedIdentityProperties[UserAssignedIdentityIDKey]),
+			ClientID:   to.Ptr(managedIdentityProperties[UserAssignedIdentityClientIDKey]),
+			ObjectID:   to.Ptr(managedIdentityProperties[UserAssignedIdentityPrincipalIDKey]),
 		},
 	}
 
@@ -96,8 +95,8 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 		resultFuture, err = clustersClient.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, handler.arm.K8sClusterName, containerservice.ManagedCluster{
 			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 				PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
-					Enabled:                   to.BoolPtr(true),
-					AllowNetworkPluginKubenet: to.BoolPtr(false),
+					Enabled:                   to.Ptr(true),
+					AllowNetworkPluginKubenet: to.Ptr(false),
 					UserAssignedIdentities:    &identities,
 				},
 			},
@@ -133,7 +132,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 	resource.Identity = resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
 			AKSClusterName: handler.arm.K8sClusterName,
@@ -179,7 +178,7 @@ func (handler *azurePodIdentityHandler) GetResourceIdentity(ctx context.Context,
 	identity := resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
 			AKSClusterName: handler.arm.K8sClusterName,
@@ -228,8 +227,8 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource out
 	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, podidentityCluster, containerservice.ManagedCluster{
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
-				Enabled:                   to.BoolPtr(true),
-				AllowNetworkPluginKubenet: to.BoolPtr(false),
+				Enabled:                   to.Ptr(true),
+				AllowNetworkPluginKubenet: to.Ptr(false),
 				UserAssignedIdentities:    &identities,
 			},
 		},

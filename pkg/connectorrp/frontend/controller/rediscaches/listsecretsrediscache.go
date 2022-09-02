@@ -11,12 +11,12 @@ import (
 	"net/http"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/rp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 

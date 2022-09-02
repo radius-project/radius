@@ -15,6 +15,9 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/resource/show"
+	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -28,6 +31,11 @@ var RootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 }
+
+var resourceCmd = NewResourceCommand()
+
+var ConfigHolderKey = NewContextKey("config")
+var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
 	if new := clients.TryUnfoldErrorResponse(err); new != nil {
@@ -56,7 +64,7 @@ func prettyPrintJSON(o interface{}) (string, error) {
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	ctx := context.WithValue(context.Background(), configHolderKey, configHolder)
+	ctx := context.WithValue(context.Background(), ConfigHolderKey, ConfigHolder)
 	err := RootCmd.ExecuteContext(ctx)
 	if errors.Is(&cli.FriendlyError{}, err) {
 		fmt.Println(err.Error())
@@ -70,10 +78,22 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	RootCmd.PersistentFlags().StringVar(&configHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
+	RootCmd.PersistentFlags().StringVar(&ConfigHolder.ConfigFilePath, "config", "", "config file (default \"$HOME/.rad/config.yaml\")")
 
 	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
 	RootCmd.PersistentFlags().StringP("output", "o", output.DefaultFormat, outputDescription)
+	initSubCommands()
+}
+
+func initSubCommands() {
+	framework := &framework.Impl{
+		ConnectionFactory: connections.DefaultFactory,
+		ConfigHolder:      ConfigHolder,
+		Output: &output.OutputWriter{
+			Writer: RootCmd.OutOrStdout()},
+	}
+	showCmd, _ := show.NewCommand(framework)
+	resourceCmd.AddCommand(showCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
@@ -82,35 +102,27 @@ func init() {
 // The solution is a double-indirection. We add a "ConfigHolder" to the context, and then initialize it later. This
 // way the context is still immutable, but we can add the config when we're ready to (before any command runs).
 
+func initConfig() {
+	v, err := cli.LoadConfig(ConfigHolder.ConfigFilePath)
+	if err != nil {
+		fmt.Printf("Error: failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	ConfigHolder.Config = v
+}
+
 type contextKey string
 
 func NewContextKey(purpose string) contextKey {
 	return contextKey("radius context " + purpose)
 }
 
-var configHolderKey = NewContextKey("config")
-var configHolder = &ConfigHolder{}
-
-type ConfigHolder struct {
-	ConfigFilePath string
-	Config         *viper.Viper
-}
-
 func ConfigFromContext(ctx context.Context) *viper.Viper {
-	holder := ctx.Value(configHolderKey).(*ConfigHolder)
+	holder := ctx.Value(NewContextKey("config")).(*framework.ConfigHolder)
 	if holder == nil {
 		return nil
 	}
 
 	return holder.Config
-}
-
-func initConfig() {
-	v, err := cli.LoadConfig(configHolder.ConfigFilePath)
-	if err != nil {
-		fmt.Printf("Error: failed to load config: %v\n", err)
-		os.Exit(1)
-	}
-
-	configHolder.Config = v
 }

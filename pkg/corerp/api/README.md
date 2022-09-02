@@ -39,6 +39,8 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/gateways.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/containers.json
+modelerfour: 
+  treat-type-object-as-anything: false
 ```
 
 ### Common
@@ -47,7 +49,7 @@ The following configuration generates track2 go models and client.
 
 ```yaml $(tag) != ''
 version: 3.*.*
-use: "@autorest/go@4.0.0-preview.29"
+use: "@autorest/go@4.0.0-preview.44"
 module-version: 0.0.1
 file-prefix: zz_generated_
 license-header: MICROSOFT_MIT_NO_VERSION

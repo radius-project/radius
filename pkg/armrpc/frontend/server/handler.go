@@ -15,10 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	default_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/defaultcontroller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 const (
@@ -94,7 +93,7 @@ func ConfigureDefaultHandlers(
 			ParentRouter:   rootRouter.Path(pathBase).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 			ResourceType:   rt,
 			Method:         v1.OperationPut,
-			HandlerFactory: default_ctrl.NewCreateOrUpdateSubscription,
+			HandlerFactory: defaultoperation.NewCreateOrUpdateSubscription,
 		}, ctrlOpts)
 		if err != nil {
 			return err
@@ -107,7 +106,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(opStatus).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationStatuses,
-		HandlerFactory: default_ctrl.NewGetOperationStatus,
+		HandlerFactory: defaultoperation.NewGetOperationStatus,
 	}, ctrlOpts)
 	if err != nil {
 		return err
@@ -118,7 +117,7 @@ func ConfigureDefaultHandlers(
 		ParentRouter:   rootRouter.Path(opResult).Queries(APIVersionParam, "{"+APIVersionParam+"}").Subrouter(),
 		ResourceType:   statusRT,
 		Method:         v1.OperationGetOperationResult,
-		HandlerFactory: default_ctrl.NewGetOperationResult,
+		HandlerFactory: defaultoperation.NewGetOperationResult,
 	}, ctrlOpts)
 	if err != nil {
 		return err
@@ -137,31 +136,31 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	// if the error is due to api conversion failure return bad resquest
 	switch v := err.(type) {
 	case *conv.ErrModelConversion:
-		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
 			},
 		})
 	case *conv.ErrClientRP:
-		response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
+		response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
 				Code:    v.Code,
 				Message: v.Message,
 			},
 		})
 	default:
 		if err.Error() == conv.ErrInvalidModelConversion.Error() {
-			response = rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    armerrors.HTTPRequestPayloadAPISpecValidationFailed,
+			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 					Message: err.Error(),
 				},
 			})
 		} else {
-			response = rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
-				Error: armerrors.ErrorDetails{
-					Code:    armerrors.Internal,
+			response = rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeInternal,
 					Message: err.Error(),
 				},
 			})
@@ -169,9 +168,9 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	}
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		body := armerrors.ErrorResponse{
-			Error: armerrors.ErrorDetails{
-				Code:    armerrors.Internal,
+		body := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},
 		}

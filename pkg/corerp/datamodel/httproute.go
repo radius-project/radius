@@ -18,6 +18,9 @@ type HTTPRoute struct {
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
 
+	// TODO: remove this from CoreRP
+	ConnectorMetadata
+
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
@@ -25,7 +28,7 @@ type HTTPRoute struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (h *HTTPRoute) ResourceTypeName() string {
+func (h HTTPRoute) ResourceTypeName() string {
 	return "Applications.Core/httpRoutes"
 }
 
@@ -35,8 +38,8 @@ func (h *HTTPRoute) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 		h.Properties.Status.OutputResources = do.DeployedOutputResources
 	}
 
-	h.InternalMetadata.ComputedValues = do.ComputedValues
-	h.InternalMetadata.SecretValues = do.SecretValues
+	h.ComputedValues = do.ComputedValues
+	h.SecretValues = do.SecretValues
 
 	if port, ok := do.ComputedValues["port"].(int32); ok {
 		h.Properties.Port = port

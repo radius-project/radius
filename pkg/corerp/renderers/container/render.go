@@ -18,13 +18,12 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -563,7 +562,7 @@ func (r Renderer) makeAzureKeyVaultPersistentVolume(volumeName string, keyvaultV
 			CSI: &corev1.CSIVolumeSource{
 				Driver: "secrets-store.csi.k8s.io",
 				// We will support only Read operations
-				ReadOnly: to.BoolPtr(true),
+				ReadOnly: to.Ptr(true),
 				VolumeAttributes: map[string]string{
 					"secretProviderClass": secretProviderClassName,
 				},
@@ -616,7 +615,7 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource datamodel.Co
 	identityOutputResource := outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
 		Deployed: false,
@@ -649,7 +648,7 @@ func (r Renderer) makePodIdentity(ctx context.Context, resource datamodel.Contai
 		LocalID: outputresource.LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Deployed: false,
 		Resource: map[string]string{
@@ -706,7 +705,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 		roleAssignment := outputresource.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  localID,
 			Deployed: false,
@@ -740,7 +739,7 @@ func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Conte
 		roleAssignment := outputresource.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			LocalID:  localID,
 			Deployed: false,

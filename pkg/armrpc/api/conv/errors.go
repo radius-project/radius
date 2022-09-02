@@ -9,7 +9,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/rp/armerrors"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 var (
@@ -48,6 +48,6 @@ func (r *ErrClientRP) Error() string {
 func NewClientErrInvalidRequest(message string) *ErrClientRP {
 	err := new(ErrClientRP)
 	err.Message = message
-	err.Code = armerrors.Invalid
+	err.Code = v1.CodeInvalid
 	return err
 }

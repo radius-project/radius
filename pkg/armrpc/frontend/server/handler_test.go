@@ -15,7 +15,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -35,10 +35,10 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
-	armerr := armerrors.ErrorResponse{}
+	armerr := v1.ErrorResponse{}
 	e = json.Unmarshal(bodyBytes, &armerr)
 	require.NoError(t, e)
-	require.Equal(t, armerrors.HTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
+	require.Equal(t, v1.CodeHTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
 	require.Equal(t, armerr.Error.Message, "namespace must be 63 characters or less.")
 }
 
@@ -58,10 +58,10 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
-	armerr := armerrors.ErrorResponse{}
+	armerr := v1.ErrorResponse{}
 	e = json.Unmarshal(bodyBytes, &armerr)
 	require.NoError(t, e)
-	require.Equal(t, armerrors.HTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
+	require.Equal(t, v1.CodeHTTPRequestPayloadAPISpecValidationFailed, armerr.Error.Code)
 	require.Equal(t, armerr.Error.Message, "invalid model conversion")
 }
 
@@ -81,9 +81,9 @@ func Test_HandlerErrInternal(t *testing.T) {
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)
-	armerr := armerrors.ErrorResponse{}
+	armerr := v1.ErrorResponse{}
 	e = json.Unmarshal(bodyBytes, &armerr)
 	require.NoError(t, e)
-	require.Equal(t, armerrors.Internal, armerr.Error.Code)
+	require.Equal(t, v1.CodeInternal, armerr.Error.Code)
 	require.Equal(t, armerr.Error.Message, "Internal error")
 }

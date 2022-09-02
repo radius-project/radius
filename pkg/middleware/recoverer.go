@@ -10,9 +10,9 @@ import (
 	"net/http"
 	"runtime/debug"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
 )
 
 func Recoverer(h http.Handler) http.Handler {
@@ -24,9 +24,9 @@ func Recoverer(h http.Handler) http.Handler {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
 				log.V(radlogger.Fatal).Info(msg)
 
-				resp := rest.NewInternalServerErrorARMResponse(armerrors.ErrorResponse{
-					Error: armerrors.ErrorDetails{
-						Code:    armerrors.Internal,
+				resp := rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+					Error: v1.ErrorDetails{
+						Code:    v1.CodeInternal,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},
 				})

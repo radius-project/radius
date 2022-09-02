@@ -107,17 +107,17 @@ stages:
 			{
 				Name: "infra",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("infra.bicep"),
+					Template: to.Ptr("infra.bicep"),
 				},
 				Profiles: map[string]Profile{
 					"dev": {
 						Bicep: &BicepStage{
-							Template: to.StringPtr("infra-dev.bicep"),
+							Template: to.Ptr("infra-dev.bicep"),
 						},
 					},
 					"staging": {
 						Bicep: &BicepStage{
-							Template: to.StringPtr("infra-staging.bicep"),
+							Template: to.Ptr("infra-staging.bicep"),
 						},
 					},
 				},
@@ -134,7 +134,7 @@ stages:
 					},
 				},
 				Bicep: &BicepStage{
-					Template: to.StringPtr("app.bicep"),
+					Template: to.Ptr("app.bicep"),
 				},
 			},
 		},

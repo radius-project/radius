@@ -14,7 +14,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
@@ -144,15 +143,15 @@ func TestGetMessageExtendDuration(t *testing.T) {
 func TestErrorHandling(t *testing.T) {
 	tests := []struct {
 		err            error
-		expectedArmErr armerrors.ErrorDetails
+		expectedArmErr v1.ErrorDetails
 	}{
 		{
 			err:            conv.NewClientErrInvalidRequest("client error"),
-			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Invalid, Message: "client error"},
+			expectedArmErr: v1.ErrorDetails{Code: v1.CodeInvalid, Message: "client error"},
 		},
 		{
 			err:            errors.New("internal error"),
-			expectedArmErr: armerrors.ErrorDetails{Code: armerrors.Internal, Message: "internal error"},
+			expectedArmErr: v1.ErrorDetails{Code: v1.CodeInternal, Message: "internal error"},
 		},
 	}
 

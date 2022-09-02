@@ -54,10 +54,8 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	dst.Properties = &SQLDatabaseProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
 		Environment:       to.StringPtr(sql.Properties.Environment),

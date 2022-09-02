@@ -102,11 +102,9 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 	switch envCompute.Kind {
 	case datamodel.KubernetesComputeKind:
 		return &KubernetesCompute{
-			EnvironmentCompute: EnvironmentCompute{
-				Kind:       fromEnvironmentComputeKind(envCompute.Kind),
-				ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
-			},
-			Namespace: &envCompute.KubernetesCompute.Namespace,
+			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
+			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
+			Namespace:  &envCompute.KubernetesCompute.Namespace,
 		}
 	default:
 		return nil
@@ -128,7 +126,7 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 	case datamodel.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
 	default:
-		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatprevie supports only kubernetes.
+		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatepreview supports only kubernetes.
 	}
 
 	return &k

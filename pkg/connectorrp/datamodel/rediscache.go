@@ -20,6 +20,9 @@ type RedisCache struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
+
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
 }
 
 type RedisCacheResponse struct {
@@ -32,6 +35,9 @@ type RedisCacheResponse struct {
 
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
+
+	// ConnectorMetadata represents internal DataModel properties common to all connector types.
+	ConnectorMetadata
 }
 
 func (redis RedisCache) ResourceTypeName() string {

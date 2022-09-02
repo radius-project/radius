@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/rp/armerrors"
-	"github.com/project-radius/radius/pkg/rp/rest"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 )
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
@@ -19,9 +19,9 @@ func ARMRequestCtx(pathBase string) func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rpcContext, err := FromARMRequest(r, pathBase)
 			if err != nil {
-				resp := rest.NewBadRequestARMResponse(armerrors.ErrorResponse{
-					Error: armerrors.ErrorDetails{
-						Code:    armerrors.Invalid,
+				resp := rest.NewBadRequestARMResponse(v1.ErrorResponse{
+					Error: v1.ErrorDetails{
+						Code:    v1.CodeInvalid,
 						Message: fmt.Sprintf("unexpected error: %v", err),
 					},
 				})

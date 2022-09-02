@@ -18,6 +18,9 @@ type ContainerResource struct {
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
 
+	// TODO: remove this from CoreRP
+	ConnectorMetadata
+
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
@@ -25,15 +28,15 @@ type ContainerResource struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (c *ContainerResource) ResourceTypeName() string {
+func (c ContainerResource) ResourceTypeName() string {
 	return "Applications.Core/containers"
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (c *ContainerResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	c.Properties.Status.OutputResources = do.DeployedOutputResources
-	c.InternalMetadata.ComputedValues = do.ComputedValues
-	c.InternalMetadata.SecretValues = do.SecretValues
+	c.ComputedValues = do.ComputedValues
+	c.SecretValues = do.SecretValues
 }
 
 // OutputResources returns the output resources array.

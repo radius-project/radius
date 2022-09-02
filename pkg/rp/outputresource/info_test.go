@@ -8,7 +8,6 @@ package outputresource
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/stretchr/testify/require"
@@ -22,7 +21,7 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -30,7 +29,7 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
@@ -39,7 +38,7 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 		LocalID: LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -68,7 +67,7 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -76,7 +75,7 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
@@ -85,7 +84,7 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 		LocalID: LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -113,7 +112,7 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -121,7 +120,7 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
@@ -130,7 +129,7 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 		LocalID: LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -158,7 +157,7 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 		LocalID: LocalIDUserAssignedManagedIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -167,7 +166,7 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 		ResourceType: resourcemodel.ResourceType{
 			Type: resourcekinds.AzureUserAssignedManagedIdentity,
 			// Fixme: Kubernetes is not possible?
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 	}
 
@@ -175,7 +174,7 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 		LocalID: LocalIDRoleAssignmentKVKeys,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureRoleAssignment,
-			Provider: providers.ProviderAzure,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{{LocalID: managedIdentity1.LocalID}},
 	}
@@ -184,7 +183,7 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 		LocalID: LocalIDAADPodIdentity,
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
-			Provider: providers.ProviderAzureKubernetesService,
+			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity1.LocalID},
@@ -215,12 +214,12 @@ func TestGetGCOutputResources_Secret(t *testing.T) {
 		Identity: resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.Deployment,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 		},
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.Deployment,
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 		Dependencies: nil,
 	}
@@ -230,12 +229,12 @@ func TestGetGCOutputResources_Secret(t *testing.T) {
 		Identity: resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.Secret,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 		},
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.Secret,
-			Provider: providers.ProviderKubernetes,
+			Provider: resourcemodel.ProviderKubernetes,
 		},
 		Dependencies: nil,
 	}

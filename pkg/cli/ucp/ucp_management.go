@@ -10,18 +10,19 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"golang.org/x/sync/errgroup"
+
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"golang.org/x/sync/errgroup"
 )
 
 type ARMApplicationsManagementClient struct {
-	Connection *arm.Connection
-	RootScope  string
+	RootScope     string
+	ClientOptions *arm.ClientOptions
 }
 
 var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(nil)
@@ -46,17 +47,24 @@ var (
 // ListAllResourcesByType lists the all the resources within a scope
 func (amc *ARMApplicationsManagementClient) ListAllResourcesByType(ctx context.Context, resourceType string) ([]generated.GenericResource, error) {
 	results := []generated.GenericResource{}
-	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
-	pager := client.ListByRootScope(nil)
-	if pager.Err() != nil {
-		return nil, pager.Err()
+
+	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return results, err
 	}
-	for pager.NextPage(ctx) {
-		resourceList := pager.PageResponse().GenericResourcesList.Value
-		for _, resource := range resourceList {
-			results = append(results, *resource)
+
+	pager := client.NewListByRootScopePager(&generated.GenericResourcesClientListByRootScopeOptions{})
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return results, err
+		}
+		applicationList := nextPage.GenericResourcesList.Value
+		for _, application := range applicationList {
+			results = append(results, *application)
 		}
 	}
+
 	return results, nil
 }
 
@@ -121,37 +129,53 @@ func (amc *ARMApplicationsManagementClient) ListAllResourcesOfTypeInEnvironment(
 }
 
 func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error) {
-	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
-	getResponse, err := client.Get(ctx, resourceName, &generated.GenericResourcesGetOptions{})
+	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return generated.GenericResource{}, err
 	}
+
+	getResponse, err := client.Get(ctx, resourceName, &generated.GenericResourcesClientGetOptions{})
+	if err != nil {
+		return generated.GenericResource{}, err
+	}
+
 	return getResponse.GenericResource, nil
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesDeleteResponse, error) {
-	client := generated.NewGenericResourcesClient(amc.Connection, amc.RootScope, resourceType)
+func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesClientDeleteResponse, error) {
+	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return generated.GenericResourcesClientDeleteResponse{}, err
+	}
+
 	return client.Delete(ctx, resourceName, nil)
 }
 
-func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
-	results := []v20220315privatepreview.ApplicationResource{}
-	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
-	pager := client.ListByScope(nil)
-	for pager.NextPage(ctx) {
-		if pager.Err() != nil {
-			return nil, pager.Err()
+func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error) {
+	results := []corerp.ApplicationResource{}
+
+	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return results, err
+	}
+
+	pager := client.NewListByScopePager(&corerp.ApplicationsClientListByScopeOptions{})
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return results, err
 		}
-		applicationList := pager.PageResponse().ApplicationResourceList.Value
+		applicationList := nextPage.ApplicationResourceList.Value
 		for _, application := range applicationList {
 			results = append(results, *application)
 		}
 	}
+
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]v20220315privatepreview.ApplicationResource, error) {
-	results := []v20220315privatepreview.ApplicationResource{}
+func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerp.ApplicationResource, error) {
+	results := []corerp.ApplicationResource{}
 	applicationsList, err := amc.ListApplications(ctx)
 	if err != nil {
 		return nil, err
@@ -165,10 +189,14 @@ func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationResource, error) {
-	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
-	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsGetOptions{})
-	var result v20220315privatepreview.ApplicationResource
+func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error) {
+	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return corerp.ApplicationResource{}, err
+	}
+
+	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsClientGetOptions{})
+	var result corerp.ApplicationResource
 	if err != nil {
 		return result, err
 	}
@@ -176,16 +204,15 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 	return result, nil
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationsDeleteResponse, error) {
+func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (corerp.ApplicationsClientDeleteResponse, error) {
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
 
 	//This handles errors received from server and ignores 404 related to scope
 	if err != nil && !azclient.Is404Error(err) {
-		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		return corerp.ApplicationsClientDeleteResponse{}, err
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
-
 	for _, resource := range resourcesWithApplication {
 		resource := resource
 		g.Go(func() error {
@@ -197,13 +224,19 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		})
 	}
 	err = g.Wait()
+
 	if err != nil {
-		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		return corerp.ApplicationsClientDeleteResponse{}, err
 	}
-	client := v20220315privatepreview.NewApplicationsClient(amc.Connection, amc.RootScope)
+
+	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return corerp.ApplicationsClientDeleteResponse{}, err
+	}
+
 	response, err := client.Delete(ctx, applicationName, nil)
 	if err != nil && !azclient.Is404Error(err) {
-		return v20220315privatepreview.ApplicationsDeleteResponse{}, err
+		return corerp.ApplicationsClientDeleteResponse{}, err
 	}
 	return response, nil
 }
@@ -214,10 +247,12 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 	if !found {
 		return false
 	}
+
 	associatedAppId, ok := obj.(string)
 	if !ok || associatedAppId == "" {
 		return false
 	}
+
 	idParsed, err := resources.Parse(associatedAppId)
 	if err != nil {
 		return false
@@ -226,6 +261,7 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 	if strings.EqualFold(idParsed.Name(), applicationName) {
 		return true
 	}
+
 	return false
 }
 
@@ -235,10 +271,12 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	if !found {
 		return false
 	}
+
 	associatedEnvId, ok := obj.(string)
 	if !ok || associatedEnvId == "" {
 		return false
 	}
+
 	idParsed, err := resources.Parse(associatedEnvId)
 	if err != nil {
 		return false
@@ -247,18 +285,27 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	if strings.EqualFold(idParsed.Name(), environmentName) {
 		return true
 	}
+
 	return false
 }
 
 func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
-
-	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
-	envListPager := envClient.ListByScope(&corerp.EnvironmentsListByScopeOptions{})
 	envResourceList := []corerp.EnvironmentResource{}
-	for envListPager.NextPage(ctx) {
-		currEnvPage := envListPager.PageResponse().EnvironmentResourceList.Value
-		for _, env := range currEnvPage {
-			envResourceList = append(envResourceList, *env)
+
+	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return envResourceList, err
+	}
+
+	pager := envClient.NewListByScopePager(&corerp.EnvironmentsClientListByScopeOptions{})
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return envResourceList, err
+		}
+		applicationList := nextPage.EnvironmentResourceList.Value
+		for _, application := range applicationList {
+			envResourceList = append(envResourceList, *application)
 		}
 	}
 
@@ -267,35 +314,42 @@ func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]core
 }
 
 func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
+	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return corerp.EnvironmentResource{}, err
+	}
 
-	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
-	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsGetOptions{})
+	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsClientGetOptions{})
 	if err == nil {
-		return envGetResp.EnvironmentsGetResult.EnvironmentResource, nil
+		return envGetResp.EnvironmentResource, nil
 	}
 
 	return corerp.EnvironmentResource{}, err
 
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsDeleteResponse, error) {
+func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsClientDeleteResponse, error) {
 	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
-		return corerp.EnvironmentsDeleteResponse{}, err
+		return corerp.EnvironmentsClientDeleteResponse{}, err
 	}
+
 	for _, application := range applicationsWithEnv {
 		_, err := amc.DeleteApplication(ctx, *application.Name)
 		if err != nil {
-			return corerp.EnvironmentsDeleteResponse{}, err
+			return corerp.EnvironmentsClientDeleteResponse{}, err
 		}
 	}
-	envClient := corerp.NewEnvironmentsClient(amc.Connection, amc.RootScope)
 
-	envResp, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsDeleteOptions{})
+	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerp.EnvironmentsDeleteResponse{}, err
+		return corerp.EnvironmentsClientDeleteResponse{}, err
+	}
+
+	envResp, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsClientDeleteOptions{})
+	if err != nil {
+		return corerp.EnvironmentsClientDeleteResponse{}, err
 	}
 
 	return envResp, err
-
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -97,7 +96,7 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 			Action:        "listKeys",
 			ValueSelector: "/primaryKey",
 			Transformer: resourcemodel.ResourceType{
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureRedis,
 			},
 		}
@@ -109,7 +108,7 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 			LocalID: outputresource.LocalIDAzureRedis,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRedis,
-				Provider: providers.ProviderAzure,
+				Provider: resourcemodel.ProviderAzure,
 			},
 			Resource: map[string]string{
 				handlers.RedisResourceIdKey: redisCacheID.String(),

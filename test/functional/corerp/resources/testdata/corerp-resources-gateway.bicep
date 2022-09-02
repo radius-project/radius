@@ -96,6 +96,9 @@ resource backendContainer 'Applications.Core/containers@2022-03-15-privateprevie
     application: app.id
     container: {
       image: magpieimage
+      env: {
+        gatewayUrl: gateway.properties.url
+      }
       ports: {
         web: {
           containerPort: port

@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -22,12 +23,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/providers"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -61,34 +60,34 @@ func setup(t *testing.T) SharedMocks {
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Deployment,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Secret,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRoleAssignment,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 			{
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.Service,
-					Provider: providers.ProviderKubernetes,
+					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
 			},
 		},
 		map[string]bool{
-			providers.ProviderKubernetes: true,
-			providers.ProviderAzure:      true,
+			resourcemodel.ProviderKubernetes: true,
+			resourcemodel.ProviderAzure:      true,
 		})
 
 	return SharedMocks{
@@ -128,7 +127,7 @@ func getTestRendererOutput() renderers.RendererOutput {
 			LocalID: outputresource.LocalIDService,
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 		},
 	}
@@ -520,7 +519,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -564,7 +563,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -605,7 +604,7 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, armerrors.Invalid, err.(*conv.ErrClientRP).Code)
+		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "linked application ID \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" for resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" has invalid application resource type.", err.(*conv.ErrClientRP).Message)
 	})
 
@@ -786,7 +785,7 @@ func Test_Deploy(t *testing.T) {
 		expectedIdentity := resourcemodel.ResourceIdentity{
 			ResourceType: &resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
-				Provider: providers.ProviderKubernetes,
+				Provider: resourcemodel.ProviderKubernetes,
 			},
 			Data: resourcemodel.KubernetesIdentity{
 				Name:       expectedKubernetesproperties[handlers.ResourceName],
@@ -895,5 +894,49 @@ func Test_Delete(t *testing.T) {
 
 		err := dp.Delete(ctx, resourceID, testResource.Properties.Status.OutputResources)
 		require.NoError(t, err)
+	})
+}
+
+func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, nil, nil, nil, nil}
+
+	radiusSystemNamespace := "radius-system"
+
+	t.Run("Verify getEnvOptions succeeds (host:port)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "localhost:8000")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.NoError(t, err)
+
+		require.True(t, options.Gateway.PublicEndpointOverride)
+		require.Equal(t, options.Gateway.Hostname, "localhost")
+		require.Equal(t, options.Gateway.Port, "8000")
+		require.Equal(t, options.Gateway.ExternalIP, "")
+	})
+
+	t.Run("Verify getEnvOptions succeeds (host)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "www.contoso.com")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.NoError(t, err)
+
+		require.True(t, options.Gateway.PublicEndpointOverride)
+		require.Equal(t, options.Gateway.Hostname, "www.contoso.com")
+		require.Equal(t, options.Gateway.Port, "")
+		require.Equal(t, options.Gateway.ExternalIP, "")
+	})
+
+	t.Run("Verify getEnvOptions fails (URL)", func(t *testing.T) {
+		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "http://localhost:8000")
+		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		require.Error(t, err)
+		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
+		require.Equal(t, options, renderers.EnvironmentOptions{})
 	})
 }

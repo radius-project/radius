@@ -18,6 +18,9 @@ type Gateway struct {
 	// InternalMetadata is the internal metadata which is used for conversion.
 	v1.InternalMetadata
 
+	// TODO: remove this from CoreRP
+	ConnectorMetadata
+
 	// SystemData is the systemdata which includes creation/modified dates.
 	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
@@ -25,15 +28,15 @@ type Gateway struct {
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (g *Gateway) ResourceTypeName() string {
+func (g Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
 }
 
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
-	g.InternalMetadata.ComputedValues = do.ComputedValues
-	g.InternalMetadata.SecretValues = do.SecretValues
+	g.ComputedValues = do.ComputedValues
+	g.SecretValues = do.SecretValues
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		g.Properties.URL = url
 	}
