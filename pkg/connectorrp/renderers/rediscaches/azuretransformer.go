@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 )
 

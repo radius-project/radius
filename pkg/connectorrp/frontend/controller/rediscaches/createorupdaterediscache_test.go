@@ -84,7 +84,7 @@ func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deploy
 				LocalID: outputresource.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 				Identity: resourcemodel.ResourceIdentity{},
 			},
@@ -111,7 +111,7 @@ func getDeploymentProcessorOutputsAzureRedis() (renderers.RendererOutput, deploy
 				LocalID: outputresource.LocalIDAzureRedis,
 				ResourceType: resourcemodel.ResourceType{
 					Type:     resourcekinds.AzureRedis,
-					Provider: providers.ProviderAzure,
+					Provider: resourcemodel.ProviderAzure,
 				},
 			},
 		},
