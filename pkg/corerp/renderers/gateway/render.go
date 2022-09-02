@@ -69,7 +69,15 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	} else if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
 	} else {
-		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
+		var port string
+
+		if options.Environment.Gateway.PublicEndpointOverride || options.Environment.Gateway.Port != "" {
+			port = options.Environment.Gateway.Port
+		} else if gateway.Properties.Port != 0 {
+			port = fmt.Sprint(gateway.Properties.Port)
+		}
+
+		publicEndpoint = getPublicEndpoint(hostname, port)
 	}
 
 	gatewayObject, err := MakeGateway(options, gateway, gateway.Name, applicationName, hostname)

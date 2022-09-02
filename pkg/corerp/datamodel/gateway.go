@@ -37,6 +37,9 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	g.Properties.Status.OutputResources = do.DeployedOutputResources
 	g.ComputedValues = do.ComputedValues
 	g.SecretValues = do.SecretValues
+	if port, ok := do.ComputedValues["port"].(int32); ok {
+		g.Properties.Port = port
+	}
 	if url, ok := do.ComputedValues["url"].(string); ok {
 		g.Properties.URL = url
 	}
@@ -51,6 +54,7 @@ func (g *Gateway) OutputResources() []outputresource.OutputResource {
 type GatewayProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState       `json:"provisioningState,omitempty"`
+	Port              int32                      `json:"port,omitempty"`
 	Internal          bool                       `json:"internal,omitempty"`
 	Hostname          *GatewayPropertiesHostname `json:"hostname,omitempty"`
 	Routes            []GatewayRoute             `json:"routes,omitempty"`

@@ -208,6 +208,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
+		Port: 3000,
 		Hostname: &datamodel.GatewayPropertiesHostname{
 			Prefix:                 "test",
 			FullyQualifiedHostname: "testagain",
@@ -460,6 +461,55 @@ func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
+}
+
+func Test_Render_Port_WithIP(t *testing.T) {
+	r := &Renderer{}
+
+	var port int32 = 3000
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
+	expectedPublicEndpoint := fmt.Sprintf("http://%s:%d", expectedHostname, port)
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Port: port,
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+}
+
+func Test_Render_Port_WithHostname(t *testing.T) {
+	r := &Renderer{}
+
+	var port int32 = 3000
+	expectedPublicEndpoint := fmt.Sprintf("http://%s:%d", testHostname, port)
+	properties, expectedIncludes := makeTestGateway(datamodel.GatewayProperties{
+		BasicResourceProperties: v1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Port: port,
+	})
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions(testHostname, "", "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
+
+	validateGateway(t, output.Resources, testHostname, expectedIncludes)
 }
 
 func Test_Render_Single_Route(t *testing.T) {
@@ -930,6 +980,7 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 		BasicResourceProperties: v1.BasicResourceProperties{
 			Application: config.Application,
 		},
+		Port:     config.Port,
 		Hostname: config.Hostname,
 		Routes: []datamodel.GatewayRoute{
 			defaultRoute,
