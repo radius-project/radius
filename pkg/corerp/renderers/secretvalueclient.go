@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	resources "github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -32,7 +33,12 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 		return nil, fmt.Errorf("unsupported resource type: %+v. Currently only ARM resources are supported", identity)
 	}
 
-	custom := clients.NewCustomActionClient(c.ARM.SubscriptionID, c.ARM.Auth)
+	parsed, err := resources.Parse(arm.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	custom := clients.NewCustomActionClient(parsed.FindScope(resources.SubscriptionsSegment), c.ARM.Auth)
 	response, err := custom.InvokeCustomAction(ctx, arm.ID, arm.APIVersion, action, nil)
 	if err != nil {
 		return nil, err
