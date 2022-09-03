@@ -6,6 +6,8 @@
 package rp
 
 import (
+	"context"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -64,6 +66,22 @@ type SecretValueReference struct {
 
 	// Value is the secret value itself
 	Value string
+}
+
+// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
+// that wants to access it.
+//
+// This is surprisingly common. For example, it's common for access control/connection strings to apply
+// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
+// string that application code consumes will include a database name or queue name, etc. Or the different
+// libraries involved might support different connection string formats, and the user has to choose on.
+type SecretValueTransformer interface {
+	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
+}
+
+//go:generate mockgen -destination=./mock_secretvalueclient.go -package=rp -self_package github.com/project-radius/radius/pkg/rp github.com/project-radius/radius/pkg/rp SecretValueClient
+type SecretValueClient interface {
+	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
 
 // DeploymentOutput is the output details of a deployment.

@@ -10,7 +10,6 @@ import (
 	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -71,20 +70,4 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
 	JSONPointer string
-}
-
-// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
-// that wants to access it.
-//
-// This is surprisingly common. For example, it's common for access control/connection strings to apply
-// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
-// string that application code consumes will include a database name or queue name, etc. Or the different
-// libraries involved might support different connection string formats, and the user has to choose on.
-type SecretValueTransformer interface {
-	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
-}
-
-//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient
-type SecretValueClient interface {
-	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
