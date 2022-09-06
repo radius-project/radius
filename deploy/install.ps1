@@ -34,7 +34,7 @@ if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPa
 # Check if Radius CLI is installed.
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Warning "Radius is detected - $RadiusCliFilePath"
-    #TODO Invoke-Expression "$RadiusCliFilePath --version"
+    Write-Output "Current version:\n$(Invoke-Expression "$RadiusCliFilePath version"))"
     Write-Output "Reinstalling Radius..."
 }
 else {
@@ -48,8 +48,7 @@ if (!(Test-Path $RadiusRoot -PathType Container)) {
     throw "Cannot create $RadiusRoot"
 }
 
-if($Version -eq "")
-{
+if ($Version -eq "") {
     $Version = Invoke-WebRequest $StableVersionUrl -UseBasicParsing
     $Version = $Version.Trim()
 }
@@ -59,26 +58,24 @@ $urlParts = @(
     $OsArch,
     $RadiusCliFileName
 )
-$binaryUrl =  $urlParts -join "/"
+$binaryUrl = $urlParts -join "/"
 
 $binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
 Write-Output "Downloading $binaryUrl ..."
 
-$uri = [uri]$binaryUrl
-try
-{
+try {
     $ProgressPreference = "SilentlyContinue" # Do not show progress bar
     Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
         throw "Failed to download Radius Cli binary - $binaryFilePath"
     }
 }
-catch [Net.WebException]
-{
+catch [Net.WebException] {
     throw "ERROR: The specified release version: $Version does not exist."
 }
 
-# TODO Check the Radius CLI version: Invoke-Expression "$RadiusCliFilePath --version"
+# Print the version string of the installed CLI
+Write-Output "Radius version: \n$(Invoke-Expression "$RadiusCliFilePath version"))"
 
 # Add RadiusRoot directory to User Path environment variable
 Write-Output "Try to add $RadiusRoot to User Path Environment variable..."
@@ -87,9 +84,46 @@ if ($UserPathEnvironmentVar -like '*radius*') {
     Write-Output "Skipping to add $RadiusRoot to User Path - $UserPathEnvironmentVar"
 }
 else {
-    [System.Environment]::SetEnvironmentVariable("PATH", $UserPathEnvironmentVar + ";$RadiusRoot", "User")
-    $UserPathEnvironmentVar = [Environment]::GetEnvironmentVariable("PATH", "User")
-    Write-Output "Added $RadiusRoot to User Path - $UserPathEnvironmentVar"
+    # $env:Path, [Environment]::GetEnvironmentVariable('PATH'), Get-ItemProperty,
+    # and setx all expand variables (e.g. %JAVA_HOME%) in the value. Writing the
+    # expanded paths back into the environment would be destructive so instead, read
+    # the PATH entry directly from the registry with the DoNotExpandEnvironmentNames
+    # option and update the PATH entry in the registry.
+    try {
+        $registryKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+        $originalPath = $registryKey.GetValue(`
+                'PATH', `
+                '', `
+                [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames `
+        )
+        $originalValueKind = $registryKey.GetValueKind('PATH')
+
+        Write-Host "Adding $InstallFolder to PATH"
+
+        $registryKey.SetValue( `
+                'PATH', `
+                "$originalPath;$RadiusRoot", `
+                $originalValueKind `
+        )
+
+        # Calling this method ensures that a WM_SETTINGCHANGE message is
+        # sent to top level windows without having to pinvoke from
+        # PowerShell. Setting to $null deletes the variable if it exists.
+        [Environment]::SetEnvironmentVariable( `
+                'RAD_INSTALLER_NOOP', `
+                $null, `
+                [EnvironmentVariableTarget]::User `
+        )
+
+        # Also add the path to the current session
+        $env:PATH += ";$RadiusRoot"
+    }
+    finally {
+        if ($registryKey) {
+            $registryKey.Close()
+        }
+    }
+    Write-Output "Added $RadiusRoot to User Path - $env:PATH"
 }
 
 Write-Output "`r`nRadius CLI is installed successfully."
@@ -98,7 +132,8 @@ Write-Output "Installing rad-bicep (""rad bicep download"")..."
 $cmd = (Start-Process -NoNewWindow -FilePath $RadiusCliFilePath -ArgumentList "bicep download" -PassThru -Wait)
 if ($cmd.ExitCode -ne 0) {
     Write-Warning "`r`nFailed to install rad-bicep"
-} else {
+}
+else {
     Write-Output "`r`nrad-bicep installed successfully"
 }
 
