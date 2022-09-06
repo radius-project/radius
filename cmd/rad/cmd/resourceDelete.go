@@ -6,8 +6,12 @@
 package cmd
 
 import (
+	"net/http"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,9 +45,18 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	_, err = client.DeleteResource(cmd.Context(), resourceType, resourceName)
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(cmd.Context(), &respFromCtx)
+
+	_, err = client.DeleteResource(ctxWithResp, resourceType, resourceName)
 	if err != nil {
 		return err
+	}
+
+	if respFromCtx.StatusCode == 204 {
+		output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", resourceName, resourceType)
+	} else {
+		output.LogInfo("Resource deleted")
 	}
 
 	return nil

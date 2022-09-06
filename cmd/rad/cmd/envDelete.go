@@ -68,16 +68,16 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 	ctxWithResp := runtime.WithCaptureResponse(cmd.Context(), &respFromCtx)
 
 	_, err = client.DeleteEnv(ctxWithResp, environmentName)
-	if err == nil {
-		output.LogInfo("Environment deleted")
+	if err != nil {
+		return err
 	}
 
 	if respFromCtx.StatusCode == 204 {
 		output.LogInfo("Environment '%s' does not exist or has already been deleted.", environmentName)
-	} else if err == nil {
+	} else {
 		output.LogInfo("Environment deleted")
 	}
 
-	return err
+	return nil
 
 }
