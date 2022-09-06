@@ -79,15 +79,15 @@ func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, appl
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
 
 	_, err = client.DeleteApplication(ctxWithResp, applicationName)
-	if err == nil {
-		output.LogInfo("Application deleted")
+	if err != nil {
+		return err
 	}
 
 	if respFromCtx.StatusCode == 204 {
 		output.LogInfo("Application '%s' does not exist or has already been deleted.", applicationName)
-	} else if err == nil {
+	} else {
 		output.LogInfo("Application deleted")
 	}
 
-	return err
+	return nil
 }

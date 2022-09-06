@@ -49,13 +49,15 @@ func deleteResource(cmd *cobra.Command, args []string) error {
 	ctxWithResp := runtime.WithCaptureResponse(cmd.Context(), &respFromCtx)
 
 	_, err = client.DeleteResource(ctxWithResp, resourceType, resourceName)
-	if err == nil {
-		if respFromCtx.StatusCode == 204 {
-			output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", resourceName, resourceType)
-		} else {
-			output.LogInfo("Resource deleted")
-		}
+	if err != nil {
+		return err
 	}
 
-	return err
+	if respFromCtx.StatusCode == 204 {
+		output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", resourceName, resourceType)
+	} else {
+		output.LogInfo("Resource deleted")
+	}
+
+	return nil
 }
