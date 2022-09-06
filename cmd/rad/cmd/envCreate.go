@@ -14,11 +14,69 @@ import (
 	client_go "k8s.io/client-go/kubernetes"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
+
+func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	runner := NewRunner(factory)
+
+	cmd := &cobra.Command{
+		Use:     "",
+		Short:   "",
+		Long:    "",
+		Example: ``,
+		Args:    cobra.ExactArgs(),
+		RunE:    framework.RunCommand(runner),
+	}
+
+	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
+	// Define your flags here
+	cmd.Flags().StringP("flagName", "k (flag's shorthand notation like w for workspace)", "", "What does the flag ask for")
+
+	return cmd, runner
+}
+
+type Runner struct {
+	ConfigHolder *framework.ConfigHolder
+	Output       output.Interface
+}
+
+func NewRunner(factory framework.Factory) *Runner {
+	return &Runner{
+		ConfigHolder: factory.GetConfigHolder(),
+		Output:       factory.GetOutput(),
+	}
+}
+
+func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
+	if err != nil {
+		return err
+	}
+	r.Workspace = workspace
+
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	r.Format = format
+
+	return nil
+}
+
+func (r *Runner) Run(cmd *cobra.Command, args []string) error {
+	err = r.Output.Write(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
 
 var envCreateCmd = &cobra.Command{
 	Use:   "create",
