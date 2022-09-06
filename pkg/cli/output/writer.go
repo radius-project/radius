@@ -5,18 +5,30 @@
 
 package output
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
-// interface is a mockable interface for writing cli output
+// Interface is a mockable interface for writing cli output
 type Interface interface {
-	Write(format string, obj interface{}, options FormatterOptions) error
+	// LogInfo logs a message that is displayed to the user by default.
+	LogInfo(format string, v ...interface{})
+
+	// Write
+	WriteFormatted(format string, obj interface{}, options FormatterOptions) error
 }
 
 type OutputWriter struct {
 	Writer io.Writer
 }
 
-func (o *OutputWriter) Write(format string, obj interface{}, options FormatterOptions) error {
+func (o *OutputWriter) LogInfo(format string, v ...interface{}) {
+	fmt.Fprintf(o.Writer, format, v...)
+	fmt.Fprintln(o.Writer)
+}
+
+func (o *OutputWriter) WriteFormatted(format string, obj interface{}, options FormatterOptions) error {
 	return Write(format, obj, o.Writer, options)
 }
 

@@ -7,9 +7,11 @@ package ucp
 
 import (
 	"context"
+	"net/http"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"golang.org/x/sync/errgroup"
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
@@ -142,13 +144,21 @@ func (amc *ARMApplicationsManagementClient) ShowResource(ctx context.Context, re
 	return getResponse.GenericResource, nil
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesClientDeleteResponse, error) {
+func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error) {
 	client, err := generated.NewGenericResourcesClient(amc.RootScope, resourceType, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return generated.GenericResourcesClientDeleteResponse{}, err
+		return false, err
 	}
 
-	return client.Delete(ctx, resourceName, nil)
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+	_, err = client.Delete(ctxWithResp, resourceName, nil)
+	if err != nil {
+		return false, err
+	}
+
+	return respFromCtx.StatusCode != 204, nil
 }
 
 func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error) {
@@ -204,12 +214,11 @@ func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context,
 	return result, nil
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (corerp.ApplicationsClientDeleteResponse, error) {
+func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Context, applicationName string) (bool, error) {
+	// This handles the case where the application doesn't exist.
 	resourcesWithApplication, err := amc.ListAllResourcesByApplication(ctx, applicationName)
-
-	//This handles errors received from server and ignores 404 related to scope
 	if err != nil && !azclient.Is404Error(err) {
-		return corerp.ApplicationsClientDeleteResponse{}, err
+		return false, err
 	}
 
 	g, groupCtx := errgroup.WithContext(ctx)
@@ -223,22 +232,26 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 			return nil
 		})
 	}
-	err = g.Wait()
 
+	err = g.Wait()
 	if err != nil {
-		return corerp.ApplicationsClientDeleteResponse{}, err
+		return false, err
 	}
 
 	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerp.ApplicationsClientDeleteResponse{}, err
+		return false, err
 	}
 
-	response, err := client.Delete(ctx, applicationName, nil)
-	if err != nil && !azclient.Is404Error(err) {
-		return corerp.ApplicationsClientDeleteResponse{}, err
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+	_, err = client.Delete(ctxWithResp, applicationName, nil)
+	if err != nil {
+		return false, err
 	}
-	return response, nil
+
+	return respFromCtx.StatusCode != 204, nil
 }
 
 func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
@@ -328,28 +341,31 @@ func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, e
 
 }
 
-func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsClientDeleteResponse, error) {
+func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envName string) (bool, error) {
 	applicationsWithEnv, err := amc.ListApplicationsByEnv(ctx, envName)
 	if err != nil {
-		return corerp.EnvironmentsClientDeleteResponse{}, err
+		return false, err
 	}
 
 	for _, application := range applicationsWithEnv {
 		_, err := amc.DeleteApplication(ctx, *application.Name)
 		if err != nil {
-			return corerp.EnvironmentsClientDeleteResponse{}, err
+			return false, err
 		}
 	}
 
 	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerp.EnvironmentsClientDeleteResponse{}, err
+		return false, err
 	}
 
-	envResp, err := envClient.Delete(ctx, envName, &corerp.EnvironmentsClientDeleteOptions{})
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+	_, err = envClient.Delete(ctxWithResp, envName, nil)
 	if err != nil {
-		return corerp.EnvironmentsClientDeleteResponse{}, err
+		return false, err
 	}
 
-	return envResp, err
+	return respFromCtx.StatusCode != 204, nil
 }

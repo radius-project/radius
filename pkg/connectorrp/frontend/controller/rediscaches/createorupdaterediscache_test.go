@@ -16,6 +16,7 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -26,7 +27,35 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
+func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers.RendererOutput, deployment.DeploymentOutput) {
+	var computedValues map[string]renderers.ComputedValueReference
+	var portValue interface{}
+	if buildComputedValueReferences {
+		computedValues = map[string]renderers.ComputedValueReference{
+			renderers.Host: {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: handlers.RedisHostKey,
+			},
+			renderers.Port: {
+				LocalID:           outputresource.LocalIDAzureRedis,
+				PropertyReference: handlers.RedisPortKey,
+			},
+		}
+
+		portValue = "10255"
+	} else {
+		portValue = int32(10255)
+
+		computedValues = map[string]renderers.ComputedValueReference{
+			renderers.Host: {
+				Value: "myrediscache.redis.cache.windows.net",
+			},
+			renderers.Port: {
+				Value: portValue,
+			},
+		}
+	}
+
 	rendererOutput := renderers.RendererOutput{
 		Resources: []outputresource.OutputResource{
 			{
@@ -42,18 +71,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			renderers.ConnectionStringValue: {Value: "test-connection-string"},
 			renderers.PasswordStringHolder:  {Value: "testpassword"},
 		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.UsernameStringValue: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: "redisusername",
-			},
-			renderers.Host: {
-				Value: "myrediscache.redis.cache.windows.net",
-			},
-			renderers.Port: {
-				Value: int32(10255),
-			},
-		},
+		ComputedValues: computedValues,
 	}
 
 	deploymentOutput := deployment.DeploymentOutput{
@@ -67,9 +85,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			},
 		},
 		ComputedValues: map[string]interface{}{
-			renderers.UsernameStringValue: "redisusername",
-			renderers.Host:                "myrediscache.redis.cache.windows.net",
-			renderers.Port:                int32(10255),
+			renderers.Host: "myrediscache.redis.cache.windows.net",
+			renderers.Port: portValue,
 		},
 	}
 
@@ -82,7 +99,7 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
 	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
-	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
+	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs(false)
 	ctx := context.Background()
 
 	createNewResourceTestCases := []struct {
@@ -92,15 +109,20 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 		resourceETag       string
 		expectedStatusCode int
 		shouldFail         bool
+		azureResource      bool
 	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", http.StatusOK, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", http.StatusOK, false},
+		{"create-new-resource-no-if-match", "If-Match", "", "", http.StatusOK, false, false},
+		{"create-new-resource-*-if-match", "If-Match", "*", "", http.StatusPreconditionFailed, true, false},
+		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", http.StatusPreconditionFailed, true, false},
+		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", http.StatusOK, false, true},
 	}
 
 	for _, testcase := range createNewResourceTestCases {
 		t.Run(testcase.desc, func(t *testing.T) {
+			if testcase.azureResource {
+				rendererOutput, deploymentOutput = getDeploymentProcessorOutputs(true)
+			}
+
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			w := httptest.NewRecorder()
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, input)

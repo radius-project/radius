@@ -3,10 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package show
+package list
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -22,28 +23,29 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show [resourceType] [resourceName]",
-		Short: "Show RAD resource details",
-		Long:  "Show details of the specified Radius resource",
+		Use:   "list [resourceType]",
+		Short: "Lists resources",
+		Long:  "List all resources of specified type",
 		Example: `
 	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
 
-	# show details of a specified resource in the default environment
+	# list all resources of a specified type in the default environment
 
-	rad resource show containers orders
-	rad resource show gateways orders_gateways
-	rad resource show httpRoutes orders_routes
+	rad resource list containers
+	rad resource list gateways
+	rad resource list httpRoutes
 
-	# show details of a specified resource in an application
-	rad resource show containers orders --application icecream-store
+	# list all resources of a specified type in an application
+	rad resource list containers --application icecream-store
 	
-	# show details of a specified resource in an application (shorthand flag)
-	rad resource show containers orders -a icecream-store 
+	# list all resources of a specified type in an application (shorthand flag)
+	rad resource list containers -a icecream-store
 	`,
-		Args: cobra.ExactArgs(2),
+		Args: cobra.ExactArgs(1),
 		RunE: framework.RunCommand(runner),
 	}
 
+	commonflags.AddApplicationNameFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 
@@ -55,32 +57,38 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
-	ResourceType      string
-	ResourceName      string
+	ApplicationName   string
 	Format            string
+	ResourceType      string
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 		Output:            factory.GetOutput(),
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
 	}
 	r.Workspace = workspace
 
-	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
+	applicationName, err := cli.ReadApplicationName(cmd, *workspace)
+	if err != nil {
+		return err
+	}
+	r.ApplicationName = applicationName
+
+	resourceType, err := cli.RequireResourceType(args)
 	if err != nil {
 		return err
 	}
 	r.ResourceType = resourceType
-	r.ResourceName = resourceName
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -97,15 +105,34 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResource(ctx, r.ResourceType, r.ResourceName)
-	if err != nil {
-		return err
-	}
+	if r.ApplicationName == "" {
+		resourceList, err := client.ListAllResourcesByType(ctx, r.ResourceType)
+		if err != nil {
+			return err
+		}
 
-	err = r.Output.WriteFormatted(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
-	}
+		err = r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetResourceTableFormat())
+		if err != nil {
+			return err
+		}
+		return nil
+	} else {
+		_, err = client.ShowApplication(ctx, r.ApplicationName)
+		if cli.Is404ErrorForAzureError(err) {
+			return &cli.FriendlyError{Message: fmt.Sprintf("Application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)}
+		} else if err != nil {
+			return err
+		}
 
-	return nil
+		resourceList, err := client.ListAllResourcesOfTypeInApplication(ctx, r.ApplicationName, r.ResourceType)
+		if err != nil {
+			return err
+		}
+
+		err = r.Output.WriteFormatted(r.Format, resourceList, objectformats.GetResourceTableFormat())
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -55,9 +56,14 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, resource *ou
 		return errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 
+	parsedScope, err := resources.Parse(scope)
+	if err != nil {
+		return err
+	}
+
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, handler.arm.SubscriptionID, managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], scope, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, parsedScope.FindScope(resources.SubscriptionsSegment), managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], scope, roleName)
 	if err != nil {
 		return fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
@@ -79,7 +85,12 @@ func (handler *azureRoleAssignmentHandler) GetResourceIdentity(ctx context.Conte
 	}
 	roleName := properties[RoleNameKey]
 	scope := properties[RoleAssignmentScope]
-	roleDefinitionID, err := roleassignment.GetRoleDefinitionID(ctx, handler.arm.Auth, handler.arm.SubscriptionID, scope, roleName)
+	parsedScope, err := resources.Parse(scope)
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, err
+	}
+
+	roleDefinitionID, err := roleassignment.GetRoleDefinitionID(ctx, handler.arm.Auth, parsedScope.FindScope(resources.SubscriptionsSegment), scope, roleName)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, err
 	}
