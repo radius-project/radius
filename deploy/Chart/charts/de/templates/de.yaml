@@ -59,8 +59,6 @@ stringData:
   # Enable ARM but without explicit credentials, pod identity will handle it
   SKIP_ARM: 'false'
   ARM_AUTH_METHOD: 'ManagedIdentity'
-  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
-  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
 {{ else if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
@@ -68,8 +66,6 @@ stringData:
   AZURE_CLIENT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.clientId }}
   AZURE_CLIENT_SECRET: {{ .Values.global.rp.provider.azure.servicePrincipal.clientSecret }}
   AZURE_TENANT_ID: {{ .Values.global.rp.provider.azure.servicePrincipal.tenantId }}
-  ARM_SUBSCRIPTION_ID: {{ .Values.global.rp.provider.azure.subscriptionId }}
-  ARM_RESOURCE_GROUP: {{ .Values.global.rp.provider.azure.resourceGroup }}
 {{ else }}
   # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
   SKIP_ARM: 'true' 

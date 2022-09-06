@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -33,6 +34,14 @@ func NewAzurePodIdentityHandler(arm *armauth.ArmConfig) ResourceHandler {
 
 type azurePodIdentityHandler struct {
 	arm *armauth.ArmConfig
+
+	// TODO: this code has been written to assume that we work with a single AKS cluster
+	// for a single instance of the Radius control plane. This code is also non-functional. If we bring
+	// back this functionality, we need to rework these semantics. Users should configure these details as
+	// part of the environment configuration, and not as a static "one-per-control-plane" setting.
+	K8sSubscriptionID string
+	K8sResourceGroup  string
+	K8sClusterName    string
 }
 
 func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
@@ -53,10 +62,10 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 	}
 
 	// Get AKS cluster name in current resource group and update it to add pod identity
-	clustersClient := clients.NewManagedClustersClient(handler.arm.K8sSubscriptionID, handler.arm.Auth)
-	managedCluster, err := clustersClient.Get(ctx, handler.arm.K8sResourceGroup, handler.arm.K8sClusterName)
+	clustersClient := clients.NewManagedClustersClient(handler.K8sSubscriptionID, handler.arm.Auth)
+	managedCluster, err := clustersClient.Get(ctx, handler.K8sResourceGroup, handler.K8sClusterName)
 	if err != nil {
-		return fmt.Errorf("failed to get managed cluster details for cluster %s in the resource group %s: %w", handler.arm.K8sClusterName, handler.arm.K8sResourceGroup, err)
+		return fmt.Errorf("failed to get managed cluster details for cluster %s in the resource group %s: %w", handler.K8sClusterName, handler.K8sResourceGroup, err)
 	}
 
 	managedCluster.PodIdentityProfile.Enabled = to.Ptr(true)
@@ -89,10 +98,10 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 	for i := 0; i <= MaxRetries; i++ {
 		// Retry to wait for the managed identity to propagate
 		if i >= MaxRetries {
-			return fmt.Errorf("failed to add pod identity on the cluster %s: %w", handler.arm.K8sClusterName, err)
+			return fmt.Errorf("failed to add pod identity on the cluster %s: %w", handler.K8sClusterName, err)
 		}
 
-		resultFuture, err = clustersClient.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, handler.arm.K8sClusterName, containerservice.ManagedCluster{
+		resultFuture, err = clustersClient.CreateOrUpdate(ctx, handler.K8sResourceGroup, handler.K8sClusterName, containerservice.ManagedCluster{
 			ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 				PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 					Enabled:                   to.Ptr(true),
@@ -135,7 +144,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
-			AKSClusterName: handler.arm.K8sClusterName,
+			AKSClusterName: handler.K8sClusterName,
 			Name:           podIdentityName,
 			Namespace:      podNamespace,
 		},
@@ -150,7 +159,7 @@ func (handler *azurePodIdentityHandler) GetResourceNativeIdentityKeyProperties(c
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
 
-	if handler.arm.K8sSubscriptionID == "" || handler.arm.K8sResourceGroup == "" || handler.arm.K8sClusterName == "" {
+	if handler.K8sSubscriptionID == "" || handler.K8sResourceGroup == "" || handler.K8sClusterName == "" {
 		return nil, errors.New("pod identity is not supported because the RP is not configured for AKS")
 	}
 
@@ -181,7 +190,7 @@ func (handler *azurePodIdentityHandler) GetResourceIdentity(ctx context.Context,
 			Provider: resourcemodel.ProviderAzureKubernetesService,
 		},
 		Data: resourcemodel.AADPodIdentityIdentity{
-			AKSClusterName: handler.arm.K8sClusterName,
+			AKSClusterName: handler.K8sClusterName,
 			Name:           podIdentityName,
 			Namespace:      podNamespace,
 		},
@@ -197,10 +206,10 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource out
 	}
 	// Conceptually this resource is always 'managed'
 
-	mcc := clients.NewManagedClustersClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	mcc := clients.NewManagedClustersClient(handler.K8sSubscriptionID, handler.arm.Auth)
 
 	// Get the cluster and modify it to remove pod identity
-	managedCluster, err := mcc.Get(ctx, handler.arm.K8sResourceGroup, podidentityCluster)
+	managedCluster, err := mcc.Get(ctx, handler.K8sResourceGroup, podidentityCluster)
 	if err != nil {
 		return fmt.Errorf("failed to get managed cluster: %w", err)
 	}
@@ -224,7 +233,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource out
 	// Remove the pod identity at the matching index
 	identities = append(identities[:i], identities[i+1:]...)
 
-	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.arm.K8sResourceGroup, podidentityCluster, containerservice.ManagedCluster{
+	mcFuture, err := mcc.CreateOrUpdate(ctx, handler.K8sResourceGroup, podidentityCluster, containerservice.ManagedCluster{
 		ManagedClusterProperties: &containerservice.ManagedClusterProperties{
 			PodIdentityProfile: &containerservice.ManagedClusterPodIdentityProfile{
 				Enabled:                   to.Ptr(true),
@@ -254,13 +263,18 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource out
 }
 
 func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
-	msiClient := clients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+	parsed, err := resources.Parse(msiResourceID)
+	if err != nil {
+		return err
+	}
+
+	msiClient := clients.NewUserAssignedIdentitiesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
 	msiResource, err := azure.ParseResourceID(msiResourceID)
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
-	resp, err := msiClient.Delete(ctx, handler.arm.ResourceGroup, msiResource.ResourceName)
+	resp, err := msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), msiResource.ResourceName)
 	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
