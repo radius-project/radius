@@ -77,14 +77,24 @@ func ApplyContourHelmChart(options ContourOptions, kubeContext string) error {
 }
 
 func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
+	envoyNode := helmChart.Values["envoy"].(map[string]interface{})
+	if envoyNode == nil {
+		return fmt.Errorf("envoy node not found in chart values")
+	}
+
+	serviceNode := envoyNode["service"].(map[string]interface{})
+	if serviceNode == nil {
+		return fmt.Errorf("envoy.service node not found in chart values")
+	}
+
+	servicePortsNode := serviceNode["ports"].(map[string]interface{})
+	if serviceNode == nil {
+		return fmt.Errorf("envoy.service.ports node not found in chart values")
+	}
+
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
-		envoyNode := helmChart.Values["envoy"].(map[string]interface{})
-		if envoyNode == nil {
-			return fmt.Errorf("envoy node not found in chart values")
-		}
-
 		envoyNode["hostNetwork"] = true
 		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
 
@@ -98,20 +108,13 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 		containerPortsNode["http"] = 80
 		containerPortsNode["https"] = 443
 
-		serviceNode := envoyNode["service"].(map[string]interface{})
-		if serviceNode == nil {
-			return fmt.Errorf("envoy.service node not found in chart values")
-		}
-
-		servicePortsNode := serviceNode["ports"].(map[string]interface{})
-		if serviceNode == nil {
-			return fmt.Errorf("envoy.service.ports node not found in chart values")
-		}
-
 		// This is a hack that sets the default LoadBalancer service ports to 8080 and 8443
 		// so that they don't conflict with Envoy while using Host Networking.
 		servicePortsNode["http"] = 8080
 		servicePortsNode["https"] = 8443
+	} else {
+		servicePortsNode["http"] = 8081
+		servicePortsNode["https"] = 8444
 	}
 
 	return nil

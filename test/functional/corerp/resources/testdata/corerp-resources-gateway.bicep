@@ -25,7 +25,6 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   location: location
   properties: {
     application: app.id
-    port: 3000
     routes: [
       {
         path: '/'
