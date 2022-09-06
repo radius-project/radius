@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -52,7 +53,12 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	//ignore applicationresource as we only check for existence of application
 	_, err = client.ShowApplication(cmd.Context(), applicationName)
 	if err != nil {
-		return err
+		appNotFound := cli.Is404ErrorForAzureError(err)
+		if appNotFound {
+			msg := fmt.Sprintf("Application %s does not exist.", applicationName)
+			fmt.Println(msg)
+		}
+		return &cli.FriendlyError{Message: "Unable to switch applications"}
 	}
 
 	if workspace.DefaultApplication == "" {

@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -60,7 +61,12 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	//ignore envResource as we only check for existence of environment
 	_, err = client.GetEnvDetails(cmd.Context(), environmentName)
 	if err != nil {
-		return err
+		envNotFound := cli.Is404ErrorForAzureError(err)
+		if envNotFound {
+			msg := fmt.Sprintf("Environment %s does not exist.", environmentName)
+			fmt.Println(msg)
+		}
+		return &cli.FriendlyError{Message: "Unable to switch environments"}
 	}
 
 	if workspace.Environment == "" {
