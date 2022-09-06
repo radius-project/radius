@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
@@ -49,6 +50,17 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(workspace.Environment, id.String()) {
 		output.LogInfo("Default environment is already set to %v", environmentName)
 		return nil
+	}
+
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
+	if err != nil {
+		return err
+	}
+
+	//ignore envResource as we only check for existence of environment
+	_, err = client.GetEnvDetails(cmd.Context(), environmentName)
+	if err != nil {
+		return err
 	}
 
 	if workspace.Environment == "" {

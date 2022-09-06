@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
@@ -41,6 +42,17 @@ func switchApplications(cmd *cobra.Command, args []string) error {
 	if strings.EqualFold(workspace.DefaultApplication, applicationName) {
 		output.LogInfo("Default application is already set to %v", applicationName)
 		return nil
+	}
+
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
+	if err != nil {
+		return err
+	}
+
+	//ignore applicationresource as we only check for existence of application
+	_, err = client.ShowApplication(cmd.Context(), applicationName)
+	if err != nil {
+		return err
 	}
 
 	if workspace.DefaultApplication == "" {
