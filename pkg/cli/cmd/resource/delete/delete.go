@@ -3,16 +3,17 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package show
+package delete
 
 import (
 	"context"
+	"net/http"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -22,24 +23,14 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show [resourceType] [resourceName]",
-		Short: "Show RAD resource details",
-		Long:  "Show details of the specified Radius resource",
+		Use:   "delete [resourceType] [resourceName]",
+		Short: "Delete a RAD resource",
+		Long:  "Deletes a RAD resource with the given name",
 		Example: `
-	sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
-
-	# show details of a specified resource in the default environment
-
-	rad resource show containers orders
-	rad resource show gateways orders_gateways
-	rad resource show httpRoutes orders_routes
-
-	# show details of a specified resource in an application
-	rad resource show containers orders --application icecream-store
-	
-	# show details of a specified resource in an application (shorthand flag)
-	rad resource show containers orders -a icecream-store 
-	`,
+		sample list of resourceType: containers, gateways, httpRoutes, daprPubSubBrokers, daprInvokeHttpRoutes, extenders, mongoDatabases, rabbitMQMessageQueues, redisCaches, sqlDatabases, daprStateStores, daprSecretStores
+		
+		# Delete a container named orders
+		rad resource delete containers orders`,
 		Args: cobra.ExactArgs(2),
 		RunE: framework.RunCommand(runner),
 	}
@@ -62,8 +53,8 @@ type Runner struct {
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 		Output:            factory.GetOutput(),
 	}
 }
@@ -97,14 +88,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceDetails, err := client.ShowResource(ctx, r.ResourceType, r.ResourceName)
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+
+	deleted, err := client.DeleteResource(ctxWithResp, r.ResourceType, r.ResourceName)
 	if err != nil {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
-	if err != nil {
-		return err
+	if deleted {
+		r.Output.LogInfo("Resource deleted")
+	} else {
+		r.Output.LogInfo("Resource '%s' of type '%s' does not exist or has already been deleted", r.ResourceName, r.ResourceType)
 	}
 
 	return nil

@@ -11,7 +11,6 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -64,8 +63,17 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command with in sufficient args",
+			Name:          "Show Command with insufficient args",
 			Input:         []string{"containers"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Show Command with too many args",
+			Input:         []string{"containers", "a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -79,12 +87,13 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 	t.Run("Validate rad resource show valid container resource", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+
+		resource := radcli.CreateResource("containers", "foo")
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 		appManagementClient.EXPECT().
 			ShowResource(gomock.Any(), "containers", "foo").
-			Return(CreateContainerResource(), nil).Times(1)
+			Return(resource, nil).Times(1)
 
 		outputSink := &output.MockOutput{}
 
@@ -103,19 +112,10 @@ func Test_Run(t *testing.T) {
 		expected := []interface{}{
 			output.FormattedOutput{
 				Format:  "table",
-				Obj:     CreateContainerResource(),
+				Obj:     resource,
 				Options: objectformats.GetResourceTableFormat(),
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
 	})
-}
-
-func CreateContainerResource() generated.GenericResource {
-	return generated.GenericResource{
-		ID:       &ResourceID,
-		Name:     &ResourceName,
-		Type:     &ResourceType,
-		Location: &Location,
-	}
 }

@@ -127,13 +127,13 @@ type ApplicationsManagementClient interface {
 	ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error)
 	ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error)
-	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesClientDeleteResponse, error)
+	DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error)
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) (corerp.ApplicationsClientDeleteResponse, error)
+	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
-	DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsClientDeleteResponse, error)
+	DeleteEnv(ctx context.Context, envName string) (bool, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
