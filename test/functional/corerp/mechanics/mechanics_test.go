@@ -12,8 +12,8 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp/armerrors"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -308,7 +308,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, armerrors.Invalid, functional.GetMagpieImage()),
+			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
