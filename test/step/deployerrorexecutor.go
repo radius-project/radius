@@ -21,16 +21,18 @@ import (
 var _ Executor = (*DeployErrorExecutor)(nil)
 
 type DeployErrorExecutor struct {
-	Description string
-	Template    string
-	Parameters  []string
+	Description       string
+	Template          string
+	Parameters        []string
+	ExpectedErrorCode string
 }
 
-func NewDeployErrorExecutor(template string, parameters ...string) *DeployErrorExecutor {
+func NewDeployErrorExecutor(template string, errCode string, parameters ...string) *DeployErrorExecutor {
 	return &DeployErrorExecutor{
-		Description: fmt.Sprintf("deploy %s", template),
-		Template:    template,
-		Parameters:  parameters,
+		Description:       fmt.Sprintf("deploy %s", template),
+		Template:          template,
+		Parameters:        parameters,
+		ExpectedErrorCode: errCode,
 	}
 }
 
@@ -47,5 +49,6 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
+	require.Equal(t, d.ExpectedErrorCode, err.(*radcli.CliError).Code)
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
