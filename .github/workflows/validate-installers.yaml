@@ -5,7 +5,7 @@
 # Licensed under the MIT License.
 name: Validate Radius Installers
 on:
-  push:
+  pull_request:
     paths:
       - "deploy/install.ps1"
 
