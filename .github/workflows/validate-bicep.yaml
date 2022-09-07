@@ -1,15 +1,14 @@
+--- # ------------------------------------------------------------
+
 # ------------------------------------------------------------
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
-# ------------------------------------------------------------
-
 name: Validate Bicep Code
 on:
   pull_request:
     branches:
       - main
       - release/*
-
 
 concurrency:
   # Cancel the previously triggered build for only PR build.
@@ -21,23 +20,23 @@ jobs:
     name: Validate Bicep Code
     runs-on: ubuntu-latest
     steps:
-    - name: Check out repo
-      uses: actions/checkout@v2
-    - name: Setup Azure CLI
-      run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-    - name: az Login
-      uses: azure/login@v1
-      with:
-        creds: ${{ secrets.RADIUS_BICEP_VALIDATION_AZURE_SP }}
-        allow-no-subscriptions: true
-    - name: Parse release version and set environment variables
-      run: python ./.github/scripts/get_release_version.py
-    - name: Download rad-bicep-corerp
-      run: |
-        ./.github/scripts/curl-with-retries.sh https://radiuspublic.blob.core.windows.net/tools/bicep-extensibility/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-corerp
-        chmod +x rad-bicep-corerp
-        ./rad-bicep-corerp --version
-    - name: Verify Bicep files
-      run: ./build/validate-bicep.sh
-      env: 
-        BICEP_PATH: .
+      - name: Check out repo
+        uses: actions/checkout@v2
+      - name: Setup Azure CLI
+        run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+      - name: az Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.RADIUS_BICEP_VALIDATION_AZURE_SP }}
+          allow-no-subscriptions: true
+      - name: Parse release version and set environment variables
+        run: python ./.github/scripts/get_release_version.py
+      - name: Download rad-bicep-corerp
+        run: |
+          ./.github/scripts/curl-with-retries.sh https://radiuspublic.blob.core.windows.net/tools/bicep-extensibility/${{ env.REL_CHANNEL }}/linux-x64/rad-bicep --output rad-bicep-corerp
+          chmod +x rad-bicep-corerp
+          ./rad-bicep-corerp --version
+      - name: Verify Bicep files
+        run: ./build/validate-bicep.sh
+        env:
+          BICEP_PATH: .

@@ -1,0 +1,29 @@
+--- # ------------------------------------------------------------
+
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+name: Validate Radius Installers
+on:
+  push:
+    paths:
+      - "deploy/install.ps1"
+
+concurrency:
+  # Cancel the previously triggered build for only PR build.
+  group: rad-installer-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  verify-installers:
+    name: Validate Installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/download-artifact@v3
+        with:
+          name: rad_cli_windows_amd64
+          path: |
+            ./dist/windows_amd64/release/rad.exe
+      - name: Display structure of downloaded files
+        run: Get-ChildItem -Force
