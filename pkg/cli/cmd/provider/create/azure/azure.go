@@ -63,7 +63,7 @@ rad provider create azure --client-id <client id/app id> --client-secret <client
 	cmd.Flags().String("subscription", "", "The subscription id of the target Azure subscription. The subscription id will be stored in local configuration and used by 'rad deploy'.")
 	_ = cmd.MarkFlagRequired("subscription")
 
-	cmd.Flags().String("resource-group", "", "The resource group name of an existing Azure resource group. The resource groupwill be stored in local configuration and used by 'rad deploy'.")
+	cmd.Flags().String("resource-group", "", "The resource group name of an existing Azure resource group. The resource group will be stored in local configuration and used by 'rad deploy'.")
 	_ = cmd.MarkFlagRequired("resource-group")
 
 	return cmd, runner
