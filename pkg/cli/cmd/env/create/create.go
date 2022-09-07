@@ -111,7 +111,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// response, err := h.ucp.ResourceGroups.List(ctx, h.db, h.getRelativePath(r.URL.Path))
 
 	kubeconfig, err := kubernetes.ReadKubeConfig()
-	fmt.Println("kubeconfig: %s", kubeconfig)
+	// fmt.Println("kubeconfig: %s", kubeconfig)
 
 	if err != nil {
 		return err
@@ -127,7 +127,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("rad install: %s", isRadiusInstalled)
+	// fmt.Println("rad install: %s", isRadiusInstalled)
 	if !isRadiusInstalled {
 		return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", namespace)
 	}
