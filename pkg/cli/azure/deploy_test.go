@@ -15,7 +15,7 @@ import (
 
 func Test_GetProviderConfigs(t *testing.T) {
 
-	resourceDeploymentClient := ResouceDeploymentClient{
+	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},
@@ -43,7 +43,7 @@ func Test_GetProviderConfigs(t *testing.T) {
 
 func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 
-	resourceDeploymentClient := ResouceDeploymentClient{
+	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
 		Client:              clients.ResourceDeploymentClient{},
 		OperationsClient:    clients.ResourceDeploymentOperationsClient{},

@@ -25,7 +25,7 @@ var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
 // Local RP Deployment Client to be used for local deployments to Azure environments
 type LocalRPDeploymentClient struct {
-	InnerClient azure.ResouceDeploymentClient
+	InnerClient azure.ResourceDeploymentClient
 	BindUrl     string
 	BackendUrl  string
 }
