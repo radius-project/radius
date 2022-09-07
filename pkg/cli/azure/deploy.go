@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -233,7 +234,7 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 				return err
 			}
 
-			if id.Type() == NestedModuleType {
+			if strings.EqualFold(id.Type(), NestedModuleType) {
 				// Recursively monitor progress for nested deployments in a new goroutine
 				wg.Add(1)
 				go func() {
