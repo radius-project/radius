@@ -39,6 +39,7 @@ type Factory interface {
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
 	CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error)
+	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -191,6 +192,11 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 //nolint:all
 func (*impl) CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error) {
+	return nil, errors.New("this feature is currently not supported")
+}
+
+//nolint:all
+func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
 	return nil, errors.New("this feature is currently not supported")
 }
 

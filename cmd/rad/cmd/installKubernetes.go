@@ -107,7 +107,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		workspaceProvider = workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
 	}
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
-		UpdateAzProvider(section, workspaceProvider, currentKubeContext)
+		cli.UpdateAzProvider(section, workspaceProvider, currentKubeContext)
 		return nil
 	})
 	if err != nil {
