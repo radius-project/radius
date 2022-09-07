@@ -57,7 +57,7 @@ rad provider create azure --client-id <client id/app id> --client-secret <client
 	cmd.Flags().String("client-secret", "", "The client secret or password of an Azure service principal.")
 	_ = cmd.MarkFlagRequired("client-secret")
 
-	cmd.Flags().String("tenant-id", "", "The client id of an Azure service principal.")
+	cmd.Flags().String("tenant-id", "", "The tenant id of an Azure service principal.")
 	_ = cmd.MarkFlagRequired("tenant-id")
 
 	cmd.Flags().String("subscription", "", "The subscription id of the target Azure subscription. The subscription id will be stored in local configuration and used by 'rad deploy'.")
