@@ -18,12 +18,17 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.HTTPRoute{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: &datamodel.HTTPRouteProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
@@ -34,9 +39,6 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 			Port:              to.Int32(src.Properties.Port),
 			Scheme:            to.String(src.Properties.Scheme),
 			URL:               to.String(src.Properties.URL),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 	return converted, nil

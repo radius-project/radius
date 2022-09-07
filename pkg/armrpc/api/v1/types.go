@@ -133,6 +133,25 @@ type InternalMetadata struct {
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
 }
 
+type BaseResource struct {
+	TrackedResource
+	InternalMetadata
+
+	// SystemData is the systemdata which includes creation/modified dates.
+	SystemData SystemData `json:"systemData,omitempty"`
+}
+
+// UpdateMetadata updates the default metadata with new request context and systemdata in old resource.
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldSystemData *SystemData) {
+	b.ID = ctx.ResourceID.String()
+	b.Name = ctx.ResourceID.Name()
+	b.Type = ctx.ResourceID.Type()
+	b.Location = ctx.Location
+	b.TenantID = ctx.HomeTenantID
+	b.CreatedAPIVersion = b.UpdatedAPIVersion
+	b.SystemData = UpdateSystemData(oldSystemData, ctx.SystemData())
+}
+
 // BasicResourceProperties is the basic resource model for radius resources.
 type BasicResourceProperties struct {
 	// Environment represents the id of environment resource.
@@ -145,7 +164,7 @@ type BasicResourceProperties struct {
 }
 
 // EqualLinkedResource returns true if the resource belongs to the same environment and application.
-func (b BasicResourceProperties) EqualLinkedResource(prop BasicResourceProperties) bool {
+func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 

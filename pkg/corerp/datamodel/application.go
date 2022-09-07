@@ -6,23 +6,21 @@
 package datamodel
 
 import (
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
+var _ conv.DataModelInterface = (*Application)(nil)
+
 // Application represents Application resource.
 type Application struct {
-	v1.TrackedResource
+	v1.BaseResource
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties ApplicationProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
 }
 
-func (e Application) ResourceTypeName() string {
+func (e *Application) ResourceTypeName() string {
 	return "Applications.Core/applications"
 }
 

@@ -15,6 +15,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -79,7 +80,11 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
-			require.NoError(t, err)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+			} else {
+				require.NoError(t, err)
+			}
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 

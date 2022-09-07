@@ -150,7 +150,9 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if err.Error() == conv.ErrInvalidModelConversion.Error() {
+		if resp, ok := err.(rest.Response); ok {
+			response = resp
+		} else if err.Error() == conv.ErrInvalidModelConversion.Error() {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
@@ -166,6 +168,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			})
 		}
 	}
+
 	err = response.Apply(ctx, w, req)
 	if err != nil {
 		body := v1.ErrorResponse{

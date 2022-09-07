@@ -10,10 +10,10 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -32,7 +32,7 @@ func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 // Run returns the async operation status.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// TODO: Add additional validation
 

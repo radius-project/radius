@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
@@ -35,7 +34,7 @@ func NewCreateOrUpdateDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, erro
 
 // Run executes CreateOrUpdateDaprPubSubBroker operation.
 func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := daprPubSub.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -65,7 +64,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(&prop) {
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
 		}
 	}
@@ -111,7 +110,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 
 // Validate extracts versioned resource from request and validates the properties.
 func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.DaprPubSubBroker, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err

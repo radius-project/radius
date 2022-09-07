@@ -13,27 +13,32 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 // ListResources is the controller implementation to get the list of resources in resource group.
-type ListResources[T conv.DataModelInterface] struct {
+type ListResources[P interface {
+	*T
+	conv.DataModelInterface
+}, T any] struct {
 	ctrl.BaseController
-	outputConverter conv.OutputConverter[T]
+	outputConverter conv.ResponseConverter[T]
 }
 
 // NewListResources creates a new ListResources instance.
-func NewListResources[T conv.DataModelInterface](opts ctrl.Options, outputConverter conv.OutputConverter[T]) (ctrl.Controller, error) {
-	return &ListResources[T]{
+func NewListResources[P interface {
+	*T
+	conv.DataModelInterface
+}, T any](opts ctrl.Options, outputConverter conv.ResponseConverter[T]) (ctrl.Controller, error) {
+	return &ListResources[P, T]{
 		BaseController:  ctrl.NewBaseController(opts),
 		outputConverter: outputConverter,
 	}, nil
 }
 
 // Run fetches the list of all resources in resourcegroups.
-func (e *ListResources[T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (e *ListResources[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
 		RootScope:    serviceCtx.ResourceID.RootScope(),
@@ -50,8 +55,8 @@ func (e *ListResources[T]) Run(ctx context.Context, req *http.Request) (rest.Res
 	return rest.NewOKResponse(pagination), err
 }
 
-func (e *ListResources[T]) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	items := []interface{}{}
 	for _, item := range result.Items {

@@ -7,7 +7,6 @@ package httproutes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -15,9 +14,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
 var (
@@ -28,39 +26,37 @@ var (
 
 // DeleteHTTPRoute is the controller implementation to delete HTTPRoute resource.
 type DeleteHTTPRoute struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.HTTPRoute, datamodel.HTTPRoute]
 }
 
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
 func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteHTTPRoute{ctrl.NewBaseController(opts)}, nil
+	return &DeleteHTTPRoute{
+		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned),
+	}, nil
 }
 
 // Run executes DeleteHTTPRoute operation
 func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-
-	old := &datamodel.HTTPRoute{}
-	etag, err := e.GetResource(ctx, serviceCtx.ResourceID.String(), old)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	old, etag, isNewResource, err := e.GetResourceFromStore(ctx, serviceCtx.ResourceID)
+	if err != nil {
 		return nil, err
 	}
 
-	if err != nil && errors.Is(&store.ErrNotFound{}, err) {
+	if !isNewResource {
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if err := e.ValidateResource(ctx, req, nil, old, etag, isNewResource); err != nil {
+		return nil, err
+	}
+
 	if !old.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
+		return nil, rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState))
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
-	}
-
-	err = e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout)
-	if err != nil {
+	if err := e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout); err != nil {
 		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
 		if rbErr != nil {
@@ -69,7 +65,5 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return nil, err
 	}
 
-	old.Properties.ProvisioningState = v1.ProvisioningStateDeleting
-
-	return rest.NewAsyncOperationResponse(old, old.TrackedResource.Location, http.StatusAccepted, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
+	return e.ConstructAsyncResponse(ctx, req.Method, etag, old)
 }

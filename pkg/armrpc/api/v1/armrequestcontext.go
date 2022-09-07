@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package servicecontext
+package v1
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
 )
 
@@ -149,6 +148,8 @@ type ARMRequestContext struct {
 	UserAgent string
 	// RawSystemMetadata is the raw system metadata from arm request. SystemData() returns unmarshalled system metadata
 	RawSystemMetadata string
+	// Location represents the location of the resource.
+	Location string
 
 	// IfMatch receives "*" or an ETag - No support for multiple ETags for now
 	IfMatch string
@@ -162,7 +163,7 @@ type ARMRequestContext struct {
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
-func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error) {
+func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
 	log := radlogger.GetLogger(r.Context())
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
 	azID, err := resources.ParseByMethod(path, r.Method)
@@ -196,6 +197,7 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 		ClientReferer:     r.Header.Get(RefererHeader),
 		UserAgent:         r.UserAgent(),
 		RawSystemMetadata: r.Header.Get(ARMResourceSystemDataHeader),
+		Location:          location,
 
 		IfMatch:     r.Header.Get(IfMatch),
 		IfNoneMatch: r.Header.Get(IfNoneMatch),
@@ -212,14 +214,14 @@ func FromARMRequest(r *http.Request, pathBase string) (*ARMRequestContext, error
 }
 
 // SystemData returns unmarshalled RawSystemMetaData.
-func (rc ARMRequestContext) SystemData() *v1.SystemData {
+func (rc ARMRequestContext) SystemData() *SystemData {
 	if rc.RawSystemMetadata == "" {
-		return &v1.SystemData{}
+		return &SystemData{}
 	}
 
-	systemDataProp := &v1.SystemData{}
+	systemDataProp := &SystemData{}
 	if err := json.Unmarshal([]byte(rc.RawSystemMetadata), systemDataProp); err != nil {
-		return &v1.SystemData{}
+		return &SystemData{}
 	}
 
 	return systemDataProp

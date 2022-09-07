@@ -132,6 +132,6 @@ func TestEqualLinkedResource(t *testing.T) {
 	}
 
 	for _, tt := range parentResourceTests {
-		require.Equal(t, tt.propA.EqualLinkedResource(tt.propB), tt.eq)
+		require.Equal(t, tt.propA.EqualLinkedResource(&tt.propB), tt.eq)
 	}
 }

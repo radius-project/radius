@@ -12,7 +12,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -36,7 +35,7 @@ func NewCreateOrUpdateMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) 
 
 // Run executes CreateOrUpdateMongoDatabase operation.
 func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := mongo.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -66,7 +65,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(&prop) {
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
 		}
 	}
@@ -119,7 +118,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Req
 
 // Validate extracts versioned resource from request and validates the properties.
 func (mongo *CreateOrUpdateMongoDatabase) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.MongoDatabase, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err

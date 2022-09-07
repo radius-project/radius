@@ -81,12 +81,17 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.ContainerResource{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.ContainerProperties{
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
@@ -103,9 +108,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				Volumes:        volumes,
 			},
 			Extensions: extensions,
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 

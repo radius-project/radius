@@ -186,8 +186,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -203,8 +205,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -222,8 +226,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -286,8 +292,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -303,8 +311,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -322,8 +332,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -364,8 +376,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -381,8 +395,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -400,8 +416,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -440,8 +458,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -457,8 +477,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -476,8 +498,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -628,8 +652,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -645,8 +671,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -664,8 +692,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -705,8 +735,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{
@@ -722,8 +754,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -741,8 +775,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
 				BasicResourceProperties: v1.BasicResourceProperties{

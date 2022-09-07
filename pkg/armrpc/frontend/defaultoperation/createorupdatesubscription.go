@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/radlogger"
 )
 
@@ -35,7 +34,7 @@ func (a *CreateOrUpdateSubscription) Run(ctx context.Context, req *http.Request)
 	// TODO: implement data store check for subscriptions
 	log := radlogger.GetLogger(ctx)
 	log.Info("Within Create or Update Subscription")
-	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	sCtx := v1.ARMRequestContextFromContext(ctx)
 	switch sCtx.APIVersion {
 	case v1.SubscriptionAPIVersion:
 		return rest.NewOKResponse(a.Validate(req)), nil

@@ -10,9 +10,9 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -31,7 +31,7 @@ func NewGetDaprStateStore(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (daprStateStore *GetDaprStateStore) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.DaprStateStore{}
 	_, err := daprStateStore.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)

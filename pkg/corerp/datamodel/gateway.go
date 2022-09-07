@@ -13,22 +13,16 @@ import (
 
 // Gateway represents Gateway resource.
 type Gateway struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// TODO: remove this from CoreRP
 	ConnectorMetadata
-
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties GatewayProperties `json:"properties"`
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (g Gateway) ResourceTypeName() string {
+func (g *Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
 }
 

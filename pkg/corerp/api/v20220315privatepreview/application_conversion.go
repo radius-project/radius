@@ -18,21 +18,23 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.Application{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.ApplicationProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 	return converted, nil
