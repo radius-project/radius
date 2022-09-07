@@ -53,7 +53,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
@@ -62,7 +62,7 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient renderers.SecretValueClient
+	secretClient rp.SecretValueClient
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -306,16 +306,6 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 }
 
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]interface{}, error) {
-	computedValues := map[string]interface{}{}
-	for k, v := range dependency.ComputedValues {
-		computedValues[k] = v
-	}
-
-	rendererDependency := renderers.RendererDependency{
-		ResourceID:     dependency.ID,
-		ComputedValues: computedValues,
-	}
-
 	secretValues := map[string]interface{}{}
 	for k, secretReference := range dependency.SecretValues {
 		secret, err := dp.fetchSecret(ctx, dependency, secretReference)
@@ -331,7 +321,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency Reso
 				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, dependency.ComputedValues, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, dependency.ID.String(), err)
 			}
@@ -364,7 +354,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 
 	if dp.secretClient == nil {
 		return nil, errors.New("no Azure credentials provided to fetch secret")
-
 	}
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }

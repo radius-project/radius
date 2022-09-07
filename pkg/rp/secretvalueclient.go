@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package renderers
+package rp
 
 import (
 	context "context"
