@@ -70,9 +70,17 @@ const (
 	TestWorkspaceName = "test-workspace"
 )
 
+func LoadConfig(t *testing.T, yamlData string) *viper.Viper {
+	v := viper.New()
+	v.SetConfigType("yaml")
+	err := v.ReadConfig(bytes.NewBuffer([]byte(yamlData)))
+	require.NoError(t, err)
+	return v
+}
+
 func LoadConfigWithWorkspace(t *testing.T) *viper.Viper {
 
-	var yamlData = []byte(`
+	var yamlData = `
 workspaces: 
   default: test-workspace
   items: 
@@ -82,26 +90,18 @@ workspaces:
         kind: kubernetes
       environment: /planes/radius/local/resourceGroups/test-resource-group/providers/Applications.Core/environments/test-environment
       scope: /planes/radius/local/resourceGroups/test-resource-group
-`)
+`
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	err := v.ReadConfig(bytes.NewBuffer(yamlData))
-	require.NoError(t, err)
-	return v
+	return LoadConfig(t, yamlData)
 }
 
 func LoadConfigWithoutWorkspace(t *testing.T) *viper.Viper {
 
-	var yamlData = []byte(`
+	var yamlData = `
 workspaces: 
-`)
+`
 
-	v := viper.New()
-	v.SetConfigType("yaml")
-	err := v.ReadConfig(bytes.NewBuffer(yamlData))
-	require.NoError(t, err)
-	return v
+	return LoadConfig(t, yamlData)
 }
 
 func Create404Error() error {
