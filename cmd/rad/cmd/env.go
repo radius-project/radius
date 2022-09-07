@@ -20,3 +20,13 @@ func init() {
 	envCmd.PersistentFlags().StringP("environment", "e", "", "The environment name")
 	envCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 }
+
+func NewEnvironmentCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "env",
+		Short: "Manage RAD environment",
+		// TODO: fix explanation
+		Long: `The environment is a local configuration entry that stores the connection information for a Radius installation.
+		You can use environments to store all of the Radius installations you interact with, and easily switch between them.`,
+	}
+}

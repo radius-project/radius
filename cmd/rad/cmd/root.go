@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 
+	"github.com/project-radius/radius/pkg/cli/cmd/env/create/envCreate"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	workspace "github.com/project-radius/radius/pkg/cli/cmd/workspace"
@@ -47,6 +48,7 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
+var envCreateCmd = NewEnvironmentCommand()
 
 var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
@@ -137,6 +139,10 @@ func initSubCommands() {
 
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
+	envCreateCmd, _ := envCreate.NewCommand(framework)
+	envCmd.AddCommand(envCreateCmd)
+	// envCreateCmd, _ := envCreate.NewCommand(framework)
+	// envCmd.AddCommand(envCreateCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
