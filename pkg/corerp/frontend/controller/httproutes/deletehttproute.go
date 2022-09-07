@@ -44,7 +44,7 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return nil, err
 	}
 
-	if !isNewResource {
+	if isNewResource {
 		return rest.NewNoContentResponse(), nil
 	}
 

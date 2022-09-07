@@ -46,7 +46,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	if err := e.ValidateResource(ctx, req, newResource, old, etag, isNewResource); err != nil {
 		return nil, err
 	}
-	newResource.UpdateMetadata(serviceCtx, &old.SystemData)
+
+	if isNewResource {
+		newResource.UpdateMetadata(serviceCtx, nil)
+	} else {
+		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
+	}
 
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
 	namespaceQuery := store.Query{
@@ -61,7 +66,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	}
 
 	// Check if environment with this namespace already exists
-	result, err := e.StorageClient().Query(ctx, namespaceQuery, store.WithPaginationToken(serviceCtx.SkipToken), store.WithMaxQueryItemCount(serviceCtx.Top))
+	result, err := e.StorageClient().Query(ctx, namespaceQuery)
 	if err != nil {
 		return nil, err
 	}
@@ -78,6 +83,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
 		}
 	}
+
+	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {

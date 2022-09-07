@@ -53,6 +53,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 			return nil, err
 		}
 	}
+	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
 	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {

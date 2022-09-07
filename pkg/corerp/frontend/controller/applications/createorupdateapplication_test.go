@@ -154,8 +154,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+			} else {
+				require.NoError(t, err)
+			}
 			_ = resp.Apply(ctx, w, req)
-			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
@@ -203,7 +207,11 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
-			require.NoError(t, err)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+			} else {
+				require.NoError(t, err)
+			}
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
@@ -260,8 +268,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+			} else {
+				require.NoError(t, err)
+			}
 			_ = resp.Apply(ctx, w, req)
-			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {

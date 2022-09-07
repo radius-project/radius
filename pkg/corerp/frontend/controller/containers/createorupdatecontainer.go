@@ -53,11 +53,17 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	newResource.UpdateMetadata(serviceCtx, &old.SystemData)
+	if isNewResource {
+		newResource.UpdateMetadata(serviceCtx, nil)
+	} else {
+		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
 
-	if !isNewResource {
 		if !old.Properties.ProvisioningState.IsTerminal() {
 			return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
+		}
+
+		if err := e.ValidateLinkedResource(serviceCtx.ResourceID, isNewResource, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
+			return nil, err
 		}
 
 		// Container is a resource that is asyncly processed. Here, in createOrUpdateContainer, we

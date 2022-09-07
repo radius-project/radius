@@ -16,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -61,7 +62,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
-					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
@@ -91,6 +92,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+				err = nil
+			}
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -141,7 +146,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
-					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
@@ -167,6 +172,12 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+				err = nil
+			}
+			require.NoError(t, err)
+
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -212,7 +223,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
-					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
@@ -227,6 +238,10 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+				err = nil
+			}
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -268,7 +283,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			if !tt.shouldFail {
 				mStorageClient.
 					EXPECT().
-					Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
@@ -295,6 +310,11 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+				err = nil
+			}
+			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -355,7 +375,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			mStorageClient.
 				EXPECT().
-				Query(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+				Query(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
 					return &store.ObjectQueryResult{
 						Items:           items,
@@ -382,6 +402,11 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+				err = nil
+			}
+			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)

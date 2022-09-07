@@ -51,11 +51,18 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		return nil, err
 	}
 
-	newResource.UpdateMetadata(serviceCtx, &old.SystemData)
-	if !isNewResource {
+	if isNewResource {
+		newResource.UpdateMetadata(serviceCtx, nil)
+	} else {
+		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
 		if !old.Properties.ProvisioningState.IsTerminal() {
 			return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 		}
+
+		if err := e.ValidateLinkedResource(serviceCtx.ResourceID, isNewResource, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
+			return nil, err
+		}
+
 		// Gateway is a resource that is asyncly processed. Here, in createOrUpdateGateway, we
 		// don't do the rendering and the deployment. newResource is collected from the request and
 		// that is why newResource doesn't have outputResources. It is wiped in the save call 2

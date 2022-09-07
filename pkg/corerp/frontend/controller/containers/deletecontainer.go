@@ -44,7 +44,7 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return nil, err
 	}
 
-	if !isNewResource {
+	if isNewResource {
 		return rest.NewNoContentResponse(), nil
 	}
 

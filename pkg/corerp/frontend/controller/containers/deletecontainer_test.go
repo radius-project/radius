@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -93,7 +94,11 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
-			require.NoError(t, err)
+			if res, ok := err.(rest.Response); ok {
+				resp = res
+			} else {
+				require.NoError(t, err)
+			}
 
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
@@ -105,7 +110,6 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 			if tt.code == http.StatusAccepted {
 				actualOutput := &datamodel.ContainerResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, v1.ProvisioningStateDeleting, actualOutput.Properties.ProvisioningState)
 			}
 		})
 	}

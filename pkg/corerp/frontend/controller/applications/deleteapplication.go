@@ -40,7 +40,7 @@ func (a *DeleteApplication) Run(ctx context.Context, req *http.Request) (rest.Re
 		return nil, err
 	}
 
-	if !isNewResource {
+	if isNewResource {
 		return rest.NewNoContentResponse(), nil
 	}
 

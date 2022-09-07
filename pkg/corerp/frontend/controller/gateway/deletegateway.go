@@ -44,7 +44,7 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 		return nil, err
 	}
 
-	if !isNewResource {
+	if isNewResource {
 		return rest.NewNoContentResponse(), nil
 	}
 
@@ -56,7 +56,8 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 	}
 
-	// TODO: Update delete status.
+	// TODO: Do we need to update ProvisioningState here?
+
 	if err := dc.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteGatewayOperationTimeout); err != nil {
 		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
 		_, rbErr := dc.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
