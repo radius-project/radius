@@ -31,26 +31,20 @@ $currentPath = $regKey.GetValue( `
 ## Verify that the rad installation directory was successfully added to PATH
 $expectedPathEntry = $InstallFolder
 if (!$currentPath.Contains($expectedPathEntry)) {
-  Write-Error "Could not find path entry"
-  Write-Error "Expected substring: $expectedPathEntry"
-  Write-Error "Actual: $path"
+  Write-Error "Could not find path entry. Expected substring: $expectedPathEntry, Actual: $path"
   exit 1
 }
 
 ## Verify that the installation didn't change the REG_KEY Kind
 $afterInstallPathType = $regKey.GetValueKind('PATH')
 if ($originalPathType -ne $afterInstallPathType) {
-    Write-Error "Path registry key type does not match"
-    Write-Error "Expected: $originalPathType"
-    Write-Error "Actual: $afterInstallPathType"
+    Write-Error "Path registry key type does not match. Expected: $originalPathType,  Actual: $afterInstallPathType"
     exit 1
 }
 
 ## Verify the original path is not overriden
 if (!$currentPath.StartsWith($originalPath)) {
-    Write-Error "Path is not using original path as a prefix after installation"
-    Write-Error "Expected: $originalPath"
-    Write-Error "Actual: $currentPath"
+    Write-Error "Path is not using original path as a prefix after installation. Expected: $originalPath, Actual: $currentPath"
     exit 1
 }
 
