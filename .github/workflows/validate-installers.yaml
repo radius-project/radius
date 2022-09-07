@@ -20,10 +20,6 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: actions/download-artifact@v3
-        with:
-          name: rad_cli_windows_amd64
-          path: |
-            ./dist/windows_amd64/release/rad.exe
-      - name: Display structure of downloaded files
-        run: Get-ChildItem -Force
+      - name: Run installer test script
+        shell: powershell
+        run: "deploy/test-pwsh-install.ps1"

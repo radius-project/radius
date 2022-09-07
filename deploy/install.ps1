@@ -34,7 +34,8 @@ if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPa
 # Check if Radius CLI is installed.
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Warning "Radius is detected - $RadiusCliFilePath"
-    Write-Output "Current version:\n$(Invoke-Expression "$RadiusCliFilePath version"))"
+    Write-Output "Current version:"
+    Write-OUtput $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
     Write-Output "Reinstalling Radius..."
 }
 else {
@@ -75,57 +76,28 @@ catch [Net.WebException] {
 }
 
 # Print the version string of the installed CLI
-Write-Output "Radius version: \n$(Invoke-Expression "$RadiusCliFilePath version"))"
+Write-Output "Radius version:"
+Write-OUtput $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
+
 
 # Add RadiusRoot directory to User Path environment variable
 Write-Output "Try to add $RadiusRoot to User Path Environment variable..."
-$UserPathEnvironmentVar = [Environment]::GetEnvironmentVariable("PATH", "User")
+$UserPathEnvironmentVar = (Get-Item -Path HKCU:\Environment).GetValue(
+    'PATH', # the registry-value name
+    $null, # the default value to return if no such value exists.
+    'DoNotExpandEnvironmentNames' # the option that suppresses expansion
+)
+  
 if ($UserPathEnvironmentVar -like '*radius*') {
     Write-Output "Skipping to add $RadiusRoot to User Path - $UserPathEnvironmentVar"
 }
 else {
-    # $env:Path, [Environment]::GetEnvironmentVariable('PATH'), Get-ItemProperty,
-    # and setx all expand variables (e.g. %JAVA_HOME%) in the value. Writing the
-    # expanded paths back into the environment would be destructive so instead, read
-    # the PATH entry directly from the registry with the DoNotExpandEnvironmentNames
-    # option and update the PATH entry in the registry.
-    try {
-        $registryKey = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
-        $originalPath = $registryKey.GetValue(`
-                'PATH', `
-                '', `
-                [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames `
-        )
-        $originalValueKind = $registryKey.GetValueKind('PATH')
-
-        Write-Host "Adding $InstallFolder to PATH"
-
-        $registryKey.SetValue( `
-                'PATH', `
-                "$originalPath;$RadiusRoot", `
-                $originalValueKind `
-        )
-
-        # Calling this method ensures that a WM_SETTINGCHANGE message is
-        # sent to top level windows without having to pinvoke from
-        # PowerShell. Setting to $null deletes the variable if it exists.
-        [Environment]::SetEnvironmentVariable( `
-                'RAD_INSTALLER_NOOP', `
-                $null, `
-                [EnvironmentVariableTarget]::User `
-        )
-
-        # Also add the path to the current session
-        $env:PATH += ";$RadiusRoot"
-    }
-    finally {
-        if ($registryKey) {
-            $registryKey.Close()
-        }
-    }
-    Write-Output "Added $RadiusRoot to User Path - $env:PATH"
+    Write-Host "Adding $InstallFolder to PATH"
+    [Environment]::SetEnvironmentVariable("PATH", "$UserPathEnvironmentVar$RadiusRoot", [EnvironmentVariableTarget]::User)
+    # Also add the path to the current session
+    $env:PATH += ";$RadiusRoot"
 }
-
+Write-Output "Added $RadiusRoot to User Path - $env:PATH"
 Write-Output "`r`nRadius CLI is installed successfully."
 
 Write-Output "Installing rad-bicep (""rad bicep download"")..."
