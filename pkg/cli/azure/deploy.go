@@ -63,7 +63,7 @@ func (dc *ResourceDeploymentClient) Deploy(ctx context.Context, options clients.
 
 		wg.Add(1)
 		go func() {
-			_ = dc.monitorProgress(ctx, name, options.ProgressChan)
+			_ = dc.monitorProgress(ctx, name, options.ProgressChan, &wg)
 			wg.Done()
 		}()
 	}
@@ -197,7 +197,7 @@ func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, futur
 	return summary, nil
 }
 
-func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress) error {
+func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress, wg *sync.WaitGroup) error {
 	// A note about this: since we're doing polling we might not see all of the operations
 	// complete before the overall deployment completes. That's fine, this will be handled
 	// by the presentation layer. In this code we just cancel when we're told to.
@@ -235,7 +235,11 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 
 			if id.Type() == NestedModuleType {
 				// Recursively monitor progress for nested deployments in a new goroutine
-				go dc.monitorProgress(ctx, id.Name(), progressChan)
+				wg.Add(1)
+				go func() {
+					_ = dc.monitorProgress(ctx, id.Name(), progressChan, wg)
+					wg.Done()
+				}()
 			}
 
 			current := status[id.String()]
