@@ -69,10 +69,8 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	}
 
 	out, cliErr := cli.RunCommand(ctx, args)
-	if cliErr != nil {
-		if strings.Contains(out, "BadRequest") {
-			return NewCliError(cliErr.Error(), v1.CodeInvalid)
-		}
+	if cliErr != nil && strings.Contains(out, "BadRequest") {
+		return NewCliError(cliErr.Error(), v1.CodeInvalid)
 	}
 	return cliErr
 }
