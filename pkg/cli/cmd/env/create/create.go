@@ -97,7 +97,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	var k8sGoClient client_go.Interface
 	k8sGoClient, _, contextName, err := createKubernetesClients("")
-	fmt.Println("context name: %s", contextName)
+	fmt.Println("context name: ", contextName)
 	if err != nil {
 		return err
 	}
