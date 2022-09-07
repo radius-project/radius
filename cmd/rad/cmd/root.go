@@ -40,12 +40,7 @@ var ConfigHolderKey = NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clients.TryUnfoldErrorResponse(err); new != nil {
-		m, err := prettyPrintJSON(new)
-		if err == nil {
-			return m
-		}
-	} else if new := clients.TryUnfoldServiceError(err); new != nil {
+	if new := clients.TryUnfoldServiceError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
