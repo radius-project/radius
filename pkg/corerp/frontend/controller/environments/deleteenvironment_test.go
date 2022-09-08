@@ -16,7 +16,6 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -50,11 +49,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteEnvironment(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
-		if res, ok := err.(rest.Response); ok {
-			resp = res
-			err = nil
-		}
+		resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -122,11 +117,7 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

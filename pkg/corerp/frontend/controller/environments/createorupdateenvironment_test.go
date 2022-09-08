@@ -16,7 +16,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -91,11 +90,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -171,11 +166,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 
 			_ = resp.Apply(ctx, w, req)
@@ -237,11 +228,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -309,11 +296,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
@@ -401,11 +384,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

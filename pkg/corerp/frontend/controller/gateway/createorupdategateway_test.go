@@ -19,7 +19,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -130,11 +129,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateGateway(opts)
 			require.NoError(t, err)
 
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 			if tt.rErr != nil {
 				require.Error(t, tt.rErr)
 			} else {
@@ -289,11 +284,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateGateway(opts)
 			require.NoError(t, err)
 
-			resp, err := ctl.Run(ctx, req)
-			if res, ok := err.(rest.Response); ok {
-				resp = res
-				err = nil
-			}
+			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
 
 			if resp != nil {
 				_ = resp.Apply(ctx, w, req)
