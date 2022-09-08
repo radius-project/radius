@@ -9,9 +9,10 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/daprextension"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
@@ -134,16 +135,22 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 	}
 
-	// TODO: Adding handlers next after this changelist
 	azureOutputResourceModel := []OutputResourceModel{
-		// HACK adding CosmosDB because SecretValueTransformer is custom.
+		// Azure CosmosDB and Azure Redis models are consumed by deployment processor to fetch secrets for container dependencies.
+		// Any new SecretValueTransformer for a connector should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
-			SecretValueTransformer: &renderers.AzureTransformer{},
+			SecretValueTransformer: &mongodatabases.AzureTransformer{},
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRedis,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			SecretValueTransformer: &rediscaches.AzureTransformer{},
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
@@ -174,101 +181,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
 		},
 	}
-	/* 	azureOutputResourceModel := []OutputResourceModel{
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureCosmosDBMongo,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
-	   			SecretValueTransformer: &mongodbv1alpha3.AzureTransformer{},
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.DaprStateStoreAzureStorage,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewDaprStateStoreAzureStorageHandler(arm, k8s),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureCosmosAccount,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureCosmosDBSQL,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureCosmosDBSQLHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewDaprPubSubServiceBusHandler(arm, k8s),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzurePodIdentity,
-	   				Provider: resourcemodel.ProviderAzureKubernetesService,
-	   			},
-	   			ResourceHandler: handlers.NewAzurePodIdentityHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureSqlServer,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewARMHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureSqlServerDatabase,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewARMHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureRoleAssignment,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureRedis,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureRedisHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureFileShare,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureFileShareHandler(arm),
-	   		},
-	   		{
-	   			ResourceType: resourcemodel.ResourceType{
-	   				Type:     resourcekinds.AzureFileShareStorageAccount,
-	   				Provider: resourcemodel.ProviderAzure,
-	   			},
-	   			ResourceHandler: handlers.NewAzureFileShareStorageAccountHandler(arm),
-	   		},
-	   	}
-	*/
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
 	if err != nil {
 		return ApplicationModel{}, err

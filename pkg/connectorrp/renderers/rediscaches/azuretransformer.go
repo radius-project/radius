@@ -10,11 +10,11 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
-var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
+var _ rp.SecretValueTransformer = (*AzureTransformer)(nil)
 
 type AzureTransformer struct {
 }
@@ -27,12 +27,12 @@ func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[str
 		return nil, errors.New("expected the access key to be a string")
 	}
 
-	hostname, ok := computedValues[handlers.RedisHostKey].(string)
+	hostname, ok := computedValues[renderers.Host].(string)
 	if !ok {
 		return nil, errors.New("hostname is required to build Redis connection string")
 	}
 
-	port, ok := computedValues[handlers.RedisPortKey].(string)
+	port, ok := computedValues[renderers.Port].(string)
 	if !ok {
 		return nil, errors.New("port is required to build Redis connection string")
 	}

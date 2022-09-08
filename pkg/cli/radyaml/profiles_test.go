@@ -32,13 +32,13 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Main: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 			},
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 			},
 		},
@@ -47,12 +47,12 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Main: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 				Profiles: map[string]Profile{
 					"nope": {
 						Bicep: &BicepStage{
-							Template: to.StringPtr("another.bicep"),
+							Template: to.Ptr("another.bicep"),
 						},
 					},
 				},
@@ -60,7 +60,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 			},
 		},
@@ -69,7 +69,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Main: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 				Profiles: map[string]Profile{
 					"test": {
@@ -80,7 +80,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 			},
 		},
@@ -89,12 +89,12 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Main: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("test.bicep"),
+					Template: to.Ptr("test.bicep"),
 				},
 				Profiles: map[string]Profile{
 					"test": {
 						Bicep: &BicepStage{
-							Template: to.StringPtr("override.bicep"),
+							Template: to.Ptr("override.bicep"),
 						},
 					},
 				},
@@ -102,7 +102,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("override.bicep"),
+					Template: to.Ptr("override.bicep"),
 				},
 			},
 		},
@@ -114,7 +114,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 				Profiles: map[string]Profile{
 					"test": {
 						Bicep: &BicepStage{
-							Template: to.StringPtr("override.bicep"),
+							Template: to.Ptr("override.bicep"),
 						},
 					},
 				},
@@ -122,7 +122,7 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template: to.StringPtr("override.bicep"),
+					Template: to.Ptr("override.bicep"),
 				},
 			},
 		},
@@ -200,8 +200,8 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Main: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template:      to.StringPtr("main.bicep"),
-					ParameterFile: to.StringPtr("main.parameters.json"),
+					Template:      to.Ptr("main.bicep"),
+					ParameterFile: to.Ptr("main.parameters.json"),
 					Parameters: map[string]string{
 						"main1": "original",
 						"main2": "original",
@@ -210,8 +210,8 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 				Profiles: map[string]Profile{
 					"test": {
 						Bicep: &BicepStage{
-							Template:      to.StringPtr("override.bicep"),
-							ParameterFile: to.StringPtr("override.parameters.json"),
+							Template:      to.Ptr("override.bicep"),
+							ParameterFile: to.Ptr("override.parameters.json"),
 							Parameters: map[string]string{
 								"main2":     "override",
 								"override1": "override",
@@ -223,8 +223,8 @@ func Test_ApplyProfile_Valid(t *testing.T) {
 			Expected: Stage{
 				Name: "test-stage",
 				Bicep: &BicepStage{
-					Template:      to.StringPtr("override.bicep"),
-					ParameterFile: to.StringPtr("override.parameters.json"),
+					Template:      to.Ptr("override.bicep"),
+					ParameterFile: to.Ptr("override.parameters.json"),
 					Parameters: map[string]string{
 						"main1":     "original",
 						"main2":     "override",

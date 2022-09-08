@@ -94,10 +94,8 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 	dst.Location = to.StringPtr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseResponseProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -124,20 +122,16 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	dst.Location = to.StringPtr(mongo.Location)
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseProperties{
-		MongoDatabaseResponseProperties: MongoDatabaseResponseProperties{
-			BasicResourceProperties: BasicResourceProperties{
-				Status: &ResourceStatus{
-					OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
-				},
-			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
-			Environment:       to.StringPtr(mongo.Properties.Environment),
-			Application:       to.StringPtr(mongo.Properties.Application),
-			Resource:          to.StringPtr(mongo.Properties.Resource),
-			Host:              to.StringPtr(mongo.Properties.Host),
-			Port:              to.Int32Ptr(mongo.Properties.Port),
-			Database:          to.StringPtr(mongo.Properties.Database),
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
+		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
+		Environment:       to.StringPtr(mongo.Properties.Environment),
+		Application:       to.StringPtr(mongo.Properties.Application),
+		Resource:          to.StringPtr(mongo.Properties.Resource),
+		Host:              to.StringPtr(mongo.Properties.Host),
+		Port:              to.Int32Ptr(mongo.Properties.Port),
+		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
 		dst.Properties.Secrets = &MongoDatabaseSecrets{

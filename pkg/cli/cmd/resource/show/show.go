@@ -7,10 +7,9 @@ package show
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -45,11 +44,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		RunE: framework.RunCommand(runner),
 	}
 
-	outputDescription := fmt.Sprintf("output format (supported formats are %s)", strings.Join(output.SupportedFormats(), ", "))
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
-	cmd.Flags().StringP("output", "o", output.DefaultFormat, outputDescription)
-	cmd.Flags().StringP("type", "t", "", "The resource type")
-	cmd.Flags().StringP("resource", "r", "", "The resource name")
+	commonflags.AddOutputFlag(cmd)
+	commonflags.AddWorkspaceFlag(cmd)
 
 	return cmd, runner
 }
@@ -106,7 +102,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.Output.Write(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
+	err = r.Output.WriteFormatted(r.Format, resourceDetails, objectformats.GetResourceTableFormat())
 	if err != nil {
 		return err
 	}

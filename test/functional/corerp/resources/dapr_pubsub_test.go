@@ -8,6 +8,7 @@ package resource_test
 import (
 	"testing"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -88,6 +89,30 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 					},
 				},
 			},
+		},
+	}, requiredSecrets)
+
+	test.Test(t)
+}
+
+func Test_DaprPubSubServiceInvalid(t *testing.T) {
+	template := "testdata/corerp-resources-dapr-pubsub-servicebus-invalid.bicep"
+	name := "corerp-resources-dapr-pubsub-servicebus-invalid"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-dapr-pubsub-servicebus-invalid",
+						Type: validation.ApplicationsResource,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{},
 		},
 	}, requiredSecrets)
 

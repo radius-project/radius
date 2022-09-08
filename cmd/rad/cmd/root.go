@@ -15,7 +15,10 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/resource/show"
+	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
+	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
+	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
+	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -90,10 +93,20 @@ func initSubCommands() {
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Output: &output.OutputWriter{
-			Writer: RootCmd.OutOrStdout()},
+			Writer: RootCmd.OutOrStdout(),
+		},
 	}
-	showCmd, _ := show.NewCommand(framework)
+	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
+
+	listCmd, _ := resource_list.NewCommand(framework)
+	resourceCmd.AddCommand(listCmd)
+
+	deleteCmd, _ := resource_delete.NewCommand(framework)
+	resourceCmd.AddCommand(deleteCmd)
+
+	providerCmd := provider.NewCommand(framework)
+	RootCmd.AddCommand(providerCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -465,7 +464,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
 				Source:                makeResourceID(t, "ResourceType", "A").String(),
-				DisableDefaultEnvVars: to.BoolPtr(true),
+				DisableDefaultEnvVars: to.Ptr(true),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -770,7 +769,7 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 				envVarName2: envVarValue2,
 			},
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Ephemeral,
 					Ephemeral: &datamodel.EphemeralVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -843,7 +842,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -898,7 +897,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	require.Equal(t, volumes[0].VolumeSource.AzureFile.ShareName, testShareName)
 
 	// Verify Kubernetes secret
-	secret := secretResource.Resource.(*corev1.Secret)
+	secret := secretResource.Resource.(*v1.Secret)
 	require.Lenf(t, secret.Data, 2, "expected 2 secret key-value pairs, instead got %+v", len(secret.Data))
 	require.NoError(t, err)
 }
@@ -916,7 +915,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 			Volumes: map[string]datamodel.VolumeProperties{
-				tempVolName: datamodel.VolumeProperties{
+				tempVolName: {
 					Kind: datamodel.Persistent,
 					Persistent: &datamodel.PersistentVolume{
 						VolumeBase: datamodel.VolumeBase{
@@ -1024,9 +1023,9 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 				Kind: datamodel.HTTPGetHealthProbe,
 				HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					Path:          "/healthz",
 					ContainerPort: 8080,
@@ -1101,9 +1100,9 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 				Kind: datamodel.TCPHealthProbe,
 				TCP: &datamodel.TCPHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					ContainerPort: 8080,
 				},
@@ -1169,9 +1168,9 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 				Kind: datamodel.ExecHealthProbe,
 				Exec: &datamodel.ExecHealthProbeProperties{
 					HealthProbeBase: datamodel.HealthProbeBase{
-						InitialDelaySeconds: to.Float32Ptr(30),
-						FailureThreshold:    to.Float32Ptr(10),
-						PeriodSeconds:       to.Float32Ptr(2),
+						InitialDelaySeconds: to.Ptr[float32](30),
+						FailureThreshold:    to.Ptr[float32](10),
+						PeriodSeconds:       to.Ptr[float32](2),
 					},
 					Command: "a b c",
 				},

@@ -16,7 +16,7 @@ import (
 
 type TestTime struct {
 	Name      string
-	CreatedAt time.Time
+	CreatedAt *time.Time
 }
 
 type Test struct {
@@ -24,18 +24,17 @@ type Test struct {
 	Data interface{}
 }
 
-var (
-	testData = &TestTime{
-		Name:      "hello",
-		CreatedAt: time.Now(),
-	}
-)
-
 func TestDecodeMap_WithoutTimeDecodeHook(t *testing.T) {
+	now := time.Now()
+
 	test := Test{
 		Flag: 1,
-		Data: testData,
+		Data: &TestTime{
+			Name:      "hello",
+			CreatedAt: &now,
+		},
 	}
+
 	jsv, _ := json.Marshal(test)
 	i := make(map[string]interface{})
 
@@ -59,18 +58,38 @@ func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 	decoder, err := mapstructure.NewDecoder(cfg)
 	require.NoError(t, err)
 
-	test := Test{
-		Flag: 2,
-		Data: testData,
+	now, err := time.Parse(time.RFC3339, "2022-09-01T15:00:00Z")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		desc string
+		obj  map[string]interface{}
+	}{
+		{
+			"time-now",
+			map[string]interface{}{
+				"name":      "time-string",
+				"createdAt": "2022-09-01T15:00:00Z",
+			},
+		},
+		{
+			"time-unix-float",
+			map[string]interface{}{
+				"name":      "time-unix-float",
+				"createdAt": float64(now.UnixMilli()),
+			},
+		},
+		{
+			"time-unix-int",
+			map[string]interface{}{
+				"name":      "time-unix-int",
+				"createdAt": int64(now.UnixMilli()),
+			},
+		},
 	}
-
-	jsv, _ := json.Marshal(test)
-	i := make(map[string]interface{})
-
-	err = json.Unmarshal(jsv, &i)
-	require.NoError(t, err)
-
-	err = decoder.Decode(i["Data"])
-	require.NoError(t, err)
-	require.True(t, out.CreatedAt.Equal(testData.CreatedAt))
+	for _, tt := range testCases {
+		err = decoder.Decode(tt.obj)
+		require.NoError(t, err)
+		require.Equal(t, now, out.CreatedAt.UTC())
+	}
 }

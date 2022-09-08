@@ -11,13 +11,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/k3d"
@@ -294,7 +296,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
 		section.Items[strings.ToLower(workspaceName)] = *workspace
-		UpdateAzProvider(section, provider, contextName)
+		cli.UpdateAzProvider(section, provider, contextName)
 		return nil
 	})
 	if err != nil {
@@ -338,46 +340,38 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func UpdateAzProvider(section *cli.WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
-	for _, workspaceItem := range section.Items {
-		if workspaceItem.IsSameKubernetesContext(contextName) {
-			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
-			section.Items[workspaceName] = workspaceItem
-		}
-	}
-}
-
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
-	_, conn, err := kubernetes.CreateAPIServerConnection(kubeCtxName, "")
+	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}
 
 	loc := "global"
 	id := "self"
 
 	toCreate := coreRpApps.EnvironmentResource{
-		TrackedResource: coreRpApps.TrackedResource{
-			Location: &loc,
-		},
+		Location: &loc,
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.KubernetesCompute{
-				EnvironmentCompute: coreRpApps.EnvironmentCompute{
-					Kind:       to.StringPtr(coreRpApps.EnvironmentComputeKindKubernetes),
-					ResourceID: &id,
-				},
-				Namespace: to.StringPtr(namespace),
+				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),
+				ResourceID: &id,
+				Namespace:  to.Ptr(namespace),
 			},
 		},
 	}
 
 	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
-	c := coreRpApps.NewEnvironmentsClient(conn, rootScope)
-	resp, err := c.CreateOrUpdate(ctx, environmentName, toCreate, nil)
+
+	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, connections.GetClientOptions(baseURL, transporter))
+	if err != nil {
+		return "", fmt.Errorf("failed to create environment client: %w", err)
+	}
+
+	resp, err := envClient.CreateOrUpdate(ctx, environmentName, toCreate, nil)
 	if err != nil {
 		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
 	}
+
 	return *resp.ID, nil
 }
 
@@ -453,7 +447,7 @@ func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		}
 		matched, msg, _ := prompt.ResourceName(envStr)
 		if !matched {
-			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name.", envStr, msg)
+			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name", envStr, msg)
 		}
 	}
 

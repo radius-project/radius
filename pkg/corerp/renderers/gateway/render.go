@@ -7,9 +7,9 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
-	"net/url"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -61,10 +61,17 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
-	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options)
-	if err != nil {
+	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options.Environment.Gateway)
+
+	var publicEndpoint string
+	if errors.Is(err, &ErrNoPublicEndpoint{}) {
+		publicEndpoint = "unknown"
+	} else if err != nil {
 		return renderers.RendererOutput{}, fmt.Errorf("getting hostname failed with error: %s", err)
+	} else {
+		publicEndpoint = getPublicEndpoint(hostname, options.Environment.Gateway.Port)
 	}
+
 	gatewayObject, err := MakeGateway(options, gateway, gateway.Name, applicationName, hostname)
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -72,20 +79,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	outputResources = append(outputResources, gatewayObject)
 
-	var computedHostname string
-	if hostname == "" {
-		computedHostname = "unknown"
-	} else if options.Environment.Gateway.PublicEndpointOverride {
-		computedHostname = options.Environment.Gateway.PublicIP
-	} else if gateway.Properties.Hostname != nil && gateway.Properties.Hostname.FullyQualifiedHostname != "" {
-		computedHostname = gateway.Properties.Hostname.FullyQualifiedHostname
-	} else {
-		computedHostname = "http://" + hostname
-	}
-
 	computedValues := map[string]rp.ComputedValueReference{
 		"url": {
-			Value: computedHostname,
+			Value: publicEndpoint,
 		},
 	}
 
@@ -261,46 +257,66 @@ func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 	return resourceID.Name(), nil
 }
 
-func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.RenderOptions) (string, error) {
-	publicIP := options.Environment.Gateway.PublicIP
-	publicEndpointOverride := options.Environment.Gateway.PublicEndpointOverride
+// getHostname returns the hostname of the public endpoint of the Gateway.
+// This sometimes involves transforming the external IP of the cluster into
+// a hostname that's unique to this Gateway and Application.
+func getHostname(resource datamodel.Gateway, gateway *datamodel.GatewayProperties, applicationName string, options renderers.GatewayOptions) (string, error) {
+	// Handle the explicit override case (return)
+	// Handle the explicit FQDN case (return)
+	// Select the 'base' hostname (convert IP to hostname)
+	// If a prefix is not specified and the LoadBalancer provided an IP, then prepend with the gateway name
+	// Prepend the prefix, if one is specified
+	// Return the (possibly altered) hostname
 
-	// Order of precedence for hostname creation:
-	// 1. if publicEndpointOverride is true: hostname = publicIP
-	// 2. if properties.hostname.FullyQualifiedHostname is provided: hostname = properties.hostname.FullyQualifiedHostname
-	// 3. if publicIP is "": hostname = "" (cannot determine a suitable hostname to use)
-	// 4. if properties.hostname.prefix is provided: [generate] hostname = (properties.hostname.prefix).appname.ip.nip.io
-	// 5. else: [generate] hostname = gatewayname.appname.ip.nip.io
-	if publicEndpointOverride {
-		urlOverride, err := url.Parse(publicIP)
-		if err != nil {
-			return "", fmt.Errorf("unable to parse given url: %s", publicIP)
-		}
-
-		host, _, err := net.SplitHostPort(urlOverride.Host)
-		if err != nil {
-			return "", fmt.Errorf("unable to split host and port from given url: %s", urlOverride.Host)
-		}
-
-		return host, nil
+	if options.PublicEndpointOverride {
+		// Specified from --public-endpoint-override CLI flag
+		return options.Hostname, nil
 	} else if gateway.Hostname != nil && gateway.Hostname.FullyQualifiedHostname != "" {
 		// Trust that the provided FullyQualifiedHostname actually works
 		return gateway.Hostname.FullyQualifiedHostname, nil
-	} else if publicIP == "" {
-		// In the case of no publicIP, return an empty hostname, but don't return an error
-		// Should be improved in https://github.com/project-radius/radius/issues/2196
-		return "", nil
-	} else if gateway.Hostname != nil {
+	}
+
+	// baseHostname represents the base hostname that may be prepended with the given prefix
+	// or gateway name. After this block, baseHostname looks like either:
+	// 1. a hostname from the LoadBalancer
+	// 2. appname.IP.nip.io
+	var baseHostname string
+	if options.ExternalIP != "" {
+		baseHostname = fmt.Sprintf("%s.%s.nip.io", applicationName, options.ExternalIP)
+
+		// If no prefix was specified, and the LoadBalancer provided us an ExternalIP,
+		// prepend the hostname with the Gateway name (for uniqueness)
+		if gateway.Hostname == nil {
+			// Auto-assign hostname: gatewayname.appname.ip.nip.io
+			return fmt.Sprintf("%s.%s", resource.Name, baseHostname), nil
+		}
+	} else if options.Hostname != "" {
+		baseHostname = options.Hostname
+	} else {
+		// In the case of no public endpoint, use the application name as the hostname
+		return applicationName, &ErrNoPublicEndpoint{}
+	}
+
+	// Prepend the prefix, if the user specified one
+	if gateway.Hostname != nil {
+		// Generate a hostname using the external IP
 		if gateway.Hostname.Prefix != "" {
 			// Auto-assign hostname: prefix.appname.ip.nip.io
-			prefixedHostname := fmt.Sprintf("%s.%s.%s.nip.io", gateway.Hostname.Prefix, applicationName, publicIP)
-			return prefixedHostname, nil
+			return fmt.Sprintf("%s.%s", gateway.Hostname.Prefix, baseHostname), nil
 		} else {
-			return "", fmt.Errorf("must provide either prefix or fullyQualifiedHostname if hostname is specified")
+			return "", &ErrFQDNOrPrefixRequired{}
 		}
-	} else {
-		// Auto-assign hostname: gatewayname.appname.ip.nip.io
-		defaultHostname := fmt.Sprintf("%s.%s.%s.nip.io", resource.Name, applicationName, publicIP)
-		return defaultHostname, nil
 	}
+
+	return baseHostname, nil
+}
+
+// getPublicEndpoint adds http:// and the port (if it exists) to the given hostname
+func getPublicEndpoint(hostname string, port string) string {
+	authority := hostname
+	if port != "" {
+		authority = net.JoinHostPort(hostname, port)
+	}
+
+	return fmt.Sprintf("http://%s", authority)
 }

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/gofrs/uuid"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -62,7 +62,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 			authorization.RoleAssignmentCreateParameters{
 				RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
 					PrincipalID:      &principalID,
-					RoleDefinitionID: to.StringPtr(roleDefinitionID),
+					RoleDefinitionID: to.Ptr(roleDefinitionID),
 				},
 			})
 

@@ -93,20 +93,16 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheProperties{
-		RedisCacheResponseProperties: RedisCacheResponseProperties{
-			BasicResourceProperties: BasicResourceProperties{
-				Status: &ResourceStatus{
-					OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
-				},
-			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
-			Environment:       to.StringPtr(redis.Properties.Environment),
-			Application:       to.StringPtr(redis.Properties.Application),
-			Resource:          to.StringPtr(redis.Properties.Resource),
-			Host:              to.StringPtr(redis.Properties.Host),
-			Port:              to.Int32Ptr(redis.Properties.Port),
-			Username:          to.StringPtr(redis.Properties.Username),
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
+		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+		Environment:       to.StringPtr(redis.Properties.Environment),
+		Application:       to.StringPtr(redis.Properties.Application),
+		Resource:          to.StringPtr(redis.Properties.Resource),
+		Host:              to.StringPtr(redis.Properties.Host),
+		Port:              to.Int32Ptr(redis.Properties.Port),
+		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -132,10 +128,8 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheResponseProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),

@@ -14,10 +14,12 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/go-autorest/autorest"
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -26,11 +28,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-)
-
-const (
-	module  = "v20220315privatepreview"
-	version = "v0.0.1"
 )
 
 // DefaultFactory provides easy access to the default implementation of the factory. DO NOT modify this in your code. Even if it's for tests. DO NOT DO IT.
@@ -42,6 +39,7 @@ type Factory interface {
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
 	CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error)
+	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -108,12 +106,39 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			return nil, err
 		}
 
-		_, con, err := kubernetes.CreateAPIServerConnection(c.Context, c.Overrides.UCP)
+		baseURL, pipeline, err := kubernetes.CreateAPIServerPipeline(c.Context, c.Overrides.UCP)
 		if err != nil {
 			return nil, err
 		}
 
-		err = RadiusHealthCheck(ctx, con, workspace)
+		err = RadiusHealthCheck(ctx, workspace, pipeline, baseURL)
+		if err != nil {
+			return nil, err
+		}
+
+		baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(c.Context, c.Overrides.UCP)
+		if err != nil {
+			return nil, err
+		}
+
+		clientOpts := GetClientOptions(baseURL, transporter)
+
+		appClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/applications", &aztoken.AnonymousCredential{}, clientOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		cntrClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/containers", &aztoken.AnonymousCredential{}, clientOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		envClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/environments", &aztoken.AnonymousCredential{}, clientOpts)
+		if err != nil {
+			return nil, err
+		}
+
+		gwClient, err := generated.NewGenericResourcesClient(workspace.Scope, "Applications.Core/gateways", &aztoken.AnonymousCredential{}, clientOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -122,10 +147,10 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			K8sTypedClient:    k8sClient,
 			RestConfig:        config,
 			K8sRuntimeClient:  client,
-			ApplicationClient: *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/applications"),
-			ContainerClient:   *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/containers"),
-			EnvironmentClient: *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/environments"),
-			GatewayClient:     *generated.NewGenericResourcesClient(con, workspace.Scope, "Applications.Core/gateways"),
+			ApplicationClient: *appClient,
+			ContainerClient:   *cntrClient,
+			EnvironmentClient: *envClient,
+			GatewayClient:     *gwClient,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
@@ -140,21 +165,25 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 	switch c := connection.(type) {
 	case *workspaces.KubernetesConnection:
-		_, connection, err := kubernetes.CreateAPIServerConnection(c.Context, c.Overrides.UCP)
+		baseURL, pipeline, err := kubernetes.CreateAPIServerPipeline(c.Context, c.Overrides.UCP)
 		if err != nil {
 			return nil, err
 		}
 
-		err = RadiusHealthCheck(ctx, connection, workspace)
+		err = RadiusHealthCheck(ctx, workspace, pipeline, baseURL)
+		if err != nil {
+			return nil, err
+		}
+
+		baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(c.Context, c.Overrides.UCP)
 		if err != nil {
 			return nil, err
 		}
 
 		return &ucp.ARMApplicationsManagementClient{
-			Connection: connection,
-
 			// The client expects root scope without a leading /
-			RootScope: strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
+			RootScope:     strings.TrimPrefix(workspace.Scope, resources.SegmentSeparator),
+			ClientOptions: GetClientOptions(baseURL, transporter),
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
@@ -163,6 +192,11 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 //nolint:all
 func (*impl) CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error) {
+	return nil, errors.New("this feature is currently not supported")
+}
+
+//nolint:all
+func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
 	return nil, errors.New("this feature is currently not supported")
 }
 
@@ -177,16 +211,17 @@ func (s *sender) Do(request *http.Request) (*http.Response, error) {
 }
 
 // HealthCheck function checks if there is a Radius installation for the given connection.
-func RadiusHealthCheck(ctx context.Context, conn *arm.Connection, workspace workspaces.Workspace) error {
-	pipeline := conn.NewPipeline(module, version)
-	req, err := createHealthCheckRequest(ctx, conn.Endpoint())
+func RadiusHealthCheck(ctx context.Context, workspace workspaces.Workspace, pipeline runtime.Pipeline, baseURL string) error {
+	req, err := createHealthCheckRequest(ctx, baseURL)
 	if err != nil {
 		return err
 	}
+
 	resp, err := pipeline.Do(req)
 	if err != nil {
 		return err
 	}
+
 	if resp.StatusCode == http.StatusNotFound {
 		return &cli.FriendlyError{
 			Message: fmt.Sprintf("A Radius installation could not be found for Kubernetes context %q. Use 'rad install kubernetes' to install.", workspace.Name),
@@ -203,4 +238,21 @@ func createHealthCheckRequest(ctx context.Context, basepath string) (*policy.Req
 	}
 	req.Raw().Header.Set("Accept", "application/json")
 	return req, nil
+}
+
+// GetClientOptions function returns ClientOptions with given BaseURL and Transporter.
+func GetClientOptions(baseURL string, transporter policy.Transporter) *arm.ClientOptions {
+	return &arm.ClientOptions{
+		ClientOptions: policy.ClientOptions{
+			Cloud: cloud.Configuration{
+				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+					cloud.ResourceManager: {
+						Endpoint: baseURL,
+						Audience: "https://management.core.windows.net",
+					},
+				},
+			},
+			Transport: transporter,
+		},
+	}
 }

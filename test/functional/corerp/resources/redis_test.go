@@ -65,3 +65,35 @@ func Test_Redis(t *testing.T) {
 
 	test.Test(t)
 }
+
+func Test_RedisAzure(t *testing.T) {
+	template := "testdata/corerp-resources-redis-azure.bicep"
+	name := "corerp-resources-redis-azure"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "redis-azure-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "redis-connector",
+						Type: validation.RedisCachesResource,
+						App:  name,
+					},
+				},
+			},
+			SkipObjectValidation: true,
+		},
+	}, nil)
+
+	test.Test(t)
+}

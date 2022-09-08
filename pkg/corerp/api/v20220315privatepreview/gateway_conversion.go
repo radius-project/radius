@@ -97,10 +97,8 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(g.Location)
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(g.Properties.ProvisioningState),
 		Application:       to.StringPtr(g.Properties.Application),

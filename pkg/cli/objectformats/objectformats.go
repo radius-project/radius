@@ -102,3 +102,18 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetCloudProviderTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "Status",
+				JSONPath: "{ .Enabled }",
+			},
+		},
+	}
+}

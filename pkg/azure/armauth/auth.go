@@ -6,7 +6,6 @@
 package armauth
 
 import (
-	"errors"
 	"fmt"
 	"os"
 
@@ -23,12 +22,7 @@ const (
 
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
-	Auth              autorest.Authorizer
-	SubscriptionID    string
-	ResourceGroup     string
-	K8sSubscriptionID string
-	K8sResourceGroup  string
-	K8sClusterName    string
+	Auth autorest.Authorizer
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
@@ -38,24 +32,8 @@ func GetArmConfig() (*ArmConfig, error) {
 		return &ArmConfig{}, err
 	}
 
-	subscriptionID := os.Getenv("ARM_SUBSCRIPTION_ID")
-	if subscriptionID == "" {
-		return &ArmConfig{}, errors.New("required env-var ARM_SUBSCRIPTION_ID is missing")
-	}
-
-	resourceGroup := os.Getenv("ARM_RESOURCE_GROUP")
-	if resourceGroup == "" {
-		return &ArmConfig{}, errors.New("required env-var ARM_RESOURCE_GROUP is missing")
-	}
-
 	return &ArmConfig{
-		Auth:           auth,
-		SubscriptionID: subscriptionID,
-		ResourceGroup:  resourceGroup,
-
-		K8sSubscriptionID: os.Getenv("K8S_SUBSCRIPTION_ID"),
-		K8sResourceGroup:  os.Getenv("K8S_RESOURCE_GROUP"),
-		K8sClusterName:    os.Getenv("K8S_CLUSTER_NAME"),
+		Auth: auth,
 	}, nil
 }
 

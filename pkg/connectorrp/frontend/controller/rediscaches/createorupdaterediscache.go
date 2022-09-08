@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -85,8 +86,16 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Reques
 	if host, ok := deploymentOutput.ComputedValues[renderers.Host].(string); ok {
 		newResource.Properties.Host = host
 	}
-	if port, ok := deploymentOutput.ComputedValues[renderers.Port].(int32); ok {
-		newResource.Properties.Port = port
+	if port, ok := deploymentOutput.ComputedValues[renderers.Port]; ok {
+		if _, ok := port.(string); ok {
+			p, err := strconv.Atoi(port.(string))
+			if err != nil {
+				return nil, err
+			}
+			newResource.Properties.Port = int32(p)
+		} else {
+			newResource.Properties.Port = port.(int32)
+		}
 	}
 	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {
 		newResource.Properties.Username = username

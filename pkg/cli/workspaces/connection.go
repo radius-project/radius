@@ -17,7 +17,18 @@ import (
 const KindKubernetes string = "kubernetes"
 
 type Connection interface {
+	fmt.Stringer
 	GetKind() string
+}
+
+// FmtConnection can safely format connection info for display to users.
+func (ws Workspace) FmtConnection() string {
+	c, err := ws.Connect()
+	if err != nil {
+		return fmt.Sprintf("err: %s", err)
+	}
+
+	return c.String()
 }
 
 func (ws Workspace) Connect() (Connection, error) {
@@ -66,6 +77,24 @@ func (ws Workspace) ConnectionEquals(other Connection) bool {
 	}
 }
 
+func (ws Workspace) KubernetesContext() (string, bool) {
+	if ws.Connection["kind"] != KindKubernetes {
+		return "", false
+	}
+
+	obj, ok := ws.Connection["context"]
+	if !ok {
+		return "", false
+	}
+
+	str, ok := obj.(string)
+	if !ok {
+		return "", false
+	}
+
+	return str, true
+}
+
 func (ws Workspace) IsSameKubernetesContext(kubeContext string) bool {
 	return ws.Connection["context"] == kubeContext
 }
@@ -87,6 +116,10 @@ type KubernetesConnection struct {
 type KubernetesConnectionOverrides struct {
 	// UCP describes an override for testing UCP. this field is optional.
 	UCP string `json:"ucp" mapstructure:"ucp" yaml:"ucp"`
+}
+
+func (c *KubernetesConnection) String() string {
+	return fmt.Sprintf("Kubernetes (context=%s)", c.Context)
 }
 
 func (c *KubernetesConnection) GetKind() string {

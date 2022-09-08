@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -100,12 +101,24 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 
 	if applicationName == "" {
 		applicationName = workspace.DefaultApplication
-
 	}
 
 	if applicationName == "" {
 		return "", fmt.Errorf("no application name provided and no default application set, " +
 			"either pass in an application name or set a default application by using `rad application switch`")
+	}
+
+	return applicationName, nil
+}
+
+func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
+	applicationName, err := cmd.Flags().GetString("application")
+	if err != nil {
+		return "", err
+	}
+
+	if applicationName == "" {
+		applicationName = workspace.DefaultApplication
 	}
 
 	return applicationName, nil
@@ -141,7 +154,7 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 
 func RequireResourceTypeAndName(args []string) (string, string, error) {
 	if len(args) < 2 {
-		return "", "", errors.New("No resource Type or Name provided")
+		return "", "", errors.New("No resource type or name provided")
 	}
 	resourceType, err := RequireResourceType(args)
 	if err != nil {
@@ -154,7 +167,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 // example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", errors.New("no resource Type provided")
+		return "", errors.New("no resource type provided")
 	}
 	resourceTypeName := args[0]
 	supportedTypes := []string{}
@@ -165,7 +178,7 @@ func RequireResourceType(args []string) (string, error) {
 			return resourceType, nil
 		}
 	}
-	return "", fmt.Errorf("'%s' is not a valid resource Type. Available Types are: \n\n%s\n",
+	return "", fmt.Errorf("'%s' is not a valid resource type. Available Types are: \n\n%s\n",
 		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
@@ -281,13 +294,26 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 func Is404ErrorForAzureError(err error) bool {
-	var errorResponse v20220315privatepreview.ErrorResponse
+	if err == nil {
+		return false
+	}
+
+	// The error might already be an ResponseError
+	responseError := &azcore.ResponseError{}
+	if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound {
+		return true
+	} else if errors.As(err, &responseError) {
+		return false
+	}
+
+	// OK so it's not an ResponseError, can we turn it into an ErrorResponse?
+	errorResponse := v20220315privatepreview.ErrorResponse{}
 	marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse)
 	if marshallErr != nil {
 		return false
 	}
 
-	if errorResponse.InnerError != nil && *errorResponse.InnerError.Code == v1.CodeNotFound {
+	if errorResponse.Error != nil && *errorResponse.Error.Code == v1.CodeNotFound {
 		return true
 	}
 

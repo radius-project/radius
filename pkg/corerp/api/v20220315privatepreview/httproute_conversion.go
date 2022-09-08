@@ -59,10 +59,8 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(route.Location)
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
-		BasicResourceProperties: BasicResourceProperties{
-			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
-			},
+		Status: &ResourceStatus{
+			OutputResources: v1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(route.Properties.ProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),

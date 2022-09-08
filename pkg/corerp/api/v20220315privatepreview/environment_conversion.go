@@ -104,11 +104,9 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 	switch envCompute.Kind {
 	case datamodel.KubernetesComputeKind:
 		return &KubernetesCompute{
-			EnvironmentCompute: EnvironmentCompute{
-				Kind:       fromEnvironmentComputeKind(envCompute.Kind),
-				ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
-			},
-			Namespace: &envCompute.KubernetesCompute.Namespace,
+			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
+			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
+			Namespace:  &envCompute.KubernetesCompute.Namespace,
 		}
 	default:
 		return nil

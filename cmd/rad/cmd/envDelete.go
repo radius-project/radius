@@ -62,14 +62,17 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	envResp, err := client.DeleteEnv(cmd.Context(), environmentName)
-	if err == nil {
-		if envResp.RawResponse.StatusCode == 204 {
-			output.LogInfo("Environment '%s' does not exist or has already been deleted.", environmentName)
-		} else {
-			output.LogInfo("Environment deleted")
-		}
+	deleted, err := client.DeleteEnv(cmd.Context(), environmentName)
+	if err != nil {
+		return err
 	}
-	return err
+
+	if deleted {
+		output.LogInfo("Environment deleted")
+	} else {
+		output.LogInfo("Environment '%s' does not exist or has already been deleted.", environmentName)
+	}
+
+	return nil
 
 }
