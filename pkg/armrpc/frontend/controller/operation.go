@@ -28,9 +28,12 @@ type Operation[P interface {
 	*T
 	conv.DataModelInterface
 }, T any] struct {
-	options           Options
-	requestConverter  conv.RequestConverter[T]
-	responseConverter conv.ResponseConverter[T]
+	options Options
+
+	// RequestConverter is the converter to convert from the versioned API resource to datamodel resource.
+	RequestConverter conv.RequestConverter[T]
+	// ResponseConverter is the converter to convert from datamodel resource to versioned API for response.
+	ResponseConverter conv.ResponseConverter[T]
 }
 
 // NewOperation creates BaseController instance.
@@ -76,6 +79,7 @@ func (b *Operation[P, T]) StatusManager() sm.StatusManager {
 	return b.options.StatusManager
 }
 
+// GetResourceFromRequest extracts and deserializes from HTTP request body to datamodel.
 func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.Request) (*T, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ReadJSONBody(req)
@@ -83,7 +87,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 		return nil, err
 	}
 
-	dm, err := c.requestConverter(content, serviceCtx.APIVersion)
+	dm, err := c.RequestConverter(content, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -111,6 +115,7 @@ func (c *Operation[P, T]) GetResourceFromStore(ctx context.Context, id resources
 	return
 }
 
+// ValidateResource runs the common validation logic for incoming request.
 func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string, isNew bool) error {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -125,6 +130,7 @@ func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Reques
 	return nil
 }
 
+// ValidateLinkedResource checks if application and environment id in new resource are matched with the old resource.
 func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, isNew bool, newProp *v1.BasicResourceProperties, oldProp *v1.BasicResourceProperties) error {
 	if !isNew && !oldProp.EqualLinkedResource(newProp) {
 		return rest.NewLinkedResourceUpdateErrorResponse(resourceID, oldProp, newProp)
@@ -132,10 +138,11 @@ func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, isNew 
 	return nil
 }
 
+// ConstructSyncResponse constructs synchronous API response.
 func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	versioned, err := c.responseConverter(resource, serviceCtx.APIVersion)
+	versioned, err := c.ResponseConverter(resource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -143,6 +150,7 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 	return rest.NewOKResponseWithHeaders(versioned, headers), nil
 }
 
+// ConstructAsyncResponse constructs asynchronous API response.
 func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 

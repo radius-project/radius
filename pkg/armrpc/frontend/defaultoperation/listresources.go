@@ -21,8 +21,7 @@ type ListResources[P interface {
 	*T
 	conv.DataModelInterface
 }, T any] struct {
-	ctrl.BaseController
-	outputConverter conv.ResponseConverter[T]
+	ctrl.Operation[P, T]
 }
 
 // NewListResources creates a new ListResources instance.
@@ -31,8 +30,7 @@ func NewListResources[P interface {
 	conv.DataModelInterface
 }, T any](opts ctrl.Options, outputConverter conv.ResponseConverter[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
-		BaseController:  ctrl.NewBaseController(opts),
-		outputConverter: outputConverter,
+		ctrl.NewOperation[P](opts, nil, outputConverter),
 	}, nil
 }
 
@@ -64,7 +62,8 @@ func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req 
 		if err := item.As(resource); err != nil {
 			return nil, err
 		}
-		versioned, err := e.outputConverter(resource, serviceCtx.APIVersion)
+
+		versioned, err := e.ResponseConverter(resource, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}
