@@ -1,0 +1,27 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: Draft Trigger Samples Workflow
+on:
+  push:
+    branches:
+      - v*.*
+
+jobs:
+  update-types:
+    name: Trigger samples workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: 'project-radius',
+              repo: 'samples',
+              workflow_id: 'test.yaml',
+              ref: 'v0.12'
+            })
