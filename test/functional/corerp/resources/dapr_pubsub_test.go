@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -60,10 +61,10 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
 	requiredSecrets := map[string]map[string]string{}
-
+	namespaceresourceid := "namespaceresourceid=" + os.Getenv("SERVICEBUS_RESOURCE_ID")
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), namespaceresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

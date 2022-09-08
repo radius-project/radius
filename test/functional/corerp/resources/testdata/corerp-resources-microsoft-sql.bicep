@@ -18,7 +18,7 @@ param adminUsername string = 'cooluser'
 @description('Specifies the SQL password.')
 param adminPassword string = 'p@ssw0rd'
 
-param resourceIdentifier string = newGuid()
+param mssqlresourceid string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'
@@ -58,31 +58,6 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
-    resource: server::dbinner.id
-  }
-}
-
-resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'mssql-${resourceIdentifier}'
-  location: location
-  tags: {
-    radiustest: 'corerp-resources-microsoft-sql'
-  }
-  properties: {
-    administratorLogin: adminUsername
-    administratorLoginPassword: adminPassword
-  }
-
-  resource dbinner 'databases' = {
-    name: 'cool-database'
-    location: location
-  }
-
-  resource firewall 'firewallRules' = {
-    name: 'allow'
-    properties: {
-      startIpAddress: '0.0.0.0'
-      endIpAddress: '0.0.0.0'
-    }
+    resource: mssqlresourceid
   }
 }

@@ -4,9 +4,8 @@ param magpieimage string
 
 param environment string
 
-param location string = resourceGroup().location
+param mongodbresourceid string
 
-param resourceIdentifier string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb'
@@ -43,40 +42,7 @@ resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = 
   properties: {
     application: app.id
     environment: environment
-    resource: account::dbinner.id
+    resource: mongodbresourceid
   }
 }
 
-resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'account-${resourceIdentifier}'
-  location: location
-  kind: 'MongoDB'
-  tags: {
-    radiustest: 'corerp-resources-mongodb'
-  }
-  properties: {
-    consistencyPolicy: {
-      defaultConsistencyLevel: 'Session'
-    }
-    locations: [
-      {
-        locationName: location
-        failoverPriority: 0
-        isZoneRedundant: false
-      }
-    ]
-    databaseAccountOfferType: 'Standard'
-  }
-
-  resource dbinner 'mongodbDatabases' = {
-    name: 'mdb-mydb'
-    properties: {
-      resource: {
-        id: 'mdb-mydb'
-      }
-      options: { 
-        throughput: 400
-      }
-    }
-  }
-}

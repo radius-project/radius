@@ -69,7 +69,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	// Use the identity of the namespace as the thing to monitor.
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
-	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
+	cs, err := handler.GetConnectionString(ctx, properties[ServiceBusNamespaceIDKey])
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -169,18 +169,17 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	return &namespace, nil
 }
 
-func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, id string) (*string, error) {
-	parsed, err := resources.Parse(id)
+func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, resourceID string) (*string, error) {
+	parsedID, err := resources.Parse(resourceID)
 	if err != nil {
 		return nil, err
 	}
+	sbc := clients.NewServiceBusNamespacesClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-
-	accessKeys, err := sbc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey)
+	accessKeys, err := sbc.ListKeys(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), parsedID.Name(), RootManageSharedAccessKey)
 	if err != nil {
 		if clients.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", parsed.Name()))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", resourceID))
 		}
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
 	}

@@ -47,12 +47,12 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
 	}
 
-	id, ok := properties[ResourceIDKey]
+	storageAccountId, ok := properties[ResourceIDKey]
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", ResourceIDKey)
 	}
 
-	parsedID, err := resources.Parse(id)
+	parsedID, err := resources.Parse(storageAccountId)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
@@ -61,14 +61,13 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	account, err := sac.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], storage.AccountExpand(""))
 	if err != nil {
 		if clients.Is404Error(err) {
-			return resourcemodel.ResourceIdentity{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", properties[StorageAccountNameKey]))
+			return resourcemodel.ResourceIdentity{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", storageAccountId))
 		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
-
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
-	key, err := handler.findStorageKey(ctx, *account.ID)
+	key, err := handler.findStorageKey(ctx, parsedID)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -136,18 +135,13 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 	return err
 }
 
-func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, id string) (*storage.AccountKey, error) {
-	parsed, err := resources.Parse(id)
-	if err != nil {
-		return nil, err
-	}
+func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, resourceID resources.ID) (*storage.AccountKey, error) {
+	sc := clients.NewAccountsClient(resourceID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
 
-	sc := clients.NewAccountsClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-
-	keys, err := sc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), "")
+	keys, err := sc.ListKeys(ctx, resourceID.FindScope(resources.ResourceGroupsSegment), resourceID.Name(), "")
 	if err != nil {
 		if clients.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", parsed.Name()))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", resourceID.String()))
 		}
 		return nil, fmt.Errorf("failed to access keys of storage account: %w", err)
 	}
