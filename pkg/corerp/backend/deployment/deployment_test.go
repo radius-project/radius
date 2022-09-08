@@ -40,7 +40,7 @@ type SharedMocks struct {
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *renderers.MockSecretValueClient
+	secretsValueClient *rp.MockSecretValueClient
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -96,7 +96,7 @@ func setup(t *testing.T) SharedMocks {
 		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
 		resourceHandler:    resourceHandler,
 		renderer:           renderer,
-		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
+		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
 	}
 }
 

@@ -45,7 +45,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8s client.Client) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8s client.Client) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8s: k8s}
 }
 
@@ -54,7 +54,7 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient renderers.SecretValueClient
+	secretClient rp.SecretValueClient
 	k8s          client.Client
 }
 

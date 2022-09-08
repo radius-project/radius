@@ -8,9 +8,7 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -75,19 +73,16 @@ func DeleteApplication(ctx context.Context, workspace workspaces.Workspace, appl
 		return err
 	}
 
-	var respFromCtx *http.Response
-	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
-
-	_, err = client.DeleteApplication(ctxWithResp, applicationName)
-	if err == nil {
-		output.LogInfo("Application deleted")
+	deleted, err := client.DeleteApplication(ctx, applicationName)
+	if err != nil {
+		return err
 	}
 
-	if respFromCtx.StatusCode == 204 {
+	if deleted {
+		output.LogInfo("Application deleted")
+	} else {
 		output.LogInfo("Application '%s' does not exist or has already been deleted.", applicationName)
-	} else if err == nil {
-		output.LogInfo("Application deleted")
 	}
 
-	return err
+	return nil
 }

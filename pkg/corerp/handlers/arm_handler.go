@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // NewARMHandler creates a ResourceHandler for 'generic' ARM resources.
@@ -30,7 +31,7 @@ type armHandler struct {
 
 func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
 	// Do a GET just to validate that the resource exists.
-	arm_resource, err := getByID(ctx, handler.arm.SubscriptionID, handler.arm.Auth, resource.Identity)
+	arm_resource, err := getByID(ctx, handler.arm.Auth, resource.Identity)
 	if err != nil {
 		return err
 	}
@@ -74,12 +75,18 @@ func (handler *armHandler) serializeResource(resource resources.GenericResource)
 	return data, nil
 }
 
-func getByID(ctx context.Context, subscriptionID string, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
+func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
 	id, apiVersion, err := identity.RequireARM()
 	if err != nil {
 		return nil, err
 	}
-	rc := clients.NewGenericResourceClient(subscriptionID, auth)
+
+	parsed, err := ucpresources.Parse(id)
+	if err != nil {
+		return nil, err
+	}
+
+	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
 	resource, err := rc.GetByID(ctx, id, apiVersion)
 	if err != nil {
 		return nil, fmt.Errorf("failed to access resource %q", id)

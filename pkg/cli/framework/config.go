@@ -13,7 +13,3 @@ type ConfigHolder struct {
 	ConfigFilePath string
 	Config         *viper.Viper
 }
-
-func NewConfigHolder() *ConfigHolder {
-	return &ConfigHolder{}
-}

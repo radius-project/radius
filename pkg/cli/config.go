@@ -73,15 +73,29 @@ type ApplicationSection struct {
 
 // ReadWorkspaceSection reads the WorkspaceSection from radius config.
 func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
-	s := v.Sub(WorkspacesKey)
-	if s == nil {
-		return WorkspaceSection{Items: map[string]workspaces.Workspace{}}, nil
-	}
 
 	section := WorkspaceSection{}
-	err := s.UnmarshalExact(&section)
-	if err != nil {
-		return WorkspaceSection{}, err
+	s := v.Sub(WorkspacesKey)
+	if s == nil {
+		// This may happen if the key was set directly to one of our structs, so let's try reading
+		// that.
+		obj := v.Get(WorkspacesKey)
+		if obj == nil {
+			// OK really nil, return a blank config.
+			return WorkspaceSection{Items: map[string]workspaces.Workspace{}}, nil
+		}
+
+		s, ok := obj.(WorkspaceSection)
+		if !ok {
+			return WorkspaceSection{}, fmt.Errorf("failed to read the config file: %s", v.ConfigFileUsed())
+		}
+
+		section = s
+	} else {
+		err := s.UnmarshalExact(&section)
+		if err != nil {
+			return WorkspaceSection{}, err
+		}
 	}
 
 	// if items is not present it will be nil
@@ -96,7 +110,7 @@ func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 		section.Items[name] = copy
 	}
 
-	err = validate(section)
+	err := validate(section)
 	if err != nil {
 		return WorkspaceSection{}, err
 	}
@@ -239,6 +253,16 @@ func GetConfigFilePath(v *viper.Viper) string {
 		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
 	return configFilePath
+}
+
+func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
+	for _, workspaceItem := range section.Items {
+		if workspaceItem.IsSameKubernetesContext(contextName) {
+			workspaceName := workspaceItem.Name
+			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
+			section.Items[workspaceName] = workspaceItem
+		}
+	}
 }
 
 // Required to be called while holding the exclusive lock on config.yaml.lock file.

@@ -296,7 +296,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
 		section.Items[strings.ToLower(workspaceName)] = *workspace
-		UpdateAzProvider(section, provider, contextName)
+		cli.UpdateAzProvider(section, provider, contextName)
 		return nil
 	})
 	if err != nil {
@@ -338,16 +338,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	output.CompleteStep(step)
 
 	return nil
-}
-
-func UpdateAzProvider(section *cli.WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
-	for _, workspaceItem := range section.Items {
-		if workspaceItem.IsSameKubernetesContext(contextName) {
-			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
-			section.Items[workspaceName] = workspaceItem
-		}
-	}
 }
 
 func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {

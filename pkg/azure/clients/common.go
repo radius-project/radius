@@ -43,10 +43,10 @@ func GetDefaultAPIVersion(ctx context.Context, subscriptionId string, authorizer
 	return "", nil // unreachable
 }
 
-func GetResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig) (*string, error) {
-	rgc := NewGroupsClient(armConfig.SubscriptionID, armConfig.Auth)
+func GetResourceGroupLocation(ctx context.Context, armConfig armauth.ArmConfig, subscriptionID string, resourceGroupName string) (*string, error) {
+	rgc := NewGroupsClient(subscriptionID, armConfig.Auth)
 
-	resourceGroup, err := rgc.Get(ctx, armConfig.ResourceGroup)
+	resourceGroup, err := rgc.Get(ctx, resourceGroupName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get resource group location: %w", err)
 	}

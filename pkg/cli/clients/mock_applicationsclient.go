@@ -37,10 +37,10 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 }
 
 // DeleteApplication mocks base method.
-func (m *MockApplicationsManagementClient) DeleteApplication(arg0 context.Context, arg1 string) (v20220315privatepreview.ApplicationsClientDeleteResponse, error) {
+func (m *MockApplicationsManagementClient) DeleteApplication(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteApplication", arg0, arg1)
-	ret0, _ := ret[0].(v20220315privatepreview.ApplicationsClientDeleteResponse)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -52,10 +52,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) DeleteApplication(arg0, 
 }
 
 // DeleteEnv mocks base method.
-func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 string) (v20220315privatepreview.EnvironmentsClientDeleteResponse, error) {
+func (m *MockApplicationsManagementClient) DeleteEnv(arg0 context.Context, arg1 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteEnv", arg0, arg1)
-	ret0, _ := ret[0].(v20220315privatepreview.EnvironmentsClientDeleteResponse)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -67,10 +67,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) DeleteEnv(arg0, arg1 int
 }
 
 // DeleteResource mocks base method.
-func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, arg1, arg2 string) (generated.GenericResourcesClientDeleteResponse, error) {
+func (m *MockApplicationsManagementClient) DeleteResource(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteResource", arg0, arg1, arg2)
-	ret0, _ := ret[0].(generated.GenericResourcesClientDeleteResponse)
+	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // ApplicationModel defines the set of supported resource types and related features.
@@ -62,7 +63,7 @@ type RadiusResourceModel struct {
 type OutputResourceModel struct {
 	ResourceType           resourcemodel.ResourceType
 	ResourceHandler        handlers.ResourceHandler
-	SecretValueTransformer renderers.SecretValueTransformer
+	SecretValueTransformer rp.SecretValueTransformer
 }
 
 func NewModel(radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {

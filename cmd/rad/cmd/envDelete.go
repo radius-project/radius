@@ -7,9 +7,7 @@ package cmd
 
 import (
 	"fmt"
-	"net/http"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -64,20 +62,17 @@ func deleteEnvResource(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var respFromCtx *http.Response
-	ctxWithResp := runtime.WithCaptureResponse(cmd.Context(), &respFromCtx)
-
-	_, err = client.DeleteEnv(ctxWithResp, environmentName)
-	if err == nil {
-		output.LogInfo("Environment deleted")
+	deleted, err := client.DeleteEnv(cmd.Context(), environmentName)
+	if err != nil {
+		return err
 	}
 
-	if respFromCtx.StatusCode == 204 {
+	if deleted {
+		output.LogInfo("Environment deleted")
+	} else {
 		output.LogInfo("Environment '%s' does not exist or has already been deleted.", environmentName)
-	} else if err == nil {
-		output.LogInfo("Environment deleted")
 	}
 
-	return err
+	return nil
 
 }

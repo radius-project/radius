@@ -309,9 +309,6 @@ func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provide
 
 	azure := provider["azure"].(map[string]interface{})
 
-	azure["subscriptionId"] = azureProvider.SubscriptionID
-	azure["resourceGroup"] = azureProvider.ResourceGroup
-
 	if azureProvider.ServicePrincipal != nil {
 		_, ok = azure["servicePrincipal"]
 		if !ok {

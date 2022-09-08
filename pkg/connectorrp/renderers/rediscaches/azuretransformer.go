@@ -11,9 +11,10 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
-var _ renderers.SecretValueTransformer = (*AzureTransformer)(nil)
+var _ rp.SecretValueTransformer = (*AzureTransformer)(nil)
 
 type AzureTransformer struct {
 }

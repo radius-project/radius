@@ -749,6 +749,10 @@ func (cf *MockConnectionFactory) CreateServerLifecycleClient(ctx context.Context
 	return nil, nil
 }
 
+func (cf *MockConnectionFactory) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
+	return nil, nil
+}
+
 var _ clients.DeploymentClient = (*MockDeploymentClient)(nil)
 
 type MockDeploymentClient struct {
