@@ -11,8 +11,6 @@ import (
 
 func init() {
 	RootCmd.AddCommand(groupCmd)
-	groupCmd.PersistentFlags().StringP("group", "g", "", "The rad resource group name")
-
 }
 
 func NewGroupCommand() *cobra.Command {

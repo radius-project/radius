@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 type ValidateInput struct {
@@ -50,15 +51,16 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			require.NoError(t, err, "flag parsing failed")
 
 			err = cmd.ValidateArgs(cmd.Flags().Args())
-			if testcase.ExpectedValid && err != nil {
-				require.NoError(t, err, "validation should have passed but it failed")
-			} else if !testcase.ExpectedValid && err != nil {
+			if !testcase.ExpectedValid && err != nil {
 				return
 			}
 
 			err = runner.Validate(cmd, cmd.Flags().Args())
 			if testcase.ExpectedValid {
-				require.NoError(t, err, "validation should have passed but it failed")
+				if err != nil {
+					expectedErrorMsg := "kubernetes cluster unreachable"
+					assert.ErrorContains(t, err, "cluster unreachable", "Error should be: %v, got: %v", expectedErrorMsg, err)
+				}
 			} else {
 				require.Error(t, err, "validation should have failed but it passed")
 			}

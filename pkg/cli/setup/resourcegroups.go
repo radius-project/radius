@@ -36,9 +36,6 @@ func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
 	return ok
 }
 
-type UCPResourceGroup struct {
-}
-
 func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {

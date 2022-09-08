@@ -3,7 +3,7 @@
 // // Licensed under the MIT License.
 // // ------------------------------------------------------------
 
-package create
+package delete
 
 import (
 	"context"
@@ -24,10 +24,11 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
+	configWithoutWorkspace := radcli.LoadConfigWithWorkspace(t)
+
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Create Command with incorrect args",
+			Name:          "Delete Command with incorrect args",
 			Input:         []string{""},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -36,21 +37,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command with no workspace",
-			Input:         []string{"-g", "rg"},
+			Name:          "Create Command with correct options",
+			Input:         []string{"-g", "groupname"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithoutWorkspace,
-			},
-		},
-		{
-			Name:          "Valid Create Command",
-			Input:         []string{"-g", "rg"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
 			},
 		},
 	}
@@ -58,13 +50,14 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
+
 	t.Run("Validate rad group create", func(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().CreateUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg", gomock.Any()).Return(true, nil).Times(2)
+		appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(true, nil).Times(2)
 
 		workspace := &workspaces.Workspace{
 			Connection: map[string]interface{}{
@@ -79,6 +72,7 @@ func Test_Run(t *testing.T) {
 			ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:            workspace,
 			UCPResourceGroupName: "testrg",
+			Confirmation:         true,
 		}
 
 		err := runner.Run(context.Background())
