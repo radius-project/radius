@@ -15,7 +15,10 @@ import (
 
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/group/create"
+	group_create "github.com/project-radius/radius/pkg/cli/cmd/group/create"
+	group_delete "github.com/project-radius/radius/pkg/cli/cmd/group/delete"
+	group_list "github.com/project-radius/radius/pkg/cli/cmd/group/list"
+	group_show "github.com/project-radius/radius/pkg/cli/cmd/group/show"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
@@ -107,8 +110,17 @@ func initSubCommands() {
 	deleteCmd, _ := resource_delete.NewCommand(framework)
 	resourceCmd.AddCommand(deleteCmd)
 
-	createCmd, _ := create.NewCommand(framework)
-	groupCmd.AddCommand(createCmd)
+	createResourceGroupCmd, _ := group_create.NewCommand(framework)
+	groupCmd.AddCommand(createResourceGroupCmd)
+
+	deleteResourceGroupCmd, _ := group_delete.NewCommand(framework)
+	groupCmd.AddCommand(deleteResourceGroupCmd)
+
+	showResourceGroupCmd, _ := group_show.NewCommand(framework)
+	groupCmd.AddCommand(showResourceGroupCmd)
+
+	listResourceGroupCmd, _ := group_list.NewCommand(framework)
+	groupCmd.AddCommand(listResourceGroupCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

@@ -46,7 +46,7 @@ func (ws WorkspaceSection) HasWorkspace(name string) bool {
 // GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
 func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
 	if name == "" && ws.Default == "" {
-		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace.")
+		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace")
 	}
 
 	if name == "" {
@@ -55,7 +55,7 @@ func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, err
 
 	result, ok := ws.Items[cases.Fold().String(name)]
 	if !ok {
-		return nil, fmt.Errorf("the workspace '%v' could not be found in the list of workspace. use `rad workspace list` to list workspaces", name)
+		return nil, fmt.Errorf("the workspace '%v' does not exist. use `rad init` or `rad workspace create` and try again", name)
 	}
 
 	return &result, nil

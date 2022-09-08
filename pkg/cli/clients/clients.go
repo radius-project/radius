@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -134,6 +135,10 @@ type ApplicationsManagementClient interface {
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup v20220901privatepreview.ResourceGroupResource) (bool, error)
+	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
+	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (v20220901privatepreview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]v20220901privatepreview.ResourceGroupResource, error)
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {

@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -368,4 +369,76 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 	}
 
 	return respFromCtx.StatusCode != 204, nil
+}
+
+func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup v20220901privatepreview.ResourceGroupResource) (bool, error) {
+	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientCreateOrUpdateOptions
+	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeType, planeName, resourceGroupName, resourceGroup, resourceGroupOptions)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+
+}
+
+func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
+	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientDeleteOptions
+	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+
+	var respFromCtx *http.Response
+	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = resourcegroupClient.Delete(ctxWithResp, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	if err != nil {
+		return false, err
+	}
+
+	return respFromCtx.StatusCode != 204, nil
+
+}
+
+func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (v20220901privatepreview.ResourceGroupResource, error) {
+	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientGetOptions
+	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return v20220901privatepreview.ResourceGroupResource{}, err
+	}
+
+	resp, err := resourcegroupClient.Get(ctx, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	if err != nil {
+		return v20220901privatepreview.ResourceGroupResource{}, err
+	}
+
+	return resp.ResourceGroupResource, nil
+}
+
+func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]v20220901privatepreview.ResourceGroupResource, error) {
+	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientListOptions
+	resourceGroupResources := []v20220901privatepreview.ResourceGroupResource{}
+	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return resourceGroupResources, err
+	}
+
+	resp, err := resourcegroupClient.List(ctx, planeType, planeName, resourceGroupOptions)
+	if err != nil {
+		return resourceGroupResources, err
+	}
+
+	resourceGroupList := resp.ResourceGroupResourceList.Value
+	for _, resourceGroup := range resourceGroupList {
+		resourceGroupResources = append(resourceGroupResources, *resourceGroup)
+
+	}
+
+	return resourceGroupResources, nil
 }
