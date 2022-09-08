@@ -238,6 +238,8 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 				// Recursively monitor progress for nested deployments in a new goroutine
 				wg.Add(1)
 				go func() {
+					// Bicep modules are themselves a resource, and so they only will show up after the deployment starts.
+					// When that happens we need to monitor them recursively so we can display the resources inside of them.
 					_ = dc.monitorProgress(ctx, id.Name(), progressChan, wg)
 					wg.Done()
 				}()
