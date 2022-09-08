@@ -15,7 +15,7 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -52,7 +52,7 @@ func (b *Operation[P, T]) DataProvider() dataprovider.DataStorageProvider {
 }
 
 // SecretClient gets secret client for this controller.
-func (b *Operation[P, T]) SecretClient() renderers.SecretValueClient {
+func (b *Operation[P, T]) SecretClient() rp.SecretValueClient {
 	return b.options.SecretClient
 }
 
