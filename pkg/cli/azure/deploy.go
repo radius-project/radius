@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -22,10 +23,14 @@ import (
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// OperationPollInterval is the interval used for polling of deployment operations for progress.
-const OperationPollInterval time.Duration = time.Second * 5
+const (
+	NestedModuleType string = "Microsoft.Resources/deployments"
 
-type ResouceDeploymentClient struct {
+	// OperationPollInterval is the interval used for polling of deployment operations for progress.
+	OperationPollInterval time.Duration = time.Second * 5
+)
+
+type ResourceDeploymentClient struct {
 	RadiusResourceGroup string
 	Client              azclients.ResourceDeploymentClient
 	OperationsClient    azclients.ResourceDeploymentOperationsClient
@@ -33,9 +38,9 @@ type ResouceDeploymentClient struct {
 	AzProvider          *workspaces.AzureProvider
 }
 
-var _ clients.DeploymentClient = (*ResouceDeploymentClient)(nil)
+var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
 
-func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
+func (dc *ResourceDeploymentClient) Deploy(ctx context.Context, options clients.DeploymentOptions) (clients.DeploymentResult, error) {
 	// Used for graceful shutdown of the polling listener.
 	wg := sync.WaitGroup{}
 	defer func() {
@@ -59,7 +64,7 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 
 		wg.Add(1)
 		go func() {
-			_ = dc.monitorProgress(ctx, name, options.ProgressChan)
+			_ = dc.monitorProgress(ctx, name, options.ProgressChan, &wg)
 			wg.Done()
 		}()
 	}
@@ -72,7 +77,7 @@ func (dc *ResouceDeploymentClient) Deploy(ctx context.Context, options clients.D
 	return summary, nil
 }
 
-func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
+func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*resources.DeploymentsCreateOrUpdateFuture, error) {
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
 		{Type: "deployments", Name: "local"},
@@ -102,7 +107,7 @@ func (dc *ResouceDeploymentClient) startDeployment(ctx context.Context, name str
 	return &future, nil
 }
 
-func (dc *ResouceDeploymentClient) GetProviderConfigs() azclients.ProviderConfig {
+func (dc *ResourceDeploymentClient) GetProviderConfigs() azclients.ProviderConfig {
 	var providerConfigs azclients.ProviderConfig
 	if dc.AzProvider != nil {
 		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
@@ -137,7 +142,7 @@ func (dc *ResouceDeploymentClient) GetProviderConfigs() azclients.ProviderConfig
 	return providerConfigs
 }
 
-func (dc *ResouceDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
+func (dc *ResourceDeploymentClient) createSummary(deployment resources.DeploymentExtended) (clients.DeploymentResult, error) {
 	if deployment.Properties == nil || deployment.Properties.OutputResources == nil {
 		return clients.DeploymentResult{}, nil
 	}
@@ -170,7 +175,7 @@ func (dc *ResouceDeploymentClient) createSummary(deployment resources.Deployment
 	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
 }
 
-func (dc *ResouceDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
+func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, future resources.DeploymentsCreateOrUpdateFuture) (clients.DeploymentResult, error) {
 	var err error
 	var deployment resources.DeploymentExtended
 
@@ -193,7 +198,7 @@ func (dc *ResouceDeploymentClient) waitForCompletion(ctx context.Context, future
 	return summary, nil
 }
 
-func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress) error {
+func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name string, progressChan chan<- clients.ResourceProgress, wg *sync.WaitGroup) error {
 	// A note about this: since we're doing polling we might not see all of the operations
 	// complete before the overall deployment completes. That's fine, this will be handled
 	// by the presentation layer. In this code we just cancel when we're told to.
@@ -228,6 +233,18 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 			if err != nil {
 				return err
 			}
+
+			if strings.EqualFold(id.Type(), NestedModuleType) {
+				// Recursively monitor progress for nested deployments in a new goroutine
+				wg.Add(1)
+				go func() {
+					// Bicep modules are themselves a resource, and so they only will show up after the deployment starts.
+					// When that happens we need to monitor them recursively so we can display the resources inside of them.
+					_ = dc.monitorProgress(ctx, id.Name(), progressChan, wg)
+					wg.Done()
+				}()
+			}
+
 			current := status[id.String()]
 
 			next := clients.StatusStarted
@@ -250,7 +267,7 @@ func (dc *ResouceDeploymentClient) monitorProgress(ctx context.Context, name str
 	return nil
 }
 
-func (dc *ResouceDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
+func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name string) ([]resources.DeploymentOperation, error) {
 	var resourceId string
 
 	// No providers section, hence all segments are part of scopes
