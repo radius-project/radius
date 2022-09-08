@@ -64,7 +64,6 @@ $binaryUrl = $urlParts -join "/"
 $binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
 Write-Output "Downloading $binaryUrl ..."
 
-$uri = [uri]$binaryUrl
 try
 {
     $ProgressPreference = "SilentlyContinue" # Do not show progress bar
