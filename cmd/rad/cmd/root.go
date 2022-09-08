@@ -35,6 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	client_go "k8s.io/client-go/kubernetes"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -113,6 +114,7 @@ func initSubCommands() {
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
 	}
+
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
 
@@ -169,4 +171,34 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	}
 
 	return holder.Config
+}
+
+func CreateKubernetesClients(contextName string) (client_go.Interface, error) {
+	k8sConfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return nil, err
+	}
+
+	if contextName == "" && k8sConfig.CurrentContext == "" {
+		return nil, errors.New("no kubernetes context is set")
+	} else if contextName == "" {
+		contextName = k8sConfig.CurrentContext
+	}
+
+	context := k8sConfig.Contexts[contextName]
+	if context == nil {
+		return nil, fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	client, _, err := kubernetes.CreateTypedClient(contextName)
+	if err != nil {
+		return nil, err
+	}
+
+	// runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
 }
