@@ -64,8 +64,7 @@ $binaryUrl = $urlParts -join "/"
 $binaryFilePath = $RadiusRoot + "\" + $RadiusCliFileName
 Write-Output "Downloading $binaryUrl ..."
 
-try
-{
+try {
     $ProgressPreference = "SilentlyContinue" # Do not show progress bar
     Invoke-WebRequest -Uri $binaryUrl -OutFile $binaryFilePath -UseBasicParsing
     if (!(Test-Path $binaryFilePath -PathType Leaf)) {
