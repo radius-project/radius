@@ -35,7 +35,7 @@ if ((Get-ExecutionPolicy) -gt 'RemoteSigned' -or (Get-ExecutionPolicy) -eq 'ByPa
 if (Test-Path $RadiusCliFilePath -PathType Leaf) {
     Write-Warning "Radius is detected - $RadiusCliFilePath"
     Write-Output "Current version:"
-    Write-OUtput $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
+    Write-Output $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
     Write-Output "Reinstalling Radius..."
 }
 else {
@@ -77,8 +77,7 @@ catch [Net.WebException] {
 
 # Print the version string of the installed CLI
 Write-Output "Radius version:"
-Write-OUtput $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
-
+Write-Output $(Invoke-Expression "$RadiusCliFilePath version -o json | ConvertFrom-JSON | Format-List")
 
 # Add RadiusRoot directory to User Path environment variable
 Write-Output "Try to add $RadiusRoot to User Path Environment variable..."
