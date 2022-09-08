@@ -93,7 +93,8 @@ if ($UserPathEnvironmentVar -like '*radius*') {
 }
 else {
     Write-Host "Adding $InstallFolder to PATH"
-    [Environment]::SetEnvironmentVariable("PATH", "$UserPathEnvironmentVar$RadiusRoot", [EnvironmentVariableTarget]::User)
+    # [Environment]::SetEnvironmentVariable sets the value kind as REG_SZ, use the function below to set a value of kind REG_EXPAND_SZ
+    Set-ItemProperty HKCU:\Environment "PATH" "$UserPathEnvironmentVar$RadiusRoot" -Type ExpandString
     # Also add the path to the current session
     $env:PATH += ";$RadiusRoot"
 }
