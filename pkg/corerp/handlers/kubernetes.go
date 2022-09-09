@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -46,6 +47,7 @@ type kubernetesHandler struct {
 }
 
 func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+	logger := radlogger.GetLogger(ctx)
 	item, err := convertToUnstructured(*resource)
 	if err != nil {
 		return err
@@ -56,6 +58,8 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
+	logger.Info(fmt.Sprintf("K8shandler before checking Deployed condition of output resource: LocalID: %s, resource type: %q\n", resource.LocalID, resource.ResourceType))
+
 	if resource.Deployed {
 		return nil
 	}
@@ -64,6 +68,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 	if err != nil {
 		return err
 	}
+	logger.Info(fmt.Sprintf("K8shandler successfully patched output resource: LocalID: %s, resource type: %q\n", resource.LocalID, resource.ResourceType))
 
 	if !strings.EqualFold(item.GetKind(), "Deployment") {
 		return nil // only checking further the Deployment output resource status
