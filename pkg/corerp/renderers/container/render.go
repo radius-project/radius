@@ -7,6 +7,7 @@ package container
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"sort"
 	"strconv"
@@ -384,7 +385,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
@@ -392,6 +394,20 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				},
 			},
 		},
+	}
+
+	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
+	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
+	// a new revision when the secret changes.
+	//
+	// see: https://stackoverflow.com/questions/56711894/does-k8-update-environment-variables-when-secrets-change
+	//
+	// The solution to this is to embed the hash of the secret as an annotation in the deployment. This way when the
+	// secret changes we also change the content of the deployment and thus trigger a new revision. This is a very
+	// common solution to this problem, and not a bizzare workaround that we invented.
+	if len(secretData) > 0 {
+		hash := r.hashSecretData(secretData)
+		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 	}
 
 	deploymentOutput := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
@@ -598,6 +614,26 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
 	output := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
+}
+
+func (r Renderer) hashSecretData(secretData map[string][]byte) string {
+	// Sort keys so we can hash deterministically
+	keys := []string{}
+	for k := range secretData {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	hash := sha1.New()
+
+	for _, k := range keys {
+		// Using | as a delimiter
+		_, _ = hash.Write([]byte("|" + k + "|"))
+		_, _ = hash.Write(secretData[k])
+	}
+
+	sum := hash.Sum(nil)
+	return fmt.Sprintf("%x", sum)
 }
 
 func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
