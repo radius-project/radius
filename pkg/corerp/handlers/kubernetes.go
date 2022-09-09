@@ -106,8 +106,10 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 
 		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
+		logger.Info("K8shandler deployment completed")
 		return nil
 	case <-watchErrorCh:
+		logger.Info(fmt.Sprintf("K8shandler deployment error: %s", err))
 		return err
 	}
 }
@@ -214,6 +216,7 @@ func convertToUnstructured(resource outputresource.OutputResource) (unstructured
 }
 
 func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item client.Object, readinessCh chan<- bool, watchErrorCh chan<- error) {
+	logger := radlogger.GetLogger(ctx)
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(handler.clientSet, DefaultCacheResyncInterval, informers.WithNamespace(item.GetNamespace()))
 
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
@@ -224,6 +227,7 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
 			}
 
+			logger.Info("K8shandler watchUntilReady:AddFunc before watchUntilDeploymentReady")
 			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
 		},
 		UpdateFunc: func(old_obj, new_obj interface{}) {
@@ -236,6 +240,7 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 				watchErrorCh <- errors.New("new deployment object not of appsv1.Deployment type")
 			}
 			if old.ResourceVersion != new.ResourceVersion {
+				logger.Info("K8shandler watchUntilReady:UpdateFunc before watchUntilDeploymentReady")
 				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
 			}
 		},
@@ -251,12 +256,15 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 }
 
 func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context, obj *v1.Deployment, readinessCh chan<- bool) {
+	logger := radlogger.GetLogger(ctx)
+	logger.Info("K8shandler watchUntilDeploymentReady start")
 	for _, c := range obj.Status.Conditions {
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
 			// ObservedGeneration should be updated to latest generation to avoid stale replicas
 			if obj.Status.ObservedGeneration >= obj.Generation {
+				logger.Info("K8shandler watchUntilDeploymentReady completed")
 				readinessCh <- true
 			}
 		}
