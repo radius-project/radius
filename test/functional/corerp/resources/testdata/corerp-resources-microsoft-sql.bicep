@@ -13,10 +13,10 @@ param magpiePort int = 3000
 param environment string = 'test'
 
 @description('Specifies the SQL username.')
-param adminUsername string = 'cooluser'
+param adminUsername string
 
 @description('Specifies the SQL password.')
-param adminPassword string = 'p@ssw0rd'
+param adminPassword string
 
 param mssqlresourceid string
 

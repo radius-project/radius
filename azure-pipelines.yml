@@ -30,14 +30,6 @@ variables:
   value: "85716382-7362-45c3-ae03-2126e459a123"
 - name: DisableDockerDetector
   value: 'true'
-- name: MONGODB_RESOURCE_ID
-  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.DocumentDB/databaseAccounts/account-radiustest/mongodbDatabases/functionaltest-mongodb"
-- name: TABLESTORAGE_RESOURCE_ID
-  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Storage/storageAccounts/radiustestdapr/tableServices/default/tables/mytable"
-- name: MSSQL_RESOURCE_ID
-  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Sql/servers/mssql-radiustest/databases/cool-database"
-- name: SERVICEBUS_RESOURCE_ID
-  value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.ServiceBus/namespaces/daprns-radiustest"
 stages:
 - stage: ImageBuild
   jobs:
@@ -149,6 +141,13 @@ stages:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
+        MONGODB_RESOURCE_ID: $(MONGODB_RESOURCE_ID)
+        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
+        MSSQL_RESOURCE_ID: $(MSSQL_RESOURCE_ID)
+        SERVICEBUS_RESOURCE_ID: $(SERVICEBUS_RESOURCE_ID)
+        REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
+        MSSQL_USERNAME: $(MSSQL_USERNAME)
+        MSSQL_PASSWORD: $(MSSQL_PASSWORD)
       displayName: rad env init kubernetes
     - script: |
         kubectl get pods -n radius-system

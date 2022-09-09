@@ -1,12 +1,10 @@
-import radius as radius
-
 param location string = resourceGroup().location
 
 @description('Specifies the SQL username.')
-param adminUsername string = 'cooluser'
+param adminUsername string
 
 @description('Specifies the SQL password.')
-param adminPassword string = 'p@ssw0rd'
+param adminPassword string
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   name: 'account-radiustest'
@@ -30,10 +28,10 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
   }
 
   resource dbinner 'mongodbDatabases' = {
-    name: 'functionaltest-mongodb'
+    name: 'mongodb-radiustest'
     properties: {
       resource: {
-        id: 'functionaltest-mongodb'
+        id: 'mongodb-radiustest'
       }
       options: { 
         throughput: 400
@@ -51,7 +49,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
 }
 
 resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
-  name: 'radiustestdapr'
+  name: 'tsaccountradiustest'
   location: location
   sku: {
     name: 'Standard_LRS'
@@ -65,7 +63,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     name: 'default'
     
     resource table 'tables' = {
-      name: 'mytable'
+      name: 'radiustest'
     } 
   }
 }
@@ -82,7 +80,7 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
   }
 
   resource db 'databases' = {
-    name: 'cool-database'
+    name: 'database-radiustest'
     location: location
   }
 
