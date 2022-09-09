@@ -250,7 +250,10 @@ func (handler *kubernetesHandler) watchUntilDeploymentReady(ctx context.Context,
 		// check for complete deployment condition
 		// Reference https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#complete-deployment
 		if c.Type == v1.DeploymentProgressing && c.Status == corev1.ConditionTrue && strings.EqualFold(c.Reason, "NewReplicaSetAvailable") {
-			readinessCh <- true
+			// ObservedGeneration should be updated to latest generation to avoid stale replicas
+			if obj.Status.ObservedGeneration >= obj.Generation {
+				readinessCh <- true
+			}
 		}
 	}
 }
