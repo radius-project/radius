@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	DefaultCacheResyncInterval   = time.Minute * 10
+	DefaultCacheResyncInterval   = time.Minute * 20
 	DefaultDeploymentTimeout     = time.Minute * 5
 	DefaultTestDeploymentTimeout = time.Second * 5
 )
