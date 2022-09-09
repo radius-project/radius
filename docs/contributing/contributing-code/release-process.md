@@ -230,7 +230,7 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```
 3. Cherry-pick the commit that is on `main` onto the branch.
    ```bash
-   git cherry-pick <COMMIT HASH>
+   git cherry-pick -x <COMMIT HASH>
    ```
 4. Push the commit to the remote and create a pull request targeting the release branch.
    ```bash
