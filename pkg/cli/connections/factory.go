@@ -78,7 +78,7 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 			return nil, err
 		}
 
-		return &azure.ResouceDeploymentClient{
+		return &azure.ResourceDeploymentClient{
 			Client:              dc,
 			OperationsClient:    op,
 			RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
