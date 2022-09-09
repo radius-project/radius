@@ -13,8 +13,6 @@ DOCKER_REGISTRY ?=radiusdev.azurecr.io
 ENVTEST_ASSETS_DIR=$(shell pwd)/bin
 K8S_VERSION=1.23.*
 ENV_SETUP=$(GOBIN)/setup-envtest$(BINARY_EXT)
-# testing vatiables for E2E test
-MSSQL_RESOURCE_ID ?=/pratikshya/example
 
 .PHONY: test
 test: test-get-envtools ## Runs unit tests, excluding kubernetes controller tests
@@ -39,9 +37,7 @@ test-functional-kubernetes: ## Runs Kubernetes functional tests
 	CGO_ENABLED=1 go test ./test/functional/kubernetes/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-corerp: ## Runs Applications.Core functional tests
-	@echo "mk 42 ${MSSQL_RESOURCE_ID}"
-	@echo "mk 43 $(MSSQL_RESOURCE_ID)"
-# CGO_ENABLED=1 go test ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
+	CGO_ENABLED=1 go test ./test/functional/corerp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
 test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 go test ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
