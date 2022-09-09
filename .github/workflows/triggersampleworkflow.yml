@@ -25,5 +25,6 @@ jobs:
             await github.rest.actions.createWorkflowDispatch({
               owner: 'project-radius',
               repo: 'samples',
-              workflow_id: 'test.yaml'
+              workflow_id: 'test.yaml',
+              ref: 'v0.12'
             })
