@@ -141,13 +141,6 @@ stages:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
-        MONGODB_RESOURCE_ID: $(MONGODB_RESOURCE_ID)
-        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
-        MSSQL_RESOURCE_ID: $(MSSQL_RESOURCE_ID)
-        SERVICEBUS_RESOURCE_ID: $(SERVICEBUS_RESOURCE_ID)
-        REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
-        MSSQL_USERNAME: $(MSSQL_USERNAME)
-        MSSQL_PASSWORD: $(MSSQL_PASSWORD)
       displayName: rad env init kubernetes
     - script: |
         kubectl get pods -n radius-system
@@ -159,7 +152,22 @@ stages:
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
+        export MONGODB_RESOURCE_ID=$(MONGODB_RESOURCE_ID)
+        export TABLESTORAGE_RESOURCE_ID=$(TABLESTORAGE_RESOURCE_ID)
+        export SERVICEBUS_RESOURCE_ID=$(SERVICEBUS_RESOURCE_ID)
+        export REDIS_RESOURCE_ID=$(REDIS_RESOURCE_ID)
+        export MSSQL_RESOURCE_ID=$(MSSQL_RESOURCE_ID)
+        export MSSQL_USERNAME=$(MSSQL_USERNAME)
+        export MSSQL_PASSWORD=$(MSSQL_PASSWORD)
         make test-functional-corerp
+      env:
+        MONGODB_RESOURCE_ID: $(MONGODB_RESOURCE_ID)
+        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
+        MSSQL_RESOURCE_ID: $(MSSQL_RESOURCE_ID)
+        SERVICEBUS_RESOURCE_ID: $(SERVICEBUS_RESOURCE_ID)
+        REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
+        MSSQL_USERNAME: $(MSSQL_USERNAME)
+        MSSQL_PASSWORD: $(MSSQL_PASSWORD)
       displayName: run functional corerp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
