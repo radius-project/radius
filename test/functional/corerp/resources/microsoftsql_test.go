@@ -22,9 +22,9 @@ func Test_MicrosoftSQL(t *testing.T) {
 
 	requiredSecrets := map[string]map[string]string{}
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("MSSQL_RESOURCE_ID")
-	adminUsername := "adminUsername" + os.Getenv("MSSQL_USERNAME")
-	adminPassword := "adminPassword" + os.Getenv("MSSQL_PASSWORD")
-	fmt.Printf("The parameters are mssqlresourceid:%s, adminUsername:%s, adminPassword:%s", mssqlresourceid, adminUsername, adminPassword)
+	adminUsername := "adminUsername=" + os.Getenv("MSSQL_USERNAME")
+	adminPassword := "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
+	fmt.Printf("The parameters are %s, %s, %s", mssqlresourceid, adminUsername, adminPassword)
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword),

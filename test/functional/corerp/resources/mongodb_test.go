@@ -31,7 +31,7 @@ func Test_MongoDB(t *testing.T) {
 	name := "corerp-resources-mongodb"
 
 	requiredSecrets := map[string]map[string]string{}
-	mongodbresourceid := "mongodbresourceid" + os.Getenv("MONGODB_RESOURCE_ID")
+	mongodbresourceid := "mongodbresourceid=" + os.Getenv("MONGODB_RESOURCE_ID")
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
