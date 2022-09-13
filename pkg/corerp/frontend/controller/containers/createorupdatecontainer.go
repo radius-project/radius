@@ -76,7 +76,7 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 
 	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutContainerOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
-	}
 
+	}
 	return e.ConstructAsyncResponse(ctx, req.Method, etag, newResource)
 }

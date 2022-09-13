@@ -50,6 +50,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
+
 	plane.Type = planes.PlaneTypePrefix + "/" + planeType
 	plane.Name = name
 	id, err := resources.Parse(plane.ID)
@@ -66,7 +67,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", plane.Name)
 			return rest.NewBadRequestResponse(err.Error()), nil
 		}
-	} else {
+	} else if plane.Properties.Kind != rest.PlaneKindAWS {
 		if plane.Properties.URL == "" {
 			err = fmt.Errorf("URL must be specified for plane: %s", plane.Name)
 			return rest.NewBadRequestResponse(err.Error()), nil

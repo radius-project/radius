@@ -16,7 +16,7 @@ import (
 	"syscall"
 
 	"github.com/mitchellh/go-ps"
-	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/de"
 )
@@ -25,7 +25,7 @@ var _ clients.DeploymentClient = (*LocalRPDeploymentClient)(nil)
 
 // Local RP Deployment Client to be used for local deployments to Azure environments
 type LocalRPDeploymentClient struct {
-	InnerClient azure.ResourceDeploymentClient
+	InnerClient deployment.ResourceDeploymentClient
 	BindUrl     string
 	BackendUrl  string
 }

@@ -21,7 +21,7 @@ import (
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -78,7 +78,7 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 			return nil, err
 		}
 
-		return &azure.ResourceDeploymentClient{
+		return &deployment.ResourceDeploymentClient{
 			Client:              dc,
 			OperationsClient:    op,
 			RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
@@ -144,7 +144,7 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			return nil, err
 		}
 
-		return &azure.ARMDiagnosticsClient{
+		return &deployment.ARMDiagnosticsClient{
 			K8sTypedClient:    k8sClient,
 			RestConfig:        config,
 			K8sRuntimeClient:  client,

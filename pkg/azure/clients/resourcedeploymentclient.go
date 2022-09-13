@@ -60,6 +60,11 @@ type Az struct {
 	Value Value  `json:"value,omitempty"`
 }
 
+type AWS struct {
+	Type  string `json:"type,omitempty"`
+	Value Value  `json:"value,omitempty"`
+}
+
 type Deployments struct {
 	Type  string `json:"type,omitempty"`
 	Value Value  `json:"value,omitempty"`
@@ -68,6 +73,7 @@ type Deployments struct {
 type ProviderConfig struct {
 	Radius      *Radius      `json:"radius,omitempty"`
 	Az          *Az          `json:"az,omitempty"`
+	AWS         *AWS         `json:"aws,omitempty"`
 	Deployments *Deployments `json:"deployments,omitempty"`
 }
 

@@ -10,13 +10,14 @@ import "strings"
 type PlaneProperties struct {
 	ResourceProviders map[string]string `json:"resourceProviders" yaml:"resourceProviders"` // Used only for UCP native planes
 	Kind              string            `json:"kind" yaml:"kind"`
-	URL               string            `json:"url" yaml:"url"` // Used only for non UCP native planes
+	URL               string            `json:"url" yaml:"url"` // Used only for non UCP native planes and non AWS planes
 }
 
 // Plane kinds
 const (
 	PlaneKindUCPNative = "UCPNative"
 	PlaneKindAzure     = "Azure"
+	PlaneKindAWS       = "AWS"
 )
 
 type Plane struct {
@@ -26,7 +27,7 @@ type Plane struct {
 	Properties PlaneProperties `json:"properties" yaml:"properties"`
 }
 
-//PlaneList represents a list of UCP planes in the ARM wire-format
+// PlaneList represents a list of UCP planes in the ARM wire-format
 type PlaneList struct {
 	Value []Plane `json:"value" yaml:"value"`
 }
@@ -40,21 +41,6 @@ type ResourceGroup struct {
 // ResourceGroupList represents a list of resource groups
 type ResourceGroupList struct {
 	Value []ResourceGroup `json:"value" yaml:"value"`
-}
-
-type AWSPlane struct {
-	ID         string             `json:"id"`
-	Type       string             `json:"type"`
-	Name       string             `json:"name"`
-	Properties AWSPlaneProperties `json:"properties"`
-}
-
-type AWSPlaneList struct {
-	Value []AWSPlane `json:"value"`
-}
-
-type AWSPlaneProperties struct {
-	// Nothing for now, we just use the ambient credentials in the environment.
 }
 
 // Resource represents a resource within a UCP resource group

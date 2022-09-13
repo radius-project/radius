@@ -25,9 +25,11 @@ storageProvider:
    inmemory: true
 
 #Default planes configuration with which ucp starts
+# TODO: Remove azure and aws planes once rad provider commands are supported
 planes:
   - id: "/planes/aws/aws"
-    properties: {}
+    properties:
+      kind: "AWS"
   - id: "/planes/radius/local"
     properties:
       resourceProviders:

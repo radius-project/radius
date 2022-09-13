@@ -18,7 +18,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func Test_CreatePlane(t *testing.T) {
+func Test_CreateUCPNativePlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 

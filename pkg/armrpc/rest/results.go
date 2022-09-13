@@ -18,7 +18,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -221,12 +220,12 @@ type AsyncOperationResponse struct {
 	ResourceID  resources.ID
 	OperationID uuid.UUID
 	APIVersion  string
-	RootScope   string
-	PathBase    string
+	RootScope   string // Everything before providers namespace for constructing an Async operation header. Used for AWS planes
+	PathBase    string // Base Path. Used for AWS planes
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
@@ -234,6 +233,8 @@ func NewAsyncOperationResponse(body interface{}, location string, code int, reso
 		ResourceID:  resourceID,
 		OperationID: operationID,
 		APIVersion:  apiVersion,
+		RootScope:   rootScope,
+		PathBase:    pathBase,
 	}
 }
 
@@ -246,10 +247,6 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 	locationHeader := r.getAsyncLocationPath(req, "operationResults")
 	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
-
-	logger := ucplog.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("SCHEME AsyncOperationResponse: Setting Location to %s", locationHeader))
-	logger.Info(fmt.Sprintf("SCHEME AsyncOperationResponse: Setting Azure-AsyncOperation to %s", azureAsyncOpHeader))
 
 	// Write Headers
 	w.Header().Add("Content-Type", "application/json")
