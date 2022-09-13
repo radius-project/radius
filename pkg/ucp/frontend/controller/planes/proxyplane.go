@@ -72,6 +72,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	ctx = ucplog.WrapLogContext(ctx,
 		ucplog.LogFieldPlaneID, planeID,
 		ucplog.LogFieldPlaneKind, plane.Properties.Kind)
+
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		// Check if the resource group exists
 		id, err := resources.Parse(newURL.Path)

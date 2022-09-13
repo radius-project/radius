@@ -11,7 +11,9 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -22,9 +24,12 @@ import (
 
 // TODO: Use variables and construct the path as we add more APIs.
 const (
-	planeCollectionPath   = "/planes"
-	planeItemPath         = "/planes/{PlaneType}/{PlaneID}"
-	planeCollectionByType = "/planes/{PlaneType}"
+	planeCollectionPath      = "/planes"
+	awsPlaneType             = "/planes/aws"
+	planeItemPath            = "/planes/{PlaneType}/{PlaneID}"
+	planeCollectionByType    = "/planes/{PlaneType}"
+	awsOperationResultsPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
+	awsOperationStatusesPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 )
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
@@ -62,9 +67,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		return err
 	}
 
-	subrouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
-	subrouter.Use(validator.APIValidatorUCP(specLoader))
-
 	rootScopeRouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
 	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
@@ -77,6 +79,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
 	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
+
+	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
+	awsResourcesSubRouter.Use(middleware.AWSParsing)
+	awsOperationStatusesSubRouter := awsResourcesSubRouter.Path(awsOperationStatusesPath).Subrouter()
+	awsOperationResultsSubRouter := awsResourcesSubRouter.Path(awsOperationResultsPath).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -127,6 +134,33 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
 		},
 
+		// AWS Plane handlers
+		{
+			ParentRouter:   awsOperationResultsSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationResults,
+		},
+		{
+			ParentRouter:   awsOperationStatusesSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationStatuses,
+		},
+		{
+			ParentRouter:   awsResourcesSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResource,
+		},
+		{
+			ParentRouter:   awsResourcesSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResource,
+		},
+		{
+			ParentRouter:   awsResourcesSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetOrListAWSResource,
+		},
+
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
 			ParentRouter:   router,
@@ -140,6 +174,13 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			return err
 		}
 	}
+
+	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
+		tpl, err1 := route.GetPathTemplate()
+		met, err2 := route.GetMethods()
+		fmt.Println(tpl, err1, met, err2)
+		return nil
+	})
 
 	return nil
 }

@@ -6,6 +6,7 @@ package planes
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"testing"
 
@@ -18,7 +19,7 @@ import (
 	"gotest.tools/assert"
 )
 
-func Test_CreatePlane(t *testing.T) {
+func Test_CreateUCPNativePlane(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
@@ -143,4 +144,50 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 	}
 	assert.DeepEqual(t, badResponse, response)
 	require.NoError(t, err)
+}
+
+func Test_CreateAWSPlane(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+	mockStorageClient := store.NewMockStorageClient(mockCtrl)
+
+	planesCtrl, err := NewCreateOrUpdatePlane(ctrl.Options{
+		DB: mockStorageClient,
+	})
+	require.NoError(t, err)
+
+	body := []byte(`{}`)
+	path := "/planes/aws/aws"
+
+	plane := rest.AWSPlane{
+		ID:         "/planes/aws/aws",
+		Type:       "System.Planes/aws",
+		Name:       "aws",
+		Properties: rest.AWSPlaneProperties{},
+	}
+
+	o := &store.Object{
+		Metadata: store.Metadata{
+			ID:          plane.ID,
+			ContentType: "application/json",
+		},
+		Data: &plane,
+	}
+
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+		return nil, &store.ErrNotFound{}
+	})
+	mockStorageClient.EXPECT().Save(gomock.Any(), o, gomock.Any())
+
+	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
+	require.NoError(t, err)
+
+	expectedResponse := rest.NewOKResponse(plane)
+	response, err := planesCtrl.Run(ctx, nil, request)
+
+	require.NoError(t, err)
+	assert.DeepEqual(t, expectedResponse, response)
 }

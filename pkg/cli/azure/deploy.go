@@ -123,10 +123,11 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() azclients.ProviderConfi
 	}
 
 	if dc.AWSProvider != nil {
-		providerConfigs.AWS = &providers.AWS{
+		scope := "/planes/aws/aws/accounts/" + dc.AWSProvider.AccountId + "/regions/" + dc.AWSProvider.Region
+		providerConfigs.AWS = &azclients.AWS{
 			Type: "AWS",
-			Value: providers.Value{
-				Scope: dc.AWSProvider.Scope,
+			Value: azclients.Value{
+				Scope: scope,
 			},
 		}
 	}
