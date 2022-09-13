@@ -125,7 +125,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isRadiusInstalled {
-		return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", r.Namespace)
+		return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", r.Workspace.Name)
 	}
 
 	return nil

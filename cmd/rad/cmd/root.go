@@ -36,6 +36,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	client_go "k8s.io/client-go/kubernetes"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // RootCmd is the root command of the rad CLI. This is exported so we can generate docs for it.
@@ -173,32 +174,32 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 	return holder.Config
 }
 
-func CreateKubernetesClients(contextName string) (client_go.Interface, error) {
+func CreateKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
 	k8sConfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
 	}
 
 	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, errors.New("no kubernetes context is set")
+		return nil, nil, "", errors.New("no kubernetes context is set")
 	} else if contextName == "" {
 		contextName = k8sConfig.CurrentContext
 	}
 
 	context := k8sConfig.Contexts[contextName]
 	if context == nil {
-		return nil, fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
 	}
 
 	client, _, err := kubernetes.CreateTypedClient(contextName)
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
 	}
 
-	// runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
+	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
 	if err != nil {
-		return nil, err
+		return nil, nil, "", err
 	}
 
-	return client, nil
+	return client, runtimeClient, contextName, nil
 }
