@@ -17,6 +17,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
@@ -42,6 +43,7 @@ type RadiusOptions struct {
 	DETag                  string
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
+	AwsProvider            *aws.Provider
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -78,7 +80,14 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 	if options.AzureProvider != nil {
 		err = addAzureProviderValues(helmChart, options.AzureProvider)
 		if err != nil {
-			return false, fmt.Errorf("failed to add azure values, err: %w, helm output: %s", err, helmOutput.String())
+			return false, fmt.Errorf("failed to add azure provider values, err: %w, helm output: %s", err, helmOutput.String())
+		}
+	}
+
+	if options.AwsProvider != nil {
+		err = addAwsProviderValues(helmChart, options.AwsProvider)
+		if err != nil {
+			return false, fmt.Errorf("failed to add aws provider values, err: %w, helm output: %s", err, helmOutput.String())
 		}
 	}
 
@@ -273,6 +282,39 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	}
 	if options.DETag != "" {
 		de["tag"] = options.DETag
+	}
+
+	return nil
+}
+
+func addAwsProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) error {
+	if awsProvider == nil {
+		return nil
+	}
+	values := helmChart.Values
+
+	_, ok := values["global"]
+	if !ok {
+		values["global"] = make(map[string]interface{})
+	}
+	global := values["global"].(map[string]interface{})
+
+	_, ok = global["rp"]
+	if !ok {
+		global["rp"] = make(map[string]interface{})
+	}
+	rp := global["rp"].(map[string]interface{})
+
+	_, ok = rp["provider"]
+	if !ok {
+		rp["provider"] = make(map[string]interface{})
+	}
+	provider := rp["provider"].(map[string]interface{})
+
+	provider["aws"] = map[string]interface{}{
+		"principalKeyId":     awsProvider.PrincipalKeyId,
+		"principalAccessKey": awsProvider.PrincipalAccessKey,
+		"region":             awsProvider.TargetRegion,
 	}
 
 	return nil

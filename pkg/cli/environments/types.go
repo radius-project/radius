@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 )
@@ -52,6 +53,7 @@ type Registry struct {
 
 type Providers struct {
 	AzureProvider *azure.Provider `mapstructure:"azure,omitempty"`
+	AwsProvider   *aws.Provider   `mapstructure:"aws,omitempty"`
 }
 
 type DeploymentEnvironment interface {

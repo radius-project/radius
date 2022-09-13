@@ -44,8 +44,9 @@ func init() {
 	envInitCmd.PersistentFlags().StringP("namespace", "n", "default", "Specify the namespace to use for the environment into which application resources are deployed")
 	envInitCmd.PersistentFlags().BoolP("force", "f", false, "Overwrite existing workspace if present")
 
-	setup.RegisterPersistantChartArgs(envInitCmd)
-	setup.RegistePersistantAzureProviderArgs(envInitCmd)
+	setup.RegisterPersistentChartArgs(envInitCmd)
+	setup.RegisterPersistentAzureProviderArgs(envInitCmd)
+	setup.RegisterPersistentAwsProviderArgs(envInitCmd)
 }
 
 type EnvKind int
@@ -88,6 +89,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
+	// Configure Aws provider for cloud resources if specified
+	awsProvider, err := setup.ParseAwsProviderFromArgs(cmd, interactive)
+	if err != nil {
+		return err
+	}
+
 	var defaultEnvName string
 
 	switch kind {
@@ -110,8 +117,10 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	params := &EnvironmentParams{
-		Name:      environmentName,
-		Providers: &environments.Providers{AzureProvider: azureProvider},
+		Name: environmentName,
+		Providers: &environments.Providers{
+			AzureProvider: azureProvider,
+			AwsProvider:   awsProvider},
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -124,6 +133,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
 			AzureProvider:          azureProvider,
+			AwsProvider:            awsProvider,
 		},
 	}
 
