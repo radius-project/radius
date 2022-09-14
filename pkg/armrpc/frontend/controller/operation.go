@@ -81,11 +81,12 @@ func (b *Operation[P, T]) StatusManager() sm.StatusManager {
 
 // GetResourceFromRequest extracts and deserializes from HTTP request body to datamodel.
 func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.Request) (*T, error) {
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ReadJSONBody(req)
 	if err != nil {
 		return nil, err
 	}
+	
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	dm, err := c.ConvertToDataModel(content, serviceCtx.APIVersion)
 	if err != nil {
