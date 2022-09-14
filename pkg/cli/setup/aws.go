@@ -12,31 +12,31 @@ import (
 )
 
 const (
-	AWS_PROVIDER_FLAG_NAME        = "provider-aws"
-	AWS_PROVIDER_KEY_ID_FLAG_NAME = "provider-aws-access-key-id"
-	AWS_PROVIDER_SECRET_FLAG_NAME = "provider-aws-secret-access-key"
-	AWS_PROVIDER_REGION_FLAG_NAME = "provider-aws-region"
+	AwsProviderFlagName                = "provider-aws"
+	AwsProviderAccessKeyIdFlagName     = "provider-aFws-access-key-id"
+	AwsProviderSecretAccessKeyFlagName = "provider-aws-secret-access-key"
+	AwsProviderRegionFlagName          = "provider-aws-region"
 )
 
 func RegisterPersistentAwsProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolP(
-		AWS_PROVIDER_FLAG_NAME,
+		AwsProviderFlagName,
 		"",
 		false,
 		"Add AWS provider for cloud resources",
 	)
 	cmd.PersistentFlags().String(
-		AWS_PROVIDER_KEY_ID_FLAG_NAME,
+		AwsProviderAccessKeyIdFlagName,
 		"",
 		"Specifies an AWS access key associated with an IAM user or role",
 	)
 	cmd.PersistentFlags().String(
-		AWS_PROVIDER_SECRET_FLAG_NAME,
+		AwsProviderSecretAccessKeyFlagName,
 		"",
 		"Specifies the secret key associated with the access key. This is essentially the \"password\" for the access key",
 	)
 	cmd.PersistentFlags().String(
-		AWS_PROVIDER_REGION_FLAG_NAME,
+		AwsProviderRegionFlagName,
 		"",
 		"Specifies the region to be used for resources deployed by this provider",
 	)
@@ -51,7 +51,7 @@ func ParseAwsProviderFromArgs(cmd *cobra.Command, interactive bool) (*aws.Provid
 }
 
 func parseAwsProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
-	addAwsProvider, err := cmd.Flags().GetBool(AWS_PROVIDER_FLAG_NAME)
+	addAwsProvider, err := cmd.Flags().GetBool(AwsProviderFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +59,16 @@ func parseAwsProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
 		return nil, nil
 	}
 
-	principalKeyId, err := cmd.Flags().GetString(AWS_PROVIDER_KEY_ID_FLAG_NAME)
+	principalKeyId, err := cmd.Flags().GetString(AwsProviderAccessKeyIdFlagName)
 	if err != nil {
 		return nil, err
 	}
-	principalSecret, err := cmd.Flags().GetString(AWS_PROVIDER_SECRET_FLAG_NAME)
+	principalSecret, err := cmd.Flags().GetString(AwsProviderSecretAccessKeyFlagName)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := cmd.Flags().GetString(AWS_PROVIDER_REGION_FLAG_NAME)
+	region, err := cmd.Flags().GetString(AwsProviderRegionFlagName)
 	if err != nil {
 		return nil, err
 	}
