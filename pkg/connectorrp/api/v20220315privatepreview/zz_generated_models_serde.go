@@ -1794,6 +1794,7 @@ func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
@@ -1825,6 +1826,9 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
+				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &r.Resource)
 				delete(rawMsg, key)
@@ -1836,6 +1840,37 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "username":
 				err = unpopulate(val, "Username", &r.Username)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RedisCacheRecipe.
+func (r RedisCacheRecipe) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "name", r.Name)
+	populate(objectMap, "param", r.Param)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RedisCacheRecipe.
+func (r *RedisCacheRecipe) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "name":
+				err = unpopulate(val, "Name", &r.Name)
+				delete(rawMsg, key)
+		case "param":
+				err = unpopulate(val, "Param", &r.Param)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1904,6 +1939,7 @@ func (r RedisCacheResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
 	populate(objectMap, "username", r.Username)
@@ -1933,6 +1969,9 @@ func (r *RedisCacheResponseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &r.Resource)

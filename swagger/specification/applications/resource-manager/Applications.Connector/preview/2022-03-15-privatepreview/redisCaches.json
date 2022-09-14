@@ -341,6 +341,22 @@
         }
       }
     },
+    "RedisCacheRecipe": {
+      "description": "The recipe used to deploy the RedisCache resource",
+      "properties": {
+        "name" :{
+          "description": "The name of the recipe used by rediscache connector to get the recipe link from the environment metadata",
+          "type": "string"
+        },
+        "param": {
+          "description": "The key value pair which the developer wants to overewrite in the recipe bicep",
+          "type": "object",
+          "example": {
+            "port": 6060
+          }
+        }
+      }
+    },
     "RedisCacheResponseProperties": {
       "description": "RedisCache connector properties",
       "type": "object",
@@ -390,6 +406,11 @@
           "type": "string",
           "description": "The username for redis",
           "readOnly": true
+        },
+        "recipe" : {
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "#/definitions/RedisCacheRecipe"
         }
       },
       "required": ["environment"]
