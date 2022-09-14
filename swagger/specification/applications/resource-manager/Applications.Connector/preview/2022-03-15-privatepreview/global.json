@@ -91,11 +91,11 @@
       "type": "object",
       "properties": {
         "name" :{
-          "description": "The name of the recipe used by rediscache connector to get the recipe link from the environment metadata",
+          "description": "The name of the recipe within the environment to use",
           "type": "string"
         },
-        "params": {
-          "description": "The key value pair which the developer wants to overewrite in the recipe bicep",
+        "parameters": {
+          "description": "Key/value parameters to pass into the recipe at deployment",
           "type": "object",
           "example":[{
             "port": 6060

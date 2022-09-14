@@ -317,8 +317,8 @@
 
 ## Recipe
 ### Properties
-* **name**: string: The name of the recipe used by rediscache connector to get the recipe link from the environment metadata
-* **params**: any: Any object
+* **name**: string: The name of the recipe within the environment to use
+* **parameters**: any: Any object
 
 ## RedisCacheSecrets
 ### Properties
