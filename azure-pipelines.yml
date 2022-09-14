@@ -163,6 +163,7 @@ stages:
       displayName: run functional ucp tests
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
+      artifact: container_logs_$(Build.BuildNumber)
       condition: always()
     - script: |
         az group delete \
