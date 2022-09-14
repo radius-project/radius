@@ -58,28 +58,8 @@ func NewRunner(factory framework.Factory) *Runner {
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
-	section, err := cli.ReadWorkspaceSection(config)
-	if err != nil {
-		return err
-	}
 
-	workspaceName, err := cmd.Flags().GetString("workspace")
-	if err != nil {
-		return err
-	}
-
-	if workspaceName == "" {
-		section, err := cli.ReadWorkspaceSection(config)
-		if err != nil {
-			return err
-		}
-
-		workspaceName = section.Default
-	}
-	if workspaceName == "" {
-		return fmt.Errorf("no default workspace set. Run`rad workspace switch` or `rad init` and try again")
-	}
-	workspace, err := section.GetWorkspace(workspaceName)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
