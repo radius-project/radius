@@ -53,7 +53,7 @@ type Registry struct {
 
 type Providers struct {
 	AzureProvider *azure.Provider `mapstructure:"azure,omitempty"`
-	AwsProvider   *aws.Provider   `mapstructure:"aws,omitempty"`
+	AWSProvider   *aws.Provider   `mapstructure:"aws,omitempty"`
 }
 
 type DeploymentEnvironment interface {

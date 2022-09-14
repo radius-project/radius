@@ -43,7 +43,7 @@ type RadiusOptions struct {
 	DETag                  string
 	PublicEndpointOverride string
 	AzureProvider          *azure.Provider
-	AwsProvider            *aws.Provider
+	AWSProvider            *aws.Provider
 }
 
 func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, error) {
@@ -84,8 +84,8 @@ func ApplyRadiusHelmChart(options RadiusOptions, kubeContext string) (bool, erro
 		}
 	}
 
-	if options.AwsProvider != nil {
-		err = addAwsProviderValues(helmChart, options.AwsProvider)
+	if options.AWSProvider != nil {
+		err = addAWSProviderValues(helmChart, options.AWSProvider)
 		if err != nil {
 			return false, fmt.Errorf("failed to add aws provider values, err: %w, helm output: %s", err, helmOutput.String())
 		}
@@ -287,7 +287,7 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 	return nil
 }
 
-func addAwsProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) error {
+func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) error {
 	if awsProvider == nil {
 		return nil
 	}

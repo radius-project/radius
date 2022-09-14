@@ -46,7 +46,7 @@ func init() {
 
 	setup.RegisterPersistentChartArgs(envInitCmd)
 	setup.RegisterPersistentAzureProviderArgs(envInitCmd)
-	setup.RegisterPersistentAwsProviderArgs(envInitCmd)
+	setup.RegisterPersistentAWSProviderArgs(envInitCmd)
 }
 
 type EnvKind int
@@ -89,8 +89,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	// Configure Aws provider for cloud resources if specified
-	awsProvider, err := setup.ParseAwsProviderFromArgs(cmd, interactive)
+	// Configure AWS provider for cloud resources if specified
+	awsProvider, err := setup.ParseAWSProviderFromArgs(cmd, interactive)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		Name: environmentName,
 		Providers: &environments.Providers{
 			AzureProvider: azureProvider,
-			AwsProvider:   awsProvider},
+			AWSProvider:   awsProvider},
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -133,7 +133,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
 			AzureProvider:          azureProvider,
-			AwsProvider:            awsProvider,
+			AWSProvider:            awsProvider,
 		},
 	}
 

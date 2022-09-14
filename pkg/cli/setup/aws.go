@@ -12,63 +12,63 @@ import (
 )
 
 const (
-	AwsProviderFlagName                = "provider-aws"
-	AwsProviderAccessKeyIdFlagName     = "provider-aws-access-key-id"
-	AwsProviderSecretAccessKeyFlagName = "provider-aws-secret-access-key"
-	AwsProviderRegionFlagName          = "provider-aws-region"
+	AWSProviderFlagName                = "provider-aws"
+	AWSProviderAccessKeyIdFlagName     = "provider-aws-access-key-id"
+	AWSProviderSecretAccessKeyFlagName = "provider-aws-secret-access-key"
+	AWSProviderRegionFlagName          = "provider-aws-region"
 )
 
-func RegisterPersistentAwsProviderArgs(cmd *cobra.Command) {
+func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolP(
-		AwsProviderFlagName,
+		AWSProviderFlagName,
 		"",
 		false,
 		"Add AWS provider for cloud resources",
 	)
 	cmd.PersistentFlags().String(
-		AwsProviderAccessKeyIdFlagName,
+		AWSProviderAccessKeyIdFlagName,
 		"",
 		"Specifies an AWS access key associated with an IAM user or role",
 	)
 	cmd.PersistentFlags().String(
-		AwsProviderSecretAccessKeyFlagName,
+		AWSProviderSecretAccessKeyFlagName,
 		"",
 		"Specifies the secret key associated with the access key. This is essentially the \"password\" for the access key",
 	)
 	cmd.PersistentFlags().String(
-		AwsProviderRegionFlagName,
+		AWSProviderRegionFlagName,
 		"",
 		"Specifies the region to be used for resources deployed by this provider",
 	)
 }
 
-func ParseAwsProviderFromArgs(cmd *cobra.Command, interactive bool) (*aws.Provider, error) {
+func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*aws.Provider, error) {
 	if interactive {
 		panic("Not implemented, see https://github.com/project-radius/radius/issues/3655")
 	}
-	return parseAwsProviderNonInteractive(cmd)
+	return parseAWSProviderNonInteractive(cmd)
 
 }
 
-func parseAwsProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
-	addAwsProvider, err := cmd.Flags().GetBool(AwsProviderFlagName)
+func parseAWSProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
+	addAWSProvider, err := cmd.Flags().GetBool(AWSProviderFlagName)
 	if err != nil {
 		return nil, err
 	}
-	if !addAwsProvider {
+	if !addAWSProvider {
 		return nil, nil
 	}
 
-	principalKeyId, err := cmd.Flags().GetString(AwsProviderAccessKeyIdFlagName)
+	principalKeyId, err := cmd.Flags().GetString(AWSProviderAccessKeyIdFlagName)
 	if err != nil {
 		return nil, err
 	}
-	principalSecret, err := cmd.Flags().GetString(AwsProviderSecretAccessKeyFlagName)
+	principalSecret, err := cmd.Flags().GetString(AWSProviderSecretAccessKeyFlagName)
 	if err != nil {
 		return nil, err
 	}
 
-	region, err := cmd.Flags().GetString(AwsProviderRegionFlagName)
+	region, err := cmd.Flags().GetString(AWSProviderRegionFlagName)
 	if err != nil {
 		return nil, err
 	}

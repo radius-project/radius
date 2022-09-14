@@ -106,8 +106,8 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	if cliOptions.Radius.AzureProvider != nil {
 		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
 	}
-	if cliOptions.Radius.AwsProvider != nil {
-		options.Radius.AwsProvider = cliOptions.Radius.AwsProvider
+	if cliOptions.Radius.AWSProvider != nil {
+		options.Radius.AWSProvider = cliOptions.Radius.AWSProvider
 	}
 
 	return options
