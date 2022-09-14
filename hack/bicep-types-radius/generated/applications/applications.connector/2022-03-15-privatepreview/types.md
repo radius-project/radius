@@ -309,16 +309,16 @@
 * **host**: string: The host name of the target redis cache
 * **port**: int: The port value of the target redis cache
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [RedisCacheRecipe](#rediscacherecipe): The recipe used to deploy the RedisCache resource
+* **recipe**: [Recipe](#recipe): The recipe used to deploy the connector resource
 * **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets) (WriteOnly): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string (ReadOnly): The username for redis
 
-## RedisCacheRecipe
+## Recipe
 ### Properties
 * **name**: string: The name of the recipe used by rediscache connector to get the recipe link from the environment metadata
-* **param**: any: Any object
+* **params**: any: Any object
 
 ## RedisCacheSecrets
 ### Properties

@@ -86,19 +86,20 @@
       "type": "object",
       "properties": {}
     },
-    "Recipe":{
+    "Recipe": {
       "description": "The recipe used to deploy the connector resource",
       "type": "object",
       "properties": {
-        "name": {
-          "description": "The name of the recipe within the environment to use",
+        "name" :{
+          "description": "The name of the recipe used by rediscache connector to get the recipe link from the environment metadata",
           "type": "string"
         },
-        "parameters":{
-          "description": "Key/value parameters to pass into the recipe at deployment",
+        "params": {
+          "description": "The key value pair which the developer wants to overewrite in the recipe bicep",
           "type": "object",
-          "additionalProperties": true,
-          "properties": {}
+          "example":[{
+            "port": 6060
+          }]
         }
       }
     }

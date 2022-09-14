@@ -985,11 +985,19 @@ type RabbitMQSecrets struct {
 
 // Recipe - The recipe used to deploy the connector resource
 type Recipe struct {
+<<<<<<< HEAD
 	// The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+=======
+	// The name of the recipe used by rediscache connector to get the recipe link from the environment metadata
+	Name *string `json:"name,omitempty"`
+
+	// The key value pair which the developer wants to overewrite in the recipe bicep
+	Params map[string]interface{} `json:"params,omitempty"`
+>>>>>>> df92d2f3 (addressed review coments)
 }
 
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
@@ -1015,8 +1023,8 @@ type RedisCacheProperties struct {
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to deploy the RedisCache resource
-	Recipe *RedisCacheRecipe `json:"recipe,omitempty"`
+	// The recipe details to deploy the redis cache
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -1032,15 +1040,6 @@ type RedisCacheProperties struct {
 
 	// READ-ONLY; The username for redis
 	Username *string `json:"username,omitempty" azure:"ro"`
-}
-
-// RedisCacheRecipe - The recipe used to deploy the RedisCache resource
-type RedisCacheRecipe struct {
-	// The name of the recipe used by rediscache connector to get the recipe link from the environment metadata
-	Name *string `json:"name,omitempty"`
-
-	// The key value pair which the developer wants to overewrite in the recipe bicep
-	Param map[string]interface{} `json:"param,omitempty"`
 }
 
 // RedisCacheResource - RedisCache connector
@@ -1081,8 +1080,8 @@ type RedisCacheResponseProperties struct {
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The recipe used to deploy the RedisCache resource
-	Recipe *RedisCacheRecipe `json:"recipe,omitempty"`
+	// The recipe details to deploy the redis cache
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
