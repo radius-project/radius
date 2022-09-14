@@ -19,6 +19,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -73,7 +74,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := selectNamespace(cmd, "default", interactive)
+	namespace, err := common.SelectNamespace(cmd, "default", interactive)
 	if err != nil {
 		return err
 	}
@@ -111,7 +112,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := selectEnvironmentName(cmd, defaultEnvName, interactive)
+	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive)
 	if err != nil {
 		return err
 	}
@@ -426,55 +427,6 @@ func createKubernetesClients(contextName string) (client_go.Interface, runtime_c
 	}
 
 	return client, runtimeClient, contextName, nil
-}
-
-func selectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
-	var val string
-	var err error
-	if interactive {
-		promptMsg := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultVal)
-		val, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
-		if err != nil {
-			return "", err
-		}
-		fmt.Printf("Using %s as namespace name\n", val)
-	} else {
-		val, _ = cmd.Flags().GetString("namespace")
-		if val == "" {
-			output.LogInfo("No namespace name provided, using: %v", defaultVal)
-			val = defaultVal
-		}
-	}
-	return val, nil
-}
-
-func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
-	var envStr string
-	var err error
-
-	envStr, err = cmd.Flags().GetString("environment")
-	if err != nil {
-		return "", err
-	}
-	if interactive && envStr == "" {
-		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.ResourceName)
-		if err != nil {
-			return "", err
-		}
-		fmt.Printf("Using %s as environment name\n", envStr)
-	} else {
-		if envStr == "" {
-			output.LogInfo("No environment name provided, using: %v", defaultVal)
-			envStr = defaultVal
-		}
-		matched, msg, _ := prompt.ResourceName(envStr)
-		if !matched {
-			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name", envStr, msg)
-		}
-	}
-
-	return envStr, nil
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {
