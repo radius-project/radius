@@ -28,9 +28,9 @@ type ListResources[P interface {
 func NewListResources[P interface {
 	*T
 	conv.DataModelInterface
-}, T any](opts ctrl.Options, outputConverter conv.ResponseConverter[T]) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
-		ctrl.NewOperation[P](opts, nil, outputConverter),
+		ctrl.NewOperation[P](opts, nil, modelConverter),
 	}, nil
 }
 
@@ -63,7 +63,7 @@ func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req 
 			return nil, err
 		}
 
-		versioned, err := e.ResponseConverter(resource, serviceCtx.APIVersion)
+		versioned, err := e.ConvertToAPIModel(resource, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

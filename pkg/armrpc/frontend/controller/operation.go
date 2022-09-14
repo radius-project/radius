@@ -30,17 +30,17 @@ type Operation[P interface {
 }, T any] struct {
 	options Options
 
-	// RequestConverter is the converter to convert from the versioned API resource to datamodel resource.
-	RequestConverter conv.RequestConverter[T]
-	// ResponseConverter is the converter to convert from datamodel resource to versioned API for response.
-	ResponseConverter conv.ResponseConverter[T]
+	// ConvertToDataModel is the converter to convert from the versioned API resource to datamodel resource.
+	ConvertToDataModel conv.ConvertToDataModel[T]
+	// ConvertToAPIModel is the converter to convert from datamodel resource to the versioned API model.
+	ConvertToAPIModel conv.ConvertToAPIModel[T]
 }
 
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
 	conv.DataModelInterface
-}, T any](options Options, reqconv conv.RequestConverter[T], respconv conv.ResponseConverter[T]) Operation[P, T] {
+}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) Operation[P, T] {
 	return Operation[P, T]{options, reqconv, respconv}
 }
 
@@ -87,7 +87,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 		return nil, err
 	}
 
-	dm, err := c.RequestConverter(content, serviceCtx.APIVersion)
+	dm, err := c.ConvertToDataModel(content, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -113,6 +113,21 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 		err = nil
 	}
 	return
+}
+
+// SaveResource is the helper to save the resource via storage client.
+func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (*store.Object, error) {
+	nr := &store.Object{
+		Metadata: store.Metadata{
+			ID: id,
+		},
+		Data: in,
+	}
+	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
+	if err != nil {
+		return nil, err
+	}
+	return nr, nil
 }
 
 // ValidateResource runs the common validation logic for incoming request.
@@ -142,7 +157,7 @@ func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, isNew 
 func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	versioned, err := c.ResponseConverter(resource, serviceCtx.APIVersion)
+	versioned, err := c.ConvertToAPIModel(resource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -161,19 +176,4 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 
 	return rest.NewAsyncOperationResponse(resource, serviceCtx.Location, respCode,
 		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
-}
-
-// SaveResource is the helper to save the resource via storage client.
-func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (*store.Object, error) {
-	nr := &store.Object{
-		Metadata: store.Metadata{
-			ID: id,
-		},
-		Data: in,
-	}
-	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
-	if err != nil {
-		return nil, err
-	}
-	return nr, nil
 }
