@@ -10,9 +10,10 @@ Note, this only applies when we want to update the app core image, if we need to
     ```
     export DOCKER_REGISTRY=<registry>.azurecr.io
     ```
-1. Ensure you login to your container registry. You'll be doing this more than you expect, I promise.
+1. Ensure you login to your container registry AND enable anonymous pull. The login command will need to be called every 3 hours as needed as it does log the user out frequently.
     ```
     az acr login -n <registry>
+    az acr update --name <registry> --anonymous-pull-enabled
     ```
 1. Build and push an initial version of all images in the radius repo. This should push images for the appcore-rp, the ucpd, etc that are required to run radius.
     ```

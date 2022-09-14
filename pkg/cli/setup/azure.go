@@ -45,17 +45,21 @@ func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool) (*azure.Provid
 }
 
 func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) {
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return nil, err
-	}
-
 	addAzureSPN, err := prompt.ConfirmWithDefault("Add Azure provider for cloud resources [y/N]?", prompt.No)
 	if err != nil {
 		return nil, err
 	}
 	if !addAzureSPN {
 		return nil, nil
+	}
+
+	// NOTE: These functions interact with the Azure CLI. We only want to do this
+	// if the user opts in to doing azure.
+	//
+	// At this point we've already asked the user so we should be ok.
+	authorizer, err := auth.NewAuthorizerFromCLI()
+	if err != nil {
+		return nil, err
 	}
 
 	subscription, err := selectSubscription(cmd.Context(), authorizer)
@@ -109,10 +113,6 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 }
 
 func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, error) {
-	authorizer, err := auth.NewAuthorizerFromCLI()
-	if err != nil {
-		return nil, err
-	}
 	subscriptionID, err := cmd.Flags().GetString("provider-azure-subscription")
 	if err != nil {
 		return nil, err
@@ -148,8 +148,18 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		return nil, err
 	}
 	if isValid, _, _ := prompt.UUIDv4Validator(subscriptionID); !isValid {
+		// NOTE: These functions interact with the Azure CLI. We only want to do this
+		// if the user opts in to doing azure.
+		//
+		// At this point we've already exited the function unless the user set `--provider-azure`
+		// so it should be safe to interact with the Azure CLI.
 		subs, err := azure.LoadSubscriptionsFromProfile()
 		if err != nil {
+			authorizer, err := auth.NewAuthorizerFromCLI()
+			if err != nil {
+				return nil, err
+			}
+
 			// Failed to load subscriptions from the user profile, fall back to online.
 			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context(), authorizer)
 			if err != nil {

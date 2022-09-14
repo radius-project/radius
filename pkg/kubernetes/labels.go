@@ -17,6 +17,7 @@ const (
 	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusResourceType = "radius.dev/resource-type"
+	AnnotationSecretHash    = "radius.dev/secret-hash"
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"

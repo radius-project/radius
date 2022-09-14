@@ -504,6 +504,67 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	require.Equal(t, expectedEnv, container.Env)
 }
 
+// This test is testing that we hash the connection data and include it in the output. We don't care about the content
+// of the hash, just that it can change when the data changes.
+func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: apiv1.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
+		Connections: map[string]datamodel.ConnectionProperties{
+			"A": {
+				Source: makeResourceID(t, "ResourceType", "A").String(),
+				IAM: datamodel.IAMProperties{
+					Kind: datamodel.KindHTTP,
+				},
+			},
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{
+		(makeResourceID(t, "ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "ResourceType", "A"),
+			Definition: map[string]interface{}{},
+			ComputedValues: map[string]interface{}{
+				"ComputedKey1": "ComputedValue1",
+				"ComputedKey2": 82,
+			},
+		},
+	}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Contains(t, deployment.Spec.Template.Annotations, kubernetes.AnnotationSecretHash)
+	hash1 := deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash]
+
+	// Update and render again
+	dependencies[makeResourceID(t, "ResourceType", "A").String()].ComputedValues["ComputedKey1"] = "new value"
+
+	output, err = renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
+	require.NoError(t, err)
+	deployment, _ = kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Contains(t, deployment.Spec.Template.Annotations, kubernetes.AnnotationSecretHash)
+	hash2 := deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash]
+
+	require.NotEqual(t, hash1, hash2)
+}
+
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: apiv1.BasicResourceProperties{
