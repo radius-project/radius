@@ -36,17 +36,11 @@ type Workspace struct {
 type ProviderConfig struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
 	Azure *AzureProvider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
-	// AWS represents the configuration for the AWS IAC provider used during deployment. This field is optional.
-	AWS *AwsProvider `json:"aws,omitempty" mapstructure:"aws" yaml:"aws,omitempty"`
 }
 
 type AzureProvider struct {
 	SubscriptionID string
 	ResourceGroup  string
-}
-
-type AwsProvider struct {
-	Scope string
 }
 
 // Registry represent the configuration for a container registry.
