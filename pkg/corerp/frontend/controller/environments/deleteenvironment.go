@@ -35,7 +35,7 @@ func NewDeleteEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	old, etag, isNewResource, err := e.GetResourceFromStore(ctx, serviceCtx.ResourceID)
+	old, etag, isNewResource, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}

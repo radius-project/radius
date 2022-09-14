@@ -95,10 +95,10 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 }
 
 // GetResource is the helper to get the resource via storage client.
-func (c *Operation[P, T]) GetResourceFromStore(ctx context.Context, id resources.ID) (out *T, etag string, isNotFound bool, err error) {
+func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, isNew bool, err error) {
 	etag = ""
 	out = new(T)
-	isNotFound = false
+	isNew = false
 	var res *store.Object
 	if res, err = c.StorageClient().Get(ctx, id.String()); err == nil {
 		if err = res.As(out); err == nil {
@@ -109,7 +109,7 @@ func (c *Operation[P, T]) GetResourceFromStore(ctx context.Context, id resources
 
 	out = nil
 	if errors.Is(&store.ErrNotFound{}, err) {
-		isNotFound = true
+		isNew = true
 		err = nil
 	}
 	return

@@ -35,7 +35,7 @@ func NewDeleteApplication(opts ctrl.Options) (ctrl.Controller, error) {
 func (a *DeleteApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	old, etag, isNewResource, err := a.GetResourceFromStore(ctx, serviceCtx.ResourceID)
+	old, etag, isNewResource, err := a.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}

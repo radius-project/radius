@@ -37,7 +37,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	old, etag, isNewResource, err := a.GetResourceFromStore(ctx, serviceCtx.ResourceID)
+	old, etag, isNewResource, err := a.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
