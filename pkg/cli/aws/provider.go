@@ -7,7 +7,7 @@ package aws
 
 // Provider specifies the properties required to configure Azure provider for cloud resources
 type Provider struct {
-	PrincipalKeyId string
-	PrincipalAccessKey string
-	TargetRegion string
+	AccessKeyId     string
+	SecretAccessKey string
+	TargetRegion    string
 }

@@ -97,7 +97,7 @@ metadata:
 stringData:
 # Configuration for 'AWS' provider functionality
 {{ if .Values.global.rp.provider.aws }}
-  AWS_ACCESS_KEY_ID: {{ .Values.global.rp.provider.aws.principalKeyId }} 
-  AWS_SECRET_ACCESS_KEY: {{ .Values.global.rp.provider.aws.principalAccessKey }}
+  AWS_ACCESS_KEY_ID: {{ .Values.global.rp.provider.aws.accessKeyId }} 
+  AWS_SECRET_ACCESS_KEY: {{ .Values.global.rp.provider.aws.secretAccessKey }}
   AWS_DEFAULT_REGION: {{ .Values.global.rp.provider.aws.region }}
 {{ end }}

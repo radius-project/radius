@@ -312,9 +312,9 @@ func addAwsProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 	provider := rp["provider"].(map[string]interface{})
 
 	provider["aws"] = map[string]interface{}{
-		"principalKeyId":     awsProvider.PrincipalKeyId,
-		"principalAccessKey": awsProvider.PrincipalAccessKey,
-		"region":             awsProvider.TargetRegion,
+		"accessKeyId":     awsProvider.AccessKeyId,
+		"secretAccessKey": awsProvider.SecretAccessKey,
+		"region":          awsProvider.TargetRegion,
 	}
 
 	return nil

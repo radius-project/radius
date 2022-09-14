@@ -74,8 +74,8 @@ func parseAwsProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
 	}
 
 	return &aws.Provider{
-		PrincipalKeyId:     principalKeyId,
-		PrincipalAccessKey: principalSecret,
-		TargetRegion:       region,
+		AccessKeyId:     principalKeyId,
+		SecretAccessKey: principalSecret,
+		TargetRegion:    region,
 	}, nil
 }
