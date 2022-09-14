@@ -13,7 +13,7 @@ import (
 
 const (
 	AwsProviderFlagName                = "provider-aws"
-	AwsProviderAccessKeyIdFlagName     = "provider-aFws-access-key-id"
+	AwsProviderAccessKeyIdFlagName     = "provider-aws-access-key-id"
 	AwsProviderSecretAccessKeyFlagName = "provider-aws-secret-access-key"
 	AwsProviderRegionFlagName          = "provider-aws-region"
 )
