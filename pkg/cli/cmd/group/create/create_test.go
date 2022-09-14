@@ -36,7 +36,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command with no workspace",
+			Name:          "Create Command with  valid args but no workspace",
 			Input:         []string{"-g", "rg"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
