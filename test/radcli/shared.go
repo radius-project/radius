@@ -14,6 +14,7 @@ import (
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -123,5 +124,14 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 		Name:     &resourceName,
 		Type:     &resourceType,
 		Location: &location,
+	}
+}
+
+func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
+	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
+
+	return v20220901privatepreview.ResourceGroupResource{
+		ID:   &id,
+		Name: &resourceGroupName,
 	}
 }
