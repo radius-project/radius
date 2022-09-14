@@ -56,6 +56,7 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 type RedisCacheResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Recipe            *RedisCacheRecipe    `json:"recipe,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
@@ -71,6 +72,11 @@ type RedisCacheProperties struct {
 type RedisCacheSecrets struct {
 	ConnectionString string `json:"connectionString"`
 	Password         string `json:"password"`
+}
+
+type RedisCacheRecipe struct {
+	Name  *string                `json:"name,omitempty"`
+	Param map[string]interface{} `json:"param,omitempty"`
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
