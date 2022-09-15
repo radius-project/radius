@@ -9,11 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -44,18 +40,16 @@ func Test_CreatePlane(t *testing.T) {
 			"kind": "UCPNative"
 		}
 	}`)
-	path := "/planes/radius/local?api-version=2022-09-01-privatepreview"
+	path := "/planes/radius/local"
 
-	dataModelPlane := datamodel.Plane{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/planes/radius/local",
-			Type: "System.Planes/radius",
-			Name: "local",
-		},
-		Properties: datamodel.PlaneProperties{
-			ResourceProviders: map[string]*string{
-				"Applications.Core":       to.Ptr("http://localhost:9080/"),
-				"Applications.Connection": to.Ptr("http://localhost:9081/"),
+	plane := rest.Plane{
+		ID:   "/planes/radius/local",
+		Type: "System.Planes/radius",
+		Name: "local",
+		Properties: rest.PlaneProperties{
+			ResourceProviders: map[string]string{
+				"Applications.Core":       "http://localhost:9080/",
+				"Applications.Connection": "http://localhost:9081/",
 			},
 			Kind: rest.PlaneKindUCPNative,
 		},
@@ -63,9 +57,9 @@ func Test_CreatePlane(t *testing.T) {
 
 	o := &store.Object{
 		Metadata: store.Metadata{
-			ID: dataModelPlane.TrackedResource.ID,
+			ID: plane.ID,
 		},
-		Data: dataModelPlane,
+		Data: plane,
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
@@ -74,20 +68,7 @@ func Test_CreatePlane(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	planeKind := v20220901privatepreview.PlaneKindUCPNative
-	versionedPlane := v20220901privatepreview.PlaneResource{
-		ID:   to.Ptr("/planes/radius/local"),
-		Type: to.Ptr("System.Planes/radius"),
-		Name: to.Ptr("local"),
-		Properties: &v20220901privatepreview.PlaneResourceProperties{
-			ResourceProviders: map[string]*string{
-				"Applications.Core":       to.Ptr("http://localhost:9080/"),
-				"Applications.Connection": to.Ptr("http://localhost:9081/"),
-			},
-			Kind: &planeKind,
-		},
-	}
-	expectedResponse := rest.NewOKResponse(&versionedPlane)
+	expectedResponse := rest.NewOKResponse(plane)
 	response, err := planesCtrl.Run(ctx, nil, request)
 
 	require.NoError(t, err)
@@ -121,7 +102,7 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 		Body: rest.ErrorResponse{
 			Error: rest.ErrorDetails{
 				Code:    rest.Invalid,
-				Message: "$.properties.resourceProviders must be at least one provided.",
+				Message: "At least one resource provider must be configured for UCP native plane: local",
 			},
 		},
 	}
@@ -156,7 +137,7 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 		Body: rest.ErrorResponse{
 			Error: rest.ErrorDetails{
 				Code:    rest.Invalid,
-				Message: "$.properties.URL must be non-empty string.",
+				Message: "URL must be specified for plane: azurecloud",
 			},
 		},
 	}

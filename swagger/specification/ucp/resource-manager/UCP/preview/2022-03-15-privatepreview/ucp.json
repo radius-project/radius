@@ -3,7 +3,7 @@
     "info": {
       "title": "UCP APIs",
       "description": "REST API for UCP Plane Resource",
-      "version": "2022-09-01-privatepreview"
+      "version": "2022-03-15-privatepreview"
     },
     "host": "api.ucp.dev",
     "schemes": [
@@ -41,11 +41,7 @@
           "tags": [
             "Planes"
           ],
-          "parameters": [
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-            }
-          ],
+          "parameters": [],
           "responses": {
             "200": {
               "description": "Plane list.",
@@ -84,9 +80,6 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -133,9 +126,6 @@
               "schema": {
                 "$ref": "#/definitions/PlaneResource"
               }
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -179,9 +169,6 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -221,9 +208,6 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -267,9 +251,6 @@
             },
             {
               "$ref": "#/parameters/ResourceGroupNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -319,9 +300,6 @@
               "schema": {
                 "$ref": "#/definitions/ResourceGroupResource"
               }
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -368,9 +346,6 @@
             },
             {
               "$ref": "#/parameters/ResourceGroupNameParameter"
-            },
-            {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -407,11 +382,6 @@
       "PlaneResource": {
         "description": "UCP Plane.",
         "type": "object",
-        "allOf": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
-          }
-        ],
         "required": [
           "properties"
         ],
@@ -474,11 +444,31 @@
       "ResourceGroupResource": {
         "description": "UCP ResourceGroup.",
         "type": "object",
-        "allOf": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        "properties": {
+          "properties": {
+            "x-ms-client-flatten": true,
+            "$ref": "#/definitions/ResourceGroupResourceProperties"
           }
-        ]
+        }
+      },
+      "ResourceGroupResourceProperties": {
+        "description": "UCP ResourceGroup properties",
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "$ref": "#/definitions/ResourceGroupName",
+            "readOnly": true
+          }
+        }
+      },
+      "ResourceGroupName": {
+        "type": "string",
+        "description": "The name of the resource group",
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63
       },
       "ErrorDetail": {
         "description": "The error detail.",

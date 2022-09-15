@@ -69,7 +69,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 	t.Logf("Resource group: %s created/updated successfully", url)
 }
 
-func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []interface{} {
+func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []rest.ResourceGroup {
 	listRgsRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -85,11 +85,11 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var listOfResourceGroups []interface{}
+	var listOfResourceGroups rest.ResourceGroupList
 	err = json.Unmarshal(payload, &listOfResourceGroups)
 	require.NoError(t, err)
 
-	return listOfResourceGroups
+	return listOfResourceGroups.Value
 }
 
 func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (rest.ResourceGroup, int) {

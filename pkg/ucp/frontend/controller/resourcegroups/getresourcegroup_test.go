@@ -9,11 +9,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -38,11 +34,9 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	testResourceGroupID := "/planes/radius/local/resourceGroups/test-rg"
 	testResourceGroupName := "test-rg"
 	path := testResourceGroupID
-	rg := datamodel.ResourceGroup{
-		TrackedResource: v1.TrackedResource{
-			ID:   testResourceGroupID,
-			Name: testResourceGroupName,
-		},
+	rg := rest.ResourceGroup{
+		ID:   testResourceGroupID,
+		Name: testResourceGroupName,
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -57,11 +51,10 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	actualResponse, err := rgCtrl.Run(ctx, nil, request)
 
 	require.NoError(t, err)
-	expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
-		ID:   &testResourceGroupID,
-		Name: &testResourceGroupName,
-		Type: to.Ptr(""),
+	expectedResourceGroup := rest.ResourceGroup{
+		ID:   testResourceGroupID,
+		Name: testResourceGroupName,
 	}
-	expectedResponse := rest.NewOKResponse(&expectedResourceGroup)
+	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
 	assert.DeepEqual(t, expectedResponse, actualResponse)
 }

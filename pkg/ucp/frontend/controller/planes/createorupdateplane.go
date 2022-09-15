@@ -6,14 +6,12 @@ package planes
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	http "net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/planes"
@@ -36,96 +34,66 @@ func NewCreateOrUpdatePlane(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
-
 	body, err := controller.ReadRequestBody(req)
 	if err != nil {
 		return nil, err
 	}
 
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
-
-	newResource, err := converter.PlaneDataModelFromVersioned(body, apiVersion)
+	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
+	var plane rest.Plane
+	err = json.Unmarshal(body, &plane)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
-
-	// Validate the request
-	err = Validate(path, newResource)
-	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
-	}
-
+	plane.ID = path
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
-
-	// Build the tracked resource
-	newResource.TrackedResource = v1.TrackedResource{
-		ID:   path,
-		Name: name,
-		Type: planes.PlaneTypePrefix + "/" + planeType,
+	plane.Type = planes.PlaneTypePrefix + "/" + planeType
+	plane.Name = name
+	id, err := resources.Parse(plane.ID)
+	//cannot parse ID something wrong with request
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, newResource.Properties.Kind)
-	logger = ucplog.GetLogger(ctx)
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, plane.Properties.Kind)
+	logger := ucplog.GetLogger(ctx)
+	// At least one provider needs to be configured
+	if plane.Properties.Kind == rest.PlaneKindUCPNative {
+		if plane.Properties.ResourceProviders == nil || len(plane.Properties.ResourceProviders) == 0 {
+			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	} else {
+		if plane.Properties.URL == "" {
+			err = fmt.Errorf("URL must be specified for plane: %s", plane.Name)
+			return rest.NewBadRequestResponse(err.Error()), nil
+		}
+	}
 
-	// Check if the plane already exists
 	planeExists := true
-	existingResource := datamodel.Plane{}
-	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
+	existingPlane := rest.Plane{}
+	etag, err := p.GetResource(ctx, id.String(), &existingPlane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false
-			logger.Info(fmt.Sprintf("No existing plane %s found in db", newResource.TrackedResource.ID))
+			logger.Info(fmt.Sprintf("No existing plane %s found in db", id))
 		} else {
 			return nil, err
 		}
 	}
 
-	// Save the data model plane to the database
-	_, err = p.SaveResource(ctx, newResource.TrackedResource.ID, *newResource, etag)
+	_, err = p.SaveResource(ctx, id.String(), plane, etag)
 	if err != nil {
 		return nil, err
 	}
-
-	// Return a versioned response of the plane
-	versioned, err := converter.PlaneDataModelToVersioned(newResource, apiVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	restResp := rest.NewOKResponse(versioned)
+	restResp := rest.NewOKResponse(plane)
 	if planeExists {
-		logger.Info(fmt.Sprintf("Updated plane %s successfully", newResource.TrackedResource.ID))
+		logger.Info(fmt.Sprintf("Updated plane %s successfully", plane.Name))
 	} else {
-		logger.Info(fmt.Sprintf("Created plane %s successfully", newResource.TrackedResource.ID))
+		logger.Info(fmt.Sprintf("Created plane %s successfully", plane.Name))
 	}
 	return restResp, nil
-}
-
-func Validate(path string, dmp *datamodel.Plane) error {
-	var err error
-	if dmp.Properties.Kind == rest.PlaneKindUCPNative {
-		// At least one provider needs to be configured
-		if dmp.Properties.ResourceProviders == nil || len(dmp.Properties.ResourceProviders) == 0 {
-			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", dmp.TrackedResource.Name)
-			return err
-		}
-	} else {
-		// The URL must be specified for non-native UCP Plane
-		if dmp.Properties.URL == nil || len(*dmp.Properties.URL) == 0 {
-			err = fmt.Errorf("URL must be specified for plane: %s", dmp.TrackedResource.Name)
-			return err
-		}
-	}
-
-	_, err = resources.Parse(path)
-	// cannot parse ID something wrong with request
-	if err != nil {
-		return err
-	}
-	return nil
 }

@@ -11,7 +11,6 @@ import (
 	http "net/http"
 
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -39,8 +38,8 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	existingResource := datamodel.ResourceGroup{}
-	etag, err := r.GetResource(ctx, resourceID.String(), &existingResource)
+	existingRG := rest.ResourceGroup{}
+	etag, err := r.GetResource(ctx, resourceID.String(), &existingRG)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			restResponse := rest.NewNoContentResponse()
@@ -73,7 +72,7 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 	return restResponse, nil
 }
 
-func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (datamodel.ResourceList, error) {
+func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.StorageClient, path string) (rest.ResourceList, error) {
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, path)
 	var query store.Query
 	query.RootScope = path
@@ -82,16 +81,16 @@ func (e *DeleteResourceGroup) listResources(ctx context.Context, db store.Storag
 
 	result, err := e.StorageClient().Query(ctx, query)
 	if err != nil {
-		return datamodel.ResourceList{}, err
+		return rest.ResourceList{}, err
 	}
 
 	if result == nil || len(result.Items) == 0 {
-		return datamodel.ResourceList{}, nil
+		return rest.ResourceList{}, nil
 	}
 
-	listOfResources := datamodel.ResourceList{}
+	listOfResources := rest.ResourceList{}
 	for _, item := range result.Items {
-		var resource datamodel.Resource
+		var resource rest.Resource
 		err = item.As(&resource)
 		if err != nil {
 			return listOfResources, err

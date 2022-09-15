@@ -35,7 +35,7 @@ func Test_ListPlanes(t *testing.T) {
 	query.RootScope = path
 	query.IsScopeQuery = true
 
-	expectedPlaneList := []interface{}{}
+	expectedPlaneList := rest.PlaneList{}
 	expectedResponse := rest.NewOKResponse(expectedPlaneList)
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)

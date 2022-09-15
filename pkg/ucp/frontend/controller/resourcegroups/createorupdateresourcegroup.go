@@ -6,13 +6,12 @@ package resourcegroups
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	http "net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -39,58 +38,45 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	// Convert to version agnostic data model
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
-	newResource, err := converter.ResourceGroupDataModelFromVersioned(body, apiVersion)
+	var rg rest.ResourceGroup
+	err = json.Unmarshal(body, &rg)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	id, err := resources.Parse(path)
+	rg.ID = path
+	rgExists := true
+	ID, err := resources.Parse(rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	// Build the tracked resource
-	newResource.TrackedResource = v1.TrackedResource{
-		ID:   path,
-		Name: id.Name(),
-	}
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, rg.ID)
+	logger := ucplog.GetLogger(ctx)
 
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, id)
-	logger = ucplog.GetLogger(ctx)
-
-	existingResource := rest.ResourceGroup{}
-	rgExists := true
-	etag, err := r.GetResource(ctx, id.String(), &existingResource)
+	existingRG := rest.ResourceGroup{}
+	etag, err := r.GetResource(ctx, ID.String(), &existingRG)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			rgExists = false
-			logger.Info(fmt.Sprintf("No existing resource group %s found in db", id))
+			logger.Info(fmt.Sprintf("No existing resource group %s found in db", ID))
 		} else {
 			return nil, err
 		}
 	}
 
-	// Save data model resource group to db
-	_, err = r.SaveResource(ctx, id.String(), newResource, etag)
+	rg.Name = ID.Name()
+	_, err = r.SaveResource(ctx, ID.String(), rg, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	// Return a versioned response of the resource group
-	versioned, err := converter.ResourceGroupDataModelToVersioned(newResource, apiVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	restResp := rest.NewOKResponse(versioned)
+	restResp := rest.NewOKResponse(rg)
 	if rgExists {
-		logger.Info(fmt.Sprintf("Updated resource group %s successfully", newResource.TrackedResource.ID))
+		logger.Info(fmt.Sprintf("Updated resource group %s successfully", rg.Name))
 	} else {
-		logger.Info(fmt.Sprintf("Created resource group %s successfully", newResource.TrackedResource.ID))
+		logger.Info(fmt.Sprintf("Created resource group %s successfully", rg.Name))
 	}
 	return restResp, nil
 }
