@@ -257,8 +257,20 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
+	// Dictionary of
+	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
+type EnvironmentRecipeProperties struct {
+	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+	ConnectorType *string `json:"connectorType,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
 }
 
 // EnvironmentResource - Application environment.

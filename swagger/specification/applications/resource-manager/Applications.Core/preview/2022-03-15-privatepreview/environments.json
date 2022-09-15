@@ -363,8 +363,32 @@
           },
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute"
+          },
+          "recipes": {
+            "additionalProperties": {
+              "$ref": "#/definitions/EnvironmentRecipeProperties",
+              "description": "Specifies Recipe linked to the Environment."
+            },
+            "type": "object"
           }
         }
+      },
+      "EnvironmentRecipeProperties": {
+        "description": "Properties of a Recipe linked to an Environment.",
+        "properties": {
+          "connectorType": {
+            "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
+            "type": "string"
+          },
+          "templatePath": {
+            "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectorType",
+          "templatePath"
+        ]
       }
     },
     "parameters": {
