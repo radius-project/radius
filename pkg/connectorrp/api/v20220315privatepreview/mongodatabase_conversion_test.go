@@ -31,7 +31,7 @@ func loadTestData(testfile string) []byte {
 }
 
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"mongodatabaseresource2.json"}
+	testset := []string{"mongodatabaseresource2.json", "mongodatabaseresourcewithrecipe.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -50,10 +50,15 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Connector/mongoDatabases", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", convertedResource.Properties.Resource)
 		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
 		require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		if payload == "mongodatabaseresourcewithrecipe.json" {
+			require.Equal(t, "cosmosdb", convertedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+		} else {
+			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", convertedResource.Properties.Resource)
+		}
 	}
 }
 
@@ -86,7 +91,7 @@ func TestMongoDatabaseResponse_ConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json"}
+	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json", "mongodatabaseresourcewithrecipedatamodel.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -113,6 +118,9 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "testPassword", *versionedResource.Properties.Secrets.Password)
 			require.Equal(t, "AzureCosmosAccount", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+		} else if payload == "mongodatabaseresourcewithrecipedatamodel.json" {
+			require.Equal(t, "cosmosdb", *versionedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", versionedResource.Properties.Recipe.Parameters["foo"])
 		} else {
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *versionedResource.Properties.Resource)
 		}

@@ -1224,6 +1224,7 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
+	populate(objectMap, "recipe", m.Recipe)
 	populate(objectMap, "resource", m.Resource)
 	populate(objectMap, "secrets", m.Secrets)
 	populate(objectMap, "status", m.Status)
@@ -1256,6 +1257,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &m.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &m.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &m.Resource)
@@ -1334,6 +1338,7 @@ func (m MongoDatabaseResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", m.Host)
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
+	populate(objectMap, "recipe", m.Recipe)
 	populate(objectMap, "resource", m.Resource)
 	populate(objectMap, "status", m.Status)
 	return json.Marshal(objectMap)
@@ -1365,6 +1370,9 @@ func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &m.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &m.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &m.Resource)
@@ -1707,6 +1715,37 @@ func (r *RabbitMQSecrets) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "connectionString":
 				err = unpopulate(val, "ConnectionString", &r.ConnectionString)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type Recipe.
+func (r Recipe) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "name", r.Name)
+	populate(objectMap, "parameters", r.Parameters)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type Recipe.
+func (r *Recipe) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "name":
+				err = unpopulate(val, "Name", &r.Name)
+				delete(rawMsg, key)
+		case "parameters":
+				err = unpopulate(val, "Parameters", &r.Parameters)
 				delete(rawMsg, key)
 		}
 		if err != nil {
