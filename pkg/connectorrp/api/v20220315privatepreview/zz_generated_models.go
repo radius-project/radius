@@ -983,9 +983,9 @@ type RabbitMQSecrets struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
-// Recipe - The recipe used to deploy the connector resource
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a connector
 type Recipe struct {
-	// The name of the recipe within the environment to use
+	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 	// Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`

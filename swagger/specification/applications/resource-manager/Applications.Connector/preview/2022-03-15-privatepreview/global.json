@@ -87,7 +87,7 @@
       "properties": {}
     },
     "Recipe": {
-      "description": "The recipe used to deploy the connector resource",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a connector",
       "type": "object",
       "properties": {
         "name" :{
@@ -101,7 +101,8 @@
             "port": 6060
           }]
         }
-      }
+      },
+      "required": ["name"]
     }
   },
   "parameters": {
