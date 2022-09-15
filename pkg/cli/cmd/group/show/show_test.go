@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -55,12 +55,7 @@ func Test_Run(t *testing.T) {
 
 	t.Run("Validate rad group show", func(t *testing.T) {
 
-		id := "/planes/radius/local/resourcegroups/testrg"
-		name := "testrg"
-		testResourceGroup := v20220901privatepreview.ResourceGroupResource{
-			ID:   &id,
-			Name: &name,
-		}
+		testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()

@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -66,7 +66,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	kubecontext, ok := workspace.Connection["context"].(string)
 	if !ok {
-		return fmt.Errorf("cannot create the resource group. workspace %q has invalid context", workspaceName)
+		return fmt.Errorf("cannot create the resource group. workspace %q has invalid context", workspace.Name)
 	}
 
 	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
@@ -100,14 +100,14 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	fmt.Printf("creating resource group %q is workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
 	if err != nil {
 		return err
 	}
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220901privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
 
 	if err == nil {
 		fmt.Printf("resource group %q created", r.UCPResourceGroupName)

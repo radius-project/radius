@@ -18,8 +18,8 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -162,15 +162,15 @@ func (amc *ARMApplicationsManagementClient) DeleteResource(ctx context.Context, 
 	return respFromCtx.StatusCode != 204, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error) {
-	results := []corerp.ApplicationResource{}
+func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
 
-	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return results, err
 	}
 
-	pager := client.NewListByScopePager(&corerp.ApplicationsClientListByScopeOptions{})
+	pager := client.NewListByScopePager(&v20220315privatepreview.ApplicationsClientListByScopeOptions{})
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
@@ -185,8 +185,8 @@ func (amc *ARMApplicationsManagementClient) ListApplications(ctx context.Context
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]corerp.ApplicationResource, error) {
-	results := []corerp.ApplicationResource{}
+func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Context, envName string) ([]v20220315privatepreview.ApplicationResource, error) {
+	results := []v20220315privatepreview.ApplicationResource{}
 	applicationsList, err := amc.ListApplications(ctx)
 	if err != nil {
 		return nil, err
@@ -200,14 +200,14 @@ func (amc *ARMApplicationsManagementClient) ListApplicationsByEnv(ctx context.Co
 	return results, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error) {
-	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *ARMApplicationsManagementClient) ShowApplication(ctx context.Context, applicationName string) (v20220315privatepreview.ApplicationResource, error) {
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerp.ApplicationResource{}, err
+		return v20220315privatepreview.ApplicationResource{}, err
 	}
 
-	getResponse, err := client.Get(ctx, applicationName, &corerp.ApplicationsClientGetOptions{})
-	var result corerp.ApplicationResource
+	getResponse, err := client.Get(ctx, applicationName, &v20220315privatepreview.ApplicationsClientGetOptions{})
+	var result v20220315privatepreview.ApplicationResource
 	if err != nil {
 		return result, err
 	}
@@ -239,7 +239,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 		return false, err
 	}
 
-	client, err := corerp.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
@@ -303,15 +303,15 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error) {
-	envResourceList := []corerp.EnvironmentResource{}
+func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+	envResourceList := []v20220315privatepreview.EnvironmentResource{}
 
-	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	envClient, err := v20220315privatepreview.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return envResourceList, err
 	}
 
-	pager := envClient.NewListByScopePager(&corerp.EnvironmentsClientListByScopeOptions{})
+	pager := envClient.NewListByScopePager(&v20220315privatepreview.EnvironmentsClientListByScopeOptions{})
 	for pager.More() {
 		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
@@ -327,18 +327,18 @@ func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]core
 
 }
 
-func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error) {
-	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (v20220315privatepreview.EnvironmentResource, error) {
+	envClient, err := v20220315privatepreview.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return corerp.EnvironmentResource{}, err
+		return v20220315privatepreview.EnvironmentResource{}, err
 	}
 
-	envGetResp, err := envClient.Get(ctx, envName, &corerp.EnvironmentsClientGetOptions{})
+	envGetResp, err := envClient.Get(ctx, envName, &v20220315privatepreview.EnvironmentsClientGetOptions{})
 	if err == nil {
 		return envGetResp.EnvironmentResource, nil
 	}
 
-	return corerp.EnvironmentResource{}, err
+	return v20220315privatepreview.EnvironmentResource{}, err
 
 }
 
@@ -355,7 +355,7 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 		}
 	}
 
-	envClient, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	envClient, err := v20220315privatepreview.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
@@ -371,9 +371,9 @@ func (amc *ARMApplicationsManagementClient) DeleteEnv(ctx context.Context, envNa
 	return respFromCtx.StatusCode != 204, nil
 }
 
-func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup v20220901privatepreview.ResourceGroupResource) (bool, error) {
-	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientCreateOrUpdateOptions
-	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucpv20220315.ResourceGroupResource) (bool, error) {
+	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientCreateOrUpdateOptions
+	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
@@ -388,8 +388,8 @@ func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {
-	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientDeleteOptions
-	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientDeleteOptions
+	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 
 	var respFromCtx *http.Response
 	ctxWithResp := runtime.WithCaptureResponse(ctx, &respFromCtx)
@@ -406,25 +406,25 @@ func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 
 }
 
-func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (v20220901privatepreview.ResourceGroupResource, error) {
-	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientGetOptions
-	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucpv20220315.ResourceGroupResource, error) {
+	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientGetOptions
+	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
-		return v20220901privatepreview.ResourceGroupResource{}, err
+		return ucpv20220315.ResourceGroupResource{}, err
 	}
 
 	resp, err := resourcegroupClient.Get(ctx, planeType, planeName, resourceGroupName, resourceGroupOptions)
 	if err != nil {
-		return v20220901privatepreview.ResourceGroupResource{}, err
+		return ucpv20220315.ResourceGroupResource{}, err
 	}
 
 	return resp.ResourceGroupResource, nil
 }
 
-func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]v20220901privatepreview.ResourceGroupResource, error) {
-	var resourceGroupOptions *v20220901privatepreview.ResourceGroupsClientListOptions
-	resourceGroupResources := []v20220901privatepreview.ResourceGroupResource{}
-	resourcegroupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucpv20220315.ResourceGroupResource, error) {
+	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientListOptions
+	resourceGroupResources := []ucpv20220315.ResourceGroupResource{}
+	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return resourceGroupResources, err
 	}
