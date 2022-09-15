@@ -17,9 +17,9 @@ import (
 
 // ConvertTo converts from the versioned MongoDatabaseResponse resource to version-agnostic datamodel.
 func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, error) {
-	recipe := v1.Recipe{}
+	recipe := datamodel.ConnectorRecipe{}
 	if src.Properties.Recipe != nil {
-		recipe = v1.Recipe{
+		recipe = datamodel.ConnectorRecipe{
 			Name:       to.String(src.Properties.Recipe.Name),
 			Parameters: src.Properties.Recipe.Parameters,
 		}
@@ -61,9 +61,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			Password:         to.String(src.Properties.Secrets.Password),
 		}
 	}
-	recipe := v1.Recipe{}
+	recipe := datamodel.ConnectorRecipe{}
 	if src.Properties.Recipe != nil {
-		recipe = v1.Recipe{
+		recipe = datamodel.ConnectorRecipe{
 			Name:       to.String(src.Properties.Recipe.Name),
 			Parameters: src.Properties.Recipe.Parameters,
 		}
@@ -123,7 +123,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
-	if !(reflect.DeepEqual(mongo.Properties.Recipe, v1.Recipe{})) {
+	if !(reflect.DeepEqual(mongo.Properties.Recipe, datamodel.ConnectorRecipe{})) {
 		dst.Properties.Recipe = &Recipe{
 			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
 			Parameters: mongo.Properties.Recipe.Parameters,
@@ -157,7 +157,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
-	if !(reflect.DeepEqual(mongo.Properties.Recipe, v1.Recipe{})) {
+	if !(reflect.DeepEqual(mongo.Properties.Recipe, datamodel.ConnectorRecipe{})) {
 		dst.Properties.Recipe = &Recipe{
 			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
 			Parameters: mongo.Properties.Recipe.Parameters,

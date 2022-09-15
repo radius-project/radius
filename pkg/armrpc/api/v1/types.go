@@ -171,11 +171,3 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 
 	return externalOutputResources
 }
-
-// ConnectorRecipe is the recipe details used to automatically deploy underlying infrastructure for a connector
-type ConnectorRecipe struct {
-	// Name of the recipe within the environment to use
-	Name string `json:"name,omitempty"`
-	// Parameters are key/value parameters to pass into the recipe at deployment
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
-}
