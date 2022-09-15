@@ -16,7 +16,7 @@ import (
 )
 
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"rediscacheresource.json", "rediscacheresource2.json", "rediscacheresource_recipe.json"}
+	testset := []string{"rediscacheresource.json", "rediscacheresource2.json", "rediscacheresource_recipe.json", "rediscacheresource_recipe2.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -46,14 +46,18 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			}
 		}
-		if payload == "rediscacheresource_recipe" {
+		if payload == "rediscacheresource_recipe.json" || payload == "rediscacheresource_recipe2.json" {
 			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
+			if payload == "rediscacheresource_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 }
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json", "rediscacheresourcedatamodel_recipe.json"}
+	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json", "rediscacheresourcedatamodel_recipe.json", "rediscacheresourcedatamodel_recipe2.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -83,8 +87,12 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
 			}
 		}
-		if payload == "rediscacheresourcedatamodel_recipe.json" {
+		if payload == "rediscacheresourcedatamodel_recipe.json" || payload == "rediscacheresourcedatamodel_recipe2.json" {
 			require.Equal(t, "redis-test", *versionedResource.Properties.Recipe.Name)
+			if payload == "rediscacheresourcedatamodel_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, versionedResource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 }

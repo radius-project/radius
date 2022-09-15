@@ -50,9 +50,9 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 	if src.Properties.Recipe != nil {
 		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-                if src.Properties.Recipe.Parameters != nil {
-                   converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-                }
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
@@ -84,7 +84,9 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 	}
 	if src.Properties.Recipe != nil {
 		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
