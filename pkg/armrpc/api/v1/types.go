@@ -171,8 +171,3 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 
 	return externalOutputResources
 }
-
-type Recipe struct {
-	Name       string                 `json:"name,omitempty"`
-	Parameters map[string]interface{} `json:"parameters,omitempty"`
-}

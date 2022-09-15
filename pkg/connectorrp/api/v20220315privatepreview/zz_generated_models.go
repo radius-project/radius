@@ -983,9 +983,9 @@ type RabbitMQSecrets struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
-// Recipe - The recipe used to deploy the connector resource
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a connector
 type Recipe struct {
-	// The name of the recipe within the environment to use
+	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
 	// Key/value parameters to pass into the recipe at deployment
@@ -1014,6 +1014,9 @@ type RedisCacheProperties struct {
 
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -1068,6 +1071,9 @@ type RedisCacheResponseProperties struct {
 
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`

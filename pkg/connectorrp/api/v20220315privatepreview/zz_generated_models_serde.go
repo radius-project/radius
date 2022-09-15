@@ -1794,6 +1794,7 @@ func (r RedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
@@ -1824,6 +1825,9 @@ func (r *RedisCacheProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &r.Resource)
@@ -1904,6 +1908,7 @@ func (r RedisCacheResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "host", r.Host)
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
 	populate(objectMap, "username", r.Username)
@@ -1933,6 +1938,9 @@ func (r *RedisCacheResponseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &r.Resource)

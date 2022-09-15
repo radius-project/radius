@@ -16,7 +16,7 @@ import (
 )
 
 func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"rediscacheresource.json", "rediscacheresource2.json"}
+	testset := []string{"rediscacheresource.json", "rediscacheresource2.json", "rediscacheresource_recipe.json", "rediscacheresource_recipe2.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -35,20 +35,29 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Connector/redisCaches", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", convertedResource.Properties.Resource)
-		require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
-		require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-		if payload == "rediscacheresource.json" {
-			require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
-			require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+		if payload == "rediscacheresource.json" || payload == "rediscacheresource2.json" {
+			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", convertedResource.Properties.Resource)
+			require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
+			require.Equal(t, int32(10255), convertedResource.Properties.Port)
+			if payload == "rediscacheresource.json" {
+				require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
+				require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
+				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			}
+		}
+		if payload == "rediscacheresource_recipe.json" || payload == "rediscacheresource_recipe2.json" {
+			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
+			if payload == "rediscacheresource_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 }
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json"}
+	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json", "rediscacheresourcedatamodel_recipe.json", "rediscacheresourcedatamodel_recipe2.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -67,14 +76,23 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *versionedResource.Properties.Resource)
-		require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
-		require.Equal(t, int32(10255), *versionedResource.Properties.Port)
-		if payload == "rediscacheresourcedatamodel.json" {
-			require.Equal(t, "test-connection-string", *versionedResource.Properties.Secrets.ConnectionString)
-			require.Equal(t, "testPassword", *versionedResource.Properties.Secrets.Password)
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+		if payload == "rediscacheresourcedatamodel.json" || payload == "rediscacheresourcedatamodel2.json" {
+			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *versionedResource.Properties.Resource)
+			require.Equal(t, "myrediscache.redis.cache.windows.net", *versionedResource.Properties.Host)
+			require.Equal(t, int32(10255), *versionedResource.Properties.Port)
+			if payload == "rediscacheresourcedatamodel.json" {
+				require.Equal(t, "test-connection-string", *versionedResource.Properties.Secrets.ConnectionString)
+				require.Equal(t, "testPassword", *versionedResource.Properties.Secrets.Password)
+				require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "azure", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+			}
+		}
+		if payload == "rediscacheresourcedatamodel_recipe.json" || payload == "rediscacheresourcedatamodel_recipe2.json" {
+			require.Equal(t, "redis-test", *versionedResource.Properties.Recipe.Name)
+			if payload == "rediscacheresourcedatamodel_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, versionedResource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 }

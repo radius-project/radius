@@ -390,6 +390,12 @@
           "type": "string",
           "description": "The username for redis",
           "readOnly": true
+        },
+        "recipe" : {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": ["environment"]
