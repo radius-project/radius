@@ -257,9 +257,6 @@ func GetConfigFilePath(v *viper.Viper) string {
 }
 
 func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
-	if provider.ResourceGroup == "" || provider.SubscriptionID == "" {
-		return
-	}
 	for _, workspaceItem := range section.Items {
 		if workspaceItem.IsSameKubernetesContext(contextName) {
 			workspaceName := workspaceItem.Name
@@ -273,9 +270,6 @@ func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvid
 }
 
 func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvider, contextName string) {
-	if provider.AccountId == "" || provider.Region == "" {
-		return
-	}
 	for _, workspaceItem := range section.Items {
 		if workspaceItem.IsSameKubernetesContext(contextName) {
 			workspaceName := workspaceItem.Name

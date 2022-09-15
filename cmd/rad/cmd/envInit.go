@@ -294,7 +294,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no azProviderConfig yet.
 	//if no reinstall, then make sure to preserve the azProviderConfig from existing installation
 	var azProviderConfig workspaces.AzureProvider
-	if azProvider != nil && azProvider.SubscriptionID != "" && azProvider.ResourceGroup != "" {
+	if azProvider != nil {
 		azProviderConfig = workspaces.AzureProvider{
 			SubscriptionID: azProvider.SubscriptionID,
 			ResourceGroup:  azProvider.ResourceGroup,
@@ -308,7 +308,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	var awsProviderConfig workspaces.AWSProvider
-	if awsProvider != nil && awsProvider.TargetRegion != "" && awsProvider.AccountId != "" {
+	if awsProvider != nil {
 		awsProviderConfig = workspaces.AWSProvider{
 			Region:    awsProvider.TargetRegion,
 			AccountId: awsProvider.AccountId,
