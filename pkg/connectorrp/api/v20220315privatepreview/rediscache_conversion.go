@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -119,10 +121,12 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
-		Recipe: &Recipe{
+	}
+	if !(reflect.DeepEqual(redis.Properties.Recipe, v1.Recipe{})) {
+		dst.Properties.Recipe = &Recipe{
 			Name:       to.StringPtr(redis.Properties.Recipe.Name),
-			Parameters: v1.BuildRecipePramaeter(redis.Properties.Recipe.Parameters),
-		},
+			Parameters: redis.Properties.Recipe.Parameters,
+		}
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -158,10 +162,12 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
-		Recipe: &Recipe{
-			Name:       &redis.Properties.Recipe.Name,
+	}
+	if !(reflect.DeepEqual(redis.Properties.Recipe, v1.Recipe{})) {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(redis.Properties.Recipe.Name),
 			Parameters: redis.Properties.Recipe.Parameters,
-		},
+		}
 	}
 	return nil
 }
