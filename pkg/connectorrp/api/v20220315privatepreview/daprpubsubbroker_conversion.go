@@ -25,6 +25,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
 		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
+		Recipe:            toRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe),
 	}
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
@@ -54,6 +55,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	default:
 		return nil, errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
+
 	return converted, nil
 }
 
@@ -83,6 +85,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
+			Recipe:            fromRecipeDataModel(daprPubSub.Properties.Recipe),
 		}
 	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
@@ -97,6 +100,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Type:              to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
 			Metadata:          daprPubSub.Properties.DaprPubSubGeneric.Metadata,
+			Recipe:            fromRecipeDataModel(daprPubSub.Properties.Recipe),
 		}
 	default:
 		return errors.New("Kind of DaprPubSubBroker is not specified.")
@@ -128,4 +132,25 @@ func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *Dap
 		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
 	}
 	return &convertedKind
+}
+
+func toRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
+	recipe := datamodel.ConnectorRecipe{}
+	if r != nil {
+		recipe = datamodel.ConnectorRecipe{
+			Name:       to.String(r.Name),
+			Parameters: r.Parameters,
+		}
+	}
+	return recipe
+}
+
+func fromRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
+	if r.Name != "" {
+		return &Recipe{
+			Name:       to.StringPtr(r.Name),
+			Parameters: r.Parameters,
+		}
+	}
+	return nil
 }
