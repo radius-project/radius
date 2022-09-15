@@ -103,6 +103,9 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -121,6 +124,7 @@ func (d *DaprPubSubAzureServiceBusResourceProperties) GetDaprPubSubBrokerPropert
 		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -153,6 +157,9 @@ type DaprPubSubBrokerProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
@@ -232,6 +239,9 @@ type DaprPubSubGenericResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -250,6 +260,7 @@ func (d *DaprPubSubGenericResourceProperties) GetDaprPubSubBrokerProperties() *D
 		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }

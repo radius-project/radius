@@ -17,7 +17,13 @@ import (
 )
 
 func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprpubsubbrokerazureresource.json", "daprpubsubbrokergenericresource.json"}
+	testset := []string{
+		"daprpubsubbrokerazureresource.json",
+		"daprpubsubbrokerazureresource_recipe.json",
+		"daprpubsubbrokerazureresource_recipe2.json",
+		"daprpubsubbrokergenericresource.json",
+		"daprpubsubbrokergenericresource_recipe.json",
+		"daprpubsubbrokergenericresource_recipe2.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -52,12 +58,29 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 		default:
 			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
 		}
+
+		if payload == "daprpubsubbrokerazureresource_recipe.json" ||
+			payload == "daprpubsubbrokerazureresource_recipe2.json" ||
+			payload == "daprpubsubbrokergenericresource_recipe.json" ||
+			payload == "daprpubsubbrokergenericresource_recipe2.json" {
+			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
+			if payload == "daprpubsubbrokerazureresource_recipe2.json" || payload == "daprpubsubbrokergenericresource_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
+			}
+		}
 	}
 
 }
 
 func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"daprpubsubbrokerazureresourcedatamodel.json", "daprpubsubbrokergenericresourcedatamodel.json"}
+	testset := []string{
+		"daprpubsubbrokerazureresourcedatamodel.json",
+		"daprpubsubbrokerazureresourcedatamodel_recipe.json",
+		"daprpubsubbrokerazureresourcedatamodel_recipe2.json",
+		"daprpubsubbrokergenericresourcedatamodel.json",
+		"daprpubsubbrokergenericresourcedatamodel_recipe.json",
+		"daprpubsubbrokergenericresourcedatamodel_recipe2.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -90,6 +113,17 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "bar", resource.Properties.DaprPubSubGeneric.Metadata["foo"])
 		default:
 			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
+		}
+
+		if payload == "daprpubsubbrokerazureresourcedatamodel_recipe.json" ||
+			payload == "daprpubsubbrokerazureresourcedatamodel_recipe2.json" ||
+			payload == "daprpubsubbrokergenericresourcedatamodel_recipe.json" ||
+			payload == "daprpubsubbrokergenericresourcedatamodel_recipe2.json" {
+			require.Equal(t, "redis-test", resource.Properties.Recipe.Name)
+			if payload == "daprpubsubbrokerazureresourcedatamodel_recipe2.json" || payload == "daprpubsubbrokergenericresourcedatamodel_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 }
