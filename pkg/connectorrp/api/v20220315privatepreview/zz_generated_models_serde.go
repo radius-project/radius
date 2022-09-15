@@ -2141,6 +2141,7 @@ func (s SQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", s.Database)
 	populate(objectMap, "environment", s.Environment)
 	populate(objectMap, "provisioningState", s.ProvisioningState)
+	populate(objectMap, "recipe", s.Recipe)
 	populate(objectMap, "resource", s.Resource)
 	populate(objectMap, "server", s.Server)
 	populate(objectMap, "status", s.Status)
@@ -2167,6 +2168,9 @@ func (s *SQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &s.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &s.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &s.Resource)
