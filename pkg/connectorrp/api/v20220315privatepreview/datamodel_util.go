@@ -74,10 +74,3 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
 	}
 }
-
-func buildRecipePramaeter(recipeProperty map[string]interface{}) map[string]interface{} {
-	if recipeProperty == nil {
-		return make(map[string]interface{})
-	}
-	return recipeProperty
-}

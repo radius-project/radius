@@ -15,6 +15,13 @@ import (
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
 func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
+	recipe := v1.Recipe{}
+	if src.Properties.Recipe != nil {
+		recipe = v1.Recipe{
+			Name:       to.String(src.Properties.Recipe.Name),
+			Parameters: src.Properties.Recipe.Parameters,
+		}
+	}
 	secrets := datamodel.RedisCacheSecrets{}
 	if src.Properties.Secrets != nil {
 		secrets = datamodel.RedisCacheSecrets{
@@ -41,10 +48,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
 				Username:          to.String(src.Properties.Username),
-				Recipe: &datamodel.Recipe{
-					Name:       *src.Properties.Recipe.Name,
-					Parameters: src.Properties.Recipe.Parameters,
-				},
+				Recipe:            recipe,
 			},
 			Secrets: secrets,
 		},
@@ -57,6 +61,13 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 
 // ConvertTo converts from the versioned RedisCacheResponse resource to version-agnostic datamodel.
 func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, error) {
+	recipe := v1.Recipe{}
+	if src.Properties.Recipe != nil {
+		recipe = v1.Recipe{
+			Name:       to.String(src.Properties.Recipe.Name),
+			Parameters: src.Properties.Recipe.Parameters,
+		}
+	}
 	converted := &datamodel.RedisCacheResponse{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -75,10 +86,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
 			Username:          to.String(src.Properties.Username),
-			Recipe: &datamodel.Recipe{
-				Name:       *src.Properties.Recipe.Name,
-				Parameters: src.Properties.Recipe.Parameters,
-			},
+			Recipe:            recipe,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -112,8 +120,8 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
 		Recipe: &Recipe{
-			Name:       &redis.Properties.Recipe.Name,
-			Parameters: buildRecipePramaeter(redis.Properties.Recipe.Parameters),
+			Name:       to.StringPtr(redis.Properties.Recipe.Name),
+			Parameters: v1.BuildRecipePramaeter(redis.Properties.Recipe.Parameters),
 		},
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
@@ -139,9 +147,6 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
-	if redis.Properties.Recipe.Parameters == nil {
-
-	}
 	dst.Properties = &RedisCacheResponseProperties{
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),

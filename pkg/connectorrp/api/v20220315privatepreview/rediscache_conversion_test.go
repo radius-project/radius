@@ -50,13 +50,11 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 func TestRedisCacheRecipe_ConvertVersionedToDataModel(t *testing.T) {
 	payload := "rediscacheresource3.json"
 
-	// arrange
 	rawPayload := loadTestData(payload)
 	versionedResource := &RedisCacheResource{}
 	err := json.Unmarshal(rawPayload, versionedResource)
 	require.NoError(t, err)
 
-	// act
 	dm, err := versionedResource.ConvertTo()
 
 	// assert
@@ -72,13 +70,12 @@ func TestRedisCacheRecipe_ConvertVersionedToDataModel(t *testing.T) {
 
 func TestRedisCacheRecipe_ConvertDataModelToVersioned(t *testing.T) {
 	payload := "rediscacheresourcedatamodel3.json"
-	// arrange
+
 	rawPayload := loadTestData(payload)
 	resource := &datamodel.RedisCache{}
 	err := json.Unmarshal(rawPayload, resource)
 	require.NoError(t, err)
 
-	// act
 	versionedResource := &RedisCacheResource{}
 	err = versionedResource.ConvertFrom(resource)
 
