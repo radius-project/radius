@@ -83,8 +83,10 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 
 	creds := credentials.NewStaticCredentials(keyId, secretAccessKey, "")
 	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
-	mySession := session.Must(session.NewSession(awsConfig))
-
+	mySession, err := session.NewSession(awsConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize a AWS session object: %w", err)
+	}
 	client := sts.New(mySession)
 	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	awsError := awserr.New("", "", errors.New("")) //placeholder error to be filled by errors.As() below
