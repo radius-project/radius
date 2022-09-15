@@ -26,8 +26,8 @@ type ChartArgs struct {
 	PublicEndpointOverride string
 }
 
-// RegisterPersistantChartArgs registers the CLI arguments used for our Helm chart.
-func RegisterPersistantChartArgs(cmd *cobra.Command) {
+// RegisterPersistentChartArgs registers the CLI arguments used for our Helm chart.
+func RegisterPersistentChartArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().Bool("reinstall", false, "Specify to force reinstallation of Radius")
 	cmd.PersistentFlags().String("chart", "", "Specify a file path to a helm chart to install Radius from")
 	cmd.PersistentFlags().String("image", "", "Specify the radius controller image to use")

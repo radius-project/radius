@@ -19,16 +19,17 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
+	"github.com/spf13/cobra"
+	"golang.org/x/exp/slices"
+
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/spf13/cobra"
-	"golang.org/x/exp/slices"
 )
 
 // RegisterAzureProviderArgs adds flags to configure Azure provider for cloud resources.
-func RegistePersistantAzureProviderArgs(cmd *cobra.Command) {
+func RegisterPersistentAzureProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().BoolP("provider-azure", "", false, "Add Azure provider for cloud resources")
 	cmd.PersistentFlags().String("provider-azure-subscription", "", "Azure subscription for cloud resources")
 	cmd.PersistentFlags().String("provider-azure-resource-group", "", "Azure resource-group for cloud resources")

@@ -36,21 +36,27 @@ type Workspace struct {
 type ProviderConfig struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
 	Azure *AzureProvider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
+	AWS   *AWSProvider   `json:"aws,omitempty" mapstructure:"aws" yaml:"aws,omitempty"`
 }
 
 type AzureProvider struct {
-	SubscriptionID string
-	ResourceGroup  string
+	SubscriptionID string `json:"subscriptionId,omitempty" mapstructure:"subscriptionId" yaml:"subscriptionId,omitempty"`
+	ResourceGroup  string `json:"resourceGroup,omitempty" mapstructure:"resourceGroup" yaml:"resourceGroup,omitempty"`
+}
+
+type AWSProvider struct {
+	Region    string `json:"region,omitempty" mapstructure:"region" yaml:"region,omitempty"`
+	AccountId string `json:"accountId,omitempty" mapstructure:"accountId" yaml:"accountId,omitempty"`
 }
 
 // Registry represent the configuration for a container registry.
 type Registry struct {
 	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
 	// is expected to be accessible from the host machine.
-	PushEndpoint string `mapstructure:"pushendpoint" validate:"required"`
+	PushEndpoint string `json:"pushEndpoint,omitempty" mapstructure:"pushEndpoint" validate:"required" yaml:"pushEndpoint,omitempty"`
 
 	// PullEndpoint is the endpoing used to pull by the runtime. For a local container registry this hostname
 	// is expected to be accessible by the runtime. Can be the same as PushEndpoint if the registry has a routable
 	// address.
-	PullEndpoint string `mapstructure:"pullendpoint" validate:"required"`
+	PullEndpoint string `json:"pullEndpoint,omitempty" mapstructure:"pullEndpoint" validate:"required" yaml:"pullEndpoint,omitempty"`
 }

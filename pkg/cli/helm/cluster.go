@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"strings"
 
+	helm "helm.sh/helm/v3/pkg/action"
+	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/project-radius/radius/pkg/version"
-	helm "helm.sh/helm/v3/pkg/action"
-	"helm.sh/helm/v3/pkg/storage/driver"
 )
 
 const (
@@ -105,6 +105,9 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 
 	if cliOptions.Radius.AzureProvider != nil {
 		options.Radius.AzureProvider = cliOptions.Radius.AzureProvider
+	}
+	if cliOptions.Radius.AWSProvider != nil {
+		options.Radius.AWSProvider = cliOptions.Radius.AWSProvider
 	}
 
 	return options
