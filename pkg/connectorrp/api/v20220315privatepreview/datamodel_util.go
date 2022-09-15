@@ -58,7 +58,6 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 
 	return &converted
 }
-
 func unmarshalTimeString(ts string) *time.Time {
 	var tt timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
@@ -74,4 +73,11 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
 	}
+}
+
+func buildRecipePramaeter(recipeProperty map[string]interface{}) map[string]interface{} {
+	if recipeProperty == nil {
+		return make(map[string]interface{})
+	}
+	return recipeProperty
 }

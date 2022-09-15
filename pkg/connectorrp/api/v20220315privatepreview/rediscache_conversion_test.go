@@ -47,6 +47,50 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
+func TestRedisCacheRecipe_ConvertVersionedToDataModel(t *testing.T) {
+	payload := "rediscacheresource3.json"
+
+	// arrange
+	rawPayload := loadTestData(payload)
+	versionedResource := &RedisCacheResource{}
+	err := json.Unmarshal(rawPayload, versionedResource)
+	require.NoError(t, err)
+
+	// act
+	dm, err := versionedResource.ConvertTo()
+
+	// assert
+	require.NoError(t, err)
+	convertedResource := dm.(*datamodel.RedisCache)
+	require.Equal(t, "redis0", convertedResource.Name)
+	require.Equal(t, "Applications.Connector/redisCaches", convertedResource.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
+	require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
+	require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+}
+
+func TestRedisCacheRecipe_ConvertDataModelToVersioned(t *testing.T) {
+	payload := "rediscacheresourcedatamodel3.json"
+	// arrange
+	rawPayload := loadTestData(payload)
+	resource := &datamodel.RedisCache{}
+	err := json.Unmarshal(rawPayload, resource)
+	require.NoError(t, err)
+
+	// act
+	versionedResource := &RedisCacheResource{}
+	err = versionedResource.ConvertFrom(resource)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "redis0", *versionedResource.Name)
+	require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+	require.Equal(t, "redis-test", *versionedResource.Properties.Recipe.Name)
+}
+
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json"}
 	for _, payload := range testset {

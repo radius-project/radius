@@ -41,6 +41,10 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
 				Username:          to.String(src.Properties.Username),
+				Recipe: &datamodel.Recipe{
+					Name:       *src.Properties.Recipe.Name,
+					Parameters: src.Properties.Recipe.Parameters,
+				},
 			},
 			Secrets: secrets,
 		},
@@ -71,6 +75,10 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
 			Username:          to.String(src.Properties.Username),
+			Recipe: &datamodel.Recipe{
+				Name:       *src.Properties.Recipe.Name,
+				Parameters: src.Properties.Recipe.Parameters,
+			},
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -103,6 +111,10 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
+		Recipe: &Recipe{
+			Name:       &redis.Properties.Recipe.Name,
+			Parameters: buildRecipePramaeter(redis.Properties.Recipe.Parameters),
+		},
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -127,6 +139,9 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.SystemData = fromSystemDataModel(redis.SystemData)
 	dst.Location = to.StringPtr(redis.Location)
 	dst.Tags = *to.StringMapPtr(redis.Tags)
+	if redis.Properties.Recipe.Parameters == nil {
+
+	}
 	dst.Properties = &RedisCacheResponseProperties{
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
@@ -138,6 +153,10 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
+		Recipe: &Recipe{
+			Name:       &redis.Properties.Recipe.Name,
+			Parameters: redis.Properties.Recipe.Parameters,
+		},
 	}
 	return nil
 }

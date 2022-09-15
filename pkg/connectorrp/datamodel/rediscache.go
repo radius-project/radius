@@ -56,7 +56,7 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 type RedisCacheResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Recipe            *RedisCacheRecipe    `json:"recipe,omitempty"`
+	Recipe            *Recipe              `json:"recipe,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
@@ -75,9 +75,9 @@ type RedisCacheSecrets struct {
 }
 
 // Recipe details to deploy the redis cache
-type RedisCacheRecipe struct {
+type Recipe struct {
 	// Name of the recipe which the redis connector will fetch from the environment metadata
-	Name *string `json:"name,omitempty"`
+	Name string `json:"name,omitempty"`
 	// Parameters are key value pairs that the developer can pass to overwrite the recipe bicep values
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
