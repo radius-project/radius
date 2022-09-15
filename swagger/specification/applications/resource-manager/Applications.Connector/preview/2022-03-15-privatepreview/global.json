@@ -90,7 +90,7 @@
       "description": "The recipe used to automatically deploy underlying infrastructure for a connector",
       "type": "object",
       "properties": {
-        "name" :{
+        "name": {
           "description": "The name of the recipe within the environment to use",
           "type": "string"
         },
