@@ -402,7 +402,7 @@ func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 		return false, err
 	}
 
-	return respFromCtx.StatusCode != 204, nil
+	return respFromCtx.StatusCode == 204, nil
 
 }
 

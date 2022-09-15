@@ -17,8 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	group_create "github.com/project-radius/radius/pkg/cli/cmd/group/create"
 	group_delete "github.com/project-radius/radius/pkg/cli/cmd/group/delete"
+	group_switch "github.com/project-radius/radius/pkg/cli/cmd/group/groupswitch"
 	group_list "github.com/project-radius/radius/pkg/cli/cmd/group/list"
 	group_show "github.com/project-radius/radius/pkg/cli/cmd/group/show"
+
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
@@ -125,6 +127,9 @@ func initSubCommands() {
 
 	listResourceGroupCmd, _ := group_list.NewCommand(framework)
 	groupCmd.AddCommand(listResourceGroupCmd)
+
+	switchResourceGroupCmd, _ := group_switch.NewCommand(framework)
+	groupCmd.AddCommand(switchResourceGroupCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

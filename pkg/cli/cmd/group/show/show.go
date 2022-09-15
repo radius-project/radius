@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -126,12 +127,20 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	resourceGroupDetails, err := client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
+	_, err = client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
 		return err
 	}
 
-	err = r.Output.WriteFormatted(r.Format, resourceGroupDetails, objectformats.GetResourceGroupTableFormat())
+	//TODO: type group.ResourceGroupResource should not be needed once we integrate the next api version for ucp swagger
+	//then the output of ShowUCPGroup can be directly passed to WriteFormmated.
+	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.UCPResourceGroupName)
+	resourcegroup := group.ResourceGroupResource{
+		ID:   &id,
+		Name: &r.UCPResourceGroupName,
+	}
+
+	err = r.Output.WriteFormatted(r.Format, resourcegroup, objectformats.GetResourceGroupTableFormat())
 
 	if err != nil {
 		return err

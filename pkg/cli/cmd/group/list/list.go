@@ -122,6 +122,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	fmt.Print(resourceGroupDetails)
+
 	err = r.Output.WriteFormatted(r.Format, resourceGroupDetails, objectformats.GetResourceGroupTableFormat())
 
 	if err != nil {

@@ -98,7 +98,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("creating resource group %q is workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
+	fmt.Printf("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
 	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
 	if err != nil {
