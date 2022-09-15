@@ -33,6 +33,7 @@ func (sql SqlDatabase) ResourceTypeName() string {
 type SqlDatabaseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Database          string               `json:"database,omitempty"`
 	Server            string               `json:"server,omitempty"`

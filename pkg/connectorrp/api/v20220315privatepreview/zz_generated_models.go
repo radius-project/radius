@@ -1183,6 +1183,9 @@ type SQLDatabaseProperties struct {
 	// The name of the SQL database.
 	Database *string `json:"database,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the SQL database connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Fully qualified resource ID of a supported resource with SQL API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
