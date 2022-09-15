@@ -58,6 +58,7 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningSta
 
 	return &converted
 }
+
 func unmarshalTimeString(ts string) *time.Time {
 	var tt timeRFC3339
 	_ = tt.UnmarshalText([]byte(ts))
