@@ -252,7 +252,26 @@ func GetClientOptions(baseURL string, transporter policy.Transporter) *arm.Clien
 					},
 				},
 			},
+			PerRetryPolicies: []policy.Policy{
+				// Autorest will inject an empty bearer token, which conflicts with bearer auth
+				// when its used by Kubernetes. We don't *ever() need Autorest to handle auth for us
+				// so we just remove it.
+				//
+				// We'll solve this problem permanently by writing our own client.
+				&RemoveAuthorizationHeaderPolicy{},
+			},
 			Transport: transporter,
 		},
+		DisableRPRegistration: true,
 	}
+}
+
+var _ policy.Policy = (*RemoveAuthorizationHeaderPolicy)(nil)
+
+type RemoveAuthorizationHeaderPolicy struct {
+}
+
+func (p *RemoveAuthorizationHeaderPolicy) Do(req *policy.Request) (*http.Response, error) {
+	delete(req.Raw().Header, "Authorization")
+	return req.Next()
 }
