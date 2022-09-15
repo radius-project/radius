@@ -22,7 +22,7 @@ var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
 
 // CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
 type CreateOrUpdateEnvironment struct {
-	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
@@ -39,20 +39,22 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	old, etag, isNewResource, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
-	if err := e.ValidateResource(ctx, req, newResource, old, etag, isNewResource); err != nil {
+
+	if err := e.ValidateResource(ctx, req, newResource, old, etag); err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		newResource.UpdateMetadata(serviceCtx, nil)
 	} else {
 		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
 	}
 
+	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
 	namespaceQuery := store.Query{
 		RootScope:    serviceCtx.ResourceID.RootScope(),
@@ -86,10 +88,10 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 
 	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
-	nr, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	newEtag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	return e.ConstructSyncResponse(ctx, req.Method, nr.ETag, newResource)
+	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }

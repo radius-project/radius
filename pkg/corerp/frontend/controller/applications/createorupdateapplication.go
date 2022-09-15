@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -20,7 +19,7 @@ var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
 type CreateOrUpdateApplication struct {
-	ctrl.Operation[*datamodel.Application, datamodel.Application]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
@@ -37,28 +36,28 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
-	old, etag, isNewResource, err := a.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
-	if err := a.ValidateResource(ctx, req, newResource, old, etag, isNewResource); err != nil {
+	if err := a.ValidateResource(ctx, req, newResource, old, etag); err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		newResource.UpdateMetadata(serviceCtx, nil)
 	} else {
 		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
-		if err := a.ValidateLinkedResource(serviceCtx.ResourceID, isNewResource, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
+		if err := a.ValidateLinkedResource(serviceCtx.ResourceID, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
 			return nil, err
 		}
 	}
 	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
-	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	return a.ConstructSyncResponse(ctx, req.Method, nr.ETag, newResource)
+	return a.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }

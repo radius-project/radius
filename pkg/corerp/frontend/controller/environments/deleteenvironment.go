@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -22,7 +21,7 @@ var _ ctrl.Controller = (*DeleteEnvironment)(nil)
 
 // DeleteEnvironment is the controller implementation to delete environment resource.
 type DeleteEnvironment struct {
-	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewDeleteEnvironment creates a new DeleteEnvironment.
@@ -35,16 +34,16 @@ func NewDeleteEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	old, etag, isNewResource, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := e.ValidateResource(ctx, req, nil, old, etag, isNewResource); err != nil {
+	if err := e.ValidateResource(ctx, req, nil, old, etag); err != nil {
 		return nil, err
 	}
 

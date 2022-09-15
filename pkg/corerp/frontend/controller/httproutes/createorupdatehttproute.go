@@ -14,7 +14,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -27,7 +26,7 @@ var (
 
 // CreateOrUpdateHTTPRoute is the controller implementation to create or update HTTPRoute resource.
 type CreateOrUpdateHTTPRoute struct {
-	ctrl.Operation[*datamodel.HTTPRoute, datamodel.HTTPRoute]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
@@ -44,16 +43,16 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 	if err != nil {
 		return nil, err
 	}
-	old, etag, isNewResource, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := e.ValidateResource(ctx, req, newResource, old, etag, isNewResource); err != nil {
+	if err := e.ValidateResource(ctx, req, newResource, old, etag); err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		newResource.UpdateMetadata(serviceCtx, nil)
 	} else {
 		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
@@ -61,7 +60,7 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 			return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 		}
 
-		if err := e.ValidateLinkedResource(serviceCtx.ResourceID, isNewResource, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
+		if err := e.ValidateLinkedResource(serviceCtx.ResourceID, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
 			return nil, err
 		}
 
@@ -81,14 +80,14 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 
 	newResource.Properties.ProvisioningState = v1.ProvisioningStateAccepted
 
-	obj, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	newETag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncPutHTTPRouteOperationTimeout); err != nil {
 		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, obj.ETag)
+		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, newETag)
 		if rbErr != nil {
 			return nil, rbErr
 		}

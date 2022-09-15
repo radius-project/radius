@@ -14,7 +14,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -27,7 +26,7 @@ var (
 
 // DeleteContainer is the controller implementation to delete container resource.
 type DeleteContainer struct {
-	ctrl.Operation[*datamodel.ContainerResource, datamodel.ContainerResource]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewDeleteContainer creates a new DeleteContainer.
@@ -39,16 +38,16 @@ func NewDeleteContainer(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	old, etag, isNewResource, err := dc.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := dc.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := dc.ValidateResource(ctx, req, nil, old, etag, isNewResource); err != nil {
+	if err := dc.ValidateResource(ctx, req, nil, old, etag); err != nil {
 		return nil, err
 	}
 

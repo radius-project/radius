@@ -14,7 +14,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -26,7 +25,7 @@ var (
 
 // DeleteHTTPRoute is the controller implementation to delete HTTPRoute resource.
 type DeleteHTTPRoute struct {
-	ctrl.Operation[*datamodel.HTTPRoute, datamodel.HTTPRoute]
+	ctrl.Operation[*rm, rm]
 }
 
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
@@ -39,16 +38,16 @@ func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 // Run executes DeleteHTTPRoute operation
 func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	old, etag, isNewResource, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	if isNewResource {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := e.ValidateResource(ctx, req, nil, old, etag, isNewResource); err != nil {
+	if err := e.ValidateResource(ctx, req, nil, old, etag); err != nil {
 		return nil, err
 	}
 

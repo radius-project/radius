@@ -37,11 +37,11 @@ func NewGetResource[P interface {
 func (e *GetResource[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	resource, etag, isNew, err := e.GetResource(ctx, serviceCtx.ResourceID)
+	resource, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
-	if isNew {
+	if resource == nil {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 

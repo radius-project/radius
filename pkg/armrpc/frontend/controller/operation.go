@@ -85,7 +85,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 	if err != nil {
 		return nil, err
 	}
-	
+
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	dm, err := c.ConvertToDataModel(content, serviceCtx.APIVersion)
@@ -96,10 +96,9 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 }
 
 // GetResource is the helper to get the resource via storage client.
-func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, isNew bool, err error) {
+func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out *T, etag string, err error) {
 	etag = ""
 	out = new(T)
-	isNew = false
 	var res *store.Object
 	if res, err = c.StorageClient().Get(ctx, id.String()); err == nil {
 		if err = res.As(out); err == nil {
@@ -110,14 +109,13 @@ func (c *Operation[P, T]) GetResource(ctx context.Context, id resources.ID) (out
 
 	out = nil
 	if errors.Is(&store.ErrNotFound{}, err) {
-		isNew = true
 		err = nil
 	}
 	return
 }
 
 // SaveResource is the helper to save the resource via storage client.
-func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (*store.Object, error) {
+func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, etag string) (string, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
 			ID: id,
@@ -126,16 +124,16 @@ func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, et
 	}
 	err := c.StorageClient().Save(ctx, nr, store.WithETag(etag))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return nr, nil
+	return nr.ETag, nil
 }
 
 // ValidateResource runs the common validation logic for incoming request.
-func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string, isNew bool) error {
+func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) error {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	if req.Method == http.MethodPatch && isNew {
+	if req.Method == http.MethodPatch && oldResource == nil {
 		return rest.NewNotFoundResponse(serviceCtx.ResourceID)
 	}
 
@@ -147,8 +145,8 @@ func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Reques
 }
 
 // ValidateLinkedResource checks if application and environment id in new resource are matched with the old resource.
-func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, isNew bool, newProp *v1.BasicResourceProperties, oldProp *v1.BasicResourceProperties) error {
-	if !isNew && !oldProp.EqualLinkedResource(newProp) {
+func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, newProp *v1.BasicResourceProperties, oldProp *v1.BasicResourceProperties) error {
+	if !oldProp.EqualLinkedResource(newProp) {
 		return rest.NewLinkedResourceUpdateErrorResponse(resourceID, oldProp, newProp)
 	}
 	return nil
