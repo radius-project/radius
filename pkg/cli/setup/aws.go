@@ -6,9 +6,17 @@
 package setup
 
 import (
+	"errors"
+	"fmt"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/awserr"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/sts"
 	"github.com/spf13/cobra"
 
-	"github.com/project-radius/radius/pkg/cli/aws"
+	radAWS "github.com/project-radius/radius/pkg/cli/aws"
 )
 
 const (
@@ -42,7 +50,7 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 	)
 }
 
-func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*aws.Provider, error) {
+func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*radAWS.Provider, error) {
 	if interactive {
 		panic("Not implemented, see https://github.com/project-radius/radius/issues/3655")
 	}
@@ -50,7 +58,7 @@ func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*aws.Provid
 
 }
 
-func parseAWSProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
+func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 	addAWSProvider, err := cmd.Flags().GetBool(AWSProviderFlagName)
 	if err != nil {
 		return nil, err
@@ -59,11 +67,11 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
 		return nil, nil
 	}
 
-	principalKeyId, err := cmd.Flags().GetString(AWSProviderAccessKeyIdFlagName)
+	keyId, err := cmd.Flags().GetString(AWSProviderAccessKeyIdFlagName)
 	if err != nil {
 		return nil, err
 	}
-	principalSecret, err := cmd.Flags().GetString(AWSProviderSecretAccessKeyFlagName)
+	secretAccessKey, err := cmd.Flags().GetString(AWSProviderSecretAccessKeyFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -73,9 +81,22 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*aws.Provider, error) {
 		return nil, err
 	}
 
-	return &aws.Provider{
-		AccessKeyId:     principalKeyId,
-		SecretAccessKey: principalSecret,
+	creds := credentials.NewStaticCredentials(keyId, secretAccessKey, "")
+	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
+	mySession := session.Must(session.NewSession(awsConfig))
+
+	client := sts.New(mySession)
+	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
+	awsError := awserr.New("", "", errors.New("")) //placeholder error to be filled by errors.As() below
+	if err != nil && errors.As(err, &awsError) {
+		errStr := "AWS credential verification failed: %s (AWS ErrorCode: %s)"
+		return nil, fmt.Errorf(errStr, awsError.Message(), awsError.Code())
+	}
+
+	return &radAWS.Provider{
+		AccessKeyId:     keyId,
+		SecretAccessKey: secretAccessKey,
 		TargetRegion:    region,
+		AccountId:       *result.Account,
 	}, nil
 }

@@ -20,10 +20,11 @@ import (
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
+
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -256,10 +257,32 @@ func GetConfigFilePath(v *viper.Viper) string {
 }
 
 func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
+	if provider.ResourceGroup == "" || provider.SubscriptionID == "" {
+		return
+	}
 	for _, workspaceItem := range section.Items {
 		if workspaceItem.IsSameKubernetesContext(contextName) {
 			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
+			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{
+				ResourceGroup:  provider.ResourceGroup,
+				SubscriptionID: provider.SubscriptionID,
+			}
+			section.Items[workspaceName] = workspaceItem
+		}
+	}
+}
+
+func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvider, contextName string) {
+	if provider.AccountId == "" || provider.Region == "" {
+		return
+	}
+	for _, workspaceItem := range section.Items {
+		if workspaceItem.IsSameKubernetesContext(contextName) {
+			workspaceName := workspaceItem.Name
+			workspaceItem.ProviderConfig.AWS = &workspaces.AWSProvider{
+				AccountId: provider.AccountId,
+				Region:    provider.Region,
+			}
 			section.Items[workspaceName] = workspaceItem
 		}
 	}

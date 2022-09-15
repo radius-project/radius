@@ -84,7 +84,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive)
+	azProvider, err := setup.ParseAzureProviderArgs(cmd, interactive)
 	if err != nil {
 		return err
 	}
@@ -119,7 +119,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	params := &EnvironmentParams{
 		Name: environmentName,
 		Providers: &environments.Providers{
-			AzureProvider: azureProvider,
+			AzureProvider: azProvider,
 			AWSProvider:   awsProvider},
 	}
 
@@ -132,7 +132,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			AppCoreImage:           chartArgs.AppCoreImage,
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
-			AzureProvider:          azureProvider,
+			AzureProvider:          azProvider,
 			AWSProvider:            awsProvider,
 		},
 	}
@@ -248,7 +248,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	if (azureProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
+	if (azProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
 		return fmt.Errorf("error: adding a cloud provider requires a reinstall of the Radius services. Specify '--reinstall' for the new arguments to take effect")
 	}
 
@@ -257,9 +257,9 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	//If existing radius control plane, retrieve az provider subscription and resourcegroup, and use that unless a --reinstall is specified
-	var azProviderFromInstall *azure.Provider
+	var azProviderConfigFromInstall *azure.Provider
 	if foundExistingRadius {
-		azProviderFromInstall, err = helm.GetAzProvider(cliOptions.Radius, contextName)
+		azProviderConfigFromInstall, err = helm.GetAzProvider(cliOptions.Radius, contextName)
 		if err != nil {
 			return err
 		}
@@ -291,22 +291,35 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		Name:     workspaceName,
 	}
 
-	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no provider yet.
-	//if no reinstall, then make sure to preserve the provider from existing installation
-	provider := workspaces.AzureProvider{}
-	if azureProvider != nil {
-		provider.SubscriptionID = azureProvider.SubscriptionID
-		provider.ResourceGroup = azureProvider.ResourceGroup
+	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no azProviderConfig yet.
+	//if no reinstall, then make sure to preserve the azProviderConfig from existing installation
+	var azProviderConfig workspaces.AzureProvider
+	if azProvider != nil && azProvider.SubscriptionID != "" && azProvider.ResourceGroup != "" {
+		azProviderConfig = workspaces.AzureProvider{
+			SubscriptionID: azProvider.SubscriptionID,
+			ResourceGroup:  azProvider.ResourceGroup,
+		}
 
-	} else if azProviderFromInstall != nil && !chartArgs.Reinstall {
-		provider.SubscriptionID = azProviderFromInstall.SubscriptionID
-		provider.ResourceGroup = azProviderFromInstall.ResourceGroup
+	} else if azProviderConfigFromInstall != nil && !chartArgs.Reinstall {
+		azProviderConfig = workspaces.AzureProvider{
+			SubscriptionID: azProviderConfigFromInstall.SubscriptionID,
+			ResourceGroup:  azProviderConfigFromInstall.ResourceGroup,
+		}
+	}
+
+	var awsProviderConfig workspaces.AWSProvider
+	if awsProvider != nil && awsProvider.TargetRegion != "" && awsProvider.AccountId != "" {
+		awsProviderConfig = workspaces.AWSProvider{
+			Region:    awsProvider.TargetRegion,
+			AccountId: awsProvider.AccountId,
+		}
 	}
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
 		section.Items[strings.ToLower(workspaceName)] = *workspace
-		cli.UpdateAzProvider(section, provider, contextName)
+		cli.UpdateAzProvider(section, azProviderConfig, contextName)
+		cli.UpdateAWSProvider(section, awsProviderConfig, contextName)
 		return nil
 	})
 	if err != nil {

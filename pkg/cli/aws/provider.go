@@ -10,4 +10,5 @@ type Provider struct {
 	AccessKeyId     string
 	SecretAccessKey string
 	TargetRegion    string
+	AccountId       string
 }

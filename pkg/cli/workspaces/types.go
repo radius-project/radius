@@ -36,6 +36,7 @@ type Workspace struct {
 type ProviderConfig struct {
 	// Azure represents the configuration for the Azure IAC provider used during deployment. This field is optional.
 	Azure *AzureProvider `json:"azure,omitempty" mapstructure:"azure" yaml:"azure,omitempty"`
+	AWS *AWSProvider `json:"aws,omitempty" mapstructure:"aws" yaml:"aws,omitempty"`
 }
 
 type AzureProvider struct {
@@ -43,6 +44,10 @@ type AzureProvider struct {
 	ResourceGroup  string
 }
 
+type AWSProvider struct {
+	Region string
+	AccountId string
+}
 // Registry represent the configuration for a container registry.
 type Registry struct {
 	// PushEndpoint is the endpoint used for push commands. For a local container registry this hostname
