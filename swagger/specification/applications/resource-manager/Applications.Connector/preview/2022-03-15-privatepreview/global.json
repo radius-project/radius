@@ -85,6 +85,22 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "Recipe":{
+      "description": "The recipe used to deploy the connector resource",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the recipe within the environment to use",
+          "type": "string"
+        },
+        "parameters":{
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "type": "object",
+          "additionalProperties": true,
+          "properties": {}
+        }
+      }
     }
   },
   "parameters": {

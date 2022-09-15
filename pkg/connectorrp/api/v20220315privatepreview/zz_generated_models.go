@@ -717,6 +717,9 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
@@ -770,6 +773,9 @@ type MongoDatabaseResponseProperties struct {
 
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -975,6 +981,15 @@ type RabbitMQMessageQueuesClientListSecretsOptions struct {
 type RabbitMQSecrets struct {
 	// The connection string used to connect to this RabbitMQ instance
 	ConnectionString *string `json:"connectionString,omitempty"`
+}
+
+// Recipe - The recipe used to deploy the connector resource
+type Recipe struct {
+	// The name of the recipe within the environment to use
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set

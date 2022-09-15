@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"reflect"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -15,6 +17,13 @@ import (
 
 // ConvertTo converts from the versioned MongoDatabaseResponse resource to version-agnostic datamodel.
 func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, error) {
+	recipe := v1.Recipe{}
+	if src.Properties.Recipe != nil {
+		recipe = v1.Recipe{
+			Name:       to.String(src.Properties.Recipe.Name),
+			Parameters: src.Properties.Recipe.Parameters,
+		}
+	}
 	converted := &datamodel.MongoDatabaseResponse{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -33,6 +42,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
 			Database:          to.String(src.Properties.Database),
+			Recipe:            recipe,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -49,6 +59,13 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
 			Username:         to.String(src.Properties.Secrets.Username),
 			Password:         to.String(src.Properties.Secrets.Password),
+		}
+	}
+	recipe := v1.Recipe{}
+	if src.Properties.Recipe != nil {
+		recipe = v1.Recipe{
+			Name:       to.String(src.Properties.Recipe.Name),
+			Parameters: src.Properties.Recipe.Parameters,
 		}
 	}
 	converted := &datamodel.MongoDatabase{
@@ -70,6 +87,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
 				Database:          to.String(src.Properties.Database),
+				Recipe:            recipe,
 			},
 			Secrets: secrets,
 		},
@@ -105,6 +123,12 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
+	if !(reflect.DeepEqual(mongo.Properties.Recipe, v1.Recipe{})) {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
+			Parameters: mongo.Properties.Recipe.Parameters,
+		}
+	}
 	return nil
 }
 
@@ -132,6 +156,12 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
+	}
+	if !(reflect.DeepEqual(mongo.Properties.Recipe, v1.Recipe{})) {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
+			Parameters: mongo.Properties.Recipe.Parameters,
+		}
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
 		dst.Properties.Secrets = &MongoDatabaseSecrets{

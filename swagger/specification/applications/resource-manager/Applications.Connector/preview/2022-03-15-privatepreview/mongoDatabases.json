@@ -367,7 +367,13 @@
           "description": "Database name of the target Mongo database",
           "type": "string",
           "readOnly": true
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase connector",
+          "type": "object",
+          "$ref": "global.json#/definitions/Recipe"
         }
+
       }
     },
     "MongoDatabaseProperties": {
