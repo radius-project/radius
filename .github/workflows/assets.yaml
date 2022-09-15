@@ -43,7 +43,7 @@ jobs:
       # a newer release
       - name: Download version marker file
         run: |
-          curl https://radiuspublic.blob.core.windows.net/version/stable.txt -o current-stable.txt
+          curl https://get.radapp.dev/version/stable.txt -o current-stable.txt
         if: ${{ success() && env.UPDATE_RELEASE == 'true' }}
       - name: Get version
         id: setcurrentversion

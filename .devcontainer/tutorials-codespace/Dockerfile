@@ -12,11 +12,11 @@ RUN bash /tmp/library-scripts/azcli-debian.sh \
 
 # Install rad CLI (Linux)
 #    TODO: change to make binary directly inside this Dockerfile? 
-RUN wget -O /usr/local/bin/rad https://radiuspublic.blob.core.windows.net/tools/rad/edge/linux-x64/rad 
+RUN wget -O /usr/local/bin/rad https://get.radapp.dev/tools/rad/edge/linux-x64/rad 
 RUN chmod +rx /usr/local/bin/rad
 
 # Download Radius VSCode extension
-RUN wget -O /home/rad-vscode-bicep.vsix https://radiuspublic.blob.core.windows.net/tools/vscode/edge/rad-vscode-bicep.vsix
+RUN wget -O /home/rad-vscode-bicep.vsix https://get.radapp.dev/tools/vscode/edge/rad-vscode-bicep.vsix
 
 USER vscode
 

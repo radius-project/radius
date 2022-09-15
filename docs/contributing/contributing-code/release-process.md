@@ -128,7 +128,7 @@ Do not start the release until the following scenarios are validated:
    
    If this is a new minor release - check the stable version marker.
    
-   The file https://radiuspublic.blob.core.windows.net/version/stable.txt should contain (in plain text) the channel you just created.
+   The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
 
@@ -159,13 +159,13 @@ After creating a release, it's good to sanity check that the release works in so
 
    ```sh
    Windows:
-   $script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
+   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
 
    MacOS:
-   curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
+   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
 
    Direct binary downloads
-   https://radiuspublic.blob.core.windows.net/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
+   https://get.radapp.dev/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
    ```
 
    Note: if you download the direct binary, execute `rad bicep download` to also download the corresponding bicep compiler binary. The scripts above will download the bicep compiler by default.
