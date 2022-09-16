@@ -241,7 +241,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			httprouteDataModel := &datamodel.HTTPRoute{}
 			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), httprouteDataModel)
 
-			httprouteDataModel.Properties.ProvisioningState = tt.curState
+			httprouteDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)

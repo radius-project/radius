@@ -7,7 +7,6 @@ package httproutes
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -48,18 +47,11 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		return nil, err
 	}
 
-	if r := e.ValidateResource(ctx, req, newResource, old, etag); r != nil {
-		return r, nil
+	if r, err := e.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	if old == nil {
-		newResource.UpdateMetadata(serviceCtx, nil)
-	} else {
-		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
-		if !old.Properties.ProvisioningState.IsTerminal() {
-			return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
-		}
-
+	if old != nil {
 		oldProp := &old.Properties.BasicResourceProperties
 		newProp := &newResource.Properties.BasicResourceProperties
 		if !oldProp.EqualLinkedResource(newProp) {
@@ -80,20 +72,8 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (r
 		newResource.Properties.Status.DeepCopy(&old.Properties.Status)
 	}
 
-	newResource.Properties.ProvisioningState = v1.ProvisioningStateAccepted
-
-	newETag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncPutHTTPRouteOperationTimeout); err != nil {
-		newResource.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, newETag)
-		if rbErr != nil {
-			return nil, rbErr
-		}
-		return nil, err
+	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutHTTPRouteOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
 	return e.ConstructAsyncResponse(ctx, req.Method, etag, newResource)

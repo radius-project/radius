@@ -7,7 +7,6 @@ package containers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -47,21 +46,12 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r := dc.ValidateResource(ctx, req, nil, old, etag); r != nil {
-		return r, nil
+	if r, err := dc.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	if !old.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
-	}
-
-	if err := dc.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteContainerOperationTimeout); err != nil {
-		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := dc.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
-		if rbErr != nil {
-			return nil, rbErr
-		}
-		return nil, err
+	if r, err := dc.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteContainerOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
 	return dc.ConstructAsyncResponse(ctx, req.Method, etag, old)

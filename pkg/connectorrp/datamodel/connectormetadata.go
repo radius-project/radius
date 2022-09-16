@@ -5,7 +5,9 @@
 
 package datamodel
 
-import "github.com/project-radius/radius/pkg/rp"
+import (
+	"github.com/project-radius/radius/pkg/rp"
+)
 
 // ConnectorMetadata represents internal DataModel properties common to all connector types.
 type ConnectorMetadata struct {

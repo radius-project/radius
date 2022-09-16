@@ -131,8 +131,11 @@ type InternalMetadata struct {
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
+	// AsyncProvisioningState is the provisioning state for async operation.
+	AsyncProvisioningState ProvisioningState `json:"provisioningState,omitempty"`
 }
 
+// BaseResource represents common resource properties used for all resources.
 type BaseResource struct {
 	TrackedResource
 	InternalMetadata
@@ -142,14 +145,29 @@ type BaseResource struct {
 }
 
 // UpdateMetadata updates the default metadata with new request context and systemdata in old resource.
-func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldSystemData *SystemData) {
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext) {
 	b.ID = ctx.ResourceID.String()
 	b.Name = ctx.ResourceID.Name()
 	b.Type = ctx.ResourceID.Type()
 	b.Location = ctx.Location
 	b.TenantID = ctx.HomeTenantID
 	b.CreatedAPIVersion = b.UpdatedAPIVersion
-	b.SystemData = UpdateSystemData(oldSystemData, ctx.SystemData())
+	// b.SystemData = UpdateSystemData(oldSystemData, ctx.SystemData())
+}
+
+// GetSystemdata gets systemdata.
+func (b *BaseResource) GetSystemData() *SystemData {
+	return &b.SystemData
+}
+
+// ProvisioningState gets the provisioning state.
+func (b *BaseResource) ProvisioningState() ProvisioningState {
+	return b.InternalMetadata.AsyncProvisioningState
+}
+
+// SetProvisioningState sets the privisioning state of the resource.
+func (b *BaseResource) SetProvisioningState(state ProvisioningState) {
+	b.InternalMetadata.AsyncProvisioningState = state
 }
 
 // BasicResourceProperties is the basic resource model for radius resources.

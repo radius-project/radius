@@ -7,7 +7,6 @@ package gateway
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -47,23 +46,12 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r := dc.ValidateResource(ctx, req, nil, old, etag); r != nil {
-		return r, nil
+	if r, err := dc.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	if !old.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
-	}
-
-	// TODO: Do we need to update ProvisioningState here?
-
-	if err := dc.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteGatewayOperationTimeout); err != nil {
-		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := dc.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
-		if rbErr != nil {
-			return nil, rbErr
-		}
-		return nil, err
+	if r, err := dc.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteGatewayOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
 	return dc.ConstructAsyncResponse(ctx, req.Method, etag, old)

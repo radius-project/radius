@@ -7,7 +7,6 @@ package httproutes
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -47,21 +46,12 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r := e.ValidateResource(ctx, req, nil, old, etag); r != nil {
-		return r, nil
+	if r, err := e.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	if !old.Properties.ProvisioningState.IsTerminal() {
-		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
-	}
-
-	if err := e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout); err != nil {
-		old.Properties.ProvisioningState = v1.ProvisioningStateFailed
-		_, rbErr := e.SaveResource(ctx, serviceCtx.ResourceID.String(), old, etag)
-		if rbErr != nil {
-			return nil, rbErr
-		}
-		return nil, err
+	if r, err := e.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteHTTPRouteOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
 	return e.ConstructAsyncResponse(ctx, req.Method, etag, old)

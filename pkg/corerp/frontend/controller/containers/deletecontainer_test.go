@@ -62,7 +62,7 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
-			appDataModel.Properties.ProvisioningState = tt.curState
+			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
@@ -72,7 +72,7 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && appDataModel.Properties.ProvisioningState.IsTerminal() {
+			if tt.getErr == nil && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
 				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.qErr).
 					Times(1)

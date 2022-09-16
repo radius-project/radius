@@ -19,7 +19,7 @@ import (
 // ListResources is the controller implementation to get the list of resources in resource group.
 type ListResources[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -27,7 +27,7 @@ type ListResources[P interface {
 // NewListResources creates a new ListResources instance.
 func NewListResources[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
 		ctrl.NewOperation[P](opts, nil, modelConverter),

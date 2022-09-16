@@ -31,13 +31,12 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				CreatedAPIVersion: Version,
-				UpdatedAPIVersion: Version,
+				CreatedAPIVersion:      Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.EnvironmentProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-		},
+		Properties: datamodel.EnvironmentProperties{},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
@@ -65,7 +64,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
-		ProvisioningState: fromProvisioningStateDataModel(env.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)

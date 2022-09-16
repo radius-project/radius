@@ -43,8 +43,8 @@ func (e *DeleteEnvironment) Run(ctx context.Context, req *http.Request) (rest.Re
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if r := e.ValidateResource(ctx, req, nil, old, etag); r != nil {
-		return r, nil
+	if r, err := e.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
 	if err := e.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {

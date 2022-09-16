@@ -62,7 +62,7 @@ func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, gtwyDataModel, _ := getTestModels20220315privatepreview()
 
-			gtwyDataModel.Properties.ProvisioningState = tt.curState
+			gtwyDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
@@ -72,7 +72,7 @@ func TestDeleteGatewayRun_20220315PrivatePreview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && gtwyDataModel.Properties.ProvisioningState.IsTerminal() {
+			if tt.getErr == nil && gtwyDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
 				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.qErr).
 					Times(1)

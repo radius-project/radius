@@ -18,7 +18,7 @@ import (
 // GetResource is the controller implementation to get a resource.
 type GetResource[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -26,7 +26,7 @@ type GetResource[P interface {
 // NewGetResource creates a new GetResource controller instance.
 func NewGetResource[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
 	return &GetResource[P, T]{
 		ctrl.NewOperation[P](opts, nil, modelConverter),

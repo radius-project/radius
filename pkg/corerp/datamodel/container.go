@@ -50,10 +50,9 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
-	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container         Container                       `json:"container,omitempty"`
-	Extensions        []Extension                     `json:"extensions,omitempty"`
+	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container   Container                       `json:"container,omitempty"`
+	Extensions  []Extension                     `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

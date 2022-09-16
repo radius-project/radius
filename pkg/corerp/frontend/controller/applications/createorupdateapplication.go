@@ -42,22 +42,19 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	if r := a.ValidateResource(ctx, req, newResource, old, etag); r != nil {
-		return r, nil
+	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	if old == nil {
-		newResource.UpdateMetadata(serviceCtx, nil)
-	} else {
-		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
+	if old != nil {
 		oldProp := &old.Properties.BasicResourceProperties
 		newProp := &newResource.Properties.BasicResourceProperties
 		if !oldProp.EqualLinkedResource(newProp) {
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 		}
 	}
-	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
 
+	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err

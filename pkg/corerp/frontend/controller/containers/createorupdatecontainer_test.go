@@ -246,7 +246,7 @@ func TestCreateOrUpdateContainerRun_20220315PrivatePreview(t *testing.T) {
 			err = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), containerDataModel)
 			require.NoError(t, err)
 
-			containerDataModel.Properties.ProvisioningState = tt.curState
+			containerDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, containerInput)

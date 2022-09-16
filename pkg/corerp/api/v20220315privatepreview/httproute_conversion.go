@@ -27,18 +27,18 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: &datamodel.HTTPRouteProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Hostname:          to.String(src.Properties.Hostname),
-			Port:              to.Int32(src.Properties.Port),
-			Scheme:            to.String(src.Properties.Scheme),
-			URL:               to.String(src.Properties.URL),
+			Hostname: to.String(src.Properties.Hostname),
+			Port:     to.Int32(src.Properties.Port),
+			Scheme:   to.String(src.Properties.Scheme),
+			URL:      to.String(src.Properties.URL),
 		},
 	}
 	return converted, nil
@@ -62,7 +62,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(route.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),
 		Hostname:          to.StringPtr(route.Properties.Hostname),
 		Port:              to.Int32Ptr((route.Properties.Port)),

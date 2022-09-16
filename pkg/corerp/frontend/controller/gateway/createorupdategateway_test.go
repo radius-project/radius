@@ -240,7 +240,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			gatewayDataModel := &datamodel.Gateway{}
 			err = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), gatewayDataModel)
 			require.NoError(t, err)
-			gatewayDataModel.Properties.ProvisioningState = tt.curState
+			gatewayDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, gatewayInput)

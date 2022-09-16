@@ -44,14 +44,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	if r := e.ValidateResource(ctx, req, newResource, old, etag); r != nil {
-		return r, nil
-	}
-
-	if old == nil {
-		newResource.UpdateMetadata(serviceCtx, nil)
-	} else {
-		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
+	if r, err := e.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
@@ -86,8 +80,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		}
 	}
 
-	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
-
+	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := e.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err

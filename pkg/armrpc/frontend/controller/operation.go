@@ -8,7 +8,9 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -26,7 +28,7 @@ import (
 // Operation is the base operation controller.
 type Operation[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any] struct {
 	options Options
 
@@ -39,7 +41,7 @@ type Operation[P interface {
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
-	conv.DataModelInterface
+	conv.ResourceDataModel
 }, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) Operation[P, T] {
 	return Operation[P, T]{options, reqconv, respconv}
 }
@@ -129,19 +131,57 @@ func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, et
 	return nr.ETag, nil
 }
 
-// ValidateResource runs the common validation logic for incoming request.
-func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) rest.Response {
+// PrepareResource validates incoming request and populate the metadata to new resource.
+func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	if req.Method == http.MethodPatch && oldResource == nil {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID)
+		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
 	}
 
 	if err := ValidateETag(*serviceCtx, etag); err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error())
+		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
 	}
 
-	return nil
+	if oldResource != nil {
+		state := P(oldResource).ProvisioningState()
+		if !state.IsTerminal() {
+			return rest.NewConflictResponse(fmt.Sprintf(InProgressStateMessageFormat, state)), nil
+		}
+	}
+
+	if newResource != nil {
+		P(newResource).UpdateMetadata(serviceCtx)
+		if oldResource != nil {
+			*P(newResource).GetSystemData() = UpdateSystemData(*P(oldResource).GetSystemData(), *serviceCtx.SystemData())
+		}
+	}
+
+	return nil, nil
+}
+
+// PrepareAsyncOperation saves the initial state and queue the async operation.
+func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource *T, initialState v1.ProvisioningState, asyncTimeout time.Duration, etag *string) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	P(newResource).SetProvisioningState(initialState)
+
+	var err error
+	*etag, err = c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, *etag)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := c.StatusManager().QueueAsyncOperation(ctx, serviceCtx, asyncTimeout); err != nil {
+		P(newResource).SetProvisioningState(v1.ProvisioningStateFailed)
+		_, rbErr := c.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, *etag)
+		if rbErr != nil {
+			return nil, rbErr
+		}
+		return nil, err
+	}
+
+	return nil, nil
 }
 
 // ConstructSyncResponse constructs synchronous API response.

@@ -5,9 +5,25 @@
 
 package conv
 
+import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+
 // DataModelInterface is the interface for version agnostic datamodel.
 type DataModelInterface interface {
+	// ResourceTypeName returns the resource type name.
 	ResourceTypeName() string
+}
+
+// ResourceDataModel represents the datamodel with helper methods.
+type ResourceDataModel interface {
+	DataModelInterface
+	// GetSystemData gets SystemData from the resource.
+	GetSystemData() *v1.SystemData
+	// ProvisioningState gets the provisioning state of the resource.
+	ProvisioningState() v1.ProvisioningState
+	// SetProvisioningState sets the provisioning state of the resource.
+	SetProvisioningState(state v1.ProvisioningState)
+	// UpdateMetadata updates and populates metadata to the resource.
+	UpdateMetadata(ctx *v1.ARMRequestContext)
 }
 
 // VersionedModelInterface is the interface for versioned models.

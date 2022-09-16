@@ -27,14 +27,14 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.ApplicationProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 		},
 	}
 	return converted, nil
@@ -55,7 +55,7 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(app.Location)
 	dst.Tags = *to.StringMapPtr(app.Tags)
 	dst.Properties = &ApplicationProperties{
-		ProvisioningState: fromProvisioningStateDataModel(app.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(app.Properties.Environment),
 	}
 

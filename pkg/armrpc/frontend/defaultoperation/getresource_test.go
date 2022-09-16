@@ -34,6 +34,20 @@ func (e testDataModel) ResourceTypeName() string {
 	return "Applications.Test/resource"
 }
 
+func (e testDataModel) GetSystemData() *v1.SystemData {
+	return nil
+}
+
+func (e testDataModel) ProvisioningState() v1.ProvisioningState {
+	return v1.ProvisioningStateAccepted
+}
+
+func (e testDataModel) SetProvisioningState(state v1.ProvisioningState) {
+}
+
+func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext) {
+}
+
 type testVersionedModel struct {
 	Name string `json:"name"`
 }

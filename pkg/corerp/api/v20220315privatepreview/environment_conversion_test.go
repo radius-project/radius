@@ -34,8 +34,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 						Tags: map[string]string{},
 					},
 					InternalMetadata: v1.InternalMetadata{
-						CreatedAPIVersion: "2022-03-15-privatepreview",
-						UpdatedAPIVersion: "2022-03-15-privatepreview",
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
@@ -46,7 +47,6 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Namespace:  "default",
 						},
 					},
-					ProvisioningState: v1.ProvisioningStateAccepted,
 				},
 			},
 			err: nil,
@@ -106,6 +106,20 @@ type fakeResource struct{}
 
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
+}
+
+func (f *fakeResource) GetSystemData() *v1.SystemData {
+	return nil
+}
+
+func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
+	return v1.ProvisioningStateAccepted
+}
+
+func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
+}
+
+func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext) {
 }
 
 func TestConvertFromValidation(t *testing.T) {
