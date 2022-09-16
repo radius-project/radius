@@ -358,6 +358,12 @@
         "queue": {
           "description": "The name of the queue",
           "type": "string"
+        },
+        "recipe" : {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": ["environment","queue"]

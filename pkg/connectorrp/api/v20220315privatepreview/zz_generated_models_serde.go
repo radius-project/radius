@@ -462,6 +462,7 @@ func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "kind", d.Kind)
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "secretStoreName", d.SecretStoreName)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
@@ -492,6 +493,9 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
 				delete(rawMsg, key)
 		case "secretStoreName":
 				err = unpopulate(val, "SecretStoreName", &d.SecretStoreName)
@@ -1528,6 +1532,7 @@ func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
 	return json.Marshal(objectMap)
@@ -1553,6 +1558,9 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "queue":
 				err = unpopulate(val, "Queue", &r.Queue)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &r.Secrets)
@@ -1626,6 +1634,7 @@ func (r RabbitMQMessageQueueResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "status", r.Status)
 	return json.Marshal(objectMap)
 }
@@ -1650,6 +1659,9 @@ func (r *RabbitMQMessageQueueResponseProperties) UnmarshalJSON(data []byte) erro
 				delete(rawMsg, key)
 		case "queue":
 				err = unpopulate(val, "Queue", &r.Queue)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)

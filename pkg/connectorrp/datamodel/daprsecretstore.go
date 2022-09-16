@@ -45,4 +45,5 @@ type DaprSecretStoreProperties struct {
 	Version           string                 `json:"version"`
 	Metadata          map[string]interface{} `json:"metadata"`
 	SecretStoreName   string                 `json:"secretStoreName"`
+	Recipe            ConnectorRecipe        `json:"recipe,omitempty"`
 }
