@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 
 	radAWS "github.com/project-radius/radius/pkg/cli/aws"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 )
 
 const (
@@ -52,10 +53,46 @@ func RegisterPersistentAWSProviderArgs(cmd *cobra.Command) {
 
 func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*radAWS.Provider, error) {
 	if interactive {
-		panic("Not implemented, see https://github.com/project-radius/radius/issues/3655")
+		return parseAWSProviderInteractive(cmd)
 	}
 	return parseAWSProviderNonInteractive(cmd)
 
+}
+
+func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
+	addAWSCred, err := prompt.ConfirmWithDefault("Add AWS provider for cloud resources [y/N]?", prompt.No)
+	if err != nil {
+		return nil, err
+	}
+	if !addAWSCred {
+		return nil, nil
+	}
+
+	region, err := prompt.Text(
+		"Enter the region you would like to use to deploy AWS resources?:",
+		prompt.EmptyValidator,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	keyId, err := prompt.Text(
+		"Enter the IAM Access Key ID:",
+		prompt.EmptyValidator,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	secretAccessKey, err := prompt.Text(
+		"Enter your IAM Secret Access Keys:",
+		prompt.EmptyValidator,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return ValidateAWSCredentials(keyId, secretAccessKey, region)
 }
 
 func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
@@ -71,6 +108,7 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 	if err != nil {
 		return nil, err
 	}
+
 	secretAccessKey, err := cmd.Flags().GetString(AWSProviderSecretAccessKeyFlagName)
 	if err != nil {
 		return nil, err
@@ -81,6 +119,10 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 		return nil, err
 	}
 
+	return ValidateAWSCredentials(keyId, secretAccessKey, region)
+}
+
+func ValidateAWSCredentials(keyId string, secretAccessKey string, region string) (*radAWS.Provider, error) {
 	creds := credentials.NewStaticCredentials(keyId, secretAccessKey, "")
 	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
 	mySession, err := session.NewSession(awsConfig)
