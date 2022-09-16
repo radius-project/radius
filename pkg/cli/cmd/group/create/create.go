@@ -24,7 +24,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "create -g resourcegroupname",
-		Short:   "create RAD resource group",
+		Short:   "Create a new resource group",
 		Long:    "`Create radius resource groups. Radius resource group is a radius concept that is used to organize and manage resources. This is NOT the same as Azure resource groups. `",
 		Example: `rad group create -g rgprod`,
 		Args:    cobra.ExactArgs(0),
