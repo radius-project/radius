@@ -571,6 +571,7 @@ func (d DaprStateStoreAzureTableStorageResourceProperties) MarshalJSON() ([]byte
 	populate(objectMap, "environment", d.Environment)
 	objectMap["kind"] = DaprStateStorePropertiesKindStateAzureTablestorage
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resource", d.Resource)
 	populate(objectMap, "stateStoreName", d.StateStoreName)
 	populate(objectMap, "status", d.Status)
@@ -598,6 +599,9 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) UnmarshalJSON(data [
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
 				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
+				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &d.Resource)
 				delete(rawMsg, key)
@@ -623,6 +627,7 @@ func (d DaprStateStoreGenericResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap["kind"] = DaprStateStorePropertiesKindGeneric
 	populate(objectMap, "metadata", d.Metadata)
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "stateStoreName", d.StateStoreName)
 	populate(objectMap, "status", d.Status)
 	populate(objectMap, "type", d.Type)
@@ -653,6 +658,9 @@ func (d *DaprStateStoreGenericResourceProperties) UnmarshalJSON(data []byte) err
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
 				delete(rawMsg, key)
 		case "stateStoreName":
 				err = unpopulate(val, "StateStoreName", &d.StateStoreName)
@@ -712,6 +720,7 @@ func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", d.Environment)
 	objectMap["kind"] = d.Kind
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "stateStoreName", d.StateStoreName)
 	populate(objectMap, "status", d.Status)
 	return json.Marshal(objectMap)
@@ -737,6 +746,9 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
 				delete(rawMsg, key)
 		case "stateStoreName":
 				err = unpopulate(val, "StateStoreName", &d.StateStoreName)
@@ -810,6 +822,7 @@ func (d DaprStateStoreSQLServerResourceProperties) MarshalJSON() ([]byte, error)
 	populate(objectMap, "environment", d.Environment)
 	objectMap["kind"] = DaprStateStorePropertiesKindStateSqlserver
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "resource", d.Resource)
 	populate(objectMap, "stateStoreName", d.StateStoreName)
 	populate(objectMap, "status", d.Status)
@@ -836,6 +849,9 @@ func (d *DaprStateStoreSQLServerResourceProperties) UnmarshalJSON(data []byte) e
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
 				delete(rawMsg, key)
 		case "resource":
 				err = unpopulate(val, "Resource", &d.Resource)
