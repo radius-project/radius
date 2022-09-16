@@ -7,6 +7,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -150,9 +151,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if resp, ok := err.(rest.Response); ok {
-			response = resp
-		} else if err.Error() == conv.ErrInvalidModelConversion.Error() {
+		if errors.Is(err, conv.ErrInvalidModelConversion) {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
