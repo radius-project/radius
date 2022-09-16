@@ -22,13 +22,10 @@ import (
 
 const (
 	LinkedResourceUpdateErrorFormat = "Attempted to deploy existing resource '%s' which has a different application and/or environment. Options to resolve the conflict are: change the name of the '%s' resource in %s to create a new resource, or use '%s' application and '%s' environment to update the existing resource '%s'."
-	NonErrorResponse                = "non error response"
 )
 
 // Response represents a category of HTTP response (eg. OK with payload).
 type Response interface {
-	Error() string
-
 	// Apply modifies the ResponseWriter to send the desired details back to the client.
 	Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error
 }
@@ -54,10 +51,6 @@ func NewOKResponseWithHeaders(body interface{}, headers map[string]string) Respo
 		Body:    body,
 		Headers: headers,
 	}
-}
-
-func (e *OKResponse) Error() string {
-	return NonErrorResponse
 }
 
 func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
@@ -99,10 +92,6 @@ func NewCreatedResponse(body interface{}) Response {
 	return response
 }
 
-func (e *CreatedResponse) Error() string {
-	return NonErrorResponse
-}
-
 func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http.Request) error {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("responding with status code: %d", http.StatusCreated), radlogger.LogHTTPStatusCode, http.StatusCreated)
@@ -129,10 +118,6 @@ type CreatedAsyncResponse struct {
 	Body     interface{}
 	Location string
 	Scheme   string
-}
-
-func (e *CreatedAsyncResponse) Error() string {
-	return NonErrorResponse
 }
 
 func NewCreatedAsyncResponse(body interface{}, location string, scheme string) Response {
@@ -182,10 +167,6 @@ type AcceptedAsyncResponse struct {
 	Body     interface{}
 	Location string
 	Scheme   string
-}
-
-func (e *AcceptedAsyncResponse) Error() string {
-	return NonErrorResponse
 }
 
 // NewAcceptedAsyncResponse creates an AcceptedAsyncResponse
@@ -239,10 +220,6 @@ type AsyncOperationResponse struct {
 	ResourceID  resources.ID
 	OperationID uuid.UUID
 	APIVersion  string
-}
-
-func (e *AsyncOperationResponse) Error() string {
-	return NonErrorResponse
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
@@ -315,10 +292,6 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 type NoContentResponse struct {
 }
 
-func (e *NoContentResponse) Error() string {
-	return NonErrorResponse
-}
-
 func NewNoContentResponse() Response {
 	return &NoContentResponse{}
 }
@@ -333,10 +306,6 @@ func (r *NoContentResponse) Apply(ctx context.Context, w http.ResponseWriter, re
 // This is used for any operation that fails due to bad data with a simple error message.
 type BadRequestResponse struct {
 	Body v1.ErrorResponse
-}
-
-func (e *BadRequestResponse) Error() string {
-	return e.Body.Error.Message
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
@@ -413,10 +382,6 @@ type ValidationErrorResponse struct {
 	Body v1.ErrorResponse
 }
 
-func (e *ValidationErrorResponse) Error() string {
-	return e.Body.Error.Message
-}
-
 func NewValidationErrorResponse(errors validator.ValidationErrors) Response {
 	body := v1.ErrorResponse{
 		Error: v1.ErrorDetails{
@@ -462,10 +427,6 @@ func (r *ValidationErrorResponse) Apply(ctx context.Context, w http.ResponseWrit
 // This is used for GET operations when the response does not exist.
 type NotFoundResponse struct {
 	Body v1.ErrorResponse
-}
-
-func (e *NotFoundResponse) Error() string {
-	return e.Body.Error.Message
 }
 
 // NewNotFoundMessageResponse represents an HTTP 404 with string message.
@@ -528,10 +489,6 @@ func (r *NotFoundResponse) Apply(ctx context.Context, w http.ResponseWriter, req
 // This is used for delete operations.
 type ConflictResponse struct {
 	Body v1.ErrorResponse
-}
-
-func (e *ConflictResponse) Error() string {
-	return e.Body.Error.Message
 }
 
 func NewConflictResponse(message string) Response {
@@ -600,10 +557,6 @@ func (r *InternalServerErrorResponse) Apply(ctx context.Context, w http.Response
 // PreconditionFailedResponse represents an HTTP 412 with an ARM error payload.
 type PreconditionFailedResponse struct {
 	Body v1.ErrorResponse
-}
-
-func (e *PreconditionFailedResponse) Error() string {
-	return e.Body.Error.Message
 }
 
 func NewPreconditionFailedResponse(target string, message string) Response {
@@ -679,10 +632,6 @@ type AsyncOperationResultResponse struct {
 	Headers map[string]string
 }
 
-func (e *AsyncOperationResultResponse) Error() string {
-	return NonErrorResponse
-}
-
 func NewAsyncOperationResultResponse(headers map[string]string) Response {
 	return &AsyncOperationResultResponse{
 		Headers: headers,
@@ -707,10 +656,6 @@ func (r *AsyncOperationResultResponse) Apply(ctx context.Context, w http.Respons
 // MethodNotAllowedResponse represents an HTTP 405 with an ARM error payload.
 type MethodNotAllowedResponse struct {
 	Body v1.ErrorResponse
-}
-
-func (e *MethodNotAllowedResponse) Error() string {
-	return e.Body.Error.Message
 }
 
 // NewMethodNotAllowedResponse creates MethodNotAllowedResponse instance.
