@@ -188,10 +188,16 @@
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **secretStoreName**: string (ReadOnly): The name of the Dapr Secret Store.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
+
+## Recipe
+### Properties
+* **name**: string (Required): The name of the recipe within the environment to use
+* **parameters**: any: Any object
 
 ## TrackedResourceTags
 ### Properties
@@ -263,11 +269,6 @@
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
-## Recipe
-### Properties
-* **name**: string (Required): The name of the recipe within the environment to use
-* **parameters**: any: Any object
-
 ## MongoDatabaseSecrets
 ### Properties
 * **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
@@ -285,6 +286,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **queue**: string (Required): The name of the queue
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets) (WriteOnly): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
