@@ -23,7 +23,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "list all RAD resourcegroups in the workspace's kube context",
+		Use:     "list",
 		Short:   "list RAD resource group",
 		Long:    "`List radius resource groups. Radius resource group is a radius concept that is used to organize and manage resources. This is NOT the same as Azure resource groups`",
 		Example: `rad group list`,
