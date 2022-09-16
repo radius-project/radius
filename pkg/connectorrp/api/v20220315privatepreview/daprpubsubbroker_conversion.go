@@ -137,9 +137,9 @@ func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *Dap
 func toRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
 	recipe := datamodel.ConnectorRecipe{}
 	if r != nil {
-		recipe = datamodel.ConnectorRecipe{
-			Name:       to.String(r.Name),
-			Parameters: r.Parameters,
+		recipe.Name = to.String(r.Name)
+		if r.Parameters != nil {
+			recipe.Parameters = r.Parameters
 		}
 	}
 	return recipe
