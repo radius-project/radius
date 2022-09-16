@@ -130,7 +130,7 @@ func (c *Operation[P, T]) SaveResource(ctx context.Context, id string, in *T, et
 }
 
 // ValidateResource runs the common validation logic for incoming request.
-func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) error {
+func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Request, newResource *T, oldResource *T, etag string) rest.Response {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	if req.Method == http.MethodPatch && oldResource == nil {
@@ -141,14 +141,6 @@ func (c *Operation[P, T]) ValidateResource(ctx context.Context, req *http.Reques
 		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error())
 	}
 
-	return nil
-}
-
-// ValidateLinkedResource checks if application and environment id in new resource are matched with the old resource.
-func (c *Operation[P, T]) ValidateLinkedResource(resourceID resources.ID, newProp *v1.BasicResourceProperties, oldProp *v1.BasicResourceProperties) error {
-	if !oldProp.EqualLinkedResource(newProp) {
-		return rest.NewLinkedResourceUpdateErrorResponse(resourceID, oldProp, newProp)
-	}
 	return nil
 }
 

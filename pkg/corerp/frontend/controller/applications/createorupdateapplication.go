@@ -36,20 +36,24 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) 
 	if err != nil {
 		return nil, err
 	}
+
 	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
-	if err := a.ValidateResource(ctx, req, newResource, old, etag); err != nil {
-		return nil, err
+
+	if r := a.ValidateResource(ctx, req, newResource, old, etag); r != nil {
+		return r, nil
 	}
 
 	if old == nil {
 		newResource.UpdateMetadata(serviceCtx, nil)
 	} else {
 		newResource.UpdateMetadata(serviceCtx, &old.SystemData)
-		if err := a.ValidateLinkedResource(serviceCtx.ResourceID, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
-			return nil, err
+		oldProp := &old.Properties.BasicResourceProperties
+		newProp := &newResource.Properties.BasicResourceProperties
+		if !oldProp.EqualLinkedResource(newProp) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 		}
 	}
 	newResource.Properties.ProvisioningState = v1.ProvisioningStateSucceeded

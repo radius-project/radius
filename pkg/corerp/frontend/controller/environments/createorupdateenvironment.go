@@ -44,8 +44,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) 
 		return nil, err
 	}
 
-	if err := e.ValidateResource(ctx, req, newResource, old, etag); err != nil {
-		return nil, err
+	if r := e.ValidateResource(ctx, req, newResource, old, etag); r != nil {
+		return r, nil
 	}
 
 	if old == nil {

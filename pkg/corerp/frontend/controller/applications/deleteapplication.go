@@ -43,8 +43,8 @@ func (a *DeleteApplication) Run(ctx context.Context, req *http.Request) (rest.Re
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := a.ValidateResource(ctx, req, nil, old, etag); err != nil {
-		return nil, err
+	if r := a.ValidateResource(ctx, req, nil, old, etag); r != nil {
+		return r, nil
 	}
 
 	if err := a.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {

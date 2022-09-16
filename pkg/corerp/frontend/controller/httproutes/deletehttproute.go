@@ -47,12 +47,12 @@ func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Resp
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := e.ValidateResource(ctx, req, nil, old, etag); err != nil {
-		return nil, err
+	if r := e.ValidateResource(ctx, req, nil, old, etag); r != nil {
+		return r, nil
 	}
 
 	if !old.Properties.ProvisioningState.IsTerminal() {
-		return nil, rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState))
+		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 	}
 
 	if err := e.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteHTTPRouteOperationTimeout); err != nil {

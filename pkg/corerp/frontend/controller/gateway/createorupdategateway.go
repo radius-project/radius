@@ -46,8 +46,8 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		return nil, err
 	}
 
-	if err := e.ValidateResource(ctx, req, newResource, old, etag); err != nil {
-		return nil, err
+	if r := e.ValidateResource(ctx, req, newResource, old, etag); r != nil {
+		return r, nil
 	}
 
 	if old == nil {
@@ -58,8 +58,10 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 			return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 		}
 
-		if err := e.ValidateLinkedResource(serviceCtx.ResourceID, &newResource.Properties.BasicResourceProperties, &old.Properties.BasicResourceProperties); err != nil {
-			return nil, err
+		oldProp := &old.Properties.BasicResourceProperties
+		newProp := &newResource.Properties.BasicResourceProperties
+		if !oldProp.EqualLinkedResource(newProp) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 		}
 
 		// Gateway is a resource that is asyncly processed. Here, in createOrUpdateGateway, we

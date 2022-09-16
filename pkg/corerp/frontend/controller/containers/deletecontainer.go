@@ -47,12 +47,12 @@ func (dc *DeleteContainer) Run(ctx context.Context, req *http.Request) (rest.Res
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := dc.ValidateResource(ctx, req, nil, old, etag); err != nil {
-		return nil, err
+	if r := dc.ValidateResource(ctx, req, nil, old, etag); r != nil {
+		return r, nil
 	}
 
 	if !old.Properties.ProvisioningState.IsTerminal() {
-		return nil, rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState))
+		return rest.NewConflictResponse(fmt.Sprintf(ctrl.InProgressStateMessageFormat, old.Properties.ProvisioningState)), nil
 	}
 
 	if err := dc.StatusManager().QueueAsyncOperation(ctx, serviceCtx, AsyncDeleteContainerOperationTimeout); err != nil {

@@ -47,8 +47,8 @@ func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Respo
 		return rest.NewNoContentResponse(), nil
 	}
 
-	if err := dc.ValidateResource(ctx, req, nil, old, etag); err != nil {
-		return nil, err
+	if r := dc.ValidateResource(ctx, req, nil, old, etag); r != nil {
+		return r, nil
 	}
 
 	if !old.Properties.ProvisioningState.IsTerminal() {
