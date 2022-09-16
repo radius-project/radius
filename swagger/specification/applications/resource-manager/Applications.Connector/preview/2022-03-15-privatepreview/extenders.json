@@ -351,7 +351,13 @@
           "application": {
             "$ref": "global.json#/definitions/Application",
             "description": "Fully qualified resource ID for the application that the connector is consumed by"
-          }
+          },
+        "recipe" : {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        }
         },
         "required": ["environment"]
       },

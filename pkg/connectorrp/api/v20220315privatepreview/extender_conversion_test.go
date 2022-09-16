@@ -16,7 +16,7 @@ import (
 )
 
 func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"extenderresource.json", "extenderresource2.json"}
+	testset := []string{"extenderresource.json", "extenderresource2.json", "extenderresource_recipe.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -37,16 +37,23 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Connector/extenders", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "222-222-2222", convertedResource.Properties.AdditionalProperties["fromNumber"])
-		if payload == "extenderresource.json" {
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-			require.Equal(t, secrets, convertedResource.Properties.Secrets)
+		if payload == "extenderresource.json" || payload == "extenderresource2.json" {
+			require.Equal(t, "222-222-2222", convertedResource.Properties.AdditionalProperties["fromNumber"])
+			if payload == "extenderresource.json" {
+				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+				require.Equal(t, secrets, convertedResource.Properties.Secrets)
+			}
+		}
+		if payload == "extenderresource_recipe.json" {
+			require.Equal(t, "extender-test", convertedResource.Properties.Recipe.Name)
+			parameters := map[string]interface{}{"fromNumber": "222-222-2222"}
+			require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
 		}
 	}
 }
 
 func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"extenderresourcedatamodel.json", "extenderresourcedatamodel2.json"}
+	testset := []string{"extenderresourcedatamodel.json", "extenderresourcedatamodel2.json", "extenderresourcedatamodel_recipe.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -67,11 +74,18 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Connector/extenders", resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		require.Equal(t, "222-222-2222", resource.Properties.AdditionalProperties["fromNumber"])
-		if payload == "extenderresourcedatamodel.json" {
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
-			require.Equal(t, secrets, resource.Properties.Secrets)
+		if payload == "extenderresourcedatamodel.json" || payload == "extenderresourcedatamodel2.json" {
+			require.Equal(t, "222-222-2222", resource.Properties.AdditionalProperties["fromNumber"])
+			if payload == "extenderresourcedatamodel.json" {
+				require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+				require.Equal(t, secrets, resource.Properties.Secrets)
+			}
+		}
+		if payload == "extenderresourcedatamodel_recipe.json" {
+			require.Equal(t, "extender-test", *versionedResource.Properties.Recipe.Name)
+			parameters := map[string]interface{}{"fromNumber": "222-222-2222"}
+			require.Equal(t, parameters, versionedResource.Properties.Recipe.Parameters)
 		}
 	}
 }

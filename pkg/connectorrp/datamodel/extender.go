@@ -57,6 +57,7 @@ type ExtenderProperties struct {
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderResponseProperties struct {
 	v1.BasicResourceProperties
+	Recipe               ConnectorRecipe        `json:"recipe,omitempty"`
 	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
 	ProvisioningState    v1.ProvisioningState   `json:"provisioningState,omitempty"`
 }

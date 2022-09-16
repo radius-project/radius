@@ -38,6 +38,12 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 			UpdatedAPIVersion: Version,
 		},
 	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
+	}
 	return converted, nil
 }
 
@@ -62,6 +68,12 @@ func (src *ExtenderResponseResource) ConvertTo() (conv.DataModelInterface, error
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
@@ -89,6 +101,12 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 		AdditionalProperties: extender.Properties.AdditionalProperties,
 		Secrets:              extender.Properties.Secrets,
 	}
+	if extender.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(extender.Properties.Recipe.Name),
+			Parameters: extender.Properties.Recipe.Parameters,
+		}
+	}
 	return nil
 }
 
@@ -113,6 +131,12 @@ func (dst *ExtenderResponseResource) ConvertFrom(src conv.DataModelInterface) er
 		Environment:          to.StringPtr(extender.Properties.Environment),
 		Application:          to.StringPtr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,
+	}
+	if extender.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(extender.Properties.Recipe.Name),
+			Parameters: extender.Properties.Recipe.Parameters,
+		}
 	}
 	return nil
 }

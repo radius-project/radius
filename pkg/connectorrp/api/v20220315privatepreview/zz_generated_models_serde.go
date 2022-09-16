@@ -976,6 +976,7 @@ func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", e.Application)
 	populate(objectMap, "environment", e.Environment)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
+	populate(objectMap, "recipe", e.Recipe)
 	populate(objectMap, "secrets", e.Secrets)
 	populate(objectMap, "status", e.Status)
 	if e.AdditionalProperties != nil {
@@ -1003,6 +1004,9 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &e.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &e.Recipe)
 				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &e.Secrets)
@@ -1085,6 +1089,7 @@ func (e ExtenderResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", e.Application)
 	populate(objectMap, "environment", e.Environment)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
+	populate(objectMap, "recipe", e.Recipe)
 	populate(objectMap, "status", e.Status)
 	if e.AdditionalProperties != nil {
 		for key, val := range e.AdditionalProperties {
@@ -1111,6 +1116,9 @@ func (e *ExtenderResponseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &e.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &e.Recipe)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &e.Status)

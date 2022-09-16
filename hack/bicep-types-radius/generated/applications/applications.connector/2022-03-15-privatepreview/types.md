@@ -235,10 +235,16 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
 * **Additional Properties Type**: any
+
+## Recipe
+### Properties
+* **name**: string (Required): The name of the recipe within the environment to use
+* **parameters**: any: Any object
 
 ## ExtenderSecrets
 ### Properties
@@ -262,11 +268,6 @@
 * **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-
-## Recipe
-### Properties
-* **name**: string (Required): The name of the recipe within the environment to use
-* **parameters**: any: Any object
 
 ## MongoDatabaseSecrets
 ### Properties
