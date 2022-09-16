@@ -353,7 +353,7 @@
             "description": "Fully qualified resource ID for the application that the connector is consumed by"
           },
         "recipe" : {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the extender connector",
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"

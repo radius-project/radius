@@ -593,7 +593,7 @@ type ExtenderProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	// The recipe used to automatically deploy underlying infrastructure for the extender connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// The secret values for the given Extender resource
@@ -641,7 +641,7 @@ type ExtenderResponseProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	// The recipe used to automatically deploy underlying infrastructure for the extender connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the extender connector at the time the operation was called
