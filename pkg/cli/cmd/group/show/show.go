@@ -25,7 +25,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "show -g resourcegroupname",
-		Short:   "delete RAD resource group",
+		Short:   "Show the details of a resource group",
 		Long:    "`Manage radius resource groups. Radius resource group is a radius concept that is used to organize and manage resources. This is NOT the same as Azure resource groups`",
 		Example: `rad group show -g rgprod`,
 		Args:    cobra.ExactArgs(0),
