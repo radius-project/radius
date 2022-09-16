@@ -283,6 +283,9 @@ type DaprSecretStoreProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -873,6 +876,9 @@ type RabbitMQMessageQueueProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitmq connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
@@ -917,6 +923,9 @@ type RabbitMQMessageQueueResponseProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitmq connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

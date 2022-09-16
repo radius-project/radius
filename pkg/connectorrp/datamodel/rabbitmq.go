@@ -53,6 +53,7 @@ type RabbitMQMessageQueueResponseProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Queue             string               `json:"queue"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.

@@ -6,8 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"reflect"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
@@ -17,13 +15,6 @@ import (
 
 // ConvertTo converts from the versioned MongoDatabaseResponse resource to version-agnostic datamodel.
 func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, error) {
-	recipe := datamodel.ConnectorRecipe{}
-	if src.Properties.Recipe != nil {
-		recipe = datamodel.ConnectorRecipe{
-			Name:       to.String(src.Properties.Recipe.Name),
-			Parameters: src.Properties.Recipe.Parameters,
-		}
-	}
 	converted := &datamodel.MongoDatabaseResponse{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -42,32 +33,22 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Host:              to.String(src.Properties.Host),
 			Port:              to.Int32(src.Properties.Port),
 			Database:          to.String(src.Properties.Database),
-			Recipe:            recipe,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
 func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.MongoDatabaseSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.MongoDatabaseSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-			Username:         to.String(src.Properties.Secrets.Username),
-			Password:         to.String(src.Properties.Secrets.Password),
-		}
-	}
-	recipe := datamodel.ConnectorRecipe{}
-	if src.Properties.Recipe != nil {
-		recipe = datamodel.ConnectorRecipe{
-			Name:       to.String(src.Properties.Recipe.Name),
-			Parameters: src.Properties.Recipe.Parameters,
-		}
-	}
 	converted := &datamodel.MongoDatabase{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -87,13 +68,24 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
 				Database:          to.String(src.Properties.Database),
-				Recipe:            recipe,
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			Username:         to.String(src.Properties.Secrets.Username),
+			Password:         to.String(src.Properties.Secrets.Password),
+		}
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
@@ -123,7 +115,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
-	if !(reflect.DeepEqual(mongo.Properties.Recipe, datamodel.ConnectorRecipe{})) {
+	if mongo.Properties.Recipe.Name != "" {
 		dst.Properties.Recipe = &Recipe{
 			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
 			Parameters: mongo.Properties.Recipe.Parameters,
@@ -157,7 +149,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
-	if !(reflect.DeepEqual(mongo.Properties.Recipe, datamodel.ConnectorRecipe{})) {
+	if mongo.Properties.Recipe.Name != "" {
 		dst.Properties.Recipe = &Recipe{
 			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
 			Parameters: mongo.Properties.Recipe.Parameters,

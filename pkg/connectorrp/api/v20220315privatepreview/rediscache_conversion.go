@@ -15,13 +15,6 @@ import (
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
 func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.RedisCacheSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.RedisCacheSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-			Password:         to.String(src.Properties.Secrets.Password),
-		}
-	}
 	converted := &datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -42,11 +35,16 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Port:              to.Int32(src.Properties.Port),
 				Username:          to.String(src.Properties.Username),
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.RedisCacheSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			Password:         to.String(src.Properties.Secrets.Password),
+		}
 	}
 	if src.Properties.Recipe != nil {
 		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
