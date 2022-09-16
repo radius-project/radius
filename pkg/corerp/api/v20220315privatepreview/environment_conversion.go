@@ -20,7 +20,7 @@ const (
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	// TODO: Improve the validation.
+
 	converted := &datamodel.Environment{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -42,15 +42,27 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	converted.Properties.Compute = *envCompute
+
+	if src.Properties.Recipes != nil {
+		recipes := make(map[string]datamodel.EnvironmentRecipeProperties)
+		for key, val := range src.Properties.Recipes {
+			if val != nil {
+				recipes[key] = datamodel.EnvironmentRecipeProperties{
+					ConnectorType: to.String(val.ConnectorType),
+					TemplatePath:  to.String(val.TemplatePath),
+				}
+			}
+		}
+
+		converted.Properties.Recipes = recipes
+	}
 
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
 func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
-	// TODO: Improve the validation.
 	env, ok := src.(*datamodel.Environment)
 	if !ok {
 		return conv.ErrInvalidModelConversion
@@ -69,6 +81,17 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
 	if dst.Properties.Compute == nil {
 		return conv.ErrInvalidModelConversion
+	}
+
+	if env.Properties.Recipes != nil {
+		recipes := make(map[string]*EnvironmentRecipeProperties)
+		for key, val := range env.Properties.Recipes {
+			recipes[key] = &EnvironmentRecipeProperties{
+				ConnectorType: to.StringPtr(val.ConnectorType),
+				TemplatePath:  to.StringPtr(val.TemplatePath),
+			}
+		}
+		dst.Properties.Recipes = recipes
 	}
 
 	return nil
