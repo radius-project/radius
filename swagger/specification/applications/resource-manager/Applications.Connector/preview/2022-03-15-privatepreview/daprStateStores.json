@@ -362,6 +362,12 @@
             "description": "The name of the Dapr State Store",
             "type": "string",
             "readOnly": true
+          },
+          "recipe" : {
+            "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector",
+            "type": "object",
+            "additionalProperties": false,
+            "$ref": "global.json#/definitions/Recipe"
           }
         },
         "required": [
