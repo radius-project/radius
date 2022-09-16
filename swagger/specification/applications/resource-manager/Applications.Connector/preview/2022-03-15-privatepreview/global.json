@@ -69,6 +69,17 @@
         }
       }
     },
+    "BasicDaprResourceProperties": {
+      "description": "Basic properties of a Dapr component object.",
+      "type": "object",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        }
+      }
+    },
     "ResourceStatus": {
       "description": "Status of a resource.",
       "type": "object",

@@ -378,11 +378,6 @@
         "application": {
           "$ref": "#/definitions/Application",
           "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
-        "stateStoreName": {
-          "type": "string",
-          "description": "The name of the Dapr State Store",
-          "readOnly": true
         }
       },
       "description": "DaprStateStore properties",

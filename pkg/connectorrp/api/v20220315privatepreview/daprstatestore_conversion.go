@@ -19,7 +19,6 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
-		StateStoreName:    to.String(src.Properties.GetDaprStateStoreProperties().StateStoreName),
 	}
 
 	if src.Properties.GetDaprStateStoreProperties().Recipe != nil {
@@ -85,8 +84,8 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
 			Resource:          to.StringPtr(daprStateStore.Properties.DaprStateStoreAzureTableStorage.Resource),
+			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	case datamodel.DaprStateStoreKindStateSqlServer:
 		dst.Properties = &DaprStateStoreSQLServerResourceProperties{
@@ -97,8 +96,8 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
 			Resource:          to.StringPtr(daprStateStore.Properties.DaprStateStoreSQLServer.Resource),
+			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	case datamodel.DaprStateStoreKindGeneric:
 		dst.Properties = &DaprStateStoreGenericResourceProperties{
@@ -109,10 +108,10 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			StateStoreName:    to.StringPtr(daprStateStore.Properties.StateStoreName),
 			Type:              to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.DaprStateStoreGeneric.Version),
 			Metadata:          daprStateStore.Properties.DaprStateStoreGeneric.Metadata,
+			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	default:
 		return errors.New("Kind of DaprStateStore is not specified.")

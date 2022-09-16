@@ -313,6 +313,9 @@
       "allOf": [
         {
           "$ref": "global.json#/definitions/BasicResourceProperties"
+        },
+        {
+          "$ref": "global.json#/definitions/BasicDaprResourceProperties"
         }
       ],
       "discriminator": "kind",
@@ -333,13 +336,16 @@
         "kind": {
           "description": "The DaprPubSubProperties kind",
           "type": "string",
-          "enum": ["pubsub.azure.servicebus","generic"]
+          "enum": [
+            "pubsub.azure.servicebus",
+            "generic"
+          ]
         },
         "topic": {
           "description": "Topic name of the Azure ServiceBus resource",
           "type": "string"
         },
-        "recipe" : {
+        "recipe": {
           "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector",
           "type": "object",
           "additionalProperties": false,

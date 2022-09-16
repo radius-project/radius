@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 type DaprSecretStoreKind string
@@ -39,11 +40,11 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.
 type DaprSecretStoreProperties struct {
 	v1.BasicResourceProperties
+	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
 	Kind              DaprSecretStoreKind    `json:"kind"`
 	Type              string                 `json:"type"`
 	Version           string                 `json:"version"`
 	Metadata          map[string]interface{} `json:"metadata"`
-	SecretStoreName   string                 `json:"secretStoreName"`
 	Recipe            ConnectorRecipe        `json:"recipe,omitempty"`
 }

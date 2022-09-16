@@ -9,10 +9,10 @@ import (
 )
 
 func DaprSecretStoreBinding(envParams map[string]string) BindingStatus {
-	secretName := envParams["SECRETSTORENAME"]
+	secretName := envParams["COMPONENTNAME"]
 	if secretName == "" {
-		log.Println("SECRETSTORENAME is required")
-		return BindingStatus{false, "SECRETSTORENAME is required"}
+		log.Println("COMPONENTNAME is required")
+		return BindingStatus{false, "COMPONENTNAME is required"}
 	}
 	client, err := dapr.NewClientWithPort(os.Getenv("DAPR_GRPC_PORT"))
 	if err != nil {

@@ -19,7 +19,7 @@
             "foo": "bar"
         },
         "provisioningState": "Succeeded",
-        "secretStoreName": "test-secret-store"
+        "componentName": "test-app-test-secret-store"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

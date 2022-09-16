@@ -40,9 +40,9 @@ model DaprStateStoreProperties extends BasicResourceProperties {
   @doc("Fully qualified resource ID for the application that the connector is consumed by")
   application?: Application;
 
-  @doc("The name of the Dapr State Store")
+  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the state store.")
   @visibility("read")
-  stateStoreName?: string;
+  componentName?: string;
 }
 
 @doc("DaprStateStoreSqlServer properties")
