@@ -92,7 +92,7 @@ func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 		return nil, err
 	}
 
-	return ValidateAWSCredentials(keyId, secretAccessKey, region)
+	return VerifyAWSCredentials(keyId, secretAccessKey, region)
 }
 
 func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
@@ -119,10 +119,10 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 		return nil, err
 	}
 
-	return ValidateAWSCredentials(keyId, secretAccessKey, region)
+	return VerifyAWSCredentials(keyId, secretAccessKey, region)
 }
 
-func ValidateAWSCredentials(keyId string, secretAccessKey string, region string) (*radAWS.Provider, error) {
+func VerifyAWSCredentials(keyId string, secretAccessKey string, region string) (*radAWS.Provider, error) {
 	creds := credentials.NewStaticCredentials(keyId, secretAccessKey, "")
 	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
 	mySession, err := session.NewSession(awsConfig)
