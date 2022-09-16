@@ -37,6 +37,9 @@ type DaprInvokeHTTPRouteProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
