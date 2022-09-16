@@ -7,12 +7,13 @@ package radInit
 
 import (
 	"context"
-	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -20,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -55,21 +57,22 @@ type Runner struct {
 	Format                 string
 	Workspace              *workspaces.Workspace
 	ServicePrincipal       *azure.ServicePrincipal
+	ConnectionFactory      connections.Factory
 	KubeContext            string
 	EnvName                string
 	NameSpace              string
-	SubscriptionID         string
-	CloudProvider          string
-	ResourceGroupName      string
+	AzureCloudProvider     *azure.Provider
 	CreateNewResourceGroup bool
-	IsRadiusInstalled      bool
+	RadiusInstalled        bool
 	Reinstall              bool
+	Ctx                    context.Context
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder: factory.GetConfigHolder(),
-		Output:       factory.GetOutput(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
@@ -86,11 +89,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "output format not mentioned"}
 	}
 	r.Format = format
+	r.Ctx = cmd.Context()
+
 	kubeContext, err := kubernetes.ReadKubeConfig()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
-	fmt.Print(kubeContext.Contexts)
 	//TODO: check flags if interactive or not
 	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true)
 	if err != nil {
@@ -99,7 +103,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	//TODO: check flags if interactive or not
 	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true)
 	if err != nil {
-		return &cli.FriendlyError{Message: "Environment not mentioned"}
+		return &cli.FriendlyError{Message: "Failed to read env name"}
 	}
 
 	r.NameSpace, err = common.SelectNamespace(cmd, "default", true)
@@ -109,71 +113,52 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	addingProvider := true
 	for addingProvider {
-		msg := "Add cloud providers for cloud resources [y/N]?"
-		cloudProvider, err := selectCloudProvider(r.Output, msg)
-		if err != nil {
-			return &cli.FriendlyError{Message: "Error reading cloud provider"}
+		var cloudProvider int
+		addingCloudProvider := true
+		for addingCloudProvider {
+			addCloudProvider, err := prompt.ConfirmWithDefault("Add cloud providers for cloud resources [y/N]?", prompt.No)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Error reading cloud provider"}
+			}
+			if !addCloudProvider {
+				cloudProvider = -1
+				break
+			}
+			cloudProvider, err := selectCloudProvider(r.Output)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Error reading cloud provider"}
+			}
+			if cloudProvider != -1 {
+				addingCloudProvider = false
+			}
 		}
-
+		if cloudProvider == -1 {
+			break
+		}
 		switch cloudProvider {
 		case Azure:
-			msg = "Enter Azure subscription Id"
-			r.SubscriptionID, err = prompt.Text(msg, nil)
+			//TODO: check for interactive flag
+			r.AzureCloudProvider, err = setup.ParseAzureProviderArgs(cmd, true)
 			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading subscription Id for azure provider"}
-			}
-
-			msg = "Do you want to create an azure resource group"
-			yes, err := prompt.ConfirmWithDefault(msg, prompt.No)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading resource group for azure provider"}
-			}
-			if yes {
-				r.ResourceGroupName, err = prompt.Text("Enter a resource group for azure:", nil)
-				r.CreateNewResourceGroup = true
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading resource group for azure provider"}
-				}
-			} else {
-				//TODO: list groups from ucp and prompt the user after the functionality is implemented.
-				r.CreateNewResourceGroup = false
-			}
-			yes, err = prompt.ConfirmWithDefault("Create a new Azure service principal [Y/n]", prompt.Yes)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading service principal for azure provider"}
-			}
-			if yes {
-				appId, err := prompt.Text("Enter an appId for the service principal", nil)
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading service principal for azure provider"}
-				}
-
-				pwd, err := prompt.Text("Enter the password of the app", nil)
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading service principal for azure provider"}
-				}
-
-				tenantId, err := prompt.Text("Enter tenantId of the app", nil)
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading service principal for azure provider"}
-				}
-
-				r.ServicePrincipal = &azure.ServicePrincipal{ClientID: appId, ClientSecret: pwd, TenantID: tenantId}
-			}
-			addingProvider, err = prompt.ConfirmWithDefault("Would you like to add another cloud provider [y/N]", prompt.No)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Failed to read confirmation"}
+				return err
 			}
 		case AWS:
 			r.Output.LogInfo("AWS is not supported")
 		}
-		r.IsRadiusInstalled, err = helm.CheckRadiusInstall(r.KubeContext)
+		addingProvider, err = prompt.ConfirmWithDefault("Would you like to add another cloud provider [y/N]", prompt.No)
 		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to check for radius installation"}
+			return &cli.FriendlyError{Message: "Failed to read confirmation"}
 		}
-		if r.IsRadiusInstalled {
-			msg = "Radius control-plane already installed in context 'AKS' with version '0.12' Would you like to reinstall Radius control-plane with the latest version [Y/n]? Y"
-			prompt.ConfirmWithDefault(msg, prompt.No)
+	}
+	r.RadiusInstalled, err = helm.CheckRadiusInstall(r.KubeContext)
+	if err != nil {
+		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
+	}
+	if r.RadiusInstalled {
+		msg := "Radius control-plane already installed in context 'AKS' Would you like to reinstall Radius control-plane with the latest version [Y/n]? Y"
+		r.Reinstall, err = prompt.ConfirmWithDefault(msg, prompt.No)
+		if err != nil {
+			return &cli.FriendlyError{Message: "Error while installing radius"}
 		}
 	}
 
@@ -181,46 +166,62 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	// TODO: Create ucp resource group if a new one is provided
 	// Install radius control plane if radius is not installed or user prompts to reinstall
-	if !r.IsRadiusInstalled || r.Reinstall {
-		err := installRadius(ctx, r.Reinstall, r)
-		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to install radius"}
-		}
-	} else {
-		// azureProvider := azure.Provider{
-		// 	SubscriptionID:   r.SubscriptionID,
-		// 	ResourceGroup:    r.ResourceGroupName,
-		// 	ServicePrincipal: r.ServicePrincipal,
-		// }
-		
+	// if !r.RadiusInstalled || r.Reinstall {
+	err := installRadius(ctx, r)
+	if err != nil {
+		return &cli.FriendlyError{Message: "Failed to install radius"}
+	}
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
 	}
 
-	// create cloud provider if needed
-	// install radius
+	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
+	if err != nil || isGroupCreated == false {
+		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
+	}
+
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName)
+	if err != nil || isEnvCreated == false {
+		return &cli.FriendlyError{Message: "Failed to create radius environment group"}
+	}
+
+	// Reload config so we can see the updates
+	config, err := cli.LoadConfig(r.ConfigHolder.ConfigFilePath)
+	if err != nil {
+		return err
+	}
+
+	err = cli.EditWorkspaces(r.Ctx, config, func(section *cli.WorkspaceSection) error {
+		ws := section.Items[strings.ToLower(r.Workspace.Name)]
+		ws.Environment = r.EnvName
+		section.Items[strings.ToLower(r.Workspace.Name)] = ws
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func installRadius(ctx context.Context, reinstallRad bool, runner *Runner) error {
-	azureProvider := azure.Provider{
-		SubscriptionID:   runner.SubscriptionID,
-		ResourceGroup:    runner.ResourceGroupName,
-	}
+func installRadius(ctx context.Context, r *Runner) error {
 	cliOptions := helm.CLIClusterOptions{
 		Radius: helm.RadiusOptions{
-			Reinstall:     reinstallRad,
-			AzureProvider: &azureProvider,
+			Reinstall:     r.Reinstall,
+			AzureProvider: r.AzureCloudProvider,
 		},
 	}
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
 	// Ignore existing radius installation because we already asked the user whether to re-install or not
-	_, err := setup.Install(ctx, clusterOptions, runner.KubeContext)
+	_, err := setup.Install(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -240,29 +241,19 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 	return currentContext, nil
 }
 
-func selectCloudProvider(output output.Interface, selectionMessage string) (int, error) {
-	yes := true
+// Selects the cloud provider, returns -1 if back and -2 if not supported
+func selectCloudProvider(output output.Interface) (int, error) {
 	values := []string{"Azure", "AWS", "[back]"}
-	var index int
-	for yes {
-		yes, err := prompt.ConfirmWithDefault(selectionMessage, prompt.No)
-		if err != nil {
-			return -1, err
-		}
-		if yes {
-			index, err = prompt.SelectWithDefault("", &values[0], values)
-			if err != nil {
-				return -1, err
-			}
-			if values[index] == "AWS" {
-				output.LogInfo("AWS not supported")
-				continue
-			}
-			if values[index] == "[back]" {
-				continue
-			}
-			yes = !yes
-		}
+	index, err := prompt.SelectWithDefault("", &values[0], values)
+	if err != nil {
+		return -1, err
+	}
+	if values[index] == "AWS" {
+		output.LogInfo("AWS not supported")
+		return -2, nil
+	}
+	if values[index] == "[back]" {
+		return -1, nil
 	}
 	return index, nil
 }

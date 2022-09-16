@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -253,6 +254,21 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	}
 
 	return respFromCtx.StatusCode != 204, nil
+}
+
+func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string) (bool, error) {
+	client, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = client.CreateOrUpdate(ctx, envName, corerp.EnvironmentResource{}, &corerp.EnvironmentsClientCreateOrUpdateOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+
 }
 
 func isResourceInApplication(ctx context.Context, resource generated.GenericResource, applicationName string) bool {
