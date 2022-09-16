@@ -33,5 +33,6 @@ func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
 type DaprInvokeHttpRouteProperties struct {
 	v1.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 	AppId             string               `json:"appId"`
 }

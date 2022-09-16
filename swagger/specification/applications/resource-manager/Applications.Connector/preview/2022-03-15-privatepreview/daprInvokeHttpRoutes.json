@@ -282,6 +282,12 @@
         "appId": {
           "description": "The Dapr appId used for the route",
           "type": "string"
+        },
+        "recipe" : {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": ["environment", "appId"]

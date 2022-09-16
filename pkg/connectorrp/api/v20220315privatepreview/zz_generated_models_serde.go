@@ -81,6 +81,7 @@ func (d DaprInvokeHTTPRouteProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "provisioningState", d.ProvisioningState)
+	populate(objectMap, "recipe", d.Recipe)
 	populate(objectMap, "status", d.Status)
 	return json.Marshal(objectMap)
 }
@@ -105,6 +106,9 @@ func (d *DaprInvokeHTTPRouteProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &d.Recipe)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &d.Status)

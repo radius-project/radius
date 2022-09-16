@@ -35,6 +35,14 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 			UpdatedAPIVersion: Version,
 		},
 	}
+
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
+	}
+
 	return converted, nil
 }
 
@@ -60,5 +68,13 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 		Application:       to.StringPtr(daprHttpRoute.Properties.Application),
 		AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),
 	}
+
+	if daprHttpRoute.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(daprHttpRoute.Properties.Recipe.Name),
+			Parameters: daprHttpRoute.Properties.Recipe.Parameters,
+		}
+	}
+
 	return nil
 }
