@@ -220,7 +220,7 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
-//RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name
 func RequireUCPResourceGroup(cmd *cobra.Command) (string, error) {
 	group, err := cmd.Flags().GetString("group")
 	if err != nil {
