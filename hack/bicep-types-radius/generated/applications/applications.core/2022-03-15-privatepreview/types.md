@@ -213,6 +213,7 @@
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 
 ## EnvironmentCompute
 * **Discriminator**: kind
@@ -224,6 +225,16 @@
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.
 
+
+## EnvironmentPropertiesRecipes
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [EnvironmentRecipeProperties](#environmentrecipeproperties)
+
+## EnvironmentRecipeProperties
+### Properties
+* **connectorType**: string (Required): Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+* **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
 ## TrackedResourceTags
 ### Properties
