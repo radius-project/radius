@@ -67,22 +67,24 @@ func NewRunner(factory framework.Factory, k8sGoClient client_go.Interface) *Runn
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
-	workspaceName, err := cmd.Flags().GetString("workspace")
-	if err != nil {
-		return err
-	}
-	if workspaceName == "" {
-		section, err := cli.ReadWorkspaceSection(config)
-		if err != nil {
-			return err
-		}
-		workspaceName = section.Default
-	}
 
-	workspace, err := cli.GetWorkspace(config, workspaceName)
+	// TODO: use require workspace
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
+	// if workspace.Name == "" {
+	// 	section, err := cli.ReadWorkspaceSection(config)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	workspace.Name = section.Default
+	// }
+
+	// workspace, err := cli.GetWorkspace(config, workspace.Name)
+	// if err != nil {
+	// 	return err
+	// }
 	r.Workspace = workspace
 
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
@@ -96,6 +98,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	} else if r.Namespace == "" {
 		r.Namespace = r.EnvironmentName
 	}
+	fmt.Println(r.Namespace)
 
 	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
 	if err != nil {
@@ -103,7 +106,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: check if resource group exists
-
 	err = kubernetes.EnsureNamespace(cmd.Context(), r.K8sGoClient, r.Namespace)
 	if err != nil {
 		return err
