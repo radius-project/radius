@@ -7,8 +7,10 @@ package radInit
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
+	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -65,7 +67,7 @@ type Runner struct {
 	CreateNewResourceGroup bool
 	RadiusInstalled        bool
 	Reinstall              bool
-	Ctx                    context.Context
+	Prompter               prompt.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -73,6 +75,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
 		ConnectionFactory: factory.GetConnectionFactory(),
+		Prompter:          &prompt.Impl{},
 	}
 }
 
@@ -89,42 +92,41 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "output format not mentioned"}
 	}
 	r.Format = format
-	r.Ctx = cmd.Context()
 
 	kubeContext, err := kubernetes.ReadKubeConfig()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
 	//TODO: check flags if interactive or not
-	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true)
+	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not mentioned"}
 	}
 	//TODO: check flags if interactive or not
-	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true)
+	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read env name"}
 	}
 
-	r.NameSpace, err = common.SelectNamespace(cmd, "default", true)
+	r.NameSpace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Namespace not mentioned"}
 	}
 
-	addingProvider := true
-	for addingProvider {
+	addingProvider := "y"
+	for strings.ToLower(addingProvider) == "y" {
 		var cloudProvider int
 		addingCloudProvider := true
 		for addingCloudProvider {
-			addCloudProvider, err := prompt.ConfirmWithDefault("Add cloud providers for cloud resources [y/N]?", prompt.No)
+			cloudProviderPrompter, err := prompt.YesOrNoPrompter("Add cloud providers for cloud resources [y/N]?", "N", r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Error reading cloud provider"}
 			}
-			if !addCloudProvider {
+			if strings.ToLower(cloudProviderPrompter) == "n" {
 				cloudProvider = -1
 				break
 			}
-			cloudProvider, err := selectCloudProvider(r.Output)
+			cloudProvider, err := selectCloudProvider(r.Output, r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Error reading cloud provider"}
 			}
@@ -138,14 +140,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		switch cloudProvider {
 		case Azure:
 			//TODO: check for interactive flag
-			r.AzureCloudProvider, err = setup.ParseAzureProviderArgs(cmd, true)
+			r.AzureCloudProvider, err = setup.ParseAzureProviderArgs(cmd, true, r.Prompter)
 			if err != nil {
 				return err
 			}
 		case AWS:
 			r.Output.LogInfo("AWS is not supported")
 		}
-		addingProvider, err = prompt.ConfirmWithDefault("Would you like to add another cloud provider [y/N]", prompt.No)
+		addingProvider, err = r.Prompter.RunPrompt(prompt.TextPromptWithDefault(
+			"Would you like to add another cloud provider [y/N]",
+			"N",
+			nil,
+		))
 		if err != nil {
 			return &cli.FriendlyError{Message: "Failed to read confirmation"}
 		}
@@ -156,9 +162,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	if r.RadiusInstalled {
 		msg := "Radius control-plane already installed in context 'AKS' Would you like to reinstall Radius control-plane with the latest version [Y/n]? Y"
-		r.Reinstall, err = prompt.ConfirmWithDefault(msg, prompt.No)
+		input, err := prompt.YesOrNoPrompter(msg, "N", r.Prompter)
 		if err != nil {
 			return &cli.FriendlyError{Message: "Error while installing radius"}
+		}
+		if strings.ToLower(input) == "y" {
+			r.Reinstall = true
 		}
 	}
 
@@ -193,7 +202,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = cli.EditWorkspaces(r.Ctx, config, func(section *cli.WorkspaceSection) error {
+	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(r.Workspace.Name)]
 		ws.Environment = r.EnvName
 		section.Items[strings.ToLower(r.Workspace.Name)] = ws
@@ -225,13 +234,27 @@ func installRadius(ctx context.Context, r *Runner) error {
 	return nil
 }
 
-func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool) (string, error) {
+func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.Interface) (string, error) {
 	values := []string{}
 	if interactive {
+		confirmDefaultContext, err := prompt.YesOrNoPrompter(
+			fmt.Sprintf("Confirm Default context: %s, %s", currentContext, "[Y/n]"),
+			"Y",
+			prompter,
+		)
+		if err != nil {
+			return "", err
+		}
+		if strings.ToLower(confirmDefaultContext) == "y" {
+			return currentContext, nil
+		}
 		for k, _ := range kubeContexts {
 			values = append(values, k)
 		}
-		index, err := prompt.SelectWithDefault("Select kubeContext:", &currentContext, values)
+		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
+			"Select the context for radius installation",
+			values,
+		))
 		if err != nil {
 			return "", err
 		}
@@ -242,9 +265,13 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 }
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
-func selectCloudProvider(output output.Interface) (int, error) {
+func selectCloudProvider(output output.Interface, prompter prompt.Interface) (int, error) {
 	values := []string{"Azure", "AWS", "[back]"}
-	index, err := prompt.SelectWithDefault("", &values[0], values)
+	cloudProviderSelector := promptui.Select{
+		Label: "Select your cloud provider",
+		Items: values,
+	}
+	index, _, err := prompter.RunSelect(cloudProviderSelector)
 	if err != nil {
 		return -1, err
 	}

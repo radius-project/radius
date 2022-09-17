@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -50,7 +51,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive)
+	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}

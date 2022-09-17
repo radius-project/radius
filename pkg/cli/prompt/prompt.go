@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/manifoldco/promptui"
 )
 
 type BinaryAnswer int
@@ -149,4 +151,71 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	}
 
 	return selected, nil
+}
+
+type Interface interface {
+	RunPrompt(prompter promptui.Prompt) (string, error)
+	RunSelect(selector promptui.Select) (int, string, error)
+}
+
+type Impl struct{}
+
+func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
+	return prompter.Run()
+}
+
+func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
+	return selector.Run()
+}
+
+func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
+	textPrompt := promptui.Prompt{
+		Label:     label,
+		IsConfirm: true,
+		Default:   defaultValue,
+		Validate: func(s string) error {
+			if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
+				return errors.New("invalid input")
+			}
+			return nil
+		},
+	}
+	result, err := prompter.RunPrompt(textPrompt)
+	if errors.Is(err, promptui.ErrAbort) {
+		return result, nil
+	} else if err != nil {
+		return "", err
+	}
+	return result, err
+}
+
+func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {
+	return promptui.Prompt{
+		Label:     label,
+		Default:   defaultVal,
+		AllowEdit: true,
+		Validate: func(s string) error {
+			valid, msg, err := f(s)
+			if err != nil {
+				return err
+			}
+			if !valid {
+				return errors.New(msg)
+			}
+			return nil
+		},
+	}
+}
+
+func SelectionPrompter(label string, items []string) promptui.Select {
+	return promptui.Select{
+		Label: label,
+		Items: items,
+		Searcher: func(input string, index int) bool {
+			if strings.HasPrefix(items[index],input) {
+				return true
+			}
+			return false
+		},
+	}
 }

@@ -7,9 +7,11 @@ package common
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -26,7 +28,7 @@ func ValidateCloudProviderName(name string) error {
 	return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider type %q is not supported. Supported types: azure.", name)}
 }
 
-func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
+func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
 	var envStr string
 	var err error
 
@@ -36,11 +38,10 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 	}
 	if interactive && envStr == "" {
 		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.ResourceName)
+		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault(promptMsg, defaultVal, prompt.ResourceName))
 		if err != nil {
 			return "", err
 		}
-		fmt.Printf("Using %s as environment name\n", envStr)
 	} else {
 		if envStr == "" {
 			output.LogInfo("No environment name provided, using: %v", defaultVal)
@@ -55,16 +56,29 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 	return envStr, nil
 }
 
-func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
+func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
 	var val string
 	var err error
 	if interactive {
 		promptMsg := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultVal)
-		val, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
+		namespaceSelector := promptui.Prompt {
+			Label: promptMsg,
+			Default: defaultVal,
+			Validate: func(s string) error {
+				valid, msg, err := prompt.EmptyValidator(s)
+				if err != nil {
+					return err
+				}
+				if !valid {
+					return errors.New(msg)
+				}
+				return nil
+			},
+		}
+		val, err = prompter.RunPrompt(namespaceSelector)
 		if err != nil {
 			return "", err
 		}
-		fmt.Printf("Using %s as namespace name\n", val)
 	} else {
 		val, _ = cmd.Flags().GetString("namespace")
 		if val == "" {
