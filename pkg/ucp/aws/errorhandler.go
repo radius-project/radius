@@ -7,7 +7,7 @@ package aws
 import (
 	"errors"
 
-	"github.com/aws/aws-sdk-go-v2/service/sso/types"
+	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/project-radius/radius/pkg/ucp/rest"

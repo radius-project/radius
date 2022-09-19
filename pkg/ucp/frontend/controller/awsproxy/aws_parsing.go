@@ -20,10 +20,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
+type AWSClientKeyType string
+type AWSResourceTypeKeyType string
+type AWSResourceIDType string
+
 const (
-	AWSClientKey       = "AWSClient"
-	AWSResourceTypeKey = "AWSResourceType"
-	AWSResourceID      = "AWSResourceID"
+	AWSClientKey       AWSClientKeyType       = "AWSClient"
+	AWSResourceTypeKey AWSResourceTypeKeyType = "AWSResourceType"
+	AWSResourceID      AWSResourceIDType      = "AWSResourceID"
 )
 
 // AWSParser is the controller implementation to create/update an AWS resource.

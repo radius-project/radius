@@ -51,7 +51,10 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 
 		response := rest.NewBadRequestARMResponse(e)
-		response.Apply(ctx, w, req)
+		err = response.Apply(ctx, w, req)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	properties := map[string]interface{}{}
