@@ -946,6 +946,6 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.Error(t, err)
-		require.Equal(t, fmt.Sprintf("Recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
+		require.Equal(t, fmt.Sprintf("recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
 	})
 }
