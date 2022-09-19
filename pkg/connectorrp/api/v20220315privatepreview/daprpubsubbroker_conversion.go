@@ -26,6 +26,11 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
 	}
+
+	if src.Properties.GetDaprPubSubBrokerProperties().Recipe != nil {
+		daprPubSubproperties.Recipe = toDaprPubSubBrokerRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
+	}
+
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
 		Name:     to.String(src.Name),
@@ -54,6 +59,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	default:
 		return nil, errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
+
 	return converted, nil
 }
 
@@ -102,6 +108,10 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 		return errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
 
+	if daprPubSub.Properties.Recipe.Name != "" {
+		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromDaprPubSubBrokerRecipeDataModel(daprPubSub.Properties.Recipe)
+	}
+
 	return nil
 }
 
@@ -128,4 +138,22 @@ func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *Dap
 		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
 	}
 	return &convertedKind
+}
+
+func toDaprPubSubBrokerRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
+	recipe := datamodel.ConnectorRecipe{
+		Name: to.String(r.Name),
+	}
+
+	if r.Parameters != nil {
+		recipe.Parameters = r.Parameters
+	}
+	return recipe
+}
+
+func fromDaprPubSubBrokerRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
+	return &Recipe{
+		Name:       to.StringPtr(r.Name),
+		Parameters: r.Parameters,
+	}
 }

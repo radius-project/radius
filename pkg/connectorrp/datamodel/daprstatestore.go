@@ -47,6 +47,7 @@ type DaprStateStoreProperties struct {
 	DaprStateStoreSQLServer         DaprStateStoreSQLServerResourceProperties         `json:"daprStateStoreSQLServer"`
 	DaprStateStoreAzureTableStorage DaprStateStoreAzureTableStorageResourceProperties `json:"daprStateStoreAzureTableStorage"`
 	DaprStateStoreGeneric           DaprStateStoreGenericResourceProperties           `json:"daprStateStoreGeneric"`
+	Recipe                          ConnectorRecipe                                   `json:"recipe,omitempty"`
 }
 
 type DaprStateStoreGenericResourceProperties struct {

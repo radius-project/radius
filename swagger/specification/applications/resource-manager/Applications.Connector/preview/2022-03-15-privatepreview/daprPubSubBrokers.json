@@ -338,6 +338,12 @@
         "topic": {
           "description": "Topic name of the Azure ServiceBus resource",
           "type": "string"
+        },
+        "recipe" : {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [

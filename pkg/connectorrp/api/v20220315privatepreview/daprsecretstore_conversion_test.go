@@ -16,7 +16,7 @@ import (
 )
 
 func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprsecretstoreresource.json", "daprsecretstoreresource2.json"}
+	testset := []string{"daprsecretstoreresource.json", "daprsecretstoreresource2.json", "daprsecretstoreresource_recipe.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -43,14 +43,18 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		if payload == "daprsecretstoreresource.json" {
 			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
+		if payload == "daprsecretstoreresource_recipe.json" {
+			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+		}
 	}
 }
 
 func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"daprsecretstoreresourcedatamodel.json", "daprsecretstoreresourcedatamodel2.json"}
+	testset := []string{"daprsecretstoreresourcedatamodel.json", "daprsecretstoreresourcedatamodel2.json", "daprsecretstoreresourcedatamodel_recipe.json"}
 	for _, payload := range testset {
 		// arrange
-		rawPayload := loadTestData("daprsecretstoreresourcedatamodel.json")
+		rawPayload := loadTestData(payload)
 		resource := &datamodel.DaprSecretStore{}
 		err := json.Unmarshal(rawPayload, resource)
 		require.NoError(t, err)
@@ -74,6 +78,10 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		if payload == "daprsecretstoreresource.json" {
 			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+		}
+		if payload == "daprsecretstoreresourcedatamodel_recipe.json" {
+			require.Equal(t, "daprSecretStore", *versionedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", versionedResource.Properties.Recipe.Parameters["foo"])
 		}
 	}
 

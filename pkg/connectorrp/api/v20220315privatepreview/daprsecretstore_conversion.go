@@ -39,6 +39,12 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 			UpdatedAPIVersion: Version,
 		},
 	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
+	}
 	return converted, nil
 }
 
@@ -67,6 +73,12 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 		Version:           to.StringPtr(daprSecretStore.Properties.Version),
 		Metadata:          daprSecretStore.Properties.Metadata,
 		SecretStoreName:   to.StringPtr(daprSecretStore.Properties.SecretStoreName),
+	}
+	if daprSecretStore.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(daprSecretStore.Properties.Recipe.Name),
+			Parameters: daprSecretStore.Properties.Recipe.Parameters,
+		}
 	}
 	return nil
 }

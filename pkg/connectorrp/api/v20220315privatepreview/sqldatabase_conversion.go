@@ -37,6 +37,14 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			UpdatedAPIVersion: Version,
 		},
 	}
+
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
+	}
+
 	return converted, nil
 }
 
@@ -63,6 +71,13 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 		Resource:          to.StringPtr(sql.Properties.Resource),
 		Database:          to.StringPtr(sql.Properties.Database),
 		Server:            to.StringPtr(sql.Properties.Server),
+	}
+
+	if sql.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(sql.Properties.Recipe.Name),
+			Parameters: sql.Properties.Recipe.Parameters,
+		}
 	}
 
 	return nil

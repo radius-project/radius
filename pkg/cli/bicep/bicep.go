@@ -52,7 +52,7 @@ func DeleteBicep() error {
 func DownloadBicep() error {
 	dirPrefix := "bicep-extensibility"
 	// Placeholders are for: channel, platform, filename
-	downloadURIFmt := fmt.Sprint("https://radiuspublic.blob.core.windows.net/tools/", dirPrefix, "/%s/%s/%s")
+	downloadURIFmt := fmt.Sprint("https://get.radapp.dev/tools/", dirPrefix, "/%s/%s/%s")
 
 	uri, err := tools.GetDownloadURI(downloadURIFmt, binaryName)
 	if err != nil {

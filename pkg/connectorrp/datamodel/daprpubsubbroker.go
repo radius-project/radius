@@ -55,4 +55,5 @@ type DaprPubSubBrokerProperties struct {
 	Topic                     string                                      `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	DaprPubSubGeneric         DaprPubSubGenericResourceProperties         `json:"daprPubSubGeneric"`
 	DaprPubSubAzureServiceBus DaprPubSubAzureServiceBusResourceProperties `json:"daprPubSubAzureServiceBus"`
+	Recipe                    ConnectorRecipe                             `json:"recipe,omitempty"`
 }

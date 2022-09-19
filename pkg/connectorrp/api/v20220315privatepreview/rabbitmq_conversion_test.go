@@ -16,7 +16,7 @@ import (
 )
 
 func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json"}
+	testset := []string{"rabbitmqresource.json", "rabbitmqresource2.json", "rabbitmqresource_recipe.json"}
 	for _, payload := range testset {
 
 		// arrange
@@ -36,11 +36,16 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Connector/rabbitMQMessageQueues", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "testQueue", convertedResource.Properties.Queue)
-		require.Equal(t, "connection://string", convertedResource.Properties.Secrets.ConnectionString)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		if payload == "rabbitmqresource.json" {
 			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+		}
+		if payload == "rabbitmqresource_recipe.json" {
+			require.Equal(t, "rabbitmq", convertedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+		} else {
+			require.Equal(t, "testQueue", convertedResource.Properties.Queue)
+			require.Equal(t, "connection://string", convertedResource.Properties.Secrets.ConnectionString)
 		}
 	}
 }
@@ -104,7 +109,7 @@ func TestRabbitMQMessageQueueResponse_ConvertVersionedToDataModel(t *testing.T) 
 }
 
 func TestRabbitMQMessageQueueResponse_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rabbitmqresponseresourcedatamodel.json", "rabbitmqresourcedatamodel2.json"}
+	testset := []string{"rabbitmqresponseresourcedatamodel.json", "rabbitmqresourcedatamodel2.json", "rabbitmqresourcedatamodel_recipe.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -123,10 +128,15 @@ func TestRabbitMQMessageQueueResponse_ConvertDataModelToVersioned(t *testing.T) 
 		require.Equal(t, "Applications.Connector/rabbitMQMessageQueues", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		require.Equal(t, "testQueue", *versionedResource.Properties.Queue)
 		if payload == "rabbitmqresponseresourcedatamodel.json" {
 			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "rabbitmqProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
+		}
+		if payload == "rabbitmqresourcedatamodel_recipe.json" {
+			require.Equal(t, "rabbitmq", *versionedResource.Properties.Recipe.Name)
+			require.Equal(t, "bar", versionedResource.Properties.Recipe.Parameters["foo"])
+		} else {
+			require.Equal(t, "testQueue", *versionedResource.Properties.Queue)
 		}
 	}
 }

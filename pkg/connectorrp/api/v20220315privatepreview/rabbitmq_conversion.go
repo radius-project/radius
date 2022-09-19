@@ -15,12 +15,6 @@ import (
 
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.RabbitMQSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-		}
-	}
 	converted := &datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -38,11 +32,21 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 				Queue:             to.String(src.Properties.Queue),
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+		}
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
@@ -68,6 +72,12 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
+		if src.Properties.Recipe.Parameters != nil {
+			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
+		}
 	}
 	return converted, nil
 }
@@ -99,6 +109,12 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 			ConnectionString: to.StringPtr(rabbitmq.Properties.Secrets.ConnectionString),
 		}
 	}
+	if rabbitmq.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(rabbitmq.Properties.Recipe.Name),
+			Parameters: rabbitmq.Properties.Recipe.Parameters,
+		}
+	}
 
 	return nil
 }
@@ -124,6 +140,12 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
 		Application:       to.StringPtr(rabbitmq.Properties.Application),
 		Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+	}
+	if rabbitmq.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = &Recipe{
+			Name:       to.StringPtr(rabbitmq.Properties.Recipe.Name),
+			Parameters: rabbitmq.Properties.Recipe.Parameters,
+		}
 	}
 	return nil
 }

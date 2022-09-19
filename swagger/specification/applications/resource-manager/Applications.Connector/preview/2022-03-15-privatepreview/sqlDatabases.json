@@ -290,6 +290,12 @@
           "server": {
             "description": "The fully qualified domain name of the SQL database.",
             "type": "string"
+          },
+          "recipe" : {
+            "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database connector",
+            "type": "object",
+            "additionalProperties": false,
+            "$ref": "global.json#/definitions/Recipe"
           }
         },
         "required": ["environment"]

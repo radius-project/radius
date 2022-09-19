@@ -85,6 +85,24 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "Recipe": {
+      "description": "The recipe used to automatically deploy underlying infrastructure for a connector",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the recipe within the environment to use",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "type": "object",
+          "example":[{
+            "port": 6060
+          }]
+        }
+      },
+      "required": ["name"]
     }
   },
   "parameters": {

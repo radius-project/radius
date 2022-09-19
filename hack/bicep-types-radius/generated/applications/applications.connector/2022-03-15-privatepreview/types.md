@@ -134,7 +134,13 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+
+## Recipe
+### Properties
+* **name**: string (Required): The name of the recipe within the environment to use
+* **parameters**: any: Any object
 
 ## ResourceStatus
 ### Properties
@@ -161,6 +167,7 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **topic**: string: Topic name of the Azure ServiceBus resource
 ### DaprPubSubGenericResourceProperties
@@ -188,6 +195,7 @@
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **secretStoreName**: string (ReadOnly): The name of the Dapr Secret Store.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
@@ -205,6 +213,7 @@
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **stateStoreName**: string (ReadOnly): The name of the Dapr State Store
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### DaprStateStoreGenericResourceProperties
@@ -258,6 +267,7 @@
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -279,6 +289,7 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **queue**: string (Required): The name of the queue
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets) (WriteOnly): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -298,6 +309,7 @@
 * **host**: string: The host name of the target redis cache
 * **port**: int: The port value of the target redis cache
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets) (WriteOnly): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -319,6 +331,7 @@
 * **database**: string: The name of the SQL database.
 * **environment**: string (Required): The resource id of the environment linked to the sqlDatabase connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this connector
 * **server**: string: The fully qualified domain name of the SQL database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.

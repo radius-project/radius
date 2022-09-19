@@ -65,7 +65,7 @@ func ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error) {
 		if count == 0 && defaultAns != unknown {
 			return defaultAns == Yes, nil
 		} else if err != nil {
-			return false, errors.New("nothing enterted")
+			return false, errors.New("nothing entered")
 		}
 
 		if strings.EqualFold("y", input) {

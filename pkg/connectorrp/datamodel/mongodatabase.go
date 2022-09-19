@@ -56,6 +56,7 @@ type MongoDatabaseResponseProperties struct {
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
 	Database          string               `json:"database,omitempty"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 }
 
 type MongoDatabaseProperties struct {

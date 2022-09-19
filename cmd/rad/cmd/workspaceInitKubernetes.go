@@ -33,7 +33,7 @@ func init() {
 	workspaceInitKubernetesCmd.Flags().BoolP("force", "f", false, "Overwrite existing workspace if present")
 	workspaceInitKubernetesCmd.Flags().String("kubecontext", "", "the Kubernetes context to use, will use the default if unset")
 
-	setup.RegistePersistantAzureProviderArgs(workspaceInitKubernetesCmd)
+	setup.RegisterPersistentAzureProviderArgs(workspaceInitKubernetesCmd)
 }
 
 func initWorkspaceKubernetes(cmd *cobra.Command, args []string) error {

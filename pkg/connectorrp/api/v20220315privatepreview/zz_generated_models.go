@@ -37,6 +37,9 @@ type DaprInvokeHTTPRouteProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -103,6 +106,9 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -121,6 +127,7 @@ func (d *DaprPubSubAzureServiceBusResourceProperties) GetDaprPubSubBrokerPropert
 		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -153,6 +160,9 @@ type DaprPubSubBrokerProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
@@ -232,6 +242,9 @@ type DaprPubSubGenericResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -250,6 +263,7 @@ func (d *DaprPubSubGenericResourceProperties) GetDaprPubSubBrokerProperties() *D
 		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -282,6 +296,9 @@ type DaprSecretStoreProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -352,6 +369,9 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -370,6 +390,7 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) GetDaprStateStorePro
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -393,6 +414,9 @@ type DaprStateStoreGenericResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -411,6 +435,7 @@ func (d *DaprStateStoreGenericResourceProperties) GetDaprStateStoreProperties() 
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -444,6 +469,9 @@ type DaprStateStoreProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -495,6 +523,9 @@ type DaprStateStoreSQLServerResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -513,6 +544,7 @@ func (d *DaprStateStoreSQLServerResourceProperties) GetDaprStateStoreProperties(
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -717,6 +749,9 @@ type MongoDatabaseProperties struct {
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
 
@@ -770,6 +805,9 @@ type MongoDatabaseResponseProperties struct {
 
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -867,6 +905,9 @@ type RabbitMQMessageQueueProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitmq connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// Secrets provided by resources,
 	Secrets *RabbitMQSecrets `json:"secrets,omitempty"`
 
@@ -911,6 +952,9 @@ type RabbitMQMessageQueueResponseProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rabbitmq connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -977,6 +1021,15 @@ type RabbitMQSecrets struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
+// Recipe - The recipe used to automatically deploy underlying infrastructure for a connector
+type Recipe struct {
+	// REQUIRED; The name of the recipe within the environment to use
+	Name *string `json:"name,omitempty"`
+
+	// Key/value parameters to pass into the recipe at deployment
+	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
 type RedisCacheList struct {
 	// The link used to fetch the next page of RedisCache list.
@@ -999,6 +1052,9 @@ type RedisCacheProperties struct {
 
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -1053,6 +1109,9 @@ type RedisCacheResponseProperties struct {
 
 	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the rediscache connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with Redis API to use for this connector
 	Resource *string `json:"resource,omitempty"`
@@ -1161,6 +1220,9 @@ type SQLDatabaseProperties struct {
 
 	// The name of the SQL database.
 	Database *string `json:"database,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the SQL database connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID of a supported resource with SQL API to use for this connector
 	Resource *string `json:"resource,omitempty"`
