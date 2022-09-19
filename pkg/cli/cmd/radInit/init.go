@@ -187,12 +187,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
-	if err != nil || isGroupCreated == false {
+	if err != nil || !isGroupCreated {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName)
-	if err != nil || isEnvCreated == false {
+	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment group"}
 	}
 
@@ -248,7 +248,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		if strings.ToLower(confirmDefaultContext) == "y" {
 			return currentContext, nil
 		}
-		for k, _ := range kubeContexts {
+		for k := range kubeContexts {
 			values = append(values, k)
 		}
 		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
@@ -281,33 +281,6 @@ func selectCloudProvider(output output.Interface, prompter prompt.Interface) (in
 	}
 	if values[index] == "[back]" {
 		return -1, nil
-	}
-	return index, nil
-}
-
-func selectResourceGroup(output output.Interface, selectionMessage string) (int, error) {
-	yes := true
-	values := []string{"Azure", "AWS", "[back]"}
-	var index int
-	for yes {
-		yes, err := prompt.ConfirmWithDefault(selectionMessage, prompt.No)
-		if err != nil {
-			return -1, err
-		}
-		if yes {
-			index, err = prompt.SelectWithDefault("", &values[0], values)
-			if err != nil {
-				return -1, err
-			}
-			if values[index] == "AWS" {
-				output.LogInfo("AWS not supported")
-				continue
-			}
-			if values[index] == "[back]" {
-				continue
-			}
-			yes = !yes
-		}
 	}
 	return index, nil
 }

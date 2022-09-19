@@ -212,10 +212,7 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 		Label: label,
 		Items: items,
 		Searcher: func(input string, index int) bool {
-			if strings.HasPrefix(items[index],input) {
-				return true
-			}
-			return false
+			return strings.HasPrefix(items[index],input)
 		},
 	}
 }
