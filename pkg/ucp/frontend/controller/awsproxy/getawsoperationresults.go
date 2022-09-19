@@ -14,7 +14,6 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/middleware"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -35,8 +34,8 @@ func NewGetAWSOperationResults(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client := ctx.Value(middleware.AWSClientKey).(*cloudcontrol.Client)
-	id := ctx.Value(middleware.AWSResourceID).(resources.ID)
+	client := ctx.Value(AWSClientKey).(*cloudcontrol.Client)
+	id := ctx.Value(AWSResourceID).(resources.ID)
 
 	response, err := client.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(id.Name()),

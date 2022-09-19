@@ -11,7 +11,6 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/project-radius/radius/pkg/middleware"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -31,9 +30,9 @@ func NewGetOrListAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *GetOrListAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	resourceType := ctx.Value(middleware.AWSResourceTypeKey).(string)
-	client := ctx.Value(middleware.AWSClientKey).(*cloudcontrol.Client)
-	id := ctx.Value(middleware.AWSResourceID).(resources.ID)
+	resourceType := ctx.Value(AWSResourceTypeKey).(string)
+	client := ctx.Value(AWSClientKey).(*cloudcontrol.Client)
+	id := ctx.Value(AWSResourceID).(resources.ID)
 
 	if id.IsCollection() {
 		return p.listAWSResources(ctx, resourceType, client, id)

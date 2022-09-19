@@ -11,7 +11,6 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
@@ -80,10 +79,14 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
 	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
 
+	awsParser, err := awsproxy_ctrl.NewAWSParser(ctrlOpts)
+	if err != nil {
+		return err
+	}
 	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
-	awsResourcesSubRouter.Use(middleware.AWSParsing)
-	awsOperationStatusesSubRouter := awsResourcesSubRouter.Path(awsOperationStatusesPath).Subrouter()
-	awsOperationResultsSubRouter := awsResourcesSubRouter.Path(awsOperationResultsPath).Subrouter()
+	awsResourcesSubRouter.Use(awsParser.Parse)
+	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
+	awsOperationResultsSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationResultsPath).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -174,13 +177,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			return err
 		}
 	}
-
-	router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-		tpl, err1 := route.GetPathTemplate()
-		met, err2 := route.GetMethods()
-		fmt.Println(tpl, err1, met, err2)
-		return nil
-	})
 
 	return nil
 }

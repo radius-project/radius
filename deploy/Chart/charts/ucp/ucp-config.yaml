@@ -38,7 +38,6 @@ planes:
         Microsoft.Resources: "http://de-api.radius-system:6443"
       kind: "UCPNative"
   - id: "/planes/aws/aws"
-    properties: {
+    properties:
       kind: "AWS"
-    }
 

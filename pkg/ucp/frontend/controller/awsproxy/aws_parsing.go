@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package middleware
+package awsproxy
 
 import (
 	"context"
@@ -13,7 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/project-radius/radius/pkg/middleware"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 )
@@ -24,7 +26,17 @@ const (
 	AWSResourceID      = "AWSResourceID"
 )
 
-func AWSParsing(h http.Handler) http.Handler {
+// AWSParser is the controller implementation to create/update an AWS resource.
+type AWSParser struct {
+	ctrl.BaseController
+}
+
+// NewAWSParser creates a new AWSParser.
+func NewAWSParser(opts ctrl.Options) (*AWSParser, error) {
+	return &AWSParser{ctrl.NewBaseController(opts)}, nil
+}
+
+func (p *AWSParser) Parse(h http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		// Common parsing in AWS plane requests
 		ctx := r.Context()
@@ -38,7 +50,8 @@ func AWSParsing(h http.Handler) http.Handler {
 		cfg.ClientLogMode |= aws.LogResponseWithBody
 
 		client := cloudcontrol.NewFromConfig(cfg)
-		id, err := resources.ParseByMethod(r.URL.Path, r.Method)
+		path := middleware.GetRelativePath(p.Options.BasePath, r.URL.Path)
+		id, err := resources.ParseByMethod(path, r.Method)
 		if err != nil {
 			handleError(ctx, w, r, err)
 			return
@@ -71,5 +84,8 @@ func handleError(ctx context.Context, w http.ResponseWriter, r *http.Request, er
 		}
 		errResponse = rest.NewInternalServerErrorARMResponse(e)
 	}
-	errResponse.Apply(r.Context(), w, r)
+	applyErr := errResponse.Apply(r.Context(), w, r)
+	if applyErr != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
 }
