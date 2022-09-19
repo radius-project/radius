@@ -99,7 +99,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	namespace, templatePath, err := dp.getEnvironmentMetadata(ctx, environment, resourceID.String(), res.Resource)
+	namespace, err := dp.getEnvironmentNamespace(ctx, environment, resourceID.String())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -596,54 +596,38 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 	return app.Properties.Environment, nil
 }
 
-// getEnvironmentMetadata fetches the environment resource from the db for getting the namespace to deploy the resources and the template path for the recipe
-func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID, resourceID string, resourceType conv.DataModelInterface) (string, string, error) {
+// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
 	envId, err := resources.Parse(environmentID)
-	var namespace = ""
-	var templatePath = ""
-
 	if err != nil {
-		return namespace, templatePath, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
 	}
 
 	env := &datamodel.Environment{}
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return namespace, templatePath, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
+		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
 	}
 
 	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
 	if err != nil {
-		return namespace, templatePath, fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 	res, err := sc.Get(ctx, envId.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return namespace, templatePath, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
 		}
-		return namespace, templatePath, fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 	err = res.As(env)
 	if err != nil {
-		return namespace, templatePath, fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 
 	if env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
-		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+		return env.Properties.Compute.KubernetesCompute.Namespace, nil
 	} else {
-		return namespace, templatePath, fmt.Errorf("cannot find namespace in the environment resource")
+		return "", fmt.Errorf("cannot find namespace in the environment resource")
 	}
-
-	if env.Properties.Recipes == nil {
-		// no recipes are available on the environment resource
-		return namespace, templatePath, nil
-	}
-
-	for _, v := range env.Properties.Recipes {
-		if v.ConnectorType == env.ResourceTypeName() {
-			return namespace, templatePath, nil
-		}
-	}
-
-	return namespace, templatePath, fmt.Errorf("cannot find recipe in the environment resource for the given connector type")
 }
