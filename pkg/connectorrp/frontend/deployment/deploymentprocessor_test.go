@@ -931,10 +931,10 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, connectorType, templateType, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.NoError(t, err)
-		require.Equal(t, "Applications.Connector/MongoDatabases", connectorType)
-		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", templateType)
+		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.ConnectorType)
+		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.TemplatePath)
 
 	})
 
@@ -944,7 +944,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
-		_, _, _, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.Error(t, err)
 		require.Equal(t, fmt.Sprintf("Recipe with name %q does not exist in environment resource", recipeName), err.Error())
 	})
