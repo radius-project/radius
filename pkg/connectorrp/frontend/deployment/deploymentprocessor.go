@@ -92,6 +92,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
+
 	// Fetch the environment namespace, recipe connector type and recipe template path by doing a db lookup
 	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 	if err != nil {
@@ -408,7 +409,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
 		return envMetadata, nil
 	} else if recipeName != "" {
-		return envMetadata, fmt.Errorf("Recipe with name %q does not exist in the environment %s", recipeName, environmentID)
+		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
 
 	// no recipe is associated with resource
