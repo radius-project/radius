@@ -73,9 +73,9 @@ type ResourceData struct {
 }
 
 type EnvironmentMetadata struct {
-	Namespace     string
-	ConnectorType string
-	TemplatePath  string
+	Namespace           string
+	RecipeConnectorType string
+	RecipeTemplatePath  string
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -92,16 +92,16 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	// fetch the environment namespace, connectort type and recipe template path by doing a db lookup
+	// Fetch the environment namespace, recipe connector type and recipe template path by doing a db lookup
 	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
-		Namespace:     envMetadata.Namespace,
-		ConnectorType: envMetadata.ConnectorType,
-		TemplatePath:  envMetadata.TemplatePath,
+		Namespace:           envMetadata.Namespace,
+		RecipeConnectorType: envMetadata.RecipeConnectorType,
+		RecipeTemplatePath:  envMetadata.RecipeTemplatePath,
 	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -303,11 +303,9 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
 
-// getMetadataFromResource returns the environment id from the resource for looking up the namespace
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, string, error) {
+// getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipeName string, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
-	var envId string
-	var recipeName string
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
@@ -368,7 +366,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	return envId, recipeName, nil
 }
 
-// getEnvironmentMetadata fetches the environment resource from the db for getting the namespace to deploy the resources, and the connector type and the template path for the recipe
+// getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the connector and linked resources ```
 func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
 	envId, err := resources.Parse(environmentID)
 	envMetadata = EnvironmentMetadata{}
@@ -406,11 +404,11 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	// identify recipe's template path associated with provided recipe name
 	recipe, ok := env.Properties.Recipes[recipeName]
 	if ok {
-		envMetadata.ConnectorType = recipe.ConnectorType
-		envMetadata.TemplatePath = recipe.TemplatePath
+		envMetadata.RecipeConnectorType = recipe.ConnectorType
+		envMetadata.RecipeTemplatePath = recipe.TemplatePath
 		return envMetadata, nil
 	} else if recipeName != "" {
-		return envMetadata, fmt.Errorf("Recipe with name %q does not exist in environment resource", recipeName)
+		return envMetadata, fmt.Errorf("Recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
 
 	// no recipe is associated with resource

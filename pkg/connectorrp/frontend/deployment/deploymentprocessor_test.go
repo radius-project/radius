@@ -933,8 +933,8 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.NoError(t, err)
-		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.ConnectorType)
-		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.TemplatePath)
+		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.RecipeConnectorType)
+		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.RecipeTemplatePath)
 
 	})
 
@@ -946,6 +946,6 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.Error(t, err)
-		require.Equal(t, fmt.Sprintf("Recipe with name %q does not exist in environment resource", recipeName), err.Error())
+		require.Equal(t, fmt.Sprintf("Recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
 	})
 }
