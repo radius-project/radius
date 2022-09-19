@@ -106,7 +106,7 @@ const (
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
 func (state ProvisioningState) IsTerminal() bool {
-	// `state == ""` is for fall-back case.
+	// If state is empty, it is the resource created by synchronous API and treated as a terminal state.
 	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
 }
 
