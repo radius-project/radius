@@ -7,13 +7,10 @@ package show
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/cmd/group"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -24,9 +21,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "show -g resourcegroupname",
-		Short:   "Show the details of a resource group",
-		Long:    `Show the details of a resource group
+		Use:   "show -g resourcegroupname",
+		Short: "Show the details of a resource group",
+		Long: `Show the details of a resource group
 
 Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
 
@@ -67,30 +64,11 @@ func NewRunner(factory framework.Factory) *Runner {
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
-	section, err := cli.ReadWorkspaceSection(config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	workspaceName, err := cmd.Flags().GetString("workspace")
-	if err != nil {
-		return err
-	}
-
-	if workspaceName == "" {
-		section, err := cli.ReadWorkspaceSection(config)
-		if err != nil {
-			return err
-		}
-		workspaceName = section.Default
-	}
-	if workspaceName == "" {
-		return fmt.Errorf("no default workspace set. Run`rad workspace switch` or `rad init` and try again")
-	}
-	workspace, err := section.GetWorkspace(workspaceName)
-	if err != nil {
-		return err
-	}
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
@@ -98,29 +76,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if format == "" {
 		format = "table"
 	}
-	r.Format = format
-
-	kubecontext, ok := workspace.Connection["context"].(string)
-	if !ok {
-		return fmt.Errorf("cannot delete the resource group. workspace %q has invalid context", workspaceName)
-	}
-
 	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
 	if err != nil {
 		return err
 	}
-	if resourcegroup == "" {
-		return fmt.Errorf("cannot deletes resource group without specifying its name. use -g to provide the name")
-	}
 
-	isRadiusInstalled, err := helm.CheckRadiusInstall(kubecontext)
-	if err != nil {
-		return err
-	}
-	if !isRadiusInstalled {
-		return fmt.Errorf("radius control plane not installed. run `rad init` or `rad install` and try again")
-	}
-
+	r.Format = format
 	r.UCPResourceGroupName = resourcegroup
 	r.Workspace = workspace
 
@@ -134,20 +95,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
+	resourceGroup, err := client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
 		return err
 	}
 
-	//TODO: type group.ResourceGroupResource should not be needed once we integrate the next api version for ucp swagger
-	//then the output of ShowUCPGroup can be directly passed to WriteFormmated.
-	id := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.UCPResourceGroupName)
-	resourcegroup := group.ResourceGroupResource{
-		ID:   &id,
-		Name: &r.UCPResourceGroupName,
-	}
-
-	err = r.Output.WriteFormatted(r.Format, resourcegroup, objectformats.GetResourceGroupTableFormat())
+	err = r.Output.WriteFormatted(r.Format, resourceGroup, objectformats.GetResourceGroupTableFormat())
 
 	if err != nil {
 		return err

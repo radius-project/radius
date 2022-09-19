@@ -48,7 +48,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command with no workspace specified",
+			Name:          "List Command with valid workspace specified",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{

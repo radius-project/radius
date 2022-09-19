@@ -40,7 +40,7 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "Delete Command with correct options",
 			Input:         []string{"-g", "groupname"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithoutWorkspace,
@@ -52,34 +52,88 @@ func Test_Validate(t *testing.T) {
 
 func Test_Run(t *testing.T) {
 
-	t.Run("Validate rad group delete", func(t *testing.T) {
+	t.Run("Delete resource group", func(t *testing.T) {
+		t.Run("Success (non-existent)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
 
-		ctrl := gomock.NewController(t)
-		defer ctrl.Finish()
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(true, nil).Times(2)
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(true, nil).Times(2)
+			outputSink := &output.MockOutput{}
 
-		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
-				"kind":    "kubernetes",
-				"context": "kind-kind",
-			},
+			runner := &Runner{
+				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Workspace:            &workspaces.Workspace{},
+				UCPResourceGroupName: "testrg",
+				Confirmation:         true,
+				Output:               outputSink,
+			}
 
-			Name: "kind-kind",
-		}
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
 
-		outputSink := &output.MockOutput{}
-		runner := &Runner{
-			ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Workspace:            workspace,
-			UCPResourceGroupName: "testrg",
-			Confirmation:         true,
-			Output:               outputSink,
-		}
+			expected := []interface{}{
+				output.LogOutput{
+					Format: "resource group %q deleted",
+					Params: []interface{}{"testrg"},
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+		})
 
-		err := runner.Run(context.Background())
-		require.NoError(t, err)
+		t.Run("Success (deleted)", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().DeleteUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(false, nil).Times(2)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Workspace:            &workspaces.Workspace{},
+				UCPResourceGroupName: "testrg",
+				Confirmation:         true,
+				Output:               outputSink,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []interface{}{
+				output.LogOutput{
+					Format: "resourcegroup %q does not exist or has already been deleted",
+					Params: []interface{}{"testrg"},
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+
+		})
+
+		t.Run("Answer no on confirmation", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			outputSink := &output.MockOutput{}
+			runner := &Runner{
+				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Workspace:            &workspaces.Workspace{},
+				UCPResourceGroupName: "testrg",
+				Confirmation:         false,
+				Output:               outputSink,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+
+			expected := []interface{}{
+				output.LogOutput{
+					Format: "resource group %q NOT deleted",
+					Params: []interface{}{"testrg"},
+				},
+			}
+			require.Equal(t, expected, outputSink.Writes)
+
+		})
 	})
 
 }

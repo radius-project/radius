@@ -7,12 +7,12 @@ package create
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/cmd/group/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
@@ -23,9 +23,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "create -g resourcegroupname",
-		Short:   "Create a new resource group",
-		Long:    `Create a new resource group
+		Use:   "create -g resourcegroupname",
+		Short: "Create a new resource group",
+		Long: `Create a new resource group
 
 Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
 
@@ -38,8 +38,9 @@ Note that these resource groups are separate from the Azure cloud provider and A
 		RunE:    framework.RunCommand(runner),
 	}
 
-	cmd.Flags().StringP("group", "g", "", "The RAD resource group name")
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
+	_ = cmd.MarkFlagRequired("group")
 
 	return cmd, runner
 }
@@ -50,9 +51,6 @@ type Runner struct {
 	Output               output.Interface
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
-	ResourceType         string
-	ResourceName         string
-	Format               string
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -71,28 +69,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	kubecontext, ok := workspace.Connection["context"].(string)
-	if !ok {
-		return fmt.Errorf("cannot create the resource group. workspace %q has invalid context", workspace.Name)
-	}
-
-	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
+	resourceGroup, err := cli.RequireUCPResourceGroup(cmd)
 	if err != nil {
 		return err
 	}
-	if resourcegroup == "" {
-		return fmt.Errorf("cannot create resource group without specifying its name. use -g to provide the name")
-	}
 
-	isRadiusInstalled, err := helm.CheckRadiusInstall(kubecontext)
+	err = common.ValidateResourceGroupName(resourceGroup)
 	if err != nil {
 		return err
 	}
-	if !isRadiusInstalled {
-		return fmt.Errorf("radius control plane not installed. run `rad init` or `rad install` and try again")
-	}
 
-	r.UCPResourceGroupName = resourcegroup
+	r.UCPResourceGroupName = resourceGroup
 	r.Workspace = workspace
 
 	return nil
@@ -105,7 +92,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	fmt.Printf("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
+	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
 	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
 	if err != nil {
@@ -116,10 +103,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	// We'll remove this in the future.
 	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
 
-	if err == nil {
-		fmt.Printf("resource group %q created", r.UCPResourceGroupName)
+	if err != nil {
+		return err
+
 	}
 
-	return err
+	r.Output.LogInfo("resource group %q created", r.UCPResourceGroupName)
+	return nil
 
 }

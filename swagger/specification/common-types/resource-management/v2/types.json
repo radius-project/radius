@@ -662,16 +662,6 @@
       "description": "The API version to use for this operation.",
       "minLength": 1
     },
-    "ResourceGroupNameParameter": {
-      "name": "resourceGroupName",
-      "in": "path",
-      "required": true,
-      "type": "string",
-      "description": "The name of the resource group. The name is case insensitive.",
-      "minLength": 1,
-      "maxLength": 90,
-      "x-ms-parameter-location": "method"
-    },
     "OperationIdParameter": {
       "name": "operationId",
       "in": "path",
@@ -688,6 +678,16 @@
       "type": "string",
       "description": "The name of Azure region.",
       "minLength": 1,
+      "x-ms-parameter-location": "method"
+    },
+    "ResourceGroupNameParameter": {
+      "name": "resourceGroupName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "description": "The name of the resource group",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
       "x-ms-parameter-location": "method"
     }
   }

@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -45,9 +46,18 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Create Command with too many args",
+			Input:         []string{"-g", "a", "b"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "Valid Create Command",
 			Input:         []string{"-g", "rg"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -58,7 +68,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Validate rad group create", func(t *testing.T) {
+	t.Run("Run rad group create", func(t *testing.T) {
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -74,15 +84,29 @@ func Test_Run(t *testing.T) {
 
 			Name: "kind-kind",
 		}
-
+		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			Workspace:            workspace,
 			UCPResourceGroupName: "testrg",
+			Output:               outputSink,
 		}
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+
+		expected := []interface{}{
+			output.LogOutput{
+				Format: "creating resource group %q in workspace %q...\n",
+				Params: []interface{}{"testrg", "kind-kind"},
+			},
+			output.LogOutput{
+				Format: "resource group %q created",
+				Params: []interface{}{"testrg"},
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
+
 	})
 
 }

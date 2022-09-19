@@ -116,10 +116,9 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	//verify the UCP group exists
 	_, err = client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName)
 	if err != nil {
-		return fmt.Errorf("resource group %q does not exist. Run `rad group create` or `rad init` and try again \n %w ", r.UCPResourceGroupName, err)
+		return &cli.FriendlyError{Message: fmt.Sprintf("resource group %q does not exist. Run `rad group create` or `rad init` and try again \n", r.UCPResourceGroupName)}
 	}
 
 	scope := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.UCPResourceGroupName)

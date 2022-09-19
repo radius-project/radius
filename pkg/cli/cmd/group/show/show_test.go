@@ -11,8 +11,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
+
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
@@ -26,7 +28,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithWorkspace(t)
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -41,10 +42,10 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "Show Command with correct options",
 			Input:         []string{"-g", "groupname"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 	}
@@ -82,6 +83,20 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
+		id := "/planes/radius/local/resourceGroups/testrg"
+
+		resourceGroup := v20220315privatepreview.ResourceGroupResource{
+			ID:   &id,
+			Name: &runner.UCPResourceGroupName,
+		}
+		expected := []interface{}{
+			output.FormattedOutput{
+				Format:  "table",
+				Obj:     resourceGroup,
+				Options: objectformats.GetResourceGroupTableFormat(),
+			},
+		}
+		require.Equal(t, expected, outputSink.Writes)
 
 	})
 
