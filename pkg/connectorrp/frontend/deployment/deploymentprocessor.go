@@ -86,13 +86,17 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	// fetch the environment namespace and recipe template path by doing a db lookup
-	namespace, _, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+	// fetch the environment namespace, connectort type and recipe template path by doing a db lookup
+	namespace, connectorType, templateType, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Namespace: namespace})
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
+		Namespace:     namespace,
+		ConnectorType: connectorType,
+		TemplatePath:  templateType,
+	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -358,16 +362,16 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	return envId, recipeName, nil
 }
 
-// getEnvironmentMetadata fetches the environment resource from the db for getting the namespace to deploy the resources and the template path for the recipe
-func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (namespace string, templatePath string, err error) {
+// getEnvironmentMetadata fetches the environment resource from the db for getting the namespace to deploy the resources, and the connector type and the template path for the recipe
+func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (namespace string, connectorType string, templatePath string, err error) {
 	envId, err := resources.Parse(environmentID)
 	if err != nil {
-		return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
+		return "", "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
 	}
 
 	env := &coreDatamodel.Environment{}
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
+		return "", "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
 	}
 
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
@@ -377,7 +381,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	res, err := sc.Get(ctx, environmentID)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
+			return "", "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
 		}
 		return
 	}
@@ -394,15 +398,12 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 
 	// identify recipe's template path associated with provided recipe name
 	recipe, ok := env.Properties.Recipes[recipeName]
-	if ok && recipe.ConnectorType == env.ResourceTypeName() {
-		// recipe's connector type matches the resource type
-		return namespace, recipe.TemplatePath, nil
-	} else if ok {
-		return namespace, "", fmt.Errorf("Connector Type on the recipe does not match the type on the resource")
+	if ok {
+		return namespace, recipe.ConnectorType, recipe.TemplatePath, nil
 	} else if recipeName != "" {
-		return namespace, "", fmt.Errorf("Recipe with name %q does not exist in environment resource", recipeName)
+		return namespace, "", "", fmt.Errorf("Recipe with name %q does not exist in environment resource", recipeName)
 	}
 
 	// no recipe is associated with resource
-	return namespace, "", nil
+	return namespace, "", "", nil
 }
