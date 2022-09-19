@@ -11,8 +11,8 @@ import (
 
 var recipeCmd = &cobra.Command{
 	Use:   "recipe",
-	Short: "Manage recipes",
-	Long:  `Manage recipes`,
+	Short: "Manage connector recipes",
+	Long:  `Manage connector recipes`,
 }
 
 func init() {

@@ -20,9 +20,9 @@ import (
 
 var recipeCreateCmd = &cobra.Command{
 	Use:     "create",
-	Short:   "Add a recipe to the environment.",
-	Long:    `Add a recipe to the environment.`,
-	Example: `rad recipe create --templatePath templata_path --connectorType Applications.Connector/mongoDatabases --recipeName cosmosdb -e env_name -w workspace`,
+	Short:   "Add a connector recipe to the environment.",
+	Long:    `Add a connector recipe to the environment.`,
+	Example: `rad recipe create --templatePath template_path --connectorType Applications.Connector/mongoDatabases --recipeName cosmosdb -e env_name -w workspace`,
 	RunE:    recipeCreate,
 }
 
@@ -63,7 +63,7 @@ func recipeCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	resourceGroupName := scopeId.FindScope(resources.ResourceGroupsSegment)
-	//var k8sGoClient client_go.Interface
+
 	var contextName string
 	_, _, contextName, err = createKubernetesClients("")
 	if err != nil {
