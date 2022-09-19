@@ -160,23 +160,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
 	}
-	if r.RadiusInstalled {
-		msg := "Radius control-plane already installed in context 'AKS' Would you like to reinstall Radius control-plane with the latest version [Y/n]? Y"
-		input, err := prompt.YesOrNoPrompter(msg, "N", r.Prompter)
-		if err != nil {
-			return &cli.FriendlyError{Message: "Error while installing radius"}
-		}
-		if strings.ToLower(input) == "y" {
-			r.Reinstall = true
-		}
-	}
+	//TODO: prompt for re-install of radius once the provider commands are in
+	// If the user prompts for re-install, then go ahead
+	// If the user says no, then use the provider create/update operations to update the provider config.
 
 	return nil
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	// Install radius control plane if radius is not installed or user prompts to reinstall
-	// if !r.RadiusInstalled || r.Reinstall {
+	// Install radius control plane
+	// TODO: Add check for user prompts (whether user has prompted to re-install or not), 
+	// if not then use provider operations to update provider and avoid re-installing radius control plane
 	err := installRadius(ctx, r)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to install radius"}
@@ -191,7 +185,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "Kubernetes", "")
+
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment group"}
 	}
