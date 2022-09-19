@@ -72,6 +72,12 @@ type ResourceData struct {
 	SecretValues    map[string]rp.SecretValueReference
 }
 
+type EnvironmentMetadata struct {
+	Namespace           string
+	RecipeConnectorType string
+	RecipeTemplatePath  string
+}
+
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
@@ -81,18 +87,23 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// fetch the environment ID from the resource
-	env, err := dp.getEnvironmetIDFromResource(ctx, id, resource)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-	// fetch the environment namespace by doing a db lookup
-	namespace, err := dp.getEnvironmentNamespace(ctx, env)
+	// fetch the environment ID and recipe name from the resource
+	env, recipeName, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Namespace: namespace})
+	// Fetch the environment namespace, recipe connector type and recipe template path by doing a db lookup
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
+		Namespace:           envMetadata.Namespace,
+		RecipeConnectorType: envMetadata.RecipeConnectorType,
+		RecipeTemplatePath:  envMetadata.RecipeTemplatePath,
+	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -293,55 +304,80 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
 
-// getEnvironmetIDFromResource returns the environment id from the resource for looking up the namespace
-func (dp *deploymentProcessor) getEnvironmetIDFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (string, error) {
+// getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipeName string, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
-	var envId string
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := resource.(*datamodel.Extender)
 		envId = obj.Properties.Environment
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
 		envId = obj.Properties.Environment
+		if obj.Properties.Recipe.Name != "" {
+			recipeName = obj.Properties.Recipe.Name
+		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return "", fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		return "", "", fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
-	return envId, nil
+
+	return envId, recipeName, nil
 }
 
-// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID string) (namespace string, err error) {
+// getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the connector and linked resources ```
+func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
 	envId, err := resources.Parse(environmentID)
+	envMetadata = EnvironmentMetadata{}
 	if err != nil {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
+		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
 	}
 
 	env := &coreDatamodel.Environment{}
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
+		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
 	}
 
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
@@ -351,7 +387,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	res, err := sc.Get(ctx, environmentID)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
+			return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
 		}
 		return
 	}
@@ -361,10 +397,21 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	}
 
 	if env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
-		namespace = env.Properties.Compute.KubernetesCompute.Namespace
+		envMetadata.Namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {
-		err = fmt.Errorf("cannot find namespace in the environment resource")
+		return envMetadata, fmt.Errorf("cannot find namespace in the environment resource")
 	}
 
-	return
+	// identify recipe's template path associated with provided recipe name
+	recipe, ok := env.Properties.Recipes[recipeName]
+	if ok {
+		envMetadata.RecipeConnectorType = recipe.ConnectorType
+		envMetadata.RecipeTemplatePath = recipe.TemplatePath
+		return envMetadata, nil
+	} else if recipeName != "" {
+		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
+	}
+
+	// no recipe is associated with resource
+	return envMetadata, nil
 }

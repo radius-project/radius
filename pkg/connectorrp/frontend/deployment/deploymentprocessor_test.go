@@ -8,6 +8,7 @@ package deployment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -47,6 +48,78 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	azureMongoOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: resourcemodel.ProviderAzure,
+			},
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+				},
+			},
+		},
+	}
+
+	rendererOutput = renderers.RendererOutput{
+		Resources: azureMongoOutputResources,
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: "test-database",
+			},
+		},
+	}
+
+	return
+}
+
+func buildTestMongoResourceWithRecipe() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	resourceID = getResourceID(id)
+	testResource = datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   id,
+			Name: "mongo0",
+			Type: "applications.connector/mongodatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: v1.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "cosmos-recipe",
+					Parameters: map[string]interface{}{
+						"foo": "bar",
+					},
+				},
 			},
 		},
 	}
@@ -196,6 +269,34 @@ func buildEnvironmentResource() store.Object {
 			Compute: corerpDatamodel.EnvironmentCompute{
 				KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
 					Namespace: "radius-test",
+				},
+			},
+		},
+	}
+	er := store.Object{
+		Metadata: store.Metadata{
+			ID: environment.ID,
+		},
+		Data: environment,
+	}
+	return er
+}
+
+func buildEnvironmentResourceWithRecipe(recipeName string) store.Object {
+	environment := corerpDatamodel.Environment{
+		TrackedResource: v1.TrackedResource{
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+		},
+		Properties: corerpDatamodel.EnvironmentProperties{
+			Compute: corerpDatamodel.EnvironmentCompute{
+				KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
+					Namespace: "radius-test",
+				},
+			},
+			Recipes: map[string]corerpDatamodel.EnvironmentRecipeProperties{
+				recipeName: {
+					ConnectorType: "Applications.Connector/MongoDatabases",
+					TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 				},
 			},
 		},
@@ -476,6 +577,19 @@ func Test_Render(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
+	})
+
+	t.Run("verify render success with recipes", func(t *testing.T) {
+		resourceID, testResource, testRendererOutput := buildTestMongoResourceWithRecipe()
+
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResourceWithRecipe("cosmos-recipe")
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		require.NoError(t, err)
+		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
 }
 
@@ -803,4 +917,35 @@ func Test_FetchSecrets(t *testing.T) {
 	secrets, err := dp.FetchSecrets(ctx, input)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(secrets))
+}
+
+func Test_GetEnvironmentMetadata(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	recipeName := "cosmos-recipe"
+
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	t.Run("successfully get recipe metadata", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResourceWithRecipe(recipeName)
+		env := er.Metadata.ID
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		require.NoError(t, err)
+		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.RecipeConnectorType)
+		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.RecipeTemplatePath)
+
+	})
+
+	t.Run("fail to get recipe metadata", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResourceWithRecipe("cosmos-test")
+		env := er.Metadata.ID
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		require.Error(t, err)
+		require.Equal(t, fmt.Sprintf("recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
+	})
 }
