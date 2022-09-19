@@ -90,7 +90,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -166,7 +166,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 
 			_ = resp.Apply(ctx, w, req)
@@ -228,7 +228,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
@@ -296,7 +296,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
@@ -384,7 +384,7 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateEnvironment(opts)
 			require.NoError(t, err)
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

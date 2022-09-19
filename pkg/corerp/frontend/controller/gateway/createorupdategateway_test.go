@@ -129,7 +129,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateGateway(opts)
 			require.NoError(t, err)
 
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			if tt.rErr != nil {
 				require.Error(t, tt.rErr)
 			} else {
@@ -284,7 +284,7 @@ func TestCreateOrUpdateGatewayRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateGateway(opts)
 			require.NoError(t, err)
 
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 
 			if resp != nil {
 				_ = resp.Apply(ctx, w, req)

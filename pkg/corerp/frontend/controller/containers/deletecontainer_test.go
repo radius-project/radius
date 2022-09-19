@@ -92,7 +92,7 @@ func TestDeleteContainerRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewDeleteContainer(opts)
 			require.NoError(t, err)
 
-			resp, err := radiustesting.ResponseFromError(ctl.Run(ctx, req))
+			resp, err := ctl.Run(ctx, req)
 			require.NoError(t, err)
 
 			err = resp.Apply(ctx, w, req)

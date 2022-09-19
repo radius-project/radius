@@ -525,10 +525,6 @@ type InternalServerErrorResponse struct {
 	Body v1.ErrorResponse
 }
 
-func (e *InternalServerErrorResponse) Error() string {
-	return e.Body.Error.Message
-}
-
 func NewInternalServerErrorARMResponse(body v1.ErrorResponse) Response {
 	return &InternalServerErrorResponse{
 		Body: body,
@@ -593,10 +589,6 @@ func (r *PreconditionFailedResponse) Apply(ctx context.Context, w http.ResponseW
 // ClientAuthenticationFailed represents an HTTP 401 with an ARM error payload.
 type ClientAuthenticationFailed struct {
 	Body v1.ErrorResponse
-}
-
-func (e *ClientAuthenticationFailed) Error() string {
-	return e.Body.Error.Message
 }
 
 func NewClientAuthenticationFailedARMResponse() Response {
