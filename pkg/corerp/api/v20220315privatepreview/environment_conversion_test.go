@@ -47,20 +47,12 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Namespace:  "default",
 						},
 					},
-<<<<<<< HEAD
-=======
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
 							ConnectorType: "Applications.Connector/mongoDatabases",
 							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
-					ProvisioningState: v1.ProvisioningStateAccepted,
-				},
-				InternalMetadata: v1.InternalMetadata{
-					CreatedAPIVersion: "2022-03-15-privatepreview",
-					UpdatedAPIVersion: "2022-03-15-privatepreview",
->>>>>>> main
 				},
 			},
 			err: nil,

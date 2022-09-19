@@ -33,13 +33,8 @@ func (e *Environment) ResourceTypeName() string {
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-<<<<<<< HEAD
-	Compute EnvironmentCompute `json:"compute,omitempty"`
-=======
-	ProvisioningState v1.ProvisioningState                   `json:"provisioningState,omitempty"`
-	Compute           EnvironmentCompute                     `json:"compute,omitempty"`
-	Recipes           map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
->>>>>>> main
+	Compute EnvironmentCompute                     `json:"compute,omitempty"`
+	Recipes map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
