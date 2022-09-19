@@ -638,12 +638,12 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 		// no recipes are available on the environment resource
 		return namespace, templatePath, nil
 	}
-	recipe, ok := env.Properties.Recipes[resourceType.ResourceTypeName()]
-	templatePath = recipe.TemplatePath
-	if ok {
-		// recipe for given resource type is found
-		return namespace, templatePath, nil
-	} else {
-		return namespace, templatePath, fmt.Errorf("cannot find recipe in the environment resource for the given connector type")
+
+	for _, v := range env.Properties.Recipes {
+		if v.ConnectorType == env.ResourceTypeName() {
+			return namespace, templatePath, nil
+		}
 	}
+
+	return namespace, templatePath, fmt.Errorf("cannot find recipe in the environment resource for the given connector type")
 }
