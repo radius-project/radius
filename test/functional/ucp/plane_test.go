@@ -25,7 +25,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 		// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
 		planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes", url))
-		require.Equal(t, 2, len(planes))
+		require.Equal(t, 3, len(planes))
 
 		t.Cleanup(func() {
 			deletePlane(t, roundTripper, planeURL)
