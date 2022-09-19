@@ -45,6 +45,7 @@ type Options struct {
 	StatusManager sm.StatusManager
 }
 
+// TODO: Remove Controller when all controller uses Operation
 // Controller is an interface of each operation controller.
 type Controller interface {
 	// Run executes the operation.

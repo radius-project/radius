@@ -7,6 +7,7 @@ package conv
 
 import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
+// TODO: Remove DataModelInterface when we migrate Controller to Operation base struct for controller
 // DataModelInterface is the interface for version agnostic datamodel.
 type DataModelInterface interface {
 	// ResourceTypeName returns the resource type name.

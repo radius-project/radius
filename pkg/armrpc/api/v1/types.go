@@ -106,7 +106,7 @@ const (
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
 func (state ProvisioningState) IsTerminal() bool {
-	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
 }
 
 // TrackedResource represents the common tracked resource.
@@ -152,7 +152,6 @@ func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext) {
 	b.Location = ctx.Location
 	b.TenantID = ctx.HomeTenantID
 	b.CreatedAPIVersion = b.UpdatedAPIVersion
-	// b.SystemData = UpdateSystemData(oldSystemData, ctx.SystemData())
 }
 
 // GetSystemdata gets systemdata.

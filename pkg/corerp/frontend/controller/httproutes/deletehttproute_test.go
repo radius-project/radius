@@ -77,11 +77,9 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 					Return(tt.qErr).
 					Times(1)
 
-				if tt.qErr != nil {
-					mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(tt.saveErr).
-						Times(1)
-				}
+				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.saveErr).
+					Times(1)
 			}
 
 			opts := ctrl.Options{

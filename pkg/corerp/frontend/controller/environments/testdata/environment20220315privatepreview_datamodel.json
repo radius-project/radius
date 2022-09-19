@@ -11,8 +11,8 @@
         "lastModifiedBy": "fake@hotmail.com",
         "lastModifiedByType": "User"
     },
+    "provisioningState": "Succeeded",
     "properties": {
-        "provisioningState": "Succeeded",
         "compute": {
             "kind": "kubernetes",
             "kubernetes": {

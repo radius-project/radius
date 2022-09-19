@@ -38,7 +38,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 
 func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 	// arrange
-	rawPayload := radiustesting.ReadFixture("applicationDataModelInterface.json")
+	rawPayload := radiustesting.ReadFixture("applicationresourcedatamodel.json")
 	r := &datamodel.Application{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)
