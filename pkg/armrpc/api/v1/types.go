@@ -106,6 +106,7 @@ const (
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
 func (state ProvisioningState) IsTerminal() bool {
+	// `state == ""` is for fall-back case.
 	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
 }
 
