@@ -68,31 +68,22 @@ func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 		return nil, nil
 	}
 
-	region, err := prompt.Text(
-		"Enter the region you would like to use to deploy AWS resources?:",
-		prompt.EmptyValidator,
-	)
+	region, err := prompt.Text("Enter the region you would like to use to deploy AWS resources:", prompt.EmptyValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	keyId, err := prompt.Text(
-		"Enter the IAM Access Key ID:",
-		prompt.EmptyValidator,
-	)
+	keyID, err := prompt.Text("Enter the IAM Access Key ID:", prompt.EmptyValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	secretAccessKey, err := prompt.Text(
-		"Enter your IAM Secret Access Keys:",
-		prompt.EmptyValidator,
-	)
+	secretAccessKey, err := prompt.Text("Enter your IAM Secret Access Keys:", prompt.EmptyValidator)
 	if err != nil {
 		return nil, err
 	}
 
-	return VerifyAWSCredentials(keyId, secretAccessKey, region)
+	return verifyAWSCredentials(keyID, secretAccessKey, region)
 }
 
 func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
@@ -104,7 +95,7 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 		return nil, nil
 	}
 
-	keyId, err := cmd.Flags().GetString(AWSProviderAccessKeyIdFlagName)
+	keyID, err := cmd.Flags().GetString(AWSProviderAccessKeyIdFlagName)
 	if err != nil {
 		return nil, err
 	}
@@ -119,11 +110,11 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 		return nil, err
 	}
 
-	return VerifyAWSCredentials(keyId, secretAccessKey, region)
+	return verifyAWSCredentials(keyID, secretAccessKey, region)
 }
 
-func VerifyAWSCredentials(keyId string, secretAccessKey string, region string) (*radAWS.Provider, error) {
-	creds := credentials.NewStaticCredentials(keyId, secretAccessKey, "")
+func verifyAWSCredentials(keyID string, secretAccessKey string, region string) (*radAWS.Provider, error) {
+	creds := credentials.NewStaticCredentials(keyID, secretAccessKey, "")
 	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
 	mySession, err := session.NewSession(awsConfig)
 	if err != nil {
@@ -138,7 +129,7 @@ func VerifyAWSCredentials(keyId string, secretAccessKey string, region string) (
 	}
 
 	return &radAWS.Provider{
-		AccessKeyId:     keyId,
+		AccessKeyId:     keyID,
 		SecretAccessKey: secretAccessKey,
 		TargetRegion:    region,
 		AccountId:       *result.Account,
