@@ -17,7 +17,16 @@ import (
 )
 
 func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"daprstatestoresqlserverresource.json", "daprstatestoreazuretablestorageresource.json", "daprstatestogenericreresource.json"}
+	testset := []string{
+		"daprstatestoresqlserverresource.json",
+		"daprstatestoreazuretablestorageresource.json",
+		"daprstatestogenericreresource.json",
+		"daprstatestoresqlserverresource_recipe.json",
+		"daprstatestoresqlserverresource_recipe2.json",
+		"daprstatestoreazuretablestorageresource_recipe.json",
+		"daprstatestoreazuretablestorageresource_recipe2.json",
+		"daprstatestogenericreresource_recipe.json",
+		"daprstatestogenericreresource_recipe2.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -57,12 +66,36 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}
+
+		if payload == "daprstatestoresqlserverresource_recipe.json" ||
+			payload == "daprstatestoresqlserverresource_recipe2.json" ||
+			payload == "daprstatestoreazuretablestorageresource_recipe.json" ||
+			payload == "daprstatestoreazuretablestorageresource_recipe2.json" ||
+			payload == "daprstatestogenericreresource_recipe.json" ||
+			payload == "daprstatestogenericreresource_recipe2.json" {
+			require.Equal(t, "recipe-test", convertedResource.Properties.Recipe.Name)
+			if payload == "daprstatestoresqlserverresource_recipe2.json" ||
+				payload == "daprstatestoreazuretablestorageresource_recipe2.json" ||
+				payload == "daprstatestogenericreresource_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
+			}
+		}
 	}
 
 }
 
 func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"daprstatestoresqlserverresourcedatamodel.json", "daprstatestoreazuretablestorageresourcedatamodel.json", "daprstatestogenericreresourcedatamodel.json"}
+	testset := []string{
+		"daprstatestoresqlserverresourcedatamodel.json",
+		"daprstatestoreazuretablestorageresourcedatamodel.json",
+		"daprstatestogenericreresourcedatamodel.json",
+		"daprstatestoresqlserverresourcedatamodel_recipe.json",
+		"daprstatestoresqlserverresourcedatamodel_recipe2.json",
+		"daprstatestoreazuretablestorageresourcedatamodel_recipe.json",
+		"daprstatestoreazuretablestorageresourcedatamodel_recipe2.json",
+		"daprstatestogenericreresourcedatamodel_recipe.json",
+		"daprstatestogenericreresourcedatamodel_recipe2.json"}
 
 	for _, payload := range testset {
 		// arrange
@@ -100,6 +133,21 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
+		}
+
+		if payload == "daprstatestoresqlserverresourcedatamodel_recipe.json" ||
+			payload == "daprstatestoresqlserverresourcedatamodel_recipe2.json" ||
+			payload == "daprstatestoreazuretablestorageresourcedatamodel_recipe.json" ||
+			payload == "daprstatestoreazuretablestorageresourcedatamodel_recipe2.json" ||
+			payload == "daprstatestogenericreresourcedatamodel_recipe.json" ||
+			payload == "daprstatestogenericreresourcedatamodel_recipe2.json" {
+			require.Equal(t, "recipe-test", resource.Properties.Recipe.Name)
+			if payload == "daprstatestoresqlserverresourcedatamodel_recipe2.json" ||
+				payload == "daprstatestoreazuretablestorageresourcedatamodel_recipe2.json" ||
+				payload == "daprstatestogenericreresourcedatamodel_recipe2.json" {
+				parameters := map[string]interface{}{"port": float64(6081)}
+				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
+			}
 		}
 	}
 

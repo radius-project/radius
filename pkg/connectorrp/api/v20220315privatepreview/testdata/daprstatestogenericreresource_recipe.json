@@ -14,7 +14,14 @@
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "kind": "state.sqlserver",
-        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+        "kind": "generic",
+        "recipe": {
+            "name": "recipe-test"
+        },
+        "type": "state.zookeeper",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        }
     }
 }

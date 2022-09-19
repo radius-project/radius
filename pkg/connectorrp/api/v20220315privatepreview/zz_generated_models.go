@@ -369,6 +369,9 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -387,6 +390,7 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) GetDaprStateStorePro
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -410,6 +414,9 @@ type DaprStateStoreGenericResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -428,6 +435,7 @@ func (d *DaprStateStoreGenericResourceProperties) GetDaprStateStoreProperties() 
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }
@@ -461,6 +469,9 @@ type DaprStateStoreProperties struct {
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -512,6 +523,9 @@ type DaprStateStoreSQLServerResourceProperties struct {
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
+	Recipe *Recipe `json:"recipe,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -530,6 +544,7 @@ func (d *DaprStateStoreSQLServerResourceProperties) GetDaprStateStoreProperties(
 		Application: d.Application,
 		Kind: d.Kind,
 		StateStoreName: d.StateStoreName,
+		Recipe: d.Recipe,
 		Status: d.Status,
 	}
 }

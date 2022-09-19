@@ -14,20 +14,17 @@
         "env": "dev"
     },
     "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "DaprStateStoreProvider",
-                "Provider": "kubernetes"
-              }
-            }]
-        },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "kind": "state.azure.tablestorage",
-        "daprStateStoreAzureTableStorage":{
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
+        "kind": "state.sqlserver",
+        "daprStateStoreSQLServer" :{
+            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
+        },
+        "recipe": {
+            "name": "recipe-test",
+            "parameters": {
+                "port": 6081
+            }
         }
     }
 }
