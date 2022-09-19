@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -25,7 +26,7 @@ var (
 
 // DeleteGateway is the controller implementation to delete gateway resource.
 type DeleteGateway struct {
-	ctrl.Operation[*rm, rm]
+	ctrl.Operation[*datamodel.Gateway, datamodel.Gateway]
 }
 
 // NewDeleteGateway creates a new DeleteGateway.

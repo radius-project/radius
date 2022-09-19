@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -21,7 +22,7 @@ var _ ctrl.Controller = (*DeleteApplication)(nil)
 
 // DeleteApplication is the controller implementation to delete application resource.
 type DeleteApplication struct {
-	ctrl.Operation[*rm, rm]
+	ctrl.Operation[*datamodel.Application, datamodel.Application]
 }
 
 // NewDeleteApplication creates a new DeleteApplication.

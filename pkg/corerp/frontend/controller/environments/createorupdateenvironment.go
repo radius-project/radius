@@ -22,7 +22,7 @@ var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
 
 // CreateOrUpdateEnvironments is the controller implementation to create or update environment resource.
 type CreateOrUpdateEnvironment struct {
-	ctrl.Operation[*rm, rm]
+	ctrl.Operation[*datamodel.Environment, datamodel.Environment]
 }
 
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.

@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
@@ -25,7 +26,7 @@ var (
 
 // CreateOrUpdateHTTPRoute is the controller implementation to create or update HTTPRoute resource.
 type CreateOrUpdateHTTPRoute struct {
-	ctrl.Operation[*rm, rm]
+	ctrl.Operation[*datamodel.HTTPRoute, datamodel.HTTPRoute]
 }
 
 // NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
