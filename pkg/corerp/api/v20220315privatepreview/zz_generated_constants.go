@@ -34,6 +34,40 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// Encoding - Encoding format. Default utf-8
+type Encoding string
+
+const (
+	EncodingUTF8 Encoding = "utf-8"
+	EncodingHex Encoding = "hex"
+	EncodingBase64 Encoding = "base64"
+)
+
+// PossibleEncodingValues returns the possible values for the Encoding const type.
+func PossibleEncodingValues() []Encoding {
+	return []Encoding{	
+		EncodingUTF8,
+		EncodingHex,
+		EncodingBase64,
+	}
+}
+
+// Format - Certificate format. Default pem
+type Format string
+
+const (
+	FormatPem Format = "pem"
+	FormatPfx Format = "pfx"
+)
+
+// PossibleFormatValues returns the possible values for the Format const type.
+func PossibleFormatValues() []Format {
+	return []Format{	
+		FormatPem,
+		FormatPfx,
+	}
+}
+
 // Kind - The kind of IAM provider to configure
 type Kind string
 
@@ -107,6 +141,24 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
+	}
+}
+
+// Value - Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
+type Value string
+
+const (
+	ValueCertificate Value = "certificate"
+	ValuePublickey Value = "publickey"
+	ValuePrivatekey Value = "privatekey"
+)
+
+// PossibleValueValues returns the possible values for the Value const type.
+func PossibleValueValues() []Value {
+	return []Value{	
+		ValueCertificate,
+		ValuePublickey,
+		ValuePrivatekey,
 	}
 }
 

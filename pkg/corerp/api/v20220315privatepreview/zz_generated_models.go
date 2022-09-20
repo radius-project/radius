@@ -78,10 +78,66 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+type AzureKeyVaultVolumeProperties struct {
+	// REQUIRED; The volume kind
+	Kind *string `json:"kind,omitempty"`
+
+	// Fully qualified resource ID for the application that the volume is connected to.
+	Application *string `json:"application,omitempty"`
+
+	// The KeyVault certificates that this volume exposes
+	Certificates map[string]*CertificateObjectProperties `json:"certificates,omitempty"`
+
+	// The KeyVault keys that this volume exposes
+	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
+
+	// The ID of the keyvault to use for this volume resource
+	Resource *string `json:"resource,omitempty"`
+
+	// The KeyVault secrets that this volume exposes
+	Secrets map[string]*SecretObjectProperties `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetVolumeProperties implements the VolumePropertiesClassification interface for type AzureKeyVaultVolumeProperties.
+func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties {
+	return &VolumeProperties{
+		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
+		Application: a.Application,
+		Status: a.Status,
+	}
+}
+
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+type CertificateObjectProperties struct {
+	// REQUIRED; The name of the certificate
+	Name *string `json:"name,omitempty"`
+
+	// REQUIRED; Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
+	Value *Value `json:"value,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *Encoding `json:"encoding,omitempty"`
+
+	// Certificate format. Default pem
+	Format *Format `json:"format,omitempty"`
+
+	// Certificate version
+	Version *string `json:"version,omitempty"`
 }
 
 type ConnectionProperties struct {
@@ -688,6 +744,17 @@ type IamProperties struct {
 	Roles []*string `json:"roles,omitempty"`
 }
 
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
+}
+
 // KubernetesCompute - Specifies the properties for Kubernetes compute environment
 type KubernetesCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -762,6 +829,20 @@ type Resource struct {
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *Encoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
@@ -852,4 +933,88 @@ type Volume struct {
 
 // GetVolume implements the VolumeClassification interface for type Volume.
 func (v *Volume) GetVolume() *Volume { return v }
+
+// VolumePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetVolumeProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureKeyVaultVolumeProperties, *VolumeProperties
+type VolumePropertiesClassification interface {
+	// GetVolumeProperties returns the VolumeProperties content of the underlying type.
+	GetVolumeProperties() *VolumeProperties
+}
+
+type VolumeProperties struct {
+	// REQUIRED; The volume kind
+	Kind *string `json:"kind,omitempty"`
+
+	// Fully qualified resource ID for the application that the volume is connected to.
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetVolumeProperties implements the VolumePropertiesClassification interface for type VolumeProperties.
+func (v *VolumeProperties) GetVolumeProperties() *VolumeProperties { return v }
+
+// VolumeResource - Radius Volume Resource.
+type VolumeResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// REQUIRED
+	Properties VolumePropertiesClassification `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// VolumeResourceList - The list of Volumes.
+type VolumeResourceList struct {
+	// The link used to get the next page of Volumes list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of Volume.
+	Value []*VolumeResource `json:"value,omitempty"`
+}
+
+// VolumesClientCreateOrUpdateOptions contains the optional parameters for the VolumesClient.CreateOrUpdate method.
+type VolumesClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientDeleteOptions contains the optional parameters for the VolumesClient.Delete method.
+type VolumesClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
+type VolumesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.ListByScope method.
+type VolumesClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientUpdateOptions contains the optional parameters for the VolumesClient.Update method.
+type VolumesClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
 
