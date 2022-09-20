@@ -286,8 +286,10 @@ func buildEnvironmentResource() store.Object {
 
 func buildEnvironmentResourceWithRecipe(recipeName string) store.Object {
 	environment := corerpDatamodel.Environment{
-		TrackedResource: v1.TrackedResource{
-			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
 		},
 		Properties: corerpDatamodel.EnvironmentProperties{
 			Compute: corerpDatamodel.EnvironmentCompute{
