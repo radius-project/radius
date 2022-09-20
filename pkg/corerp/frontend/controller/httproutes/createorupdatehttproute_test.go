@@ -19,7 +19,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -98,7 +97,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{}, tt.getErr).
@@ -131,6 +130,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
+
 			if tt.rErr != nil {
 				require.Error(t, tt.rErr)
 			} else {
@@ -241,14 +241,14 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			httprouteDataModel := &datamodel.HTTPRoute{}
 			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), httprouteDataModel)
 
-			httprouteDataModel.Properties.ProvisioningState = tt.curState
+			httprouteDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
 			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+			sCtx := v1.ARMRequestContextFromContext(ctx)
 
 			so := &store.Object{
 				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
@@ -310,7 +310,7 @@ func TestCreateOrUpdateHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 	}
 }
 
-func getAsyncLocationPath(sCtx *servicecontext.ARMRequestContext, location string, resourceType string, req *http.Request) string {
+func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
 	dest := url.URL{
 		Host:   req.Host,
 		Scheme: req.URL.Scheme,

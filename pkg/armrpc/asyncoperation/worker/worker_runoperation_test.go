@@ -32,10 +32,9 @@ var (
 	testResourceType   = "Applications.Core/environments"
 	testResourceObject = &store.Object{
 		Data: map[string]interface{}{
-			"name": "env0",
-			"properties": map[string]interface{}{
-				"provisioningState": "Accepted",
-			},
+			"name":              "env0",
+			"provisioningState": "Accepted",
+			"properties":        map[string]interface{}{},
 		},
 	}
 	testOperationStatus = &manager.Status{

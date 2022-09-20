@@ -13,7 +13,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"gopkg.in/yaml.v3"
 )
 
@@ -61,10 +61,10 @@ func loadConfig(configPath string) (*UCPConfig, error) {
 
 // FromContext extracts ProviderConfig from http context.
 func FromContext(ctx context.Context) *UCPConfig {
-	return ctx.Value(servicecontext.HostingConfigContextKey).(*UCPConfig)
+	return ctx.Value(v1.HostingConfigContextKey).(*UCPConfig)
 }
 
 // WithContext injects ProviderConfig into the given http context.
 func WithContext(ctx context.Context, cfg *UCPConfig) context.Context {
-	return context.WithValue(ctx, servicecontext.HostingConfigContextKey, cfg)
+	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }

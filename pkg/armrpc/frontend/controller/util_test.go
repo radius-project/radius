@@ -13,7 +13,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 
@@ -71,9 +71,9 @@ func TestValidateEtag_IfMatch(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.ifMatchEtag, func(t *testing.T) {
-			armRequestContext := servicecontext.ARMRequestContextFromContext(
-				servicecontext.WithARMRequestContext(
-					context.Background(), &servicecontext.ARMRequestContext{
+			armRequestContext := v1.ARMRequestContextFromContext(
+				v1.WithARMRequestContext(
+					context.Background(), &v1.ARMRequestContext{
 						IfMatch: tt.ifMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)
@@ -103,9 +103,9 @@ func TestValidateEtag_IfNoneMatch(t *testing.T) {
 
 	for _, tt := range cases {
 		t.Run(tt.ifNoneMatchEtag, func(t *testing.T) {
-			armRequestContext := servicecontext.ARMRequestContextFromContext(
-				servicecontext.WithARMRequestContext(
-					context.Background(), &servicecontext.ARMRequestContext{
+			armRequestContext := v1.ARMRequestContextFromContext(
+				v1.WithARMRequestContext(
+					context.Background(), &v1.ARMRequestContext{
 						IfNoneMatch: tt.ifNoneMatchEtag,
 					}))
 			result := ValidateETag(*armRequestContext, tt.etagProvided)

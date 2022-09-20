@@ -14,7 +14,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/rp/k8sauth"
 	"gopkg.in/yaml.v3"
@@ -86,12 +86,12 @@ func loadConfig(configPath string) (*ProviderConfig, error) {
 
 // FromContext extracts ProviderConfig from http context.
 func FromContext(ctx context.Context) *ProviderConfig {
-	return ctx.Value(servicecontext.HostingConfigContextKey).(*ProviderConfig)
+	return ctx.Value(v1.HostingConfigContextKey).(*ProviderConfig)
 }
 
 // WithContext injects ProviderConfig into the given http context.
 func WithContext(ctx context.Context, cfg *ProviderConfig) context.Context {
-	return context.WithValue(ctx, servicecontext.HostingConfigContextKey, cfg)
+	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }
 
 func getArm() (*armauth.ArmConfig, error) {

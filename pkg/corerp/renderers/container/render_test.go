@@ -50,10 +50,12 @@ func createContext(t *testing.T) context.Context {
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		TrackedResource: apiv1.TrackedResource{
-			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-			Name: resourceName,
-			Type: "Applications.Core/containers",
+		BaseResource: apiv1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+				Name: resourceName,
+				Type: "Applications.Core/containers",
+			},
 		},
 		Properties: properties,
 	}

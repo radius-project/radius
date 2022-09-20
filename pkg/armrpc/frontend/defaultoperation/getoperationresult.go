@@ -14,7 +14,6 @@ import (
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -34,7 +33,7 @@ func NewGetOperationResult(opts ctrl.Options) (ctrl.Controller, error) {
 // Run returns the response with necessary headers about the async operation.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
 func (e *GetOperationResult) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	id, err := getOperationStatusResourceID(serviceCtx.ResourceID.String())
 	if err != nil {

@@ -14,7 +14,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -45,7 +44,7 @@ func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
 }
 
-var reqCtx = &servicecontext.ARMRequestContext{
+var reqCtx = &v1.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",

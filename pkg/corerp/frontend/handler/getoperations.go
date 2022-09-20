@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 )
 
@@ -31,7 +30,7 @@ func NewGetOperations(opts ctrl.Options) (ctrl.Controller, error) {
 // Run returns the list of available operations/permission for the resource provider at tenant level.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/proxy-api-reference.md#exposing-available-operations
 func (opctrl *GetOperations) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	switch sCtx.APIVersion {
 	case v20220315privatepreview.Version:

@@ -81,15 +81,20 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.ContainerResource{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
 		Properties: datamodel.ContainerProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
@@ -103,9 +108,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				Volumes:        volumes,
 			},
 			Extensions: extensions,
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 
@@ -189,7 +191,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(c.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{

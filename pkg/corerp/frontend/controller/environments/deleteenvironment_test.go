@@ -93,6 +93,9 @@ func TestDeleteEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+					if tt.expectedStatusCode == 204 {
+						return nil, &store.ErrNotFound{}
+					}
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
 						Data:     envDataModel,

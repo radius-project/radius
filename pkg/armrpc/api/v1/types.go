@@ -106,7 +106,8 @@ const (
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
 func (state ProvisioningState) IsTerminal() bool {
-	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+	// If state is empty, it is the resource created by synchronous API and treated as a terminal state.
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
 }
 
 // TrackedResource represents the common tracked resource.
@@ -131,6 +132,42 @@ type InternalMetadata struct {
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
+	// AsyncProvisioningState is the provisioning state for async operation.
+	AsyncProvisioningState ProvisioningState `json:"provisioningState,omitempty"`
+}
+
+// BaseResource represents common resource properties used for all resources.
+type BaseResource struct {
+	TrackedResource
+	InternalMetadata
+
+	// SystemData is the systemdata which includes creation/modified dates.
+	SystemData SystemData `json:"systemData,omitempty"`
+}
+
+// UpdateMetadata updates the default metadata with new request context and systemdata in old resource.
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext) {
+	b.ID = ctx.ResourceID.String()
+	b.Name = ctx.ResourceID.Name()
+	b.Type = ctx.ResourceID.Type()
+	b.Location = ctx.Location
+	b.TenantID = ctx.HomeTenantID
+	b.CreatedAPIVersion = b.UpdatedAPIVersion
+}
+
+// GetSystemdata gets systemdata.
+func (b *BaseResource) GetSystemData() *SystemData {
+	return &b.SystemData
+}
+
+// ProvisioningState gets the provisioning state.
+func (b *BaseResource) ProvisioningState() ProvisioningState {
+	return b.InternalMetadata.AsyncProvisioningState
+}
+
+// SetProvisioningState sets the privisioning state of the resource.
+func (b *BaseResource) SetProvisioningState(state ProvisioningState) {
+	b.InternalMetadata.AsyncProvisioningState = state
 }
 
 // BasicResourceProperties is the basic resource model for radius resources.
@@ -145,7 +182,7 @@ type BasicResourceProperties struct {
 }
 
 // EqualLinkedResource returns true if the resource belongs to the same environment and application.
-func (b BasicResourceProperties) EqualLinkedResource(prop BasicResourceProperties) bool {
+func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
 }
 

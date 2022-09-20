@@ -14,6 +14,7 @@
     "tags": {
         "env": "dev"
     },
+    "provisioningState": "Succeeded",
     "properties": {
         "status": {
             "outputResources": [{
@@ -42,7 +43,6 @@
             "replacePrefix": "myreplaceprefix"
         }
         ],
-        "url": "myprefix.myapp.mydomain.com",
-        "provisioningState": "Succeeded"
+        "url": "myprefix.myapp.mydomain.com"
     }
 }

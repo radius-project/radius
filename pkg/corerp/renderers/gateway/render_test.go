@@ -885,10 +885,12 @@ func makeRouteResourceID(routeName string) string {
 
 func makeResource(t *testing.T, properties datamodel.GatewayProperties) *datamodel.Gateway {
 	return &datamodel.Gateway{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway",
-			Name: resourceName,
-			Type: "Applications.Core/gateways",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/gateways/test-gateway",
+				Name: resourceName,
+				Type: "Applications.Core/gateways",
+			},
 		},
 		Properties: properties,
 	}

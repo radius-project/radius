@@ -109,10 +109,12 @@ func Test_Render_NoExtension(t *testing.T) {
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		TrackedResource: apiv1.TrackedResource{
-			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-			Name: "test-container",
-			Type: "Applications.Core/containers",
+		BaseResource: v1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+				Name: "test-container",
+				Type: "Applications.Core/containers",
+			},
 		},
 		Properties: properties,
 	}

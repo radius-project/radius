@@ -10,9 +10,9 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -30,7 +30,7 @@ func NewDeleteRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (rabbitmq *DeleteRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Read resource metadata from the storage
 	existingResource := &datamodel.RabbitMQMessageQueue{}

@@ -13,7 +13,6 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -46,6 +45,7 @@ type Options struct {
 	StatusManager sm.StatusManager
 }
 
+// TODO: Remove Controller when all controller uses Operation
 // Controller is an interface of each operation controller.
 type Controller interface {
 	// Run executes the operation.
@@ -155,7 +155,7 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 
 // BuildTrackedResource create TrackedResource instance from request context
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
-	requestCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	serviceOpt := hostoptions.FromContext(ctx)
 
 	trackedResource := v1.TrackedResource{

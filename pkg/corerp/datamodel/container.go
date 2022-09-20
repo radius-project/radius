@@ -13,16 +13,11 @@ import (
 
 // ContainerResource represents Container resource.
 type ContainerResource struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// TODO: remove this from CoreRP
 	ConnectorMetadata
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
 }
@@ -55,10 +50,9 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
-	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container         Container                       `json:"container,omitempty"`
-	Extensions        []Extension                     `json:"extensions,omitempty"`
+	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container   Container                       `json:"container,omitempty"`
+	Extensions  []Extension                     `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

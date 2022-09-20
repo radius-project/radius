@@ -22,7 +22,7 @@ func TestARMRequestCtx(t *testing.T) {
 
 	outOfBoundsTopParamError := v1.ErrorDetails{
 		Code:    v1.CodeInvalid,
-		Message: fmt.Sprintf("unexpected error: %v", ErrTopQueryParamOutOfBounds),
+		Message: fmt.Sprintf("unexpected error: %v", v1.ErrTopQueryParamOutOfBounds),
 	}
 
 	invalidTopParamError := v1.ErrorDetails{
@@ -71,11 +71,11 @@ func TestARMRequestCtx(t *testing.T) {
 			r := mux.NewRouter()
 			r.Path(testPathBase + "/subscriptions/{subscriptionID}/resourcegroups/{resourceGroup}/providers/{providerName}/{resourceType}/{resourceName}").Methods(http.MethodPut).HandlerFunc(
 				func(w http.ResponseWriter, r *http.Request) {
-					rpcCtx := ARMRequestContextFromContext(r.Context())
+					rpcCtx := v1.ARMRequestContextFromContext(r.Context())
 					_, _ = w.Write([]byte(rpcCtx.ResourceID.ScopeSegments()[0].Name))
 				})
 
-			handler := ARMRequestCtx(testPathBase)(r)
+			handler := ARMRequestCtx(testPathBase, "global")(r)
 
 			testUrl := testPathBase + tt.url
 

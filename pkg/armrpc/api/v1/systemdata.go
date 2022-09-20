@@ -21,3 +21,36 @@ type SystemData struct {
 	// LastModifiedBy is the timestamp of resource last modification (UTC).
 	LastModifiedAt string `json:"lastModifiedAt,omitempty"`
 }
+
+// UpdateSystemData creates or updates new systemdata from old and new resources.
+func UpdateSystemData(old *SystemData, new *SystemData) SystemData {
+	if old == nil {
+		old = &SystemData{}
+	}
+	if new == nil {
+		new = &SystemData{}
+	}
+
+	newSystemData := *old
+
+	if old.CreatedAt == "" && new.CreatedAt != "" {
+		newSystemData.CreatedAt = new.CreatedAt
+		newSystemData.CreatedBy = new.CreatedBy
+		newSystemData.CreatedByType = new.CreatedByType
+	}
+
+	if new.LastModifiedAt != "" {
+		newSystemData.LastModifiedAt = new.LastModifiedAt
+		newSystemData.LastModifiedBy = new.LastModifiedBy
+		newSystemData.LastModifiedByType = new.LastModifiedByType
+
+		// backfill
+		if newSystemData.CreatedAt == "" {
+			newSystemData.CreatedAt = new.LastModifiedAt
+			newSystemData.CreatedBy = new.LastModifiedBy
+			newSystemData.CreatedByType = new.LastModifiedByType
+		}
+	}
+
+	return newSystemData
+}
