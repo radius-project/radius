@@ -7,7 +7,6 @@ package mongodatabases
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -45,7 +44,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, err
 	}
 	if resource.Properties.Recipe.Name != "" {
-		rendererOutput, err := RenderAzureRecipe(dm, options)
+		rendererOutput, err := RenderAzureRecipe(resource, options)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -71,14 +70,10 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 }
 
-func RenderAzureRecipe(dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	resource, ok := dm.(*datamodel.MongoDatabase)
-	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
-	}
+func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 	if options.RecipeConnectorType != resource.ResourceTypeName() {
-		return renderers.RendererOutput{}, fmt.Errorf("")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Recipe Connector type must match the connector resource type.")
 	}
 	recipeData := renderers.RecipeData{
 		Name:               properties.Recipe.Name,
