@@ -113,8 +113,8 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 		return &datamodel.EnvironmentCompute{
 			Kind: k,
 			KubernetesCompute: datamodel.KubernetesComputeProperties{
-				ResourceID: *v.ResourceID,
-				Namespace:  *v.Namespace,
+				ResourceID: to.String(v.ResourceID),
+				Namespace:  to.String(v.Namespace),
 			},
 		}, nil
 	default:

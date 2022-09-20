@@ -203,11 +203,16 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
+	versioned, err := c.ConvertToAPIModel(resource, serviceCtx.APIVersion)
+	if err != nil {
+		return nil, err
+	}
+
 	respCode := http.StatusAccepted
 	if method == http.MethodPut {
 		respCode = http.StatusCreated
 	}
 
-	return rest.NewAsyncOperationResponse(resource, serviceCtx.Location, respCode,
+	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode,
 		serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
 }
