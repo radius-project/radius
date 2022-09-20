@@ -1,7 +1,7 @@
-// // ------------------------------------------------------------
-// // Copyright (c) Microsoft Corporation.
-// // Licensed under the MIT License.
-// // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 
 package show
 
@@ -55,8 +55,13 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 
 	t.Run("Validate rad group show", func(t *testing.T) {
+		id := "/planes/radius/local/resourceGroups/testrg"
+		name := "testrg"
 
-		testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
+		testResourceGroup := v20220315privatepreview.ResourceGroupResource{
+			ID:   &id,
+			Name: &name,
+		}
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -83,7 +88,6 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-		id := "/planes/radius/local/resourceGroups/testrg"
 
 		resourceGroup := v20220315privatepreview.ResourceGroupResource{
 			ID:   &id,
