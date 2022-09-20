@@ -117,3 +117,22 @@ func GetCloudProviderTableFormat() output.FormatterOptions {
 		},
 	}
 }
+
+func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .ConnectorType }",
+			},
+			{
+				Heading:  "TEMPLATE",
+				JSONPath: "{ .TemplatePath }",
+			},
+		},
+	}
+}
