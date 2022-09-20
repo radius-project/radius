@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -68,14 +69,16 @@ type Runner struct {
 	RadiusInstalled        bool
 	Reinstall              bool
 	Prompter               prompt.Interface
+	ConfigFileInterface    configFile.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
-		ConnectionFactory: factory.GetConnectionFactory(),
-		Prompter:          &prompt.Impl{},
+		ConfigHolder:        factory.GetConfigHolder(),
+		Output:              factory.GetOutput(),
+		ConnectionFactory:   factory.GetConnectionFactory(),
+		Prompter:            factory.GetPrompter(),
+		ConfigFileInterface: factory.GetConfigFileInterface(),
 	}
 }
 
@@ -169,7 +172,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 func (r *Runner) Run(ctx context.Context) error {
 	// Install radius control plane
-	// TODO: Add check for user prompts (whether user has prompted to re-install or not), 
+	// TODO: Add check for user prompts (whether user has prompted to re-install or not),
 	// if not then use provider operations to update provider and avoid re-installing radius control plane
 	err := installRadius(ctx, r)
 	if err != nil {
@@ -191,18 +194,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create radius environment group"}
 	}
 
-	// Reload config so we can see the updates
-	config, err := cli.LoadConfig(r.ConfigHolder.ConfigFilePath)
-	if err != nil {
-		return err
-	}
-
-	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
-		ws := section.Items[strings.ToLower(r.Workspace.Name)]
-		ws.Environment = r.EnvName
-		section.Items[strings.ToLower(r.Workspace.Name)] = ws
-		return nil
-	})
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvName)
 	if err != nil {
 		return err
 	}

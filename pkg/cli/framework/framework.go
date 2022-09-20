@@ -8,8 +8,10 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 )
 
@@ -18,12 +20,16 @@ type Factory interface {
 	GetConnectionFactory() connections.Factory
 	GetConfigHolder() *ConfigHolder
 	GetOutput() output.Interface
+	GetPrompter() prompt.Interface
+	GetConfigFileInterface() configFile.Interface
 }
 
 type Impl struct {
 	ConnectionFactory connections.Factory
 	ConfigHolder      *ConfigHolder
 	Output            output.Interface
+	Prompter          prompt.Interface
+	ConfigFileInterface configFile.Interface
 }
 
 func (i *Impl) GetConnectionFactory() connections.Factory {
@@ -36,6 +42,14 @@ func (i *Impl) GetConfigHolder() *ConfigHolder {
 
 func (i *Impl) GetOutput() output.Interface {
 	return i.Output
+}
+
+func (i *Impl) GetPrompter() prompt.Interface {
+	return i.Prompter
+}
+
+func (i *Impl) GetConfigFileInterface() configFile.Interface {
+	return i.ConfigFileInterface
 }
 
 type Runner interface {

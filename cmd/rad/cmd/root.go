@@ -22,10 +22,11 @@ import (
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
-
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -98,6 +99,8 @@ func initSubCommands() {
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
+		Prompter:            &prompt.Impl{},
+		ConfigFileInterface: &configFile.Impl{},
 	}
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
