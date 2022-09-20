@@ -10,6 +10,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -42,7 +43,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	if resource.Properties.Resource == "" {
+	if resource.Properties.Recipe.Name != "" {
+		rendererOutput, err := RenderAzureRecipe(resource, options, secretValues)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		return rendererOutput, nil
+	} else if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -61,6 +68,37 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 		return rendererOutput, nil
 	}
+}
+
+func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
+	properties := resource.Properties
+	if options.RecipeConnectorType != resource.ResourceTypeName() {
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Recipe Connector type must match the connector resource type.")
+	}
+	recipeData := renderers.RecipeData{
+		Name:               properties.Recipe.Name,
+		RecipeTemplatePath: options.RecipeTemplatePath,
+		APIVersion:         clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		AzureResourceType:  AzureCosmosMongoResourceType,
+	}
+	// Populate connection string reference if a value isn't provided
+	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {
+		connStringRef := rp.SecretValueReference{
+			LocalID: cosmosAccountDependency.LocalID,
+			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			Action:        "listConnectionStrings",
+			ValueSelector: "/connectionStrings/0/connectionString",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureCosmosDBMongo,
+			},
+		}
+		secretValues[renderers.ConnectionStringValue] = connStringRef
+	}
+	return renderers.RendererOutput{
+		SecretValues: secretValues,
+		RecipeData:   recipeData,
+	}, nil
 }
 
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {

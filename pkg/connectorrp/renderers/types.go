@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -45,6 +46,15 @@ type RendererOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]ComputedValueReference
 	SecretValues   map[string]rp.SecretValueReference
+	RecipeData     RecipeData
+}
+
+type RecipeData struct {
+	Name               string
+	RecipeTemplatePath string
+	APIVersion         string
+	AzureResourceType  resources.KnownType
+	Resources          []string // resource type/resource id map of the resources deployed
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
