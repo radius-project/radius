@@ -5,9 +5,7 @@
 
 package testing
 
-import (
-	"os"
-)
+import "os"
 
 func ReadFixture(filename string) []byte {
 	raw, err := os.ReadFile("./testdata/" + filename)
