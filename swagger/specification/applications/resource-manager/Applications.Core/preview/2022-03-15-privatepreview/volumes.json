@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
       "title": "Applications.Core Management APIs",
-      "description": "REST API for Applications.Core Volumes Resource",
+      "description": "REST API for Applications.Core Persistent Volumes Resource",
       "version": "2022-03-15-privatepreview"
     },
     "host": "management.azure.com",
@@ -327,7 +327,7 @@
         "discriminator": "kind",
         "properties": {
           "kind": {
-            "description": "The VolumeProperties kind",
+            "description": "The volume kind",
             "type": "string"
           },
           "provisioningState": {
@@ -335,13 +335,9 @@
             "$ref": "global.json#/definitions/ProvisioningState",
             "description": "Provisioning state of the Volume at the time the operation was called."
           },
-          "environment": {
-            "type": "string",
-            "description": "The resource id of the environment linked to the DaprStateStore connector"
-          },
           "application": {
             "type": "string",
-            "description": "Fully qualified resource ID for the application that the connector is consumed by"
+            "description": "Fully qualified resource ID for the application that the volume is connected to."
           }
         },
         "required": [
@@ -356,23 +352,31 @@
             "type": "string"
           },
           "encoding": {
-            "default": "utf-8",
             "description": "Encoding format. Default utf-8",
+            "type": "string",
             "enum": [
               "utf-8",
               "hex",
               "base64"
             ],
-            "type": "string"
+            "default": "utf-8",
+            "x-ms-enum": {
+              "name": "encoding",
+              "modelAsString": false
+            }
           },
           "format": {
-            "default": "pem",
             "description": "Certificate format. Default pem",
+            "type": "string",
             "enum": [
               "pem",
               "pfx"
             ],
-            "type": "string"
+            "default": "pem",
+            "x-ms-enum": {
+              "name": "format",
+              "modelAsString": false
+            }
           },
           "name": {
             "description": "The name of the certificate",
@@ -380,12 +384,16 @@
           },
           "value": {
             "description": "Certificate object to be downloaded - the certificate itself, private key or public key of the certificate",
+            "type": "string",
             "enum": [
               "certificate",
               "publickey",
               "privatekey"
             ],
-            "type": "string"
+            "x-ms-enum": {
+              "name": "value",
+              "modelAsString": false
+            }
           },
           "version": {
             "description": "Certificate version",
@@ -425,14 +433,18 @@
             "type": "string"
           },
           "encoding": {
-            "default": "utf-8",
             "description": "Encoding format. Default utf-8",
+            "type": "string",
             "enum": [
               "utf-8",
               "hex",
               "base64"
             ],
-            "type": "string"
+            "default": "utf-8",
+            "x-ms-enum": {
+              "name": "encoding",
+              "modelAsString": false
+            }
           },
           "name": {
             "description": "The name of the secret",
