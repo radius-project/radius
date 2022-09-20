@@ -204,12 +204,14 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	var versioned conv.VersionedModelInterface = nil
-	var err error
 
 	respCode := http.StatusAccepted
 	if method == http.MethodPut {
 		respCode = http.StatusCreated
-	} else if method == http.MethodDelete {
+	}
+
+	if method != http.MethodDelete {
+		var err error
 		if versioned, err = c.ConvertToAPIModel(resource, serviceCtx.APIVersion); err != nil {
 			return nil, err
 		}
