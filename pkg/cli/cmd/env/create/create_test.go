@@ -27,11 +27,10 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	// configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid env create",
-			Input:         []string{"-e", "prod"},
+			Input:         []string{"-e", "testenv"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -54,11 +53,13 @@ func Test_Validate(t *testing.T) {
 func Test_Run(t *testing.T) {
 	t.Run("Validate environment created with valid inputs", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().CreateEnvironment(gomock.Any(), "testenv", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil).Times(1)
 		k8sGoClient :=
 			fake.NewSimpleClientset(&v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:        "idk",
+					Name:        "default",
 					Namespace:   "default",
 					Annotations: map[string]string{},
 				},
@@ -95,9 +96,3 @@ func Test_Run(t *testing.T) {
 
 	})
 }
-
-// func newSimpleK8s() *k8s {
-// 	client := k8s{}
-// 	client.clientset = fake.NewSimpleClientset()
-// 	return &client
-// }

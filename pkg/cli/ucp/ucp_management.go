@@ -16,6 +16,8 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -459,4 +461,19 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 	}
 
 	return resourceGroupResources, nil
+}
+
+func (amc *ARMApplicationsManagementClient) GetUCPGroup(ctx context.Context, planeType string, planeName string, rgName string) (bool, error) {
+	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientListOptions
+	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return false, err
+	}
+
+	_, err = resourcegroupClient.Get(ctx, planeType, planeName, rgName, (*ucpv20220315.ResourceGroupsClientGetOptions)(resourceGroupOptions))
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }

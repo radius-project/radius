@@ -37,3 +37,7 @@ func AddConfirmationFlag(cmd *cobra.Command) {
 func AddEnvironmentNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("environment", "e", "", "The environment name")
 }
+
+func AddNamespaceFlag(cmd *cobra.Command) {
+	cmd.Flags().StringP("namespace", "n", "", "The namespace")
+}

@@ -11,14 +11,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 
 	client_go "k8s.io/client-go/kubernetes"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -28,63 +27,59 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func NewCommand(factory framework.Factory, k8sGoClient client_go.Interface) (*cobra.Command, framework.Runner) {
-	runner := NewRunner(factory, k8sGoClient)
+func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
 		Use:     "create environment",
 		Short:   "create environment",
 		Long:    "Create a new Radius environment",
 		Example: ``,
-		// Args: cobra.ExactArgs(),
-		RunE: framework.RunCommand(runner),
+		RunE:    framework.RunCommand(runner),
 	}
 
-	cmd.Flags().StringP("group", "g", "", "Specify the resource group to create environment in")
-	cmd.Flags().StringP("namespace", "n", "", "Specify the environment namespace")
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddEnvironmentNameFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddNamespaceFlag(cmd)
 
 	return cmd, runner
 }
 
 type Runner struct {
-	ConfigHolder     *framework.ConfigHolder
-	Output           output.Interface
-	Workspace        *workspaces.Workspace
-	EnvironmentName  string
-	UCPResourceGroup string
-	Namespace        string
-	K8sGoClient      client_go.Interface
-	KubeContext      string
+	ConfigHolder      *framework.ConfigHolder
+	Output            output.Interface
+	Workspace         *workspaces.Workspace
+	EnvironmentName   string
+	UCPResourceGroup  string
+	Namespace         string
+	K8sGoClient       client_go.Interface
+	KubeContext       string
+	ConnectionFactory connections.Factory
+	ScopeID           resources.ID
 }
 
-func NewRunner(factory framework.Factory, k8sGoClient client_go.Interface) *Runner {
+func NewRunner(factory framework.Factory) *Runner {
+	k8sGoClient, _, _, err := CreateKubernetesClients("")
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	return &Runner{
-		ConfigHolder: factory.GetConfigHolder(),
-		Output:       factory.GetOutput(),
-		K8sGoClient:  k8sGoClient,
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
+		K8sGoClient:       k8sGoClient,
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 
-	// TODO: use require workspace
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
-	// if workspace.Name == "" {
-	// 	section, err := cli.ReadWorkspaceSection(config)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	workspace.Name = section.Default
-	// }
-
-	// workspace, err := cli.GetWorkspace(config, workspace.Name)
-	// if err != nil {
-	// 	return err
-	// }
 	r.Workspace = workspace
 
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
@@ -98,14 +93,20 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	} else if r.Namespace == "" {
 		r.Namespace = r.EnvironmentName
 	}
-	fmt.Println(r.Namespace)
 
 	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
 	if err != nil {
 		return err
 	}
+	if r.UCPResourceGroup == "" {
+		scopeId, err := resources.Parse(r.Workspace.Scope)
+		if err != nil {
+			return err
+		}
+		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
+		r.ScopeID = scopeId
+	}
 
-	// TODO: check if resource group exists
 	err = kubernetes.EnsureNamespace(cmd.Context(), r.K8sGoClient, r.Namespace)
 	if err != nil {
 		return err
@@ -117,7 +118,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if kubeconfig.CurrentContext == "" {
-		return errors.New("the kubeconfig has no current context")
+		return fmt.Errorf("the kubeconfig has no current context")
 	}
 
 	r.KubeContext = kubeconfig.CurrentContext
@@ -134,21 +135,27 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	step := output.BeginStep("Creating Environment...")
+	r.Output.LogInfo("Creating Environment...")
 
-	scopeId, err := resources.Parse(r.Workspace.Scope)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(ctx, r.KubeContext, scopeId.FindScope(resources.ResourceGroupsSegment), r.EnvironmentName, r.Namespace)
+	_, err = client.GetUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
 	if err != nil {
+		return err
+	}
+
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "")
+	if err != nil || !isEnvCreated {
 		return err
 	}
 
 	err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(r.Workspace.Name)]
-		ws.Environment = environmentID
+		envId := r.ScopeID.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
+		ws.Environment = envId.String()
 		section.Items[strings.ToLower(r.Workspace.Name)] = ws
 		return nil
 	})
@@ -156,43 +163,37 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	output.LogInfo("Set %q as current environment for workspace %q", r.EnvironmentName, r.Workspace.Name)
+	r.Output.LogInfo("Set %q as current environment for workspace %q", r.EnvironmentName, r.Workspace.Name)
 
-	output.CompleteStep(step)
 	return nil
 }
 
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
-	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
+func CreateKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
+	k8sConfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
-		return "", fmt.Errorf("failed to create environment client: %w", err)
+		return nil, nil, "", err
 	}
 
-	loc := "global"
-	id := "self"
-
-	toCreate := coreRpApps.EnvironmentResource{
-		Location: &loc,
-		Properties: &coreRpApps.EnvironmentProperties{
-			Compute: &coreRpApps.KubernetesCompute{
-				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),
-				ResourceID: &id,
-				Namespace:  to.Ptr(namespace),
-			},
-		},
+	if contextName == "" && k8sConfig.CurrentContext == "" {
+		return nil, nil, "", errors.New("no kubernetes context is set")
+	} else if contextName == "" {
+		contextName = k8sConfig.CurrentContext
 	}
 
-	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
+	context := k8sConfig.Contexts[contextName]
+	if context == nil {
+		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
 
-	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, connections.GetClientOptions(baseURL, transporter))
+	client, _, err := kubernetes.CreateTypedClient(contextName)
 	if err != nil {
-		return "", fmt.Errorf("failed to create environment client: %w", err)
+		return nil, nil, "", err
 	}
 
-	resp, err := envClient.CreateOrUpdate(ctx, environmentName, toCreate, nil)
+	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
 	if err != nil {
-		return "", fmt.Errorf("failed to create Applications.Core/environments resource: %w", err)
+		return nil, nil, "", err
 	}
 
-	return *resp.ID, nil
+	return client, runtimeClient, contextName, nil
 }

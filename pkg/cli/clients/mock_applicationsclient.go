@@ -142,6 +142,21 @@ func (mr *MockApplicationsManagementClientMockRecorder) GetEnvDetails(arg0, arg1
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvDetails", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvDetails), arg0, arg1)
 }
 
+// GetUCPGroup mocks base method.
+func (m *MockApplicationsManagementClient) GetUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetUCPGroup", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetUCPGroup indicates an expected call of GetUCPGroup.
+func (mr *MockApplicationsManagementClientMockRecorder) GetUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetUCPGroup), arg0, arg1, arg2, arg3)
+}
+
 // ListAllResourcesByApplication mocks base method.
 func (m *MockApplicationsManagementClient) ListAllResourcesByApplication(arg0 context.Context, arg1 string) ([]generated.GenericResource, error) {
 	m.ctrl.T.Helper()
