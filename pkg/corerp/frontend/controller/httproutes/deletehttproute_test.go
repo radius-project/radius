@@ -16,7 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -101,7 +101,7 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
 			// If happy path, expect that the returned object has Deleting state
 			if tt.code == http.StatusAccepted {
-				actualOutput := &datamodel.HTTPRoute{}
+				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			}
 		})
