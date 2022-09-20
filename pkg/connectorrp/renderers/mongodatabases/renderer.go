@@ -44,7 +44,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, err
 	}
 	if resource.Properties.Recipe.Name != "" {
-		rendererOutput, err := RenderAzureRecipe(resource, options)
+		rendererOutput, err := RenderAzureRecipe(resource, options, secretValues)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
@@ -70,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 }
 
-func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 	if options.RecipeConnectorType != resource.ResourceTypeName() {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Recipe Connector type must match the connector resource type.")
@@ -81,8 +81,23 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		APIVersion:         clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 		AzureResourceType:  AzureCosmosMongoResourceType,
 	}
+	// Populate connection string reference if a value isn't provided
+	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {
+		connStringRef := rp.SecretValueReference{
+			LocalID: cosmosAccountDependency.LocalID,
+			// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			Action:        "listConnectionStrings",
+			ValueSelector: "/connectionStrings/0/connectionString",
+			Transformer: resourcemodel.ResourceType{
+				Provider: resourcemodel.ProviderAzure,
+				Type:     resourcekinds.AzureCosmosDBMongo,
+			},
+		}
+		secretValues[renderers.ConnectionStringValue] = connStringRef
+	}
 	return renderers.RendererOutput{
-		RecipeData: recipeData,
+		SecretValues: secretValues,
+		RecipeData:   recipeData,
 	}, nil
 }
 
