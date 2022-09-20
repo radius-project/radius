@@ -7,9 +7,11 @@ package mongodatabases
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -42,7 +44,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-	if resource.Properties.Resource == "" {
+	if resource.Properties.Recipe.Name != "" {
+		rendererOutput, err := RenderAzureRecipe(dm, options)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		return rendererOutput, nil
+	} else if resource.Properties.Resource == "" {
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -61,6 +69,26 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 		return rendererOutput, nil
 	}
+}
+
+func RenderAzureRecipe(dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	resource, ok := dm.(*datamodel.MongoDatabase)
+	if !ok {
+		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+	}
+	properties := resource.Properties
+	if options.RecipeConnectorType != resource.ResourceTypeName() {
+		return renderers.RendererOutput{}, fmt.Errorf("")
+	}
+	recipeData := renderers.RecipeData{
+		Name:               properties.Recipe.Name,
+		RecipeTemplatePath: options.RecipeTemplatePath,
+		APIVersion:         clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		AzureResourceType:  AzureCosmosMongoResourceType,
+	}
+	return renderers.RendererOutput{
+		RecipeData: recipeData,
+	}, nil
 }
 
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
