@@ -409,3 +409,16 @@ func CreateAPIServerTransporter(kubeContext string, overrideURL string) (string,
 
 	return baseURL, &KubernetesTransporter{Client: roundTripper}, nil
 }
+
+//go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface
+type Interface interface {
+	GetKubeContext() (*api.Config, error)
+}
+
+type Impl struct {
+
+}
+
+func(i *Impl) GetKubeContext() (*api.Config, error) {
+	return ReadKubeConfig()
+}

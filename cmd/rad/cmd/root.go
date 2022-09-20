@@ -25,6 +25,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
@@ -101,6 +103,8 @@ func initSubCommands() {
 		},
 		Prompter:            &prompt.Impl{},
 		ConfigFileInterface: &configFile.Impl{},
+		KubernetesInterface: &kubernetes.Impl{},
+		HelmInterface:       &helm.Impl{},
 	}
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)

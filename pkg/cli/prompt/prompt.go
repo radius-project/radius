@@ -153,6 +153,7 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	return selected, nil
 }
 
+//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
 type Interface interface {
 	RunPrompt(prompter promptui.Prompt) (string, error)
 	RunSelect(selector promptui.Select) (int, string, error)
@@ -173,12 +174,7 @@ func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (str
 		Label:     label,
 		IsConfirm: true,
 		Default:   defaultValue,
-		Validate: func(s string) error {
-			if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
-				return errors.New("invalid input")
-			}
-			return nil
-		},
+		Validate: ValidateYesOrNo,
 	}
 	result, err := prompter.RunPrompt(textPrompt)
 	if errors.Is(err, promptui.ErrAbort) {
@@ -187,6 +183,13 @@ func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (str
 		return "", err
 	}
 	return result, err
+}
+
+func ValidateYesOrNo(s string) error {
+	if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
+		return errors.New("invalid input")
+	}
+	return nil
 }
 
 func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {

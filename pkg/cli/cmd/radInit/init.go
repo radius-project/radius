@@ -70,6 +70,8 @@ type Runner struct {
 	Reinstall              bool
 	Prompter               prompt.Interface
 	ConfigFileInterface    configFile.Interface
+	KubernetesInterface    kubernetes.Interface
+	HelmInterface          helm.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -79,6 +81,8 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory:   factory.GetConnectionFactory(),
 		Prompter:            factory.GetPrompter(),
 		ConfigFileInterface: factory.GetConfigFileInterface(),
+		KubernetesInterface: factory.GetKubernetesInterface(),
+		HelmInterface:       factory.GetHelmInterface(),
 	}
 }
 
@@ -96,16 +100,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
-	kubeContext, err := kubernetes.ReadKubeConfig()
+	kubeContext, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
-	//TODO: check flags if interactive or not
+	
 	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not mentioned"}
 	}
-	//TODO: check flags if interactive or not
+
 	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read env name"}
@@ -159,7 +163,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return &cli.FriendlyError{Message: "Failed to read confirmation"}
 		}
 	}
-	r.RadiusInstalled, err = helm.CheckRadiusInstall(r.KubeContext)
+	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
 	}
@@ -263,7 +267,6 @@ func selectCloudProvider(output output.Interface, prompter prompt.Interface) (in
 		return -1, err
 	}
 	if values[index] == "AWS" {
-		output.LogInfo("AWS not supported")
 		return -2, nil
 	}
 	if values[index] == "[back]" {

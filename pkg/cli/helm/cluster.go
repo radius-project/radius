@@ -194,3 +194,16 @@ func CheckRadiusInstall(kubeContext string) (bool, error) {
 
 	return true, nil
 }
+
+//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+type Interface interface {
+	CheckRadiusInstall(kubeContext string) (bool, error)
+}
+
+type Impl struct {
+
+}
+
+func(i *Impl) CheckRadiusInstall(kubeContext string) (bool, error) {
+	return CheckRadiusInstall(kubeContext)
+}
