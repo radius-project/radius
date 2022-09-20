@@ -111,6 +111,7 @@ func (ri ID) FindScope(scopeType string) string {
 // RootScope returns the root-scope (the part before 'providers').
 //
 // Examples:
+//
 //	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
 func (ri ID) RootScope() string {
@@ -133,6 +134,7 @@ func (ri ID) RootScope() string {
 // PlaneScope returns plane or subscription scope without resourceGroup
 //
 // Examples:
+//
 //	/subscriptions/{guid}
 //	/planes/radius/local
 func (ri ID) PlaneScope() string {
@@ -158,6 +160,7 @@ func (ri ID) PlaneScope() string {
 // ProviderNamespace returns the providers part of the ID
 //
 // Examples:
+//
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
 	if len(ri.typeSegments) == 0 {
@@ -179,6 +182,7 @@ func (ri ID) IsRadiusRPResource() bool {
 // a chance that it is going to trigger a panic.
 //
 // Examples:
+//
 //	radius
 func (ri ID) PlaneNamespace() string {
 	if !ri.IsUCPQualfied() {
@@ -196,6 +200,7 @@ func (ri ID) PlaneNamespace() string {
 // RoutingScope returns the routing-scope (the part after 'providers').
 //
 // Examples:
+//
 //	/Applications.Core/applications/my-app
 func (ri ID) RoutingScope() string {
 	segments := []string{}
@@ -284,6 +289,37 @@ func (ri ID) Append(resourceType TypeSegment) ID {
 		return result
 	} else {
 		result, err := Parse(MakeRelativeID(ri.scopeSegments, types...))
+		if err != nil {
+			panic(err) // Should not be possible.
+		}
+
+		return result
+	}
+}
+
+// ChangeName changes the name of a ResourceID.
+// If a name is present in the last type/name pair then the name is changed to the input name
+// If a name isn't set on the last type/name pair then the name is added to the last type/name pair
+// If name is empty, then the name will be removed from the last type/name pair
+func (ri ID) ChangeName(name string) ID {
+	// Useful for converting a collection resource ID (for list operations) to a resource ID.
+	typesSegments := ri.typeSegments
+
+	if len(typesSegments) < 1 {
+		// resource IDs should always have at least one type segment
+		panic("no type segments in resource ID") // Should not be possible.
+	} else {
+		typesSegments[len(typesSegments)-1].Name = name
+	}
+
+	if ri.IsUCPQualfied() {
+		result, err := Parse(MakeUCPID(ri.scopeSegments, typesSegments...))
+		if err != nil {
+			panic(err) // Should not be possible.
+		}
+		return result
+	} else {
+		result, err := Parse(MakeRelativeID(ri.scopeSegments, typesSegments...))
 		if err != nil {
 			panic(err) // Should not be possible.
 		}

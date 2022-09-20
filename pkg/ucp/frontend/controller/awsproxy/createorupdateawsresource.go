@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
 	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	awstypes "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -34,7 +34,7 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	resourceType := ctx.Value(AWSResourceTypeKey).(string)
-	client := ctx.Value(AWSClientKey).(*cloudcontrol.Client)
+	client := ctx.Value(AWSClientKey).(awstypes.AWSClient)
 	id := ctx.Value(AWSResourceID).(resources.ID)
 
 	decoder := json.NewDecoder(req.Body)
@@ -76,10 +76,10 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
-	if awserror.IsAWSResourceNotFound(err) {
+	if awstypes.IsAWSResourceNotFound(err) {
 		existing = false
 	} else if err != nil {
-		return awserror.HandleAWSError(err)
+		return awstypes.HandleAWSError(err)
 	}
 
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
@@ -88,7 +88,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if getResponse != nil {
 		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 	}
 
@@ -107,13 +107,13 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if existing {
 		desiredState, err := json.Marshal(properties)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		// For an existing resource we need to convert the desired state into a JSON-patch document
 		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		// We need to take out readonly properties. Those are usually not specified by the client, and so
@@ -128,7 +128,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 		marshaled, err := json.Marshal(&patch)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
@@ -137,17 +137,17 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			PatchDocument: aws.String(string(marshaled)),
 		})
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 	} else {
 		desiredState, err := json.Marshal(properties)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
@@ -155,12 +155,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			DesiredState: aws.String(string(desiredState)),
 		})
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return awstypes.HandleAWSError(err)
 		}
 	}
 

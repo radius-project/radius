@@ -14,7 +14,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	awstypes "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -34,16 +34,16 @@ func NewGetAWSOperationResults(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client := ctx.Value(AWSClientKey).(*cloudcontrol.Client)
+	client := ctx.Value(AWSClientKey).(awstypes.AWSClient)
 	id := ctx.Value(AWSResourceID).(resources.ID)
 
 	response, err := client.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(id.Name()),
 	})
-	if awserror.IsAWSResourceNotFound(err) {
+	if awstypes.IsAWSResourceNotFound(err) {
 		return rest.NewNotFoundResponse(id.String()), nil
 	} else if err != nil {
-		return awserror.HandleAWSError(err)
+		return awstypes.HandleAWSError(err)
 	}
 
 	isTerminal := false

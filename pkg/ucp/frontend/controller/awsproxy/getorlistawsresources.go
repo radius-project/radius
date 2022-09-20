@@ -11,7 +11,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	awserror "github.com/project-radius/radius/pkg/ucp/aws"
+	awstypes "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -31,7 +31,7 @@ func NewGetOrListAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (p *GetOrListAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	resourceType := ctx.Value(AWSResourceTypeKey).(string)
-	client := ctx.Value(AWSClientKey).(*cloudcontrol.Client)
+	client := ctx.Value(AWSClientKey).(awstypes.AWSClient)
 	id := ctx.Value(AWSResourceID).(resources.ID)
 
 	if id.IsCollection() {
@@ -41,15 +41,15 @@ func (p *GetOrListAWSResource) Run(ctx context.Context, w http.ResponseWriter, r
 	}
 }
 
-func (p *GetOrListAWSResource) getAWSResource(ctx context.Context, resourceType string, client *cloudcontrol.Client, id resources.ID) (rest.Response, error) {
+func (p *GetOrListAWSResource) getAWSResource(ctx context.Context, resourceType string, client awstypes.AWSClient, id resources.ID) (rest.Response, error) {
 	response, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
-	if awserror.IsAWSResourceNotFound(err) {
+	if awstypes.IsAWSResourceNotFound(err) {
 		return rest.NewNotFoundResponse(id.String()), nil
 	} else if err != nil {
-		return awserror.HandleAWSError(err)
+		return awstypes.HandleAWSError(err)
 	}
 
 	properties := map[string]interface{}{}
@@ -69,13 +69,13 @@ func (p *GetOrListAWSResource) getAWSResource(ctx context.Context, resourceType 
 	return rest.NewOKResponse(body), nil
 }
 
-func (p *GetOrListAWSResource) listAWSResources(ctx context.Context, resourceType string, client *cloudcontrol.Client, id resources.ID) (rest.Response, error) {
+func (p *GetOrListAWSResource) listAWSResources(ctx context.Context, resourceType string, client awstypes.AWSClient, id resources.ID) (rest.Response, error) {
 	// TODO pagination
 	response, err := client.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: &resourceType,
 	})
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return awstypes.HandleAWSError(err)
 	}
 
 	// TODO there some limitations with listing resources:
@@ -92,8 +92,10 @@ func (p *GetOrListAWSResource) listAWSResources(ctx context.Context, resourceTyp
 			}
 		}
 
+		individualId := id.ChangeName(*result.Identifier)
+
 		item := map[string]interface{}{
-			"id":         id.String(),
+			"id":         individualId.String(),
 			"name":       result.Identifier,
 			"type":       id.Type(),
 			"properties": properties,

@@ -442,6 +442,46 @@ func Test_Append_NamedResource_UCP(t *testing.T) {
 	require.Equal(t, "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/test-resource/test-name", appended.id)
 }
 
+func Test_ChangeName(t *testing.T) {
+	type testcase struct {
+		ID       string
+		Name     string
+		Expected string
+	}
+
+	cases := []testcase{
+		{
+			ID:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications",
+			Name:     "test-app",
+			Expected: "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+		},
+		{
+			ID:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications",
+			Name:     "",
+			Expected: "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications",
+		},
+		{
+			ID:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-2",
+			Name:     "test-app",
+			Expected: "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
+		},
+		{
+			ID:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test",
+			Name:     "",
+			Expected: "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications",
+		},
+	}
+	for _, tc := range cases {
+		id, err := Parse(tc.ID)
+		require.NoError(t, err)
+
+		result := id.ChangeName(tc.Name)
+		expectedId, err := Parse(tc.Expected)
+		require.NoError(t, err)
+		require.Equal(t, expectedId, result)
+	}
+}
+
 func Test_Truncate_Success(t *testing.T) {
 	id, err := Parse("/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app")
 	require.NoError(t, err)
