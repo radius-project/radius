@@ -16,6 +16,12 @@
             "kind": "Kubernetes",
             "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
             "namespace": "default"
+          },
+          "recipes": {
+            "cosmos-recipe": {
+              "connectorType": "Applications.Connector/mongoDatabases",
+              "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
+            }
           }
         }
       }
