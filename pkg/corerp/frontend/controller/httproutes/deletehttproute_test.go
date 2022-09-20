@@ -16,7 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -62,7 +62,7 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
-			appDataModel.Properties.ProvisioningState = tt.curState
+			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
@@ -72,16 +72,14 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && appDataModel.Properties.ProvisioningState.IsTerminal() {
+			if tt.getErr == nil && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
 				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.qErr).
 					Times(1)
 
-				if tt.qErr != nil {
-					mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
-						Return(tt.saveErr).
-						Times(1)
-				}
+				mds.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).
+					Return(tt.saveErr).
+					Times(1)
 			}
 
 			opts := ctrl.Options{
@@ -103,9 +101,8 @@ func TestDeleteHTTPRouteRun_20220315PrivatePreview(t *testing.T) {
 
 			// If happy path, expect that the returned object has Deleting state
 			if tt.code == http.StatusAccepted {
-				actualOutput := &datamodel.HTTPRoute{}
+				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
-				require.Equal(t, v1.ProvisioningStateDeleting, actualOutput.Properties.ProvisioningState)
 			}
 		})
 	}

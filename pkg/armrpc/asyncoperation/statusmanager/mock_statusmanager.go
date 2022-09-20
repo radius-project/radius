@@ -12,7 +12,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	uuid "github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	servicecontext "github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -69,7 +68,7 @@ func (mr *MockStatusManagerMockRecorder) Get(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // QueueAsyncOperation mocks base method.
-func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *servicecontext.ARMRequestContext, arg2 time.Duration) error {
+func (m *MockStatusManager) QueueAsyncOperation(arg0 context.Context, arg1 *v1.ARMRequestContext, arg2 time.Duration) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "QueueAsyncOperation", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)

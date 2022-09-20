@@ -149,8 +149,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
-			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
+			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {
@@ -255,8 +255,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewCreateOrUpdateApplication(opts)
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, req)
-			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
+			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 
 			if !tt.shouldFail {

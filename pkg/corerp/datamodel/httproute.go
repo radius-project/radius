@@ -13,22 +13,16 @@ import (
 
 // HTTPRoute represents HTTPRoute resource.
 type HTTPRoute struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// TODO: remove this from CoreRP
 	ConnectorMetadata
-
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties *HTTPRouteProperties `json:"properties"`
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (h HTTPRoute) ResourceTypeName() string {
+func (h *HTTPRoute) ResourceTypeName() string {
 	return "Applications.Core/httpRoutes"
 }
 
@@ -63,9 +57,8 @@ func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
 	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Hostname          string               `json:"hostname,omitempty"`
-	Port              int32                `json:"port,omitempty"`
-	Scheme            string               `json:"scheme,omitempty"`
-	URL               string               `json:"url,omitempty"`
+	Hostname string `json:"hostname,omitempty"`
+	Port     int32  `json:"port,omitempty"`
+	Scheme   string `json:"scheme,omitempty"`
+	URL      string `json:"url,omitempty"`
 }

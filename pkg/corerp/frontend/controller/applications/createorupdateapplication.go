@@ -7,100 +7,59 @@ package applications
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
 type CreateOrUpdateApplication struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.Application, datamodel.Application]
 }
 
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
 func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
-	return &CreateOrUpdateApplication{ctrl.NewBaseController(opts)}, nil
+	return &CreateOrUpdateApplication{
+		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+	}, nil
 }
 
 // Run executes CreateOrUpdateApplication operation.
 func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	newResource, err := a.Validate(ctx, req, serviceCtx.APIVersion)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	newResource, err := a.GetResourceFromRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
 
-	// Read existing application resource info from the data store
-	old := &datamodel.Application{}
-	isNewResource := false
-	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), old)
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			isNewResource = true
-		} else {
-			return nil, err
+		return nil, err
+	}
+
+	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
+	}
+
+	if old != nil {
+		oldProp := &old.Properties.BasicResourceProperties
+		newProp := &newResource.Properties.BasicResourceProperties
+		if !oldProp.EqualLinkedResource(newProp) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 		}
 	}
 
-	if req.Method == http.MethodPatch && isNewResource {
-		return rest.NewNotFoundResponse(serviceCtx.ResourceID), nil
-	}
-
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
-	}
-
-	newResource.SystemData = ctrl.UpdateSystemData(old.SystemData, *serviceCtx.SystemData())
-	if !isNewResource {
-		newResource.CreatedAPIVersion = old.CreatedAPIVersion
-		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
-		}
-	}
-
-	nr, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
+	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
+	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
 	if err != nil {
 		return nil, err
 	}
 
-	versioned, err := converter.ApplicationDataModelToVersioned(newResource, serviceCtx.APIVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	headers := map[string]string{"ETag": nr.ETag}
-
-	return rest.NewOKResponseWithHeaders(versioned, headers), nil
-}
-
-// Validate extracts versioned resource from request and validates the properties.
-func (a *CreateOrUpdateApplication) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.Application, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
-	content, err := ctrl.ReadJSONBody(req)
-	if err != nil {
-		return nil, err
-	}
-
-	dm, err := converter.ApplicationDataModelFromVersioned(content, apiVersion)
-	if err != nil {
-		return nil, err
-	}
-
-	dm.ID = serviceCtx.ResourceID.String()
-	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
-	dm.TenantID = serviceCtx.HomeTenantID
-	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
-	return dm, nil
+	return a.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }

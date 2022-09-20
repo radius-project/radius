@@ -18,25 +18,27 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.HTTPRoute{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
 		Properties: &datamodel.HTTPRouteProperties{
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Hostname:          to.String(src.Properties.Hostname),
-			Port:              to.Int32(src.Properties.Port),
-			Scheme:            to.String(src.Properties.Scheme),
-			URL:               to.String(src.Properties.URL),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
+			Hostname: to.String(src.Properties.Hostname),
+			Port:     to.Int32(src.Properties.Port),
+			Scheme:   to.String(src.Properties.Scheme),
+			URL:      to.String(src.Properties.URL),
 		},
 	}
 	return converted, nil
@@ -60,7 +62,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(route.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),
 		Hostname:          to.StringPtr(route.Properties.Hostname),
 		Port:              to.Int32Ptr((route.Properties.Port)),

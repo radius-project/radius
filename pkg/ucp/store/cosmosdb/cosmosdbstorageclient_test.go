@@ -53,11 +53,14 @@ func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.E
 	testID := rootScope + "/providers/applications.core/environments/" + resourceName
 
 	env := &datamodel.Environment{
-		TrackedResource: v1.TrackedResource{
-			ID:       testID,
-			Name:     resourceName,
-			Type:     environmentResourceType,
-			Location: testLocation,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       testID,
+				Name:     resourceName,
+				Type:     environmentResourceType,
+				Location: testLocation,
+			},
+			InternalMetadata: v1.InternalMetadata{},
 		},
 		Properties: datamodel.EnvironmentProperties{
 			Compute: datamodel.EnvironmentCompute{
@@ -68,7 +71,6 @@ func getTestEnvironmentModel(rootScope string, resourceName string) *datamodel.E
 				},
 			},
 		},
-		InternalMetadata: v1.InternalMetadata{},
 	}
 
 	env.InternalMetadata.CreatedAPIVersion = "2022-03-15-privatepreview"

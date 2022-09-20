@@ -13,7 +13,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -34,7 +33,7 @@ func NewCreateOrUpdateSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 
 // Run executes CreateOrUpdateSqlDatabase operation.
 func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := sql.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -64,7 +63,7 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(&prop) {
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
 		}
 	}
@@ -114,7 +113,7 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request
 
 // Validate extracts versioned resource from request and validates the properties.
 func (sql *CreateOrUpdateSqlDatabase) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.SqlDatabase, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err

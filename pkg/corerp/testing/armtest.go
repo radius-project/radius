@@ -12,8 +12,8 @@ import (
 	"net/http"
 	"os"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 )
 
 func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body interface{}) (*http.Request, error) {
@@ -42,8 +42,8 @@ func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSON
 
 func ARMTestContextFromRequest(req *http.Request) context.Context {
 	ctx := context.Background()
-	armctx, _ := servicecontext.FromARMRequest(req, "")
-	ctx = servicecontext.WithARMRequestContext(ctx, armctx)
+	armctx, _ := v1.FromARMRequest(req, "", "West US")
+	ctx = v1.WithARMRequestContext(ctx, armctx)
 	ctx = hostoptions.WithContext(ctx, &hostoptions.ProviderConfig{
 		Env: hostoptions.EnvironmentOptions{RoleLocation: "West US"},
 	})

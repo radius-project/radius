@@ -28,6 +28,7 @@ const (
 
 type Options struct {
 	ProviderNamespace string
+	Location          string
 	Address           string
 	PathBase          string
 	EnableArmAuth     bool
@@ -54,7 +55,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	if options.EnableArmAuth {
 		r.Use(authentication.ClientCertValidator(options.ArmCertMgr))
 	}
-	r.Use(servicecontext.ARMRequestCtx(options.PathBase))
+	r.Use(servicecontext.ARMRequestCtx(options.PathBase, options.Location))
 
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)

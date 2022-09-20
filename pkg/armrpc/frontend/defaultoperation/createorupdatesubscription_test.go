@@ -15,7 +15,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/stretchr/testify/require"
 )
@@ -41,7 +40,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 
 		// arrange
 		op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
-		ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
+		ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 			APIVersion: v1.SubscriptionAPIVersion,
 		})
 
@@ -61,7 +60,7 @@ func TestSubscriptionsRunWithArmV2ApiVersion(t *testing.T) {
 func TestSubscriptionsRunWithUnsupportedAPIVersion(t *testing.T) {
 	// arrange
 	op, _ := NewCreateOrUpdateSubscription(ctrl.Options{})
-	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
+	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
 

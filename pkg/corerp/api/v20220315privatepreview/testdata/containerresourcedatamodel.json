@@ -13,6 +13,7 @@
   "tags": {
     "env": "dev"
   },
+  "provisioningState": "Succeeded",
   "properties": {
     "status": {
       "outputResources": [
@@ -25,7 +26,6 @@
         }
       ]
     },
-    "provisioningState": "Succeeded",
     "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
     "connections": {
       "inventory": {

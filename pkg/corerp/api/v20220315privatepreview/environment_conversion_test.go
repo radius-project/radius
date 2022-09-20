@@ -26,11 +26,18 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					Name: "env0",
-					Type: "Applications.Core/environments",
-					Tags: map[string]string{},
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
 				},
 				Properties: datamodel.EnvironmentProperties{
 					Compute: datamodel.EnvironmentCompute{
@@ -46,11 +53,6 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
-					ProvisioningState: v1.ProvisioningStateAccepted,
-				},
-				InternalMetadata: v1.InternalMetadata{
-					CreatedAPIVersion: "2022-03-15-privatepreview",
-					UpdatedAPIVersion: "2022-03-15-privatepreview",
 				},
 			},
 			err: nil,
@@ -113,6 +115,20 @@ type fakeResource struct{}
 
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
+}
+
+func (f *fakeResource) GetSystemData() *v1.SystemData {
+	return nil
+}
+
+func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
+	return v1.ProvisioningStateAccepted
+}
+
+func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
+}
+
+func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext) {
 }
 
 func TestConvertFromValidation(t *testing.T) {

@@ -33,7 +33,7 @@ type DaprPubSubBroker struct {
 	ConnectorMetadata
 }
 
-func (daprPubSub DaprPubSubBroker) ResourceTypeName() string {
+func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return "Applications.Connector/daprPubSubBrokers"
 }
 

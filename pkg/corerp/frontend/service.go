@@ -47,6 +47,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err := s.Start(ctx, server.Options{
+		Location: s.Options.Config.Env.RoleLocation,
 		Address:  address,
 		PathBase: s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate

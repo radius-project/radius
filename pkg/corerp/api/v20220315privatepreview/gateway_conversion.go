@@ -37,24 +37,26 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.Gateway{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
 		Properties: datamodel.GatewayProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			BasicResourceProperties: v1.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Hostname: hostname,
 			Routes:   routes,
 			URL:      to.String(src.Properties.URL),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 
@@ -98,7 +100,7 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: v1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(g.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,

@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/stretchr/testify/require"
 )
@@ -22,7 +21,7 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 	opts := ctrl.Options{}
 	op, err := NewGetOperations(opts)
 	require.NoError(t, err)
-	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
+	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: v20220315privatepreview.Version,
 	})
 
@@ -46,7 +45,7 @@ func TestRunWithUnsupportedAPIVersion(t *testing.T) {
 	opts := ctrl.Options{}
 	op, err := NewGetOperations(opts)
 	require.NoError(t, err)
-	ctx := servicecontext.WithARMRequestContext(context.Background(), &servicecontext.ARMRequestContext{
+	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
 

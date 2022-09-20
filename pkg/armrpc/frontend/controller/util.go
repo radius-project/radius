@@ -15,7 +15,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 var (
@@ -58,7 +58,7 @@ func ReadJSONBody(r *http.Request) ([]byte, error) {
 
 // ValidateETag receives an ARMRequestContect and gathers the values in the If-Match and/or
 // If-None-Match headers and then checks to see if the etag of the resource matches what is requested.
-func ValidateETag(armRequestContext servicecontext.ARMRequestContext, etag string) error {
+func ValidateETag(armRequestContext v1.ARMRequestContext, etag string) error {
 	ifMatchETag := armRequestContext.IfMatch
 	ifMatchCheck := checkIfMatchHeader(ifMatchETag, etag)
 	if ifMatchCheck != nil {
@@ -124,7 +124,7 @@ func GetNextLinkURL(ctx context.Context, req *http.Request, paginationToken stri
 		return ""
 	}
 
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	qps := url.Values{}
 	qps.Add("api-version", serviceCtx.APIVersion)
