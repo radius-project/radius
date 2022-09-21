@@ -110,7 +110,7 @@ func Test_Run(t *testing.T) {
 					Params: []interface{}{"testrg"},
 				},
 				output.LogOutput{
-					Format: "resourcegroup %q does not exist or has already been deleted",
+					Format: "resource group %q does not exist or has already been deleted",
 					Params: []interface{}{"testrg"},
 				},
 			}
