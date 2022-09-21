@@ -29,3 +29,7 @@ func AddResourceGroupFlag(cmd *cobra.Command) {
 func AddApplicationNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("application", "a", "", "The application name")
 }
+
+func AddConfirmationFlag(cmd *cobra.Command) {
+	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
+}

@@ -35,7 +35,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	cmd.Flags().BoolP("yes", "y", false, "")
+	commonflags.AddConfirmationFlag(cmd)
 
 	return cmd, runner
 }
