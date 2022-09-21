@@ -18,9 +18,6 @@ import (
 func NewCommand(factory framework.Factory) *cobra.Command {
 	// This command is not runnable, and thus has no runner.
 	cmd := &cobra.Command{
-		// These commands are being built in a few steps. We'll show them when they are ready.
-		Hidden: true,
-
 		Use:   "group",
 		Short: "Manage resource groups",
 		Long:  `Manage resource groups
