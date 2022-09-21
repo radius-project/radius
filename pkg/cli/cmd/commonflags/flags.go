@@ -32,6 +32,7 @@ func AddApplicationNameFlag(cmd *cobra.Command) {
 
 func AddConfirmationFlag(cmd *cobra.Command) {
 	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
+}
 
 func AddEnvironmentNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("environment", "e", "", "The environment name")

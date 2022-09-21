@@ -114,6 +114,7 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
+// Installs radius based on kubecontext in "radius-system" namespace
 func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
 	step := output.BeginStep("Installing Radius version %s control plane...", version.Version())
 	foundExisting, err := InstallOnCluster(ctx, clusterOptions, kubeContext)
@@ -181,6 +182,7 @@ func UninstallOnCluster(kubeContext string) error {
 	return nil
 }
 
+// Checks whethere radius installed on the cluster based of kubeContext
 func CheckRadiusInstall(kubeContext string) (bool, error) {
 	var helmOutput strings.Builder
 
@@ -216,10 +218,12 @@ type Interface interface {
 type Impl struct {
 }
 
+// Checks if radius is installed based on kubeContext
 func (i *Impl) CheckRadiusInstall(kubeContext string) (bool, error) {
 	return CheckRadiusInstall(kubeContext)
 }
 
+// Installs radius on a cluster based on kubeContext
 func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
 	return Install(ctx, clusterOptions, kubeContext)
 }

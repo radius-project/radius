@@ -50,18 +50,22 @@ func (i *Impl) GetOutput() output.Interface {
 	return i.Output
 }
 
+// Fetches the interface to prompt user for values
 func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
 }
 
+// Fetches the interface to interace with radius config file
 func (i *Impl) GetConfigFileInterface() configFile.Interface {
 	return i.ConfigFileInterface
 }
 
+// Fetches the interface to get info related to the kubernetes cluster
 func (i *Impl) GetKubernetesInterface() kubernetes.Interface {
 	return i.KubernetesInterface
 }
 
+// Fetches the interface for operations related to radius installation
 func (i *Impl) GetHelmInterface() helm.Interface {
 	return i.HelmInterface
 }

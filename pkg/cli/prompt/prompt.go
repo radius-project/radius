@@ -161,19 +161,22 @@ type Interface interface {
 
 type Impl struct{}
 
+// Prompts user for an input
 func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
 	return prompter.Run()
 }
 
+//Prompts user to select from a list of values
 func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 	return selector.Run()
 }
 
+// Creates a Yes or No prompts where user has to enter either a Y or N as input
 func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
 	textPrompt := promptui.Prompt{
 		Label:     label,
 		Default:   defaultValue,
-		Validate: ValidateYesOrNo,
+		Validate: validateYesOrNo,
 	}
 	result, err := prompter.RunPrompt(textPrompt)
 	if errors.Is(err, promptui.ErrAbort) {
@@ -184,13 +187,14 @@ func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (str
 	return result, err
 }
 
-func ValidateYesOrNo(s string) error {
+func validateYesOrNo(s string) error {
 	if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
 		return errors.New("invalid input")
 	}
 	return nil
 }
 
+// Creates a prompt where a user is asked for a value suggesting a default Val
 func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {
 	return promptui.Prompt{
 		Label:     label,
@@ -208,6 +212,7 @@ func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bo
 	}
 }
 
+// Creates a prompter which has a list of values to select from
 func SelectionPrompter(label string, items []string) promptui.Select {
 	return promptui.Select{
 		Label: label,

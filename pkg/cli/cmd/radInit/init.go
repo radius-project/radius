@@ -86,6 +86,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validates the user prompts, values provided and builds the picture for the backend to execute
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
@@ -120,9 +121,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "Namespace not specified"}
 	}
 
-	addingProvider := "y"
-	for strings.ToLower(addingProvider) == "y" {
+	// This loop is required for adding multiple cloud providers
+	// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
+	addingAnotherProvider := "y"
+	for strings.ToLower(addingAnotherProvider) == "y" {
 		var cloudProvider int
+		// This loop is required to move up a level when the user selects [back] as an option
+		// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
 		addingCloudProvider := true
 		for addingCloudProvider {
 			cloudProviderPrompter, err := prompt.YesOrNoPrompter("Add cloud providers for cloud resources [y/N]?", "N", r.Prompter)
@@ -137,10 +142,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return &cli.FriendlyError{Message: "Error reading cloud provider"}
 			}
+			// cloudProvider being -1 represents the user doesn't wants to add one
 			if cloudProvider != -1 {
 				addingCloudProvider = false
 			}
 		}
+		// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
 		if cloudProvider == -1 {
 			break
 		}
@@ -153,7 +160,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		case AWS:
 			r.Output.LogInfo("AWS is not supported")
 		}
-		addingProvider, err = r.Prompter.RunPrompt(prompt.TextPromptWithDefault(
+		addingAnotherProvider, err = r.Prompter.RunPrompt(prompt.TextPromptWithDefault(
 			"Would you like to add another cloud provider [y/N]",
 			"N",
 			nil,
@@ -174,6 +181,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
 	// Install radius control plane
 	// TODO: Add check for user prompts (whether user has prompted to re-install or not),

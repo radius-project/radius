@@ -419,6 +419,7 @@ type Impl struct {
 
 }
 
+// Fetches the kubecontext from the system
 func(i *Impl) GetKubeContext() (*api.Config, error) {
 	return ReadKubeConfig()
 }

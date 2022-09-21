@@ -256,6 +256,7 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return respFromCtx.StatusCode != 204, nil
 }
 
+// Creates a radius environment resource
 func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string) (bool, error) {
 	client, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {

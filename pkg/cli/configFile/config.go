@@ -20,6 +20,7 @@ type Interface interface {
 type Impl struct {
 }
 
+// Edits and updates the rad config file with the specified sections to edit
 func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string) error {
 	// Reload config so we can see the updates
 	config, err := cli.LoadConfig(filePath)
