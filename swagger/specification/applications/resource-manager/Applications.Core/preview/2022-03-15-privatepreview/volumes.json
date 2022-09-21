@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
       "title": "Applications.Core Management APIs",
-      "description": "REST API for Applications.Core Persistent Volumes Resource",
+      "description": "REST API for Applications.Core Persistent Volume Resource",
       "version": "2022-03-15-privatepreview"
     },
     "host": "management.azure.com",
@@ -382,7 +382,7 @@
             "description": "The name of the certificate",
             "type": "string"
           },
-          "value": {
+          "type": {
             "description": "Certificate object to be downloaded - the certificate itself, private key or public key of the certificate",
             "type": "string",
             "enum": [
@@ -391,7 +391,7 @@
               "privatekey"
             ],
             "x-ms-enum": {
-              "name": "value",
+              "name": "type",
               "modelAsString": false
             }
           },

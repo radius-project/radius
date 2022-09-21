@@ -46,7 +46,7 @@
             },
             "mycert-2": {
               "name": "cert2",
-              "value": "privatekey",
+              "type": "privatekey",
               "format": "pfx",
               "encoding": "hex"
             }

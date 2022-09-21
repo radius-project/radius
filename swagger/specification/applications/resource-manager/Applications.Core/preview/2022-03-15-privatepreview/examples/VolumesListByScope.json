@@ -37,11 +37,11 @@
               "certificates": {
                 "mycert-1": {
                   "name": "cert1",
-                  "value": "certificate"
+                  "type": "certificate"
                 },
                 "mycert-2": {
                   "name": "cert2",
-                  "value": "privatekey",
+                  "type": "privatekey",
                   "format": "pfx",
                   "encoding": "hex"
                 }
@@ -78,11 +78,11 @@
               "certificates": {
                 "mycert-1": {
                   "name": "cert1",
-                  "value": "certificate"
+                  "type": "certificate"
                 },
                 "mycert-2": {
                   "name": "cert2",
-                  "value": "privatekey",
+                  "type": "privatekey",
                   "format": "pfx",
                   "encoding": "hex"
                 }
