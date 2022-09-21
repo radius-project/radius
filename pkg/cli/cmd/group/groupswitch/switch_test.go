@@ -30,7 +30,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithWorkspace(t)
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -43,18 +42,9 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Switch command with correct options but no workspace",
-			Input:         []string{"-g", "groupname"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
-			},
-		},
-		{
 			Name:          "Switch command with correct options",
 			Input:         []string{"-g", "groupname"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,

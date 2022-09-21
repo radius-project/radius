@@ -10,10 +10,9 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
@@ -30,8 +29,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		RunE:    framework.RunCommand(runner),
 	}
 
-	cmd.Flags().StringP("group", "g", "", "The resource group name")
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 
 	return cmd, runner
 }
@@ -39,71 +38,30 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
-	Output               output.Interface
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
-	ResourceType         string
-	ResourceName         string
-	Format               string
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
 	}
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
-	section, err := cli.ReadWorkspaceSection(config)
+	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
 	}
 
-	workspaceName, err := cmd.Flags().GetString("workspace")
+	resourceGroup, err := cli.RequireUCPResourceGroup(cmd)
 	if err != nil {
 		return err
 	}
 
-	if workspaceName == "" {
-		section, err := cli.ReadWorkspaceSection(config)
-		if err != nil {
-			return err
-		}
-		workspaceName = section.Default
-	}
-	if workspaceName == "" {
-		return fmt.Errorf("no default workspace set. Run`rad workspace switch` or `rad init` and try again")
-	}
-	workspace, err := section.GetWorkspace(workspaceName)
-	if err != nil {
-		return err
-	}
-
-	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
-	if err != nil {
-		return err
-	}
-	if resourcegroup == "" {
-		return fmt.Errorf("cannot switch to resource group without specifying its name. use -g to provide the name")
-	}
-
-	kubecontext, ok := workspace.Connection["context"].(string)
-	if !ok {
-		return fmt.Errorf("cannot switch to the resource group. workspace %q has invalid context", workspaceName)
-	}
-
-	isRadiusInstalled, err := helm.CheckRadiusInstall(kubecontext)
-	if err != nil {
-		return err
-	}
-	if !isRadiusInstalled {
-		return fmt.Errorf("radius control plane not installed. run `rad init` or `rad install` and try again")
-	}
-
-	r.UCPResourceGroupName = resourcegroup
+	r.UCPResourceGroupName = resourceGroup
 	r.Workspace = workspace
 
 	return nil
