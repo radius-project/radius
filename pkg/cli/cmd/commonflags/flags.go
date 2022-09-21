@@ -23,7 +23,7 @@ func AddWorkspaceFlag(cmd *cobra.Command) {
 }
 
 func AddResourceGroupFlag(cmd *cobra.Command) {
-	cmd.Flags().StringP("group", "g", "", "The workspace name")
+	cmd.Flags().StringP("group", "g", "", "The resource group name")
 }
 
 func AddApplicationNameFlag(cmd *cobra.Command) {
