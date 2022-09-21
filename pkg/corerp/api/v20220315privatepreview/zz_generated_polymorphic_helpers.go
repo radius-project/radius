@@ -129,3 +129,21 @@ func unmarshalVolumeClassificationMap(rawMsg json.RawMessage) (map[string]Volume
 	return fMap, nil
 }
 
+func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b VolumePropertiesClassification
+	switch m["kind"] {
+	case "azure.com.keyvault":
+		b = &AzureKeyVaultVolumeProperties{}
+	default:
+		b = &VolumeProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
