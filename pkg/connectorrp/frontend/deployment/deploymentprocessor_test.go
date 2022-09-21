@@ -257,7 +257,7 @@ func buildFetchSecretsInput() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
-	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
+	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
 func buildEnvironmentResource() store.Object {

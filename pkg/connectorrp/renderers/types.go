@@ -54,7 +54,7 @@ type RecipeData struct {
 	RecipeTemplatePath string
 	APIVersion         string
 	AzureResourceType  resources.KnownType
-	Resources          []string // resource type/resource id map of the resources deployed
+	Resources          []string // Resource id's of the resources deployed by the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
