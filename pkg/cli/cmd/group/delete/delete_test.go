@@ -25,13 +25,11 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithWorkspace(t)
-
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Delete Command with incorrect args",
 			Input:         []string{},
-			ExpectedValid: true,
+			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
@@ -43,7 +41,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 	}
