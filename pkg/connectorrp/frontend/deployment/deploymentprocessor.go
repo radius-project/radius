@@ -152,19 +152,19 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 	if rendererOutput.RecipeData.Name != "" {
 		//rendererOutput.RecipeData.Resources, err = handlers.DeployRecipe.Put(ctx, rendererOutput.RecipeData.RecipeTemplatePath)
-	} else {
-		for _, outputResource := range orderedOutputResources {
-			deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
-			if err != nil {
-				return DeploymentOutput{}, err
-			}
+		rendererOutput.RecipeData.Resources = []string{}
+	}
+	for _, outputResource := range orderedOutputResources {
+		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
 
-			updatedOutputResources = append(updatedOutputResources, outputResource)
+		updatedOutputResources = append(updatedOutputResources, outputResource)
 
-			for k, computedValue := range deployedComputedValues {
-				if computedValue != nil {
-					computedValues[k] = computedValue
-				}
+		for k, computedValue := range deployedComputedValues {
+			if computedValue != nil {
+				computedValues[k] = computedValue
 			}
 		}
 	}
