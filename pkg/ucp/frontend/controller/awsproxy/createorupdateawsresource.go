@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -80,27 +81,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		return awserror.HandleAWSError(err)
 	}
 
-	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
-	// simulate that here.
-	responseProperties := map[string]interface{}{}
-	if getResponse != nil {
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-	}
-
-	// Properties specified by users take precedence
-	for k, v := range properties {
-		responseProperties[k] = v
-	}
-
-	responseBody := map[string]interface{}{
-		"id":         id.String(),
-		"name":       id.Name(),
-		"type":       id.Type(),
-		"properties": responseProperties,
-	}
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
@@ -161,6 +141,32 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
+	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
+	// simulate that here.
+	responseProperties := map[string]interface{}{}
+	if getResponse != nil {
+		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+		if err != nil {
+			return awserror.HandleAWSError(err)
+		}
+	}
+
+	// Properties specified by users take precedence
+	for k, v := range properties {
+		responseProperties[k] = v
+	}
+
+	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
+
+	responseBody := map[string]interface{}{
+		"id":         id.String(),
+		"name":       id.Name(),
+		"type":       id.Type(),
+		"properties": responseProperties,
+	}
+
 	resp := radrprest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp.(*radrprest.AsyncOperationResponse).RootScope = id.RootScope()
+	resp.(*radrprest.AsyncOperationResponse).PathBase = p.Options.BasePath
 	return resp, nil
 }
