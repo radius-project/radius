@@ -23,19 +23,26 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 
 		Use:   "group",
 		Short: "Manage resource groups",
-		Long:  "`Manage resource groups. This is NOT the same as Azure resource groups.`",
+		Long:  `Manage resource groups
+		
+Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
+
+A Radius application and its resources can span one or more resource groups, and do not have to be in the same resource group as the Radius environment into which it's being deployed into.
+
+Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.
+`",
 		Example: `
-# List resource groups in workspace
+# List resource groups in default workspace
 rad group list
 
-# create resource group in workspace
-rad group create azure --client-id <client id> --client-secret <client secret> --tenant-id <tenant id> --subscription <subscription id> --resource-group <resource group name>
+# Create resource group in specified workspace
+rad group create prod -w localWorkspace
 
-# Show cloud providers details for Azure
-rad provider show azure
+# Delete resource group in default workspace
+rad group delete prod
 
-# Delete Azure cloud provider configuration
-rad provider delete azure
+# Show details of resource group in default workspace
+rad group show dev
 `,
 	}
 
