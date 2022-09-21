@@ -33,6 +33,9 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options.BasePath, req)
+	if err != nil {
+		return nil, err
+	}
 
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
