@@ -166,6 +166,16 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 		},
+		{
+			"ucp-test-headers",
+			"https://ucp.dev",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"global",
+			operationID,
+			"",
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+		},
 	}
 
 	for _, tt := range testCases {
@@ -174,7 +184,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			require.NoError(t, err)
 
 			body := &datamodel.ContainerResource{}
-			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av)
+			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
 
 			req := httptest.NewRequest("GET", tt.base, nil)
 			w := httptest.NewRecorder()
@@ -182,10 +192,19 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NotNil(t, w.Header().Get("Location"))
-			require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+			if tt.av == "" {
+				require.Equal(t, tt.base+tt.or, w.Header().Get("Location"))
+			} else {
+				require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+			}
 
 			require.NotNil(t, w.Header().Get("Azure-AsyncHeader"))
-			require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			if tt.av == "" {
+				require.Equal(t, tt.base+tt.os, w.Header().Get("Azure-AsyncOperation"))
+
+			} else {
+				require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			}
 		})
 	}
 }
