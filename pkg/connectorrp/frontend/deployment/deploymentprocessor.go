@@ -62,7 +62,7 @@ type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
 	SecretValues   map[string]rp.SecretValueReference
-	RecipeData     renderers.RecipeData
+	RecipeData     datamodel.RecipeData
 }
 
 type ResourceData struct {
@@ -71,7 +71,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	RecipeData      renderers.RecipeData
+	RecipeData      datamodel.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -151,7 +151,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := make(map[string]interface{})
 
 	if rendererOutput.RecipeData.Name != "" {
-		//rendererOutput.Resources, err = handlers.DeployRecipe.Put(ctx, rendererOutput.RecipeData.RecipeTemplatePath)
+		//rendererOutput.RecipeData.Resources, err = handlers.DeployRecipe.Put(ctx, rendererOutput.RecipeData.RecipeTemplatePath)
 	} else {
 		for _, outputResource := range orderedOutputResources {
 			deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
@@ -167,12 +167,12 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 				}
 			}
 		}
+	}
 
-		// Update static values for connections
-		for k, computedValue := range rendererOutput.ComputedValues {
-			if computedValue.Value != nil {
-				computedValues[k] = computedValue.Value
-			}
+	// Update static values for connections
+	for k, computedValue := range rendererOutput.ComputedValues {
+		if computedValue.Value != nil {
+			computedValues[k] = computedValue.Value
 		}
 	}
 
@@ -290,7 +290,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData renderers.RecipeData) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (interface{}, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -309,16 +309,13 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	}
 
 	for _, id := range recipeData.Resources {
-		// Validate fully qualified resource identifier of the source resource is supplied for this connector
 		parsedID, err := resources.Parse(id)
 		if err != nil {
-			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+			return nil, errors.New("the 'resource' field must be a valid resource id")
 		}
-		// Validate resource type matches the expected Azure Mongo DB resource type
+		// Find resource that matches the expected Azure resource type
 		err = parsedID.ValidateResourceType(recipeData.AzureResourceType)
-		if err != nil {
-			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure CosmosDB Mongo Database resource")
-		} else {
+		if err == nil {
 			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
 			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
 		}
