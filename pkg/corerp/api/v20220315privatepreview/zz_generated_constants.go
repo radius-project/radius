@@ -144,21 +144,21 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// Value - Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
-type Value string
+// Type - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+type Type string
 
 const (
-	ValueCertificate Value = "certificate"
-	ValuePublickey Value = "publickey"
-	ValuePrivatekey Value = "privatekey"
+	TypeCertificate Type = "certificate"
+	TypePublickey Type = "publickey"
+	TypePrivatekey Type = "privatekey"
 )
 
-// PossibleValueValues returns the possible values for the Value const type.
-func PossibleValueValues() []Value {
-	return []Value{	
-		ValueCertificate,
-		ValuePublickey,
-		ValuePrivatekey,
+// PossibleTypeValues returns the possible values for the Type const type.
+func PossibleTypeValues() []Type {
+	return []Type{	
+		TypeCertificate,
+		TypePublickey,
+		TypePrivatekey,
 	}
 }
 

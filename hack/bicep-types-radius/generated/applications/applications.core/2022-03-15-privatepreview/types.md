@@ -318,10 +318,10 @@
 ## CertificateObjectProperties
 ### Properties
 * **alias**: string: File name when written to disk.
+* **certType**: 'certificate' | 'privatekey' | 'publickey': Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
 * **encoding**: 'base64' | 'hex' | 'utf-8': Encoding format. Default utf-8
 * **format**: 'pem' | 'pfx': Certificate format. Default pem
 * **name**: string (Required): The name of the certificate
-* **value**: 'certificate' | 'privatekey' | 'publickey' (Required): Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
 * **version**: string: Certificate version
 
 ## AzureKeyVaultVolumePropertiesKeys

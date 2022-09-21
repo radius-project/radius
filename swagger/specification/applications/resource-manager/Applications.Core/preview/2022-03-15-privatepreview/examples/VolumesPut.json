@@ -42,11 +42,11 @@
           "certificates": {
             "mycert-1": {
               "name": "cert1",
-              "type": "certificate"
+              "certType": "certificate"
             },
             "mycert-2": {
               "name": "cert2",
-              "type": "privatekey",
+              "certType": "privatekey",
               "format": "pfx",
               "encoding": "hex"
             }

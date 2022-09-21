@@ -215,10 +215,10 @@ func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
 func (c CertificateObjectProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "alias", c.Alias)
+	populate(objectMap, "certType", c.CertType)
 	populate(objectMap, "encoding", c.Encoding)
 	populate(objectMap, "format", c.Format)
 	populate(objectMap, "name", c.Name)
-	populate(objectMap, "value", c.Value)
 	populate(objectMap, "version", c.Version)
 	return json.Marshal(objectMap)
 }
@@ -235,6 +235,9 @@ func (c *CertificateObjectProperties) UnmarshalJSON(data []byte) error {
 		case "alias":
 				err = unpopulate(val, "Alias", &c.Alias)
 				delete(rawMsg, key)
+		case "certType":
+				err = unpopulate(val, "CertType", &c.CertType)
+				delete(rawMsg, key)
 		case "encoding":
 				err = unpopulate(val, "Encoding", &c.Encoding)
 				delete(rawMsg, key)
@@ -243,9 +246,6 @@ func (c *CertificateObjectProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "name":
 				err = unpopulate(val, "Name", &c.Name)
-				delete(rawMsg, key)
-		case "value":
-				err = unpopulate(val, "Value", &c.Value)
 				delete(rawMsg, key)
 		case "version":
 				err = unpopulate(val, "Version", &c.Version)

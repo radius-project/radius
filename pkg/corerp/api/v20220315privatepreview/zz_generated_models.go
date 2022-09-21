@@ -124,11 +124,11 @@ type CertificateObjectProperties struct {
 	// REQUIRED; The name of the certificate
 	Name *string `json:"name,omitempty"`
 
-	// REQUIRED; Certificate object to be downloaded - the certificate itself, private key or public key of the certificate
-	Value *Value `json:"value,omitempty"`
-
 	// File name when written to disk.
 	Alias *string `json:"alias,omitempty"`
+
+	// Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+	CertType *Type `json:"certType,omitempty"`
 
 	// Encoding format. Default utf-8
 	Encoding *Encoding `json:"encoding,omitempty"`
