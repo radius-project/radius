@@ -128,5 +128,9 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 }
 
 func CreateResourceGroup(resourceGroupName string) v20220315privatepreview.ResourceGroupResource {
-	return v20220315privatepreview.ResourceGroupResource{}
+	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
+	return v20220315privatepreview.ResourceGroupResource{
+		Name: &resourceGroupName,
+		ID:   &id,
+	}
 }

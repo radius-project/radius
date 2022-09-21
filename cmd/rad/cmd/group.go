@@ -16,7 +16,7 @@ func init() {
 func NewGroupCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "group",
-		Short: "Manage RAD resource groups",
-		Long:  `Manage RAD resource groups. This is NOT the same as Azure resource groups.`,
+		Short: "Manage resource groups",
+		Long:  `Manage resource groups. This is NOT the same as Azure resource groups.`,
 	}
 }

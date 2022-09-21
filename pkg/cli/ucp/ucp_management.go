@@ -384,7 +384,6 @@ func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 	}
 
 	return true, nil
-
 }
 
 func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error) {

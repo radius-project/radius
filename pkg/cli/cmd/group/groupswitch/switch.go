@@ -21,9 +21,15 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "switch -g resourcegroupname",
-		Short:   "switch RAD resource group",
-		Long:    "`Manage radius resource groups. Radius resource group is a radius concept that is used to organize and manage resources. This is NOT the same as Azure resource groups`",
+		Use:   "switch -g resourcegroupname",
+		Short: "Switch default resource group scope",
+		Long: `Switch default resource group scope
+	
+	Radius workspaces contain a resource group scope, where Radius applications and resources are deployed by default. The switch command changes the default scope of the workspace to the specified resource group name.
+	
+	Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
+			
+	Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.`,
 		Example: `rad group switch -g rgprod -w wsprod`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),

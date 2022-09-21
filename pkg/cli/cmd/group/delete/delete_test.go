@@ -74,6 +74,10 @@ func Test_Run(t *testing.T) {
 
 			expected := []interface{}{
 				output.LogOutput{
+					Format: "deleting resource group %q ...\n",
+					Params: []interface{}{"testrg"},
+				},
+				output.LogOutput{
 					Format: "resource group %q deleted",
 					Params: []interface{}{"testrg"},
 				},
@@ -101,6 +105,10 @@ func Test_Run(t *testing.T) {
 			require.NoError(t, err)
 
 			expected := []interface{}{
+				output.LogOutput{
+					Format: "deleting resource group %q ...\n",
+					Params: []interface{}{"testrg"},
+				},
 				output.LogOutput{
 					Format: "resourcegroup %q does not exist or has already been deleted",
 					Params: []interface{}{"testrg"},

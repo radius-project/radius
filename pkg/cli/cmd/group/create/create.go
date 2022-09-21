@@ -102,10 +102,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
 	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
-
 	if err != nil {
 		return err
-
 	}
 
 	r.Output.LogInfo("resource group %q created", r.UCPResourceGroupName)

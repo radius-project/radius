@@ -96,7 +96,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	fmt.Printf("deleting resource group %q ...\n", r.UCPResourceGroupName)
+	r.Output.LogInfo("deleting resource group %q ...\n", r.UCPResourceGroupName)
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -115,8 +115,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if deleted {
 		r.Output.LogInfo("resource group %q deleted", r.UCPResourceGroupName)
 	} else {
-		r.Output.LogInfo("resourcegroup %q does not exist or has already been deleted", r.UCPResourceGroupName)
+		r.Output.LogInfo("resource group %q does not exist or has already been deleted", r.UCPResourceGroupName)
 	}
 	return nil
-
 }

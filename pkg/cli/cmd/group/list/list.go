@@ -25,12 +25,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "list",
 		Short: "List resource groups within current/specified workspace",
 		Long: `List resource groups within current/specified workspace
-		Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
-		
-		A Radius application and its resources can span one or more resource groups, and do not have to be in the same resource group as the Radius environment into which it's being deployed into.
-		
-		Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.
-		`,
+	
+	Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
+			
+	A Radius application and its resources can span one or more resource groups, and do not have to be in the same resource group as the Radius environment into which it's being deployed into.
+			
+	Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.`,
 		Example: `rad group list`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
@@ -82,7 +82,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -99,5 +98,4 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	return err
-
 }
