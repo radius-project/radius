@@ -104,7 +104,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
-	
+
 	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not mentioned"}
@@ -217,7 +217,7 @@ func installRadius(ctx context.Context, r *Runner) error {
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
 	// Ignore existing radius installation because we already asked the user whether to re-install or not
-	_, err := setup.Install(ctx, clusterOptions, r.KubeContext)
+	_, err := r.HelmInterface.InstallRadius(ctx, clusterOptions, r.KubeContext)
 	if err != nil {
 		return err
 	}

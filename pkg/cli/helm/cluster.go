@@ -15,6 +15,7 @@ import (
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
 )
 
@@ -113,6 +114,17 @@ func PopulateDefaultClusterOptions(cliOptions CLIClusterOptions) ClusterOptions 
 	return options
 }
 
+func Install(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	step := output.BeginStep("Installing Radius version %s control plane...", version.Version())
+	foundExisting, err := InstallOnCluster(ctx, clusterOptions, kubeContext)
+	if err != nil {
+		return false, err
+	}
+
+	output.CompleteStep(step)
+	return foundExisting, nil
+}
+
 func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext string) (bool, error) {
 	// Do note: the namespace passed in to rad install kubernetes
 	// doesn't match the namespace where we deploy radius.
@@ -195,15 +207,19 @@ func CheckRadiusInstall(kubeContext string) (bool, error) {
 	return true, nil
 }
 
-//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+//go:generate mockgen -destination=./mock_cluster.go -package=helm -self_package github.com/project-radius/radius/pkg/cli/helm github.com/project-radius/radius/pkg/cli/helm Interface
 type Interface interface {
 	CheckRadiusInstall(kubeContext string) (bool, error)
+	InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error)
 }
 
 type Impl struct {
-
 }
 
-func(i *Impl) CheckRadiusInstall(kubeContext string) (bool, error) {
+func (i *Impl) CheckRadiusInstall(kubeContext string) (bool, error) {
 	return CheckRadiusInstall(kubeContext)
+}
+
+func (i *Impl) InstallRadius(ctx context.Context, clusterOptions ClusterOptions, kubeContext string) (bool, error) {
+	return Install(ctx, clusterOptions, kubeContext)
 }

@@ -244,7 +244,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	foundExistingRadius, err := setup.Install(cmd.Context(), clusterOptions, contextName)
+	foundExistingRadius, err := helm.Install(cmd.Context(), clusterOptions, contextName)
 	if err != nil {
 		return err
 	}

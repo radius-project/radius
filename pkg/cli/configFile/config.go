@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 )
+//go:generate mockgen -destination=./mock_config.go -package=configFile -self_package github.com/project-radius/radius/pkg/cli/configFile github.com/project-radius/radius/pkg/cli/configFile Interface
 
 type Interface interface {
 	EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string) error
