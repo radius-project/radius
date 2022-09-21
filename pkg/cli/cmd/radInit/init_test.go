@@ -144,7 +144,7 @@ func Test_Run(t *testing.T) {
 		runner := &Runner{
 			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			ConfigFileInterface: configFileInterface,
-			ConfigHolder: &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
 			HelmInterface:       helmInterface,
 			Output:              outputSink,
 			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
@@ -164,7 +164,7 @@ func initMocksWithoutCloudProvider(kubernetesMock *kubernetes.MockInterface, pro
 	initEnvNamePrompt(prompterMock)
 	initNameSpacePrompt(prompterMock)
 	initAddCloudProviderPromptNo(prompterMock)
-	initHelmMockInstalled(helmMock)
+	initHelmMockRadiusInstalled(helmMock)
 }
 
 func initMocksWithKubeContextReadError(kubernetesMock *kubernetes.MockInterface) {
@@ -226,24 +226,6 @@ func initDefaultKubeContextPromptNo(prompter *prompt.MockInterface) {
 		Return("N", nil).Times(1)
 }
 
-// func initDefaultKubeContextPromptError(prompter *prompt.MockInterface) {
-// 	prompter.EXPECT().
-// 		RunPrompt(gomock.Any()).
-// 		Return("", errors.New("unable to read prompt")).Times(1)
-// }
-
-// func initKubeContextSelectionKind(prompter *prompt.MockInterface) {
-// 	prompter.EXPECT().
-// 		RunSelect(gomock.Any()).
-// 		Return(2, "", nil).Times(1)
-// }
-
-// func initKubeContextSelectionOther(prompter *prompt.MockInterface) {
-// 	prompter.EXPECT().
-// 		RunSelect(gomock.Any()).
-// 		Return(1, "", nil).Times(1)
-// }
-
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunSelect(gomock.Any()).
@@ -280,8 +262,8 @@ func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 		Return("N", nil).Times(1)
 }
 
-func initHelmMockInstalled(helmMock *helm.MockInterface) {
+func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
-		InstallRadius(gomock.Any(), gomock.Any(), gomock.Any()).
+		CheckRadiusInstall(gomock.Any()).
 		Return(true, nil).Times(1)
 }

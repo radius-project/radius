@@ -39,9 +39,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "init",
-		Short:   "Installs rad with an env creation",
-		Long:    "Installs rad with an env creation",
-		Example: `rad env init`,
+		Short:   "Initialize Radius",
+		Long:    "Interactively initialize the Radius control-plane, create an environment, and configure a workspace",
+		Example: `rad init`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
@@ -90,13 +90,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
-		return &cli.FriendlyError{Message: "workspace not mentioned"}
+		return &cli.FriendlyError{Message: "Workspace not specified"}
 	}
 	r.Workspace = workspace
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
-		return &cli.FriendlyError{Message: "output format not mentioned"}
+		return &cli.FriendlyError{Message: "Output format not specified"}
 	}
 	r.Format = format
 
@@ -107,7 +107,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true, r.Prompter)
 	if err != nil {
-		return &cli.FriendlyError{Message: "KubeContext not mentioned"}
+		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
 
 	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
@@ -117,7 +117,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.NameSpace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
 	if err != nil {
-		return &cli.FriendlyError{Message: "Namespace not mentioned"}
+		return &cli.FriendlyError{Message: "Namespace not specified"}
 	}
 
 	addingProvider := "y"
@@ -146,7 +146,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 		switch cloudProvider {
 		case Azure:
-			//TODO: check for interactive flag
 			r.AzureCloudProvider, err = setup.ParseAzureProviderArgs(cmd, true, r.Prompter)
 			if err != nil {
 				return err
@@ -170,6 +169,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	//TODO: prompt for re-install of radius once the provider commands are in
 	// If the user prompts for re-install, then go ahead
 	// If the user says no, then use the provider create/update operations to update the provider config.
+	// issue: https://github.com/project-radius/radius/issues/3440
 
 	return nil
 }
@@ -193,9 +193,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "Kubernetes", "")
-
 	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: "Failed to create radius environment group"}
+		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
 
 	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvName)
@@ -229,7 +228,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 	values := []string{}
 	if interactive {
 		confirmDefaultContext, err := prompt.YesOrNoPrompter(
-			fmt.Sprintf("Confirm Default context: %s, %s", currentContext, "[Y/n]"),
+			fmt.Sprintf("Confirm default context: %s, %s", currentContext, "[Y/n]"),
 			"Y",
 			prompter,
 		)

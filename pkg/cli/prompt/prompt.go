@@ -172,7 +172,6 @@ func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
 	textPrompt := promptui.Prompt{
 		Label:     label,
-		IsConfirm: true,
 		Default:   defaultValue,
 		Validate: ValidateYesOrNo,
 	}
@@ -196,7 +195,6 @@ func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bo
 	return promptui.Prompt{
 		Label:     label,
 		Default:   defaultVal,
-		AllowEdit: true,
 		Validate: func(s string) error {
 			valid, msg, err := f(s)
 			if err != nil {
