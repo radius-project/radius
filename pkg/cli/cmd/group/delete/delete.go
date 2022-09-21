@@ -24,7 +24,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "delete resourcegroupname",
-		Short: "delete RAD resource group",
+		Short: "Delete a resource group",
 		Long: `Delete a resource group. 
 		
 		Delete a resource group if it is empty. If not empty, delete the contents and try again`,
