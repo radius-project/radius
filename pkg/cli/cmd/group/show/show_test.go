@@ -41,7 +41,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with correct options",
-			Input:         []string{"-g", "groupname"},
+			Input:         []string{"groupname"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",

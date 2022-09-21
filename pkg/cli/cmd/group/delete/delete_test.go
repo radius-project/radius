@@ -30,16 +30,16 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Delete Command with incorrect args",
-			Input:         []string{""},
-			ExpectedValid: false,
+			Input:         []string{},
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Delete Command with correct options",
-			Input:         []string{"-g", "groupname"},
+			Name:          "Delete Command with correct args",
+			Input:         []string{"groupname"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",

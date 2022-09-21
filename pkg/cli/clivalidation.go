@@ -220,14 +220,33 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
-// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name
-func RequireUCPResourceGroup(cmd *cobra.Command) (string, error) {
-	group, err := cmd.Flags().GetString("group")
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag
+func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
+	group, err := ReadResourceGroupNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if group == "" {
+		return "", fmt.Errorf("resource group name is not provided or is empty ")
+	}
+
+	return group, nil
+}
+
+func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("group")
 	if err != nil {
 		return "", err
 	}
 
-	return group, nil
+	if len(args) > 0 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify resource group name via both arguments and `-g`")
+		}
+		name = args[0]
+	}
+
+	return name, err
 }
 
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,

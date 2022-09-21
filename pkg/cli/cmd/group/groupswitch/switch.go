@@ -21,7 +21,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "switch -g resourcegroupname",
+		Use:   "switch resourcegroupname",
 		Short: "Switch default resource group scope",
 		Long: `Switch default resource group scope
 	
@@ -30,8 +30,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	Resource groups are used to organize and manage Radius resources. They often contain resources that share a common lifecycle or unit of deployment.
 			
 	Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.`,
-		Example: `rad group switch -g rgprod -w wsprod`,
-		Args:    cobra.ExactArgs(0),
+		Example: `rad group switch rgprod -w wsprod`,
+		Args:    cobra.MaximumNArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -62,7 +62,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceGroup, err := cli.RequireUCPResourceGroup(cmd)
+	resourceGroup, err := cli.RequireUCPResourceGroup(cmd, args)
 	if err != nil {
 		return err
 	}

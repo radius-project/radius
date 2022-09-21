@@ -38,7 +38,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create Command with  valid args but no workspace",
-			Input:         []string{"-g", "rg"},
+			Input:         []string{"rg"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -47,7 +47,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create Command with too many args",
-			Input:         []string{"-g", "a", "b"},
+			Input:         []string{"a", "b"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -56,7 +56,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Valid Create Command",
-			Input:         []string{"-g", "rg"},
+			Input:         []string{"rg"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -65,7 +65,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Invalid regource group name",
-			Input:         []string{"-g", "rg#1"},
+			Input:         []string{"rg#1"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",

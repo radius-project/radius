@@ -23,7 +23,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create -g resourcegroupname",
+		Use:   "create resourcegroupname",
 		Short: "Create a new resource group",
 		Long: `Create a new resource group
 
@@ -33,14 +33,13 @@ A Radius application and its resources can span one or more resource groups, and
 
 Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.
 `,
-		Example: `rad group create -g rgprod`,
-		Args:    cobra.ExactArgs(0),
+		Example: `rad group create rgprod`,
+		Args:    cobra.MaximumNArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
-	_ = cmd.MarkFlagRequired("group")
 
 	return cmd, runner
 }
@@ -69,7 +68,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceGroup, err := cli.RequireUCPResourceGroup(cmd)
+	resourceGroup, err := cli.RequireUCPResourceGroup(cmd, args)
 	if err != nil {
 		return err
 	}

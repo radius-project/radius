@@ -23,13 +23,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "delete -g resourcegroupname",
+		Use:   "delete resourcegroupname",
 		Short: "delete RAD resource group",
 		Long: `Delete a resource group. 
 		
 		Delete a resource group if it is empty. If not empty, delete the contents and try again`,
-		Example: `rad group delete -g rgprod`,
-		Args:    cobra.ExactArgs(0),
+		Example: `rad group delete rgprod`,
+		Args:    cobra.MaximumNArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -65,7 +65,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	resourceGroup, err := cli.RequireUCPResourceGroup(cmd)
+	resourceGroup, err := cli.RequireUCPResourceGroup(cmd, args)
 	if err != nil {
 		return err
 	}

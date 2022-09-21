@@ -34,7 +34,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Switch Command with incorrect args",
-			Input:         []string{""},
+			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -42,8 +42,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Switch command with correct options",
-			Input:         []string{"-g", "groupname"},
+			Name:          "Switch command with correct arguments",
+			Input:         []string{"groupname"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",

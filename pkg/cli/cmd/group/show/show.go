@@ -21,7 +21,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "show -g resourcegroupname",
+		Use:   "show resourcegroupname",
 		Short: "Show the details of a resource group",
 		Long: `Show the details of a resource group
 
@@ -31,8 +31,8 @@ A Radius application and its resources can span one or more resource groups, and
 
 Note that these resource groups are separate from the Azure cloud provider and Azure resource groups configured with the cloud provider.
 `,
-		Example: `rad group show -g rgprod`,
-		Args:    cobra.ExactArgs(0),
+		Example: `rad group show rgprod`,
+		Args:    cobra.MaximumNArgs(1),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -76,7 +76,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	if format == "" {
 		format = "table"
 	}
-	resourcegroup, err := cli.RequireUCPResourceGroup(cmd)
+	resourcegroup, err := cli.RequireUCPResourceGroup(cmd, args)
 	if err != nil {
 		return err
 	}
