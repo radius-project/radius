@@ -123,10 +123,10 @@ func Test_ProxyToRP(t *testing.T) {
 	registerRP(t, ucp, ucpClient, db, true)
 
 	// Create a Resource group
-	createResourceGroup(t, ucp, ucpClient, db)
+	//createResourceGroup(t, ucp, ucpClient, db)
 
 	// Send a request that will be proxied to the RP
-	sendProxyRequest(t, ucp, ucpClient, db)
+	//sendProxyRequest(t, ucp, ucpClient, db)
 }
 
 func Test_ProxyToRP_NonNativePlane(t *testing.T) {
