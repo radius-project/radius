@@ -413,13 +413,13 @@ func CreateAPIServerTransporter(kubeContext string, overrideURL string) (string,
 //go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface
 type Interface interface {
 	GetKubeContext() (*api.Config, error)
+	EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error
 }
 
 type Impl struct {
-
 }
 
 // Fetches the kubecontext from the system
-func(i *Impl) GetKubeContext() (*api.Config, error) {
+func (i *Impl) GetKubeContext() (*api.Config, error) {
 	return ReadKubeConfig()
 }

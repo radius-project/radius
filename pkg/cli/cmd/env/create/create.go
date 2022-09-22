@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -18,6 +17,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -34,12 +34,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:     "create environment",
 		Short:   "create environment",
 		Long:    "Create a new Radius environment",
-		Example: ``,
+		Args:    cobra.MinimumNArgs(1),
+		Example: `rad env create -e myenv`,
 		RunE:    framework.RunCommand(runner),
 	}
 
-	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
 
@@ -47,16 +48,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	Output            output.Interface
-	Workspace         *workspaces.Workspace
-	EnvironmentName   string
-	UCPResourceGroup  string
-	Namespace         string
-	K8sGoClient       client_go.Interface
-	KubeContext       string
-	ConnectionFactory connections.Factory
-	ScopeID           resources.ID
+	ConfigHolder        *framework.ConfigHolder
+	Output              output.Interface
+	Workspace           *workspaces.Workspace
+	EnvironmentName     string
+	UCPResourceGroup    string
+	Namespace           string
+	K8sGoClient         client_go.Interface
+	KubeContext         string
+	ConnectionFactory   connections.Factory
+	ScopeID             resources.ID
+	ConfigFileInterface configFile.Interface
+	KubernetesInterface kubernetes.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -66,10 +69,12 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 
 	return &Runner{
-		ConfigHolder:      factory.GetConfigHolder(),
-		Output:            factory.GetOutput(),
-		K8sGoClient:       k8sGoClient,
-		ConnectionFactory: factory.GetConnectionFactory(),
+		ConfigHolder:        factory.GetConfigHolder(),
+		Output:              factory.GetOutput(),
+		K8sGoClient:         k8sGoClient,
+		ConnectionFactory:   factory.GetConnectionFactory(),
+		ConfigFileInterface: factory.GetConfigFileInterface(),
+		KubernetesInterface: factory.GetKubernetesInterface(),
 	}
 }
 
@@ -107,11 +112,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.ScopeID = scopeId
 	}
 
-	err = kubernetes.EnsureNamespace(cmd.Context(), r.K8sGoClient, r.Namespace)
-	if err != nil {
-		return err
-	}
-
 	kubeconfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
 		return err
@@ -142,6 +142,11 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	err = r.KubernetesInterface.EnsureNamespace(ctx, r.K8sGoClient, r.Namespace)
+	if err != nil {
+		return err
+	}
+
 	_, err = client.GetUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
 	if err != nil {
 		return err
@@ -152,13 +157,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
-		ws := section.Items[strings.ToLower(r.Workspace.Name)]
-		envId := r.ScopeID.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
-		ws.Environment = envId.String()
-		section.Items[strings.ToLower(r.Workspace.Name)] = ws
-		return nil
-	})
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvironmentName)
+	// err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
+	// 	ws := section.Items[strings.ToLower(r.Workspace.Name)]
+	// 	envId := r.ScopeID.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
+	// 	ws.Environment = envId.String()
+	// 	section.Items[strings.ToLower(r.Workspace.Name)] = ws
+	// 	return nil
+	// })
 	if err != nil {
 		return err
 	}
