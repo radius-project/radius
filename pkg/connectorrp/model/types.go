@@ -22,8 +22,7 @@ type ApplicationModel struct {
 	outputResources      []OutputResourceModel
 	outputResourceLookup map[resourcemodel.ResourceType]OutputResourceModel
 	supportedProviders   map[string]bool
-	//arm                  *armauth.ArmConfig
-	recipe RecipeModel
+	recipe               RecipeModel
 }
 
 func (m ApplicationModel) GetRadiusResources() []RadiusResourceModel {
@@ -37,10 +36,6 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 func (m ApplicationModel) GetRecipe() RecipeModel {
 	return m.recipe
 }
-
-// func (m ApplicationModel) GetArmConfig() *armauth.ArmConfig {
-// 	return m.arm
-// }
 
 // LookupRadiusResourceModel is a case insensitive lookup for resourceType
 func (m ApplicationModel) LookupRadiusResourceModel(resourceType string) (*RadiusResourceModel, error) {
