@@ -134,3 +134,28 @@ type HTTPRoutesClientUpdateResponse struct {
 	HTTPRouteResource
 }
 
+// VolumesClientCreateOrUpdateResponse contains the response from method VolumesClient.CreateOrUpdate.
+type VolumesClientCreateOrUpdateResponse struct {
+	VolumeResource
+}
+
+// VolumesClientDeleteResponse contains the response from method VolumesClient.Delete.
+type VolumesClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// VolumesClientGetResponse contains the response from method VolumesClient.Get.
+type VolumesClientGetResponse struct {
+	VolumeResource
+}
+
+// VolumesClientListByScopeResponse contains the response from method VolumesClient.ListByScope.
+type VolumesClientListByScopeResponse struct {
+	VolumeResourceList
+}
+
+// VolumesClientUpdateResponse contains the response from method VolumesClient.Update.
+type VolumesClientUpdateResponse struct {
+	VolumeResource
+}
+

@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package azure
+package deployment
 
 import (
 	"context"
@@ -36,6 +36,7 @@ type ResourceDeploymentClient struct {
 	OperationsClient    azclients.ResourceDeploymentOperationsClient
 	Tags                map[string]*string
 	AzProvider          *workspaces.AzureProvider
+	AWSProvider         *workspaces.AWSProvider
 }
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
@@ -118,6 +119,16 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() azclients.ProviderConfi
 					Scope: scope,
 				},
 			}
+		}
+	}
+
+	if dc.AWSProvider != nil {
+		scope := "/planes/aws/aws/accounts/" + dc.AWSProvider.AccountId + "/regions/" + dc.AWSProvider.Region
+		providerConfigs.AWS = &azclients.AWS{
+			Type: "AWS",
+			Value: azclients.Value{
+				Scope: scope,
+			},
 		}
 	}
 

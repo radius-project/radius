@@ -60,6 +60,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Core/volumes@2022-03-15-privatepreview
+* **Valid Scope(s)**: Unknown
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [VolumeProperties](#volumeproperties) (Required)
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Core/volumes' (ReadOnly, DeployTimeConstant): The resource type
+
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
@@ -276,6 +288,64 @@
 * **scheme**: string: The scheme used for traffic. Readonly.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## VolumeProperties
+* **Discriminator**: kind
+
+### Base Properties
+* **application**: string: Fully qualified resource ID for the application that the volume is connected to.
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### AzureKeyVaultVolumeProperties
+#### Properties
+* **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
+* **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
+* **kind**: 'azure.com.keyvault' (Required): The volume kind
+* **resource**: string: The ID of the keyvault to use for this volume resource
+* **secrets**: [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets): The KeyVault secrets that this volume exposes
+
+
+## AzureKeyVaultVolumePropertiesCertificates
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [CertificateObjectProperties](#certificateobjectproperties)
+
+## CertificateObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **certType**: 'certificate' | 'privatekey' | 'publickey': Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+* **encoding**: 'base64' | 'hex' | 'utf-8': Encoding format. Default utf-8
+* **format**: 'pem' | 'pfx': Certificate format. Default pem
+* **name**: string (Required): The name of the certificate
+* **version**: string: Certificate version
+
+## AzureKeyVaultVolumePropertiesKeys
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [KeyObjectProperties](#keyobjectproperties)
+
+## KeyObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **name**: string (Required): The name of the key
+* **version**: string: Key version
+
+## AzureKeyVaultVolumePropertiesSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [SecretObjectProperties](#secretobjectproperties)
+
+## SecretObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **encoding**: 'base64' | 'hex' | 'utf-8': Encoding format. Default utf-8
+* **name**: string (Required): The name of the secret
+* **version**: string: Secret version
 
 ## TrackedResourceTags
 ### Properties

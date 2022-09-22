@@ -213,5 +213,5 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 		respCode = http.StatusCreated
 	}
 
-	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion), nil
+	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", ""), nil
 }

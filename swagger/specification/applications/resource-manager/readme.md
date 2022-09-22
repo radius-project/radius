@@ -49,6 +49,7 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/httpRoutes.json
   - Applications.Core/preview/2022-03-15-privatepreview/gateways.json
   - Applications.Core/preview/2022-03-15-privatepreview/containers.json
+  - Applications.Core/preview/2022-03-15-privatepreview/volumes.json
 ```
 
 ### Tag: package-connector-2022-03-15-privatepreview

@@ -220,10 +220,12 @@ type AsyncOperationResponse struct {
 	ResourceID  resources.ID
 	OperationID uuid.UUID
 	APIVersion  string
+	RootScope   string // Everything before providers namespace for constructing an Async operation header. Used for AWS planes
+	PathBase    string // Base Path. Used for AWS planes
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
@@ -231,6 +233,8 @@ func NewAsyncOperationResponse(body interface{}, location string, code int, reso
 		ResourceID:  resourceID,
 		OperationID: operationID,
 		APIVersion:  apiVersion,
+		RootScope:   rootScope,
+		PathBase:    pathBase,
 	}
 }
 
@@ -262,15 +266,21 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+	rootScope := r.RootScope
+	if rootScope == "" {
+		rootScope = r.ResourceID.PlaneScope()
+	}
 	dest := url.URL{
 		Host:   req.Host,
 		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", r.ResourceID.PlaneScope(),
-			r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", r.PathBase, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
 
 	query := url.Values{}
-	query.Add("api-version", r.APIVersion)
+	if r.APIVersion != "" {
+		query.Add("api-version", r.APIVersion)
+	}
+
 	dest.RawQuery = query.Encode()
 
 	// In production this is the header we get from app service for the 'real' protocol
@@ -279,7 +289,9 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		dest.Scheme = protocol
 	}
 
-	if dest.Scheme == "" {
+	if dest.Scheme == "" && req.TLS != nil {
+		dest.Scheme = "https"
+	} else if dest.Scheme == "" {
 		dest.Scheme = "http"
 	}
 
