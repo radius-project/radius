@@ -37,6 +37,21 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 	return m.recorder
 }
 
+// CreateEnvironment mocks base method.
+func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CreateEnvironment indicates an expected call of CreateEnvironment.
+func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateEnvironment), arg0, arg1, arg2, arg3, arg4, arg5)
+}
+
 // CreateUCPGroup mocks base method.
 func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220315privatepreview0.ResourceGroupResource) (bool, error) {
 	m.ctrl.T.Helper()

@@ -132,6 +132,7 @@ type ApplicationsManagementClient interface {
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
+	CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string) (bool, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)

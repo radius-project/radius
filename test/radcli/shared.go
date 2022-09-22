@@ -14,6 +14,9 @@ import (
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,10 +25,13 @@ import (
 )
 
 type ValidateInput struct {
-	Name          string
-	Input         []string
-	ExpectedValid bool
-	ConfigHolder  framework.ConfigHolder
+	Name                string
+	Input               []string
+	ExpectedValid       bool
+	ConfigHolder        framework.ConfigHolder
+	KubernetesInterface kubernetes.Interface
+	Prompter            prompt.Interface
+	HelmInterface       helm.Interface
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -42,9 +48,13 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
 			framework := &framework.Impl{
-				ConnectionFactory: nil,
-				ConfigHolder:      &testcase.ConfigHolder,
-				Output:            nil}
+				ConnectionFactory:   nil,
+				ConfigHolder:        &testcase.ConfigHolder,
+				Output:              nil,
+				KubernetesInterface: testcase.KubernetesInterface,
+				Prompter:            testcase.Prompter,
+				HelmInterface:       testcase.HelmInterface,
+			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
 

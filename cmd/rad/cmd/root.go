@@ -18,13 +18,17 @@ import (
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
+	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
-
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -97,6 +101,10 @@ func initSubCommands() {
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
+		Prompter:            &prompt.Impl{},
+		ConfigFileInterface: &configFile.Impl{},
+		KubernetesInterface: &kubernetes.Impl{},
+		HelmInterface:       &helm.Impl{},
 	}
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
@@ -112,6 +120,9 @@ func initSubCommands() {
 
 	groupCmd := group.NewCommand(framework)
 	RootCmd.AddCommand(groupCmd)
+
+	initCmd, _ := radInit.NewCommand(framework)
+	RootCmd.AddCommand(initCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
