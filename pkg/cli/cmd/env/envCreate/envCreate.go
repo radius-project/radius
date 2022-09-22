@@ -156,13 +156,6 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvironmentName)
-	// err = cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
-	// 	ws := section.Items[strings.ToLower(r.Workspace.Name)]
-	// 	envId := r.ScopeID.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
-	// 	ws.Environment = envId.String()
-	// 	section.Items[strings.ToLower(r.Workspace.Name)] = ws
-	// 	return nil
-	// })
 	if err != nil {
 		return err
 	}
