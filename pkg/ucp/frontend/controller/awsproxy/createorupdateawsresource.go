@@ -102,12 +102,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 	var operation uuid.UUID
-	if existing {
-		desiredState, err := json.Marshal(properties)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
+	desiredState, err := json.Marshal(properties)
+	if err != nil {
+		return awserror.HandleAWSError(err)
+	}
 
+	if existing {
 		// For an existing resource we need to convert the desired state into a JSON-patch document
 		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
 		if err != nil {
@@ -124,29 +124,28 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			}
 		}
 
-		marshaled, err := json.Marshal(&patch)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
+		// Call update only if the patch is not empty
+		if len(patch) > 0 {
+			marshaled, err := json.Marshal(&patch)
+			if err != nil {
+				return awserror.HandleAWSError(err)
+			}
 
-		response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
-			TypeName:      &resourceType,
-			Identifier:    aws.String(id.Name()),
-			PatchDocument: aws.String(string(marshaled)),
-		})
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
+			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+				TypeName:      &resourceType,
+				Identifier:    aws.String(id.Name()),
+				PatchDocument: aws.String(string(marshaled)),
+			})
+			if err != nil {
+				return awserror.HandleAWSError(err)
+			}
 
-		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
-		if err != nil {
-			return awserror.HandleAWSError(err)
+			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
+			if err != nil {
+				return awserror.HandleAWSError(err)
+			}
 		}
 	} else {
-		desiredState, err := json.Marshal(properties)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
 
 		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
