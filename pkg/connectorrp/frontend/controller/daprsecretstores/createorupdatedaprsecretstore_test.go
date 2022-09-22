@@ -40,8 +40,8 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 		SecretValues: map[string]rp.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
-			"secretStoreName": {
-				Value: "test-secret-store",
+			"componentName": {
+				Value: "test-app-test-secret-store",
 			},
 		},
 	}
@@ -57,7 +57,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 			},
 		},
 		ComputedValues: map[string]interface{}{
-			"secretStoreName": rendererOutput.ComputedValues["secretStoreName"].Value,
+			"componentName": rendererOutput.ComputedValues["componentName"].Value,
 		},
 	}
 

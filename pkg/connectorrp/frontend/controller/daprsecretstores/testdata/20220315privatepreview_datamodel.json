@@ -31,7 +31,7 @@
         "metadata": {
             "foo": "bar"
         },
-        "secretStoreName": "test-secret-store"
+        "componentName": "test-app-test-secret-store"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",

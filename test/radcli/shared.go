@@ -14,16 +14,24 @@ import (
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
+	"gotest.tools/assert"
 )
 
 type ValidateInput struct {
-	Name          string
-	Input         []string
-	ExpectedValid bool
-	ConfigHolder  framework.ConfigHolder
+	Name                string
+	Input               []string
+	ExpectedValid       bool
+	ConfigHolder        framework.ConfigHolder
+	KubernetesInterface kubernetes.Interface
+	Prompter            prompt.Interface
+	HelmInterface       helm.Interface
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -40,9 +48,13 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
 			framework := &framework.Impl{
-				ConnectionFactory: nil,
-				ConfigHolder:      &testcase.ConfigHolder,
-				Output:            nil}
+				ConnectionFactory:   nil,
+				ConfigHolder:        &testcase.ConfigHolder,
+				Output:              nil,
+				KubernetesInterface: testcase.KubernetesInterface,
+				Prompter:            testcase.Prompter,
+				HelmInterface:       testcase.HelmInterface,
+			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
 
@@ -50,15 +62,16 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			require.NoError(t, err, "flag parsing failed")
 
 			err = cmd.ValidateArgs(cmd.Flags().Args())
-			if testcase.ExpectedValid && err != nil {
-				require.NoError(t, err, "validation should have passed but it failed")
-			} else if !testcase.ExpectedValid && err != nil {
+			if !testcase.ExpectedValid && err != nil {
 				return
 			}
 
 			err = runner.Validate(cmd, cmd.Flags().Args())
 			if testcase.ExpectedValid {
-				require.NoError(t, err, "validation should have passed but it failed")
+				if err != nil {
+					expectedErrorMsg := "kubernetes cluster unreachable"
+					assert.ErrorContains(t, err, "cluster unreachable", "Error should be: %v, got: %v", expectedErrorMsg, err)
+				}
 			} else {
 				require.Error(t, err, "validation should have failed but it passed")
 			}
@@ -121,5 +134,13 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 		Name:     &resourceName,
 		Type:     &resourceType,
 		Location: &location,
+	}
+}
+
+func CreateResourceGroup(resourceGroupName string) v20220315privatepreview.ResourceGroupResource {
+	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
+	return v20220315privatepreview.ResourceGroupResource{
+		Name: &resourceGroupName,
+		ID:   &id,
 	}
 }

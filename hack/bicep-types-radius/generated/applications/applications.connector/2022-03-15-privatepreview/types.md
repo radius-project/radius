@@ -165,6 +165,7 @@
 
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
@@ -191,12 +192,12 @@
 ## DaprSecretStoreProperties
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
-* **secretStoreName**: string (ReadOnly): The name of the Dapr Secret Store.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
@@ -211,10 +212,10 @@
 
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
-* **stateStoreName**: string (ReadOnly): The name of the Dapr State Store
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### DaprStateStoreGenericResourceProperties
 #### Properties

@@ -100,7 +100,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, outputresource.LocalIDDaprComponent, outputResource.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"secretStoreName": {
+		renderers.ComponentNameKey: {
 			Value: "test-app-test-secret-store",
 		},
 	}
@@ -263,6 +263,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	rendererOutput, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
+	require.Equal(t, kubernetes.MakeResourceName("", "test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
 }

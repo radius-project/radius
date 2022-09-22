@@ -29,7 +29,7 @@
                 }
             }]
         },
-        "stateStoreName": "test-resource"
+        "componentName": "test-app-test-resource"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",

@@ -11,6 +11,13 @@ package v20220315privatepreview
 
 import "time"
 
+// BasicDaprResourceProperties - Basic properties of a Dapr component object.
+type BasicDaprResourceProperties struct {
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+}
+
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
 	// READ-ONLY; Status of the resource
@@ -112,6 +119,10 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -129,6 +140,7 @@ func (d *DaprPubSubAzureServiceBusResourceProperties) GetDaprPubSubBrokerPropert
 		Topic: d.Topic,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		ComponentName: d.ComponentName,
 	}
 }
 
@@ -166,6 +178,10 @@ type DaprPubSubBrokerProperties struct {
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -248,6 +264,10 @@ type DaprPubSubGenericResourceProperties struct {
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -265,6 +285,7 @@ func (d *DaprPubSubGenericResourceProperties) GetDaprPubSubBrokerProperties() *D
 		Topic: d.Topic,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		ComponentName: d.ComponentName,
 	}
 }
 
@@ -300,11 +321,12 @@ type DaprSecretStoreProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the dapr secret store connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the Dapr Secret Store.
-	SecretStoreName *string `json:"secretStoreName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -372,11 +394,12 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the Dapr State Store
-	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -389,9 +412,9 @@ func (d *DaprStateStoreAzureTableStorageResourceProperties) GetDaprStateStorePro
 		Environment: d.Environment,
 		Application: d.Application,
 		Kind: d.Kind,
-		StateStoreName: d.StateStoreName,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		ComponentName: d.ComponentName,
 	}
 }
 
@@ -417,11 +440,12 @@ type DaprStateStoreGenericResourceProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the Dapr State Store
-	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -434,9 +458,9 @@ func (d *DaprStateStoreGenericResourceProperties) GetDaprStateStoreProperties() 
 		Environment: d.Environment,
 		Application: d.Application,
 		Kind: d.Kind,
-		StateStoreName: d.StateStoreName,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		ComponentName: d.ComponentName,
 	}
 }
 
@@ -473,11 +497,12 @@ type DaprStateStoreProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the Dapr State Store
-	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -526,11 +551,12 @@ type DaprStateStoreSQLServerResourceProperties struct {
 	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector
 	Recipe *Recipe `json:"recipe,omitempty"`
 
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the daprStateStore connector at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the Dapr State Store
-	StateStoreName *string `json:"stateStoreName,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -543,9 +569,9 @@ func (d *DaprStateStoreSQLServerResourceProperties) GetDaprStateStoreProperties(
 		Environment: d.Environment,
 		Application: d.Application,
 		Kind: d.Kind,
-		StateStoreName: d.StateStoreName,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		ComponentName: d.ComponentName,
 	}
 }
 

@@ -89,6 +89,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
+			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 		}
 	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
@@ -103,6 +104,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Type:              to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
 			Metadata:          daprPubSub.Properties.DaprPubSubGeneric.Metadata,
+			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 		}
 	default:
 		return errors.New("Kind of DaprPubSubBroker is not specified.")
