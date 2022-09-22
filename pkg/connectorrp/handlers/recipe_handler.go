@@ -21,6 +21,8 @@ import (
 )
 
 // RecipeHandler is an interface for the recipe to implement
+//
+//go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
 	DeployRecipe(ctx context.Context, templatePath string, subscriptiionID string, resourceGroupName string) ([]string, error)
 }
