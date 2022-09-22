@@ -319,6 +319,7 @@ type SharedMocks struct {
 	db                 *store.MockStorageClient
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
+	recipeHandler      *handlers.MockRecipeHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *rp.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
@@ -329,8 +330,12 @@ func setup(t *testing.T) SharedMocks {
 
 	mockRenderer := renderers.NewMockRenderer(ctrl)
 	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 
 	model := model.NewModel(
+		model.RecipeModel{
+			RecipeHandler: mockRecipeHandler,
+		},
 		[]model.RadiusResourceModel{
 			{
 				ResourceType: mongodatabases.ResourceType,
@@ -389,7 +394,8 @@ func createContext(t *testing.T) context.Context {
 func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-
+	ctrl := gomock.NewController(t)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
@@ -556,6 +562,9 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Azure provider unsupported", func(t *testing.T) {
 		testModel := model.NewModel(
+			model.RecipeModel{
+				RecipeHandler: mockRecipeHandler,
+			},
 			[]model.RadiusResourceModel{
 				{
 					ResourceType: mongodatabases.ResourceType,
@@ -852,7 +861,7 @@ func Test_Delete(t *testing.T) {
 	}
 
 	t.Run("Verify delete success", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
 		resourceID, _, _ := buildTestMongoResource()
 		resourceData := ResourceData{
@@ -864,7 +873,7 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
 		resourceID, _, _ := buildTestMongoResource()
 		resourceData := ResourceData{

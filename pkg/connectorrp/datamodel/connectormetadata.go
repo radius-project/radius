@@ -27,7 +27,7 @@ type RecipeData struct {
 	RecipeTemplatePath string
 	APIVersion         string
 	AzureResourceType  resources.KnownType
-	Resources          []string // Resource id's of the resources deployed by the recipe
+	Resources          []string // Resource ids of the resources deployed by the recipe
 }
 
 // ConnectorRecipe is the recipe details used to automatically deploy underlying infrastructure for a connector

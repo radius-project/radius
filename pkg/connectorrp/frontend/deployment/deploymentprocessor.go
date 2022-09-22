@@ -151,8 +151,16 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := make(map[string]interface{})
 
 	if rendererOutput.RecipeData.Name != "" {
-		//rendererOutput.RecipeData.Resources, err = handlers.DeployRecipe.Put(ctx, rendererOutput.RecipeData.RecipeTemplatePath)
-		rendererOutput.RecipeData.Resources = []string{}
+		parsed, err := resources.Parse(id.String())
+		if err != nil {
+			return DeploymentOutput{}, fmt.Errorf("failed to parse resource id %s: %w", id, err)
+		}
+		recipeData := rendererOutput.RecipeData
+		templatePath := recipeData.RecipeTemplatePath
+		recipeData.Resources, err = dp.appmodel.GetRecipe().RecipeHandler.DeployRecipe(ctx, templatePath, parsed.FindScope(resources.SubscriptionsSegment), parsed.FindScope(resources.ResourceGroupsSegment))
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
 	}
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
@@ -252,7 +260,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource, nil)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
 		if err != nil {
 			return err
 		}
@@ -260,18 +268,12 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	resourceIds := resourceData.RecipeData.Resources
 	for i := len(resourceIds) - 1; i >= 0; i-- {
 		id := resourceIds[i]
-		resourceType := resourceData.SecretValues[renderers.ConnectionStringValue].Transformer
-		localId := resourceData.SecretValues[renderers.ConnectionStringValue].LocalID
-		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
+		logger.Info(fmt.Sprintf("Deleting resource: %s", id))
+		err = dp.appmodel.GetRecipe().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
 		if err != nil {
 			return err
 		}
-		identity := resourcemodel.NewARMIdentity(&resourceType, id, resourceData.RecipeData.APIVersion)
-		logger.Info(fmt.Sprintf("Deleting resource: %v, LocalID: %s, resource type: %s\n", identity, localId, resourceType.Type))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, nil, &identity)
-		if err != nil {
-			return err
-		}
+
 	}
 	return nil
 }

@@ -65,6 +65,6 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *azureRedisHandler) Delete(ctx context.Context, resource *outputresource.OutputResource, identity *resourcemodel.ResourceIdentity) error {
+func (handler *azureRedisHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
 	return nil
 }

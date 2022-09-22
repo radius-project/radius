@@ -82,7 +82,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource, identity *resourcemodel.ResourceIdentity) error {
+func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
 	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
