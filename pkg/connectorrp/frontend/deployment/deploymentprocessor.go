@@ -261,12 +261,13 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	for i := len(resourceIds) - 1; i >= 0; i-- {
 		id := resourceIds[i]
 		resourceType := resourceData.SecretValues[renderers.ConnectionStringValue].Transformer
+		localId := resourceData.SecretValues[renderers.ConnectionStringValue].LocalID
 		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
-		// parsedID, err := resources.Parse(id)
-		// if err != nil {
-		// 	return errors.New("the 'resource' field must be a valid resource id")
-		// }
+		if err != nil {
+			return err
+		}
 		identity := resourcemodel.NewARMIdentity(&resourceType, id, resourceData.RecipeData.APIVersion)
+		logger.Info(fmt.Sprintf("Deleting resource: %v, LocalID: %s, resource type: %s\n", identity, localId, resourceType.Type))
 		err = outputResourceModel.ResourceHandler.Delete(ctx, nil, &identity)
 		if err != nil {
 			return err
