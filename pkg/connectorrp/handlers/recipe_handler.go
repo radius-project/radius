@@ -9,54 +9,76 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// DeployRecipe fetches the recipe ARM JSON template from ACR and deploys it
-func (handler *armHandler) DeployRecipe(ctx context.Context, templatePath string, subscriptiionID string, resourceGroupName string) ([]string, error) {
+// RecipeHandler is an interface for the recipe to implement
+type RecipeHandler interface {
+	DeployRecipe(ctx context.Context, templatePath string, subscriptiionID string, resourceGroupName string) ([]string, error)
+}
+
+// NewRecipeHandler creates a recipe handler
+// parameters:
+// ArmConfig which has the arm authoriser
+func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
+	return &azureRecipeHandler{
+		arm: arm,
+	}
+}
+
+type azureRecipeHandler struct {
+	arm *armauth.ArmConfig
+}
+
+// DeployRecipe fetches the recipe ARM JSON template from ACR and deploys it.
+// Parameters:
+// ctx - context
+// templatePath - ACR path for the recipe
+// subscriptiionID - The subscription ID to which the recipe will be deployed
+// resourceGroupName - the resource group where the recipe will be deployed
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePath string, subscriptionID string, resourceGroupName string) ([]string, error) {
 	registryRepo, tag := strings.Split(templatePath, ":")[0], strings.Split(templatePath, ":")[1]
+
+	// get the recipe from ACR
+	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to ACR %s", err.Error())
 	}
-	layerDigest, err := fetchLayertDigest(ctx, repo, tag)
+	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipe manifest from ACR %s", err.Error())
 	}
-	recipeByte, err := fetchLayertBlob(ctx, repo, layerDigest)
+	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipe template from ACR %s", err.Error())
 	}
-
-	//deploy the ARM JSON template
-	outputId, err := handler.deploy(ctx, recipeByte, subscriptiionID, resourceGroupName)
+	recipe := make(map[string]interface{})
+	err = json.Unmarshal(recipeBytes, &recipe)
 	if err != nil {
 		return nil, err
 	}
-	return outputId, nil
-}
 
-func (handler *armHandler) deploy(ctx context.Context, recipeData []byte, subscriptionID, resourceGroupName string) ([]string, error) {
+	// deploy the ARM JSON template fetched from ACR
+	// create a ARM Deployment Client
 	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
-	deploymtName := "recipe" + time.Now().String()
-	contents := make(map[string]interface{})
-	err := json.Unmarshal(recipeData, &contents)
-	if err != nil {
-		return nil, err
-	}
-	deploymentFuture, err := dClient.CreateOrUpdate(
+	deploymtName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
+
+	dplResp, err := dClient.CreateOrUpdate(
 		ctx,
 		resourceGroupName,
 		deploymtName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
-				Template: contents,
+				Template: recipe,
 				Mode:     resources.DeploymentModeIncremental,
 			},
 		},
@@ -64,13 +86,19 @@ func (handler *armHandler) deploy(ctx context.Context, recipeData []byte, subscr
 	if err != nil {
 		return nil, err
 	}
-	err = deploymentFuture.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
+	err = dplResp.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := deploymentFuture.Result(dClient)
+
+	// get the outputResources id from the recipe deployment CreateOrUpdate response
+	resp, err := dplResp.Result(dClient)
 	if err != nil {
 		return nil, err
+	}
+	// return error if the Provisioning is not success
+	if resp.Properties.ProvisioningState != resources.ProvisioningStateSucceeded {
+		return nil, fmt.Errorf("failed to deploy recipe")
 	}
 	var result []string
 	for _, id := range *resp.Properties.OutputResources {
@@ -79,12 +107,14 @@ func (handler *armHandler) deploy(ctx context.Context, recipeData []byte, subscr
 	return result, nil
 }
 
-func fetchLayertDigest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
-	// resolves a manifest descriptor
+// getDigestFromManifest gets the layers digest from the manifest
+func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag string) (string, error) {
+	// resolves a manifest descriptor with a Tag reference
 	descriptor, err := repo.Resolve(ctx, tag)
 	if err != nil {
 		return "", err
 	}
+	// get the manifest data
 	rc, err := repo.Fetch(ctx, descriptor)
 	if err != nil {
 		return "", err
@@ -94,6 +124,7 @@ func fetchLayertDigest(ctx context.Context, repo *remote.Repository, tag string)
 	if err != nil {
 		return "", err
 	}
+	// create the manifest map to get the digest of the layer
 	var manifest map[string]interface{}
 	err = json.Unmarshal(manifestBlob, &manifest)
 	if err != nil {
@@ -111,12 +142,14 @@ func fetchLayertDigest(ctx context.Context, repo *remote.Repository, tag string)
 	return layerDigest, nil
 }
 
-func fetchLayertBlob(ctx context.Context, repo *remote.Repository, layerDigest string) ([]byte, error) {
-	// resolves a layer blob descriptor
+// getRecipeBytes fetches the recipe ARM JSON using the layers digest
+func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest string) ([]byte, error) {
+	// resolves a layer blob descriptor with a digest reference
 	descriptor, err := repo.Blobs().Resolve(ctx, layerDigest)
 	if err != nil {
 		return nil, err
 	}
+	// get the layer data
 	rc, err := repo.Fetch(ctx, descriptor)
 	if err != nil {
 		return nil, err
