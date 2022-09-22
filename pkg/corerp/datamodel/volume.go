@@ -11,6 +11,11 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
+const (
+	// AzureKeyVaultVolume represents the resource of azure keyvault volume.
+	AzureKeyVaultVolume string = "azure.com.keyvault"
+)
+
 // VolumeResource represents VolumeResource resource.
 type VolumeResource struct {
 	v1.BaseResource

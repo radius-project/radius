@@ -16,8 +16,6 @@ import (
 
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
 func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
-	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	// TODO: Improve the validation.
 	converted := &datamodel.VolumeResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -42,41 +40,58 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 
 	switch p := src.Properties.(type) {
 	case *AzureKeyVaultVolumeProperties:
-		converted.Properties.AzureKeyVault = &datamodel.AzureKeyVaultVolumeProperties{
-			Resource:     to.String(p.Resource),
-			Certificates: nil,
-			Keys:         nil,
-			Secrets:      nil,
+		dm := &datamodel.AzureKeyVaultVolumeProperties{
+			Resource: to.String(p.Resource),
 		}
+
+		if p.Certificates != nil {
+			dm.Certificates = map[string]datamodel.CertificateObjectProperties{}
+			for k, v := range p.Certificates {
+				dm.Certificates[k] = *toCertDataModel(v)
+			}
+		}
+		if p.Keys != nil {
+			dm.Keys = map[string]datamodel.KeyObjectProperties{}
+			for k, v := range p.Keys {
+				dm.Keys[k] = *toKeyDataModel(v)
+			}
+		}
+		if p.Secrets != nil {
+			dm.Secrets = map[string]datamodel.SecretObjectProperties{}
+			for k, v := range p.Secrets {
+				dm.Secrets[k] = *toSecretDataModel(v)
+			}
+		}
+		converted.Properties.AzureKeyVault = dm
 	}
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned VolumeResource resource.
 func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
-	// TODO: Improve the validation.
 	resource, ok := src.(*datamodel.VolumeResource)
 	if !ok {
 		return conv.ErrInvalidModelConversion
 	}
 
-	dst.ID = to.StringPtr(resource.ID)
-	dst.Name = to.StringPtr(resource.Name)
-	dst.Type = to.StringPtr(resource.Type)
+	dst.ID = azto.Ptr(resource.ID)
+	dst.Name = azto.Ptr(resource.Name)
+	dst.Type = azto.Ptr(resource.Type)
 	dst.SystemData = fromSystemDataModel(resource.SystemData)
-	dst.Location = to.StringPtr(resource.Location)
+	dst.Location = azto.Ptr(resource.Location)
 	dst.Tags = *to.StringMapPtr(resource.Tags)
 
 	switch resource.Properties.Kind {
-	case "azure.com.keyvault":
+	case datamodel.AzureKeyVaultVolume:
 		azProp := resource.Properties.AzureKeyVault
 		p := &AzureKeyVaultVolumeProperties{
 			Status: &ResourceStatus{
 				OutputResources: v1.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
 			},
-			Kind:        to.StringPtr(resource.Properties.Kind),
-			Application: to.StringPtr(resource.Properties.Application),
-			Resource:    to.StringPtr(azProp.Resource),
+			Kind:              azto.Ptr(resource.Properties.Kind),
+			Application:       azto.Ptr(resource.Properties.Application),
+			Resource:          azto.Ptr(azProp.Resource),
+			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
 		}
 		if azProp.Certificates != nil {
 			p.Certificates = map[string]*CertificateObjectProperties{}
@@ -102,20 +117,44 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
+func toStringPtr(v string) *string {
+	if v == "" {
+		return nil
+	}
+	return &v
+}
+
 func fromKeyDataModel(dm *datamodel.KeyObjectProperties) *KeyObjectProperties {
 	return &KeyObjectProperties{
 		Name:    azto.Ptr(dm.Name),
-		Alias:   azto.Ptr(dm.Alias),
-		Version: azto.Ptr(dm.Version),
+		Alias:   toStringPtr(dm.Alias),
+		Version: toStringPtr(dm.Version),
+	}
+}
+
+func toKeyDataModel(k *KeyObjectProperties) *datamodel.KeyObjectProperties {
+	return &datamodel.KeyObjectProperties{
+		Name:    to.String(k.Name),
+		Alias:   to.String(k.Alias),
+		Version: to.String(k.Version),
 	}
 }
 
 func fromSecretDataModel(dm *datamodel.SecretObjectProperties) *SecretObjectProperties {
 	return &SecretObjectProperties{
 		Name:     azto.Ptr(dm.Name),
-		Alias:    azto.Ptr(dm.Alias),
-		Version:  azto.Ptr(dm.Version),
+		Alias:    toStringPtr(dm.Alias),
+		Version:  toStringPtr(dm.Version),
 		Encoding: fromEncoding(dm.Encoding),
+	}
+}
+
+func toSecretDataModel(s *SecretObjectProperties) *datamodel.SecretObjectProperties {
+	return &datamodel.SecretObjectProperties{
+		Name:     to.String(s.Name),
+		Alias:    to.String(s.Alias),
+		Version:  to.String(s.Version),
+		Encoding: toEncoding(s.Encoding),
 	}
 }
 
@@ -139,14 +178,66 @@ func fromEncoding(encode *datamodel.SecretEncoding) *Encoding {
 	return &enc
 }
 
-func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateObjectProperties {
-	prop := &CertificateObjectProperties{
-		Name:    &dm.Name,
-		Alias:   &dm.Alias,
-		Version: &dm.Version,
+func toEncoding(e *Encoding) *datamodel.SecretEncoding {
+	enc := datamodel.SecretObjectPropertiesEncodingUTF8
+
+	if e == nil {
+		return &enc
 	}
 
-	prop.Encoding = fromEncoding(dm.Encoding)
+	switch *e {
+	case EncodingBase64:
+		enc = datamodel.SecretObjectPropertiesEncodingBase64
+	case EncodingHex:
+		enc = datamodel.SecretObjectPropertiesEncodingHex
+	case EncodingUTF8:
+		enc = datamodel.SecretObjectPropertiesEncodingUTF8
+	default:
+		enc = datamodel.SecretObjectPropertiesEncodingUTF8
+	}
+	return &enc
+}
+
+func toCertDataModel(c *CertificateObjectProperties) *datamodel.CertificateObjectProperties {
+	prop := &datamodel.CertificateObjectProperties{
+		Name:     to.String(c.Name),
+		Alias:    to.String(c.Alias),
+		Version:  to.String(c.Version),
+		Encoding: toEncoding(c.Encoding),
+	}
+
+	if c.Format != nil {
+		switch *c.Format {
+		case FormatPem:
+			prop.Format = azto.Ptr(datamodel.CertificateFormatPEM)
+		case FormatPfx:
+			prop.Format = azto.Ptr(datamodel.CertificateFormatPFX)
+		default:
+			prop.Format = azto.Ptr(datamodel.CertificateFormatPEM)
+		}
+	}
+
+	if c.CertType != nil {
+		switch *c.CertType {
+		case CertTypeCertificate:
+			prop.CertType = azto.Ptr(datamodel.CertificateTypeCertificate)
+		case CertTypePrivatekey:
+			prop.CertType = azto.Ptr(datamodel.CertificateTypePrivateKey)
+		case CertTypePublickey:
+			prop.CertType = azto.Ptr(datamodel.CertificateTypePublicKey)
+		}
+	}
+
+	return prop
+}
+
+func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateObjectProperties {
+	prop := &CertificateObjectProperties{
+		Name:     azto.Ptr(dm.Name),
+		Alias:    toStringPtr(dm.Alias),
+		Version:  toStringPtr(dm.Version),
+		Encoding: fromEncoding(dm.Encoding),
+	}
 
 	if dm.Format != nil {
 		switch *dm.Format {
@@ -162,11 +253,11 @@ func fromCertDataModel(dm *datamodel.CertificateObjectProperties) *CertificateOb
 	if dm.CertType != nil {
 		switch *dm.CertType {
 		case datamodel.CertificateTypeCertificate:
-			prop.CertType = azto.Ptr(TypeCertificate)
+			prop.CertType = azto.Ptr(CertTypeCertificate)
 		case datamodel.CertificateTypePrivateKey:
-			prop.CertType = azto.Ptr(TypePrivatekey)
+			prop.CertType = azto.Ptr(CertTypePrivatekey)
 		case datamodel.CertificateTypePublicKey:
-			prop.CertType = azto.Ptr(TypePublickey)
+			prop.CertType = azto.Ptr(CertTypePublickey)
 		}
 	}
 
