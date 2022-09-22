@@ -220,7 +220,7 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
-// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
 func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
 	group, err := ReadResourceGroupNameArgs(cmd, args)
 	if err != nil {
@@ -233,6 +233,7 @@ func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) 
 	return group, nil
 }
 
+// ReadResourceGroupNameArgs is used to get the resource group name that is supplied as either the first argument for group commands or using a -g flag
 func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("group")
 	if err != nil {
