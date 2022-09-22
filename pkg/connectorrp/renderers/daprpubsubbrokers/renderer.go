@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
@@ -40,6 +41,14 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	resource, ok := dm.(*datamodel.DaprPubSubBroker)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+	}
+	// Check if Dapr object with the same componentName exist
+	found, err := dapr.DoesComponentNameExist(ctx, resource.Properties.Application, resource.Name)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+	if found {
+		return renderers.RendererOutput{}, errors.New("There is already a Dapr component with the same name.")
 	}
 
 	if resource.Properties.Kind == "" {
