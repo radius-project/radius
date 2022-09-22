@@ -15,7 +15,7 @@
         "kind": "state.azure.tablestorage",
         "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable",
         "provisioningState": "Succeeded",
-        "stateStoreName": "test-resource"
+        "componentName": "test-app-test-resource"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

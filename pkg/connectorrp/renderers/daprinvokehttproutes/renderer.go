@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -35,5 +36,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 				Value: to.String(&properties.AppId),
 			},
 		},
+		SecretValues: map[string]rp.SecretValueReference{},
 	}, nil
 }

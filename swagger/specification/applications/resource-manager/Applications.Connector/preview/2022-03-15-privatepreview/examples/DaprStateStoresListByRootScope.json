@@ -16,8 +16,7 @@
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "state.sqlserver",
-                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
-                "stateStoreName": "daprStateStore0"
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
               }
             },
             {
@@ -29,8 +28,7 @@
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
                 "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
                 "kind": "state.azure.tablestorage",
-                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable",
-                "stateStoreName": "daprStateStore0"
+                "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
               }
             },
             {
@@ -44,7 +42,6 @@
                   "kind": "generic",
                   "type": "state.zookeeper",
                   "version": "v1",
-                  "stateStoreName": "daprStateStore0",
                   "metadata": {
                   "foo": "bar"
                   }

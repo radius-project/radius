@@ -100,3 +100,9 @@ type DeploymentDataModel interface {
 
 	OutputResources() []outputresource.OutputResource
 }
+
+// BasicDaprResourceProperties is the basic resource properties for dapr resources.
+type BasicDaprResourceProperties struct {
+	// ComponentName represents the name of the component.
+	ComponentName string `json:"componentName,omitempty"`
+}
