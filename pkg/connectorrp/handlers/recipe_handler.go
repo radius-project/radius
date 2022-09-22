@@ -20,11 +20,11 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// RecipeHandler is an interface for the recipe to implement
+// RecipeHandler is an interface for the recipe to deploy
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, templatePath string, subscriptiionID string, resourceGroupName string) ([]string, error)
+	DeployRecipe(ctx context.Context, templatePath, subscriptionID, resourceGroupName string) ([]string, error)
 }
 
 // NewRecipeHandler creates a recipe handler
@@ -40,28 +40,32 @@ type azureRecipeHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// DeployRecipe fetches the recipe ARM JSON template from ACR and deploys it.
+const deplmtPrefix = "recipe"
+
+// DeployRecipe fetches the recipe ARM JSON template from ACR - Azure Container Registry and deploys it.
 // Parameters:
 // ctx - context
 // templatePath - ACR path for the recipe
 // subscriptionID - The subscription ID to which the recipe will be deployed
 // resourceGroupName - the resource group where the recipe will be deployed
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePath string, subscriptionID string, resourceGroupName string) ([]string, error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePath, subscriptionID, resourceGroupName string) ([]string, error) {
 	registryRepo, tag := strings.Split(templatePath, ":")[0], strings.Split(templatePath, ":")[1]
-
+	if templatePath == "" {
+		return nil, fmt.Errorf("templatePath cannot be empty")
+	}
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client to ACR %s", err.Error())
+		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch recipe manifest from ACR %s", err.Error())
+		return nil, fmt.Errorf("failed to fetch recipe manifest from registry %s", err.Error())
 	}
 	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch recipe template from ACR %s", err.Error())
+		return nil, fmt.Errorf("failed to fetch recipe template from registry %s", err.Error())
 	}
 	recipe := make(map[string]interface{})
 	err = json.Unmarshal(recipeBytes, &recipe)
@@ -69,10 +73,10 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePat
 		return nil, err
 	}
 
-	// deploy the ARM JSON template fetched from ACR
 	// create a ARM Deployment Client
+	// deploy the ARM JSON template fetched from ACR
 	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
-	deploymtName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
+	deploymtName := deplmtPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 
 	dplResp, err := dClient.CreateOrUpdate(
 		ctx,
@@ -100,7 +104,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePat
 	}
 	// return error if the Provisioning is not success
 	if resp.Properties.ProvisioningState != resources.ProvisioningStateSucceeded {
-		return nil, fmt.Errorf("failed to deploy recipe")
+		return nil, fmt.Errorf("failed to deploy recipe - %s", deploymtName)
 	}
 	var result []string
 	for _, id := range *resp.Properties.OutputResources {
