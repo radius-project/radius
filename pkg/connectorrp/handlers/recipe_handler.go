@@ -44,7 +44,7 @@ type azureRecipeHandler struct {
 // Parameters:
 // ctx - context
 // templatePath - ACR path for the recipe
-// subscriptiionID - The subscription ID to which the recipe will be deployed
+// subscriptionID - The subscription ID to which the recipe will be deployed
 // resourceGroupName - the resource group where the recipe will be deployed
 func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePath string, subscriptionID string, resourceGroupName string) ([]string, error) {
 	registryRepo, tag := strings.Split(templatePath, ":")[0], strings.Split(templatePath, ":")[1]
