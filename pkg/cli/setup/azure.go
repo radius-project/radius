@@ -38,19 +38,19 @@ func RegisterPersistentAzureProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP("provider-azure-tenant-id", "", "", "The tenant id for the service principal")
 }
 
-func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool) (*azure.Provider, error) {
+func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
 	if interactive {
-		return parseAzureProviderInteractive(cmd)
+		return parseAzureProviderInteractive(cmd, prompter)
 	}
 	return parseAzureProviderNonInteractive(cmd)
 }
 
-func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) {
-	addAzureSPN, err := prompt.ConfirmWithDefault("Add Azure provider for cloud resources [y/N]?", prompt.No)
+func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*azure.Provider, error) {
+	addAzureSPN, err := prompt.YesOrNoPrompter("Add Azure provider for cloud resources [y/N]?", "N", prompter)
 	if err != nil {
 		return nil, err
 	}
-	if !addAzureSPN {
+	if strings.ToLower(addAzureSPN) == "n" {
 		return nil, nil
 	}
 
@@ -63,41 +63,38 @@ func parseAzureProviderInteractive(cmd *cobra.Command) (*azure.Provider, error) 
 		return nil, err
 	}
 
-	subscription, err := selectSubscription(cmd.Context(), authorizer)
+	subscription, err := selectSubscription(cmd.Context(), authorizer, prompter)
 	if err != nil {
 		return nil, err
 	}
-	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription)
+	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription, prompter)
 	if err != nil {
 		return nil, err
 	}
 
-	fmt.Printf(
-		"\nA Service Principal Name (SPN) with a corresponding role assignment and scope for your resource group is required to create Azure resources.\n\nFor example, you can create one using the following command:\n\033[36maz ad sp create-for-rbac --role Owner --scope /subscriptions/%s/resourceGroups/%s\033[0m\n\nFor more information, see: https://docs.microsoft.com/cli/azure/ad/sp?view=azure-cli-latest#az-ad-sp-create-for-rbac and https://aka.ms/azadsp-more\n\n",
-		subscription.SubscriptionID,
-		resourceGroup,
-	)
-
-	clientID, err := prompt.Text(
+	clientID, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
 		"Enter the `appId` of the service principal used to create Azure resources:",
+		"",
 		prompt.UUIDv4Validator,
-	)
+	))
 	if err != nil {
 		return nil, err
 	}
 
-	clientSecret, err := prompt.Text(
+	clientSecret, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
 		"Enter the `password` of the service principal used to create Azure resources:",
+		"",
 		prompt.EmptyValidator,
-	)
+	))
 	if err != nil {
 		return nil, err
 	}
 
-	tenantID, err := prompt.Text(
+	tenantID, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
 		"Enter the `tenant` of the service principal used to create Azure resources:",
+		"",
 		prompt.UUIDv4Validator,
-	)
+	))
 	if err != nil {
 		return nil, err
 	}
@@ -201,7 +198,7 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 	}, nil
 }
 
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (azure.Subscription, error) {
+func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, prompter prompt.Interface) (azure.Subscription, error) {
 	subs, err := azure.LoadSubscriptionsFromProfile()
 	if err != nil {
 		// Failed to load subscriptions from the user profile, fall back to online.
@@ -212,12 +209,12 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Use Subscription '%v'? [Y/n]", subs.Default.DisplayName), prompt.Yes)
+		confirmed, err := prompt.YesOrNoPrompter(fmt.Sprintf("Use Subscription '%v'? [Y/n]", subs.Default.DisplayName), "Y", prompter)
 		if err != nil {
 			return azure.Subscription{}, err
 		}
 
-		if confirmed {
+		if strings.ToLower(confirmed) == "y" {
 			return *subs.Default, nil
 		}
 	}
@@ -233,7 +230,7 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 		names = append(names, s.DisplayName)
 	}
 
-	index, err := prompt.SelectWithDefault("Select Subscription:", &names[0], names)
+	index, _, err := prompter.RunSelect(prompt.SelectionPrompter("Select Subscription:", names))
 	if err != nil {
 		return azure.Subscription{}, err
 	}
@@ -241,9 +238,9 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer) (az
 	return subs.Subscriptions[index], nil
 }
 
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (string, error) {
+func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (string, error) {
 	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
-	name, err := promptUserForRgName(ctx, rgc)
+	name, err := promptUserForRgName(ctx, rgc, prompter)
 	if err != nil {
 		return "", err
 	}
@@ -256,7 +253,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	}
 	output.LogInfo("Resource Group '%v' will be created...", name)
 
-	location, err := promptUserForLocation(ctx, authorizer, sub)
+	location, err := promptUserForLocation(ctx, authorizer, sub, prompter)
 	if err != nil {
 		return "", err
 	}
@@ -270,7 +267,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription) (subscription.Location, error) {
+func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (subscription.Location, error) {
 	// Use the display name for the prompt
 	// alphabetize so the list is stable and scannable
 	subc := clients.NewSubscriptionClient(authorizer)
@@ -288,8 +285,7 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 		nameToLocation[*loc.DisplayName] = loc
 	}
 	sort.Strings(names)
-
-	index, err := prompt.SelectWithDefault("Select a location:", &names[0], names)
+	index, _, err := prompter.RunSelect(prompt.SelectionPrompter(fmt.Sprintf("Select a location, Default: %s", names[0]), names))
 	if err != nil {
 		return subscription.Location{}, err
 	}
@@ -297,13 +293,13 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 	return nameToLocation[selected], nil
 }
 
-func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (string, error) {
+func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompter prompt.Interface) (string, error) {
 	var name string
-	createNewRg, err := prompt.ConfirmWithDefault("Create a new Resource Group? [Y/n]", prompt.Yes)
+	createNewRg, err := prompt.YesOrNoPrompter("Create a new Resource Group? [Y/n]", "Y", prompter)
 	if err != nil {
 		return "", err
 	}
-	if createNewRg {
+	if strings.ToLower(createNewRg) == "y" {
 
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
@@ -312,7 +308,8 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		}
 
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
-		name, err = prompt.TextWithDefault(promptStr, &defaultRgName, prompt.EmptyValidator)
+
+		name, err = prompter.RunPrompt(prompt.TextPromptWithDefault(promptStr, defaultRgName, prompt.EmptyValidator))
 		if err != nil {
 			return "", err
 		}
@@ -329,7 +326,14 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient) (strin
 		}
 
 		defaultRgName, _ := azure.LoadDefaultResourceGroupFromConfig() // ignore errors resulting from being unable to read the config ini file
-		index, err := prompt.SelectWithDefault("Select ResourceGroup:", &defaultRgName, names)
+		yes, err := prompt.YesOrNoPrompter(fmt.Sprintf("Use default resource group %s [Y/n]", defaultRgName), "Y", prompter)
+		if err != nil {
+			return "", err
+		}
+		if strings.ToLower(yes) == "y" {
+			return defaultRgName, nil
+		}
+		index, _, err := prompter.RunSelect(prompt.SelectionPrompter("Select ResourceGroup", names))
 		if err != nil {
 			return "", err
 		}

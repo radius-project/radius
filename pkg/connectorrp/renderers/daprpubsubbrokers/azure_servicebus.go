@@ -20,27 +20,30 @@ import (
 
 func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
 	properties := resource.Properties.DaprPubSubAzureServiceBus
-
 	var output outputresource.OutputResource
 
 	if properties.Resource == "" {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 	}
+
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
 	azureServiceBusNamespaceID, err := resources.Parse(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
+
 	err = azureServiceBusNamespaceID.ValidateResourceType(NamespaceResourceType)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to a ServiceBus Namespace")
 	}
 
 	serviceBusNamespaceName := azureServiceBusNamespaceID.TypeSegments()[0].Name
+
 	topicName := resource.Properties.Topic
 	if topicName == "" {
 		topicName = resource.Name
 	}
+
 	output = outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureServiceBusNamespace,
 		ResourceType: resourcemodel.ResourceType{
@@ -72,7 +75,11 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 		TopicNameKey: {
 			Value: topicName,
 		},
+		renderers.ComponentNameKey: {
+			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
+		},
 	}
+
 	secrets := map[string]rp.SecretValueReference{}
 
 	return renderers.RendererOutput{

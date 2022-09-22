@@ -29,7 +29,8 @@
         "daprPubSubAzureServiceBus": {
           "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async"
         },
-        "topic": "test-topic"
+        "topic": "test-topic",
+        "componentName": "test-app-test-pub-sub-topic"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",

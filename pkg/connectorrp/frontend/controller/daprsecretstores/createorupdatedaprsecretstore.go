@@ -82,8 +82,9 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, r
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
-	if secretStoreName, ok := deploymentOutput.ComputedValues[renderers.SecretStoreName].(string); ok {
-		newResource.Properties.SecretStoreName = secretStoreName
+
+	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		newResource.Properties.ComponentName = componentName
 	}
 
 	if !isNewResource {

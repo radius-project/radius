@@ -181,6 +181,12 @@ type BasicResourceProperties struct {
 	Status ResourceStatus `json:"status,omitempty"`
 }
 
+// BasicDaprResourceProperties is the basic resource properties for dapr resources.
+type BasicDaprResourceProperties struct {
+	// ComponentName represents the name of the component.
+	ComponentName string `json:"componentName,omitempty"`
+}
+
 // EqualLinkedResource returns true if the resource belongs to the same environment and application.
 func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
 	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)

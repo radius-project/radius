@@ -42,6 +42,10 @@ model DaprPubSubBrokerProperties extends BasicResourceProperties {
 
   @doc("Topic name of the Azure ServiceBus resource")
   topic?: string;
+
+  doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the pubsub broker.")
+  @visibility("read")
+  componentName?: string;
 }
 
 @doc("DaprPubSubAzureServiceBus properties")

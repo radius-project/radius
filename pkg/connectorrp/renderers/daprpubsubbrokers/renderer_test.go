@@ -68,6 +68,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -250,6 +251,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
@@ -293,6 +295,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,

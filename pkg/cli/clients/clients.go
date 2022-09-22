@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	ucp_v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -131,9 +132,14 @@ type ApplicationsManagementClient interface {
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
+	CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string) (bool, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220315privatepreview.ResourceGroupResource) (bool, error)
+	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
+	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220315privatepreview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220315privatepreview.ResourceGroupResource, error)
 }
 
 //go:generate mockgen -destination=./mock_cloudproviderclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CloudProviderManagementClient

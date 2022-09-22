@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -82,8 +83,13 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
+
 	if topic, ok := deploymentOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].(string); ok {
 		newResource.Properties.Topic = topic
+	}
+
+	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		newResource.Properties.ComponentName = componentName
 	}
 
 	if !isNewResource {

@@ -220,6 +220,36 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
+func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
+	group, err := ReadResourceGroupNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if group == "" {
+		return "", fmt.Errorf("resource group name is not provided or is empty ")
+	}
+
+	return group, nil
+}
+
+// ReadResourceGroupNameArgs is used to get the resource group name that is supplied as either the first argument for group commands or using a -g flag
+func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("group")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify resource group name via both arguments and `-g`")
+		}
+		name = args[0]
+	}
+
+	return name, err
+}
+
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
 // or specified as a positional arg, or specified using the 'workspace' flag.
 func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string) (*workspaces.Workspace, error) {
@@ -241,6 +271,7 @@ func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string
 	return ws, nil
 }
 
+// ReadWorkspaceNameArgs is used to get the workspace name that is supplied as either the first argument or using a -w flag
 func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {

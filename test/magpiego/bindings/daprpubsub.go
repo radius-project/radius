@@ -10,15 +10,15 @@ import (
 )
 
 // Use this with a values like:
-// - CONNECTION_DAPRPUBSUB_PUBSUBNAME
+// - CONNECTION_DAPRPUBSUB_COMPONENTNAME
 // - CONNECTION_DAPRPUBSUB_TOPIC
 // - DAPR_GRPC_PORT
 func DaprPubSubBinding(envParams map[string]string) BindingStatus {
 	// From https://docs.dapr.io/developing-applications/building-blocks/pubsub/howto-publish-subscribe/
-	pubSubName := envParams["PUBSUBNAME"]
-	if pubSubName == "" {
-		log.Println("pub sub NAME is required")
-		return BindingStatus{false, "NAME is required"}
+	componentName := envParams["COMPONENTNAME"]
+	if componentName == "" {
+		log.Println("COMPONENTNAME is required")
+		return BindingStatus{false, "COMPONENTNAME is required"}
 	}
 	topic := envParams["TOPIC"]
 	if topic == "" {
@@ -32,8 +32,8 @@ func DaprPubSubBinding(envParams map[string]string) BindingStatus {
 	}
 	ctx := context.Background()
 	// Using Dapr SDK to publish a topic
-	if err := client.PublishEvent(ctx, pubSubName, topic, []byte("hello, world!")); err != nil {
-		log.Println("failed to publish Dapr event - ", pubSubName, " error - ", err.Error())
+	if err := client.PublishEvent(ctx, componentName, topic, []byte("hello, world!")); err != nil {
+		log.Println("failed to publish Dapr event - ", componentName, " error - ", err.Error())
 		return BindingStatus{false, "failed to publish Dapr"}
 	}
 	defer client.Close()

@@ -190,6 +190,17 @@
       },
       "type": "object"
     },
+    "BasicDaprResourceProperties": {
+      "description": "Basic properties of a Dapr component object.",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
+        }
+      },
+      "type": "object"
+    },
     "BasicRouteProperties": {
       "description": "Basic properties of a route.",
       "properties": {

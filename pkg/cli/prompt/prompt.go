@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+
+	"github.com/manifoldco/promptui"
 )
 
 type BinaryAnswer int
@@ -149,4 +151,74 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	}
 
 	return selected, nil
+}
+
+//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+type Interface interface {
+	RunPrompt(prompter promptui.Prompt) (string, error)
+	RunSelect(selector promptui.Select) (int, string, error)
+}
+
+type Impl struct{}
+
+// Prompts user for an input
+func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
+	return prompter.Run()
+}
+
+//Prompts user to select from a list of values
+func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
+	return selector.Run()
+}
+
+// Creates a Yes or No prompts where user has to enter either a Y or N as input
+func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
+	textPrompt := promptui.Prompt{
+		Label:     label,
+		Default:   defaultValue,
+		Validate: validateYesOrNo,
+	}
+	result, err := prompter.RunPrompt(textPrompt)
+	if errors.Is(err, promptui.ErrAbort) {
+		return result, nil
+	} else if err != nil {
+		return "", err
+	}
+	return result, err
+}
+
+func validateYesOrNo(s string) error {
+	if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
+		return errors.New("invalid input")
+	}
+	return nil
+}
+
+// Creates a prompt where a user is asked for a value suggesting a default Val
+func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {
+	return promptui.Prompt{
+		Label:     label,
+		Default:   defaultVal,
+		Validate: func(s string) error {
+			valid, msg, err := f(s)
+			if err != nil {
+				return err
+			}
+			if !valid {
+				return errors.New(msg)
+			}
+			return nil
+		},
+	}
+}
+
+// Creates a prompter which has a list of values to select from
+func SelectionPrompter(label string, items []string) promptui.Select {
+	return promptui.Select{
+		Label: label,
+		Items: items,
+		Searcher: func(input string, index int) bool {
+			return strings.HasPrefix(items[index],input)
+		},
+	}
 }

@@ -59,6 +59,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		daprpubsubbrokers.TopicNameKey: {
 			Value: "test-topic",
 		},
+		renderers.ComponentNameKey: {
+			Value: "test-app-test-pub-sub-topic",
+		},
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{output},
@@ -78,6 +81,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 		ComputedValues: map[string]interface{}{
 			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
+			renderers.ComponentNameKey:     rendererOutput.ComputedValues[renderers.ComponentNameKey].Value,
 		},
 	}
 
