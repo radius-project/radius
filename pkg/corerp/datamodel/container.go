@@ -214,40 +214,6 @@ type DaprSidecarExtension struct {
 	Provides string   `json:"provides,omitempty"`
 }
 
-type SecretObjectProperties struct {
-	// REQUIRED; The name of the secret
-	Name string `json:"name,omitempty"`
-
-	// File name when written to disk.
-	Alias string `json:"alias,omitempty"`
-
-	// Encoding format. Default utf-8
-	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
-
-	// Secret version
-	Version string `json:"version,omitempty"`
-}
-
-// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
-type SecretObjectPropertiesEncoding string
-
-const (
-	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
-	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
-	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
-)
-
-type KeyObjectProperties struct {
-	// REQUIRED; The name of the key
-	Name string `json:"name,omitempty"`
-
-	// File name when written to disk.
-	Alias string `json:"alias,omitempty"`
-
-	// Key version
-	Version string `json:"version,omitempty"`
-}
-
 // IAMProperties represents the properties of IAM provider.
 type IAMProperties struct {
 	Kind  IAMKind  `json:"kind,omitempty"`
