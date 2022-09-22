@@ -22,7 +22,7 @@ type ApplicationModel struct {
 	outputResources      []OutputResourceModel
 	outputResourceLookup map[resourcemodel.ResourceType]OutputResourceModel
 	supportedProviders   map[string]bool
-	recipe               RecipeModel
+	recipeModel          RecipeModel
 }
 
 func (m ApplicationModel) GetRadiusResources() []RadiusResourceModel {
@@ -33,8 +33,8 @@ func (m ApplicationModel) GetOutputResources() []OutputResourceModel {
 	return m.outputResources
 }
 
-func (m ApplicationModel) GetRecipe() RecipeModel {
-	return m.recipe
+func (m ApplicationModel) GetRecipeModel() RecipeModel {
+	return m.recipeModel
 }
 
 // LookupRadiusResourceModel is a case insensitive lookup for resourceType
@@ -75,7 +75,7 @@ type RecipeModel struct {
 	RecipeHandler handlers.RecipeHandler
 }
 
-func NewModel(recipe RecipeModel, radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {
+func NewModel(recipeModel RecipeModel, radiusResources []RadiusResourceModel, outputResources []OutputResourceModel, supportedProviders map[string]bool) ApplicationModel {
 	radiusResourceLookup := map[string]RadiusResourceModel{}
 	for _, radiusResource := range radiusResources {
 		radiusResourceLookup[strings.ToLower(radiusResource.ResourceType)] = radiusResource
@@ -92,6 +92,6 @@ func NewModel(recipe RecipeModel, radiusResources []RadiusResourceModel, outputR
 		outputResources:      outputResources,
 		outputResourceLookup: outputResourceLookup,
 		supportedProviders:   supportedProviders,
-		recipe:               recipe,
+		recipeModel:          recipeModel,
 	}
 }

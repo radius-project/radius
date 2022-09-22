@@ -42,10 +42,9 @@ func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVer
 	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
 	_, err = rc.DeleteByID(ctx, id, apiVersion)
 	if err != nil {
-		if clients.Is404Error(err) {
-			return fmt.Errorf("provided Azure resource %q does not exist", id)
+		if !clients.Is404Error(err) {
+			return fmt.Errorf("failed to delete resource %q: %w", id, err)
 		}
-		return fmt.Errorf("failed to delete resource %q", id)
 	}
 	return nil
 }

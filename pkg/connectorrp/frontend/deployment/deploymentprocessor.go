@@ -155,12 +155,11 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		if err != nil {
 			return DeploymentOutput{}, fmt.Errorf("failed to parse resource id %s: %w", id, err)
 		}
-		recipeData := rendererOutput.RecipeData
-		templatePath := recipeData.RecipeTemplatePath
-		recipeData.Resources, err = dp.appmodel.GetRecipe().RecipeHandler.DeployRecipe(ctx, templatePath, parsed.FindScope(resources.SubscriptionsSegment), parsed.FindScope(resources.ResourceGroupsSegment))
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeTemplatePath, parsed.FindScope(resources.SubscriptionsSegment), parsed.FindScope(resources.ResourceGroupsSegment))
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
+		rendererOutput.RecipeData.Resources = deployedRecipeResources
 	}
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
@@ -269,7 +268,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	for i := len(resourceIds) - 1; i >= 0; i-- {
 		id := resourceIds[i]
 		logger.Info(fmt.Sprintf("Deleting resource: %s", id))
-		err = dp.appmodel.GetRecipe().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
+		err = dp.appmodel.GetRecipeModel().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
 		if err != nil {
 			return err
 		}
