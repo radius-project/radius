@@ -61,6 +61,9 @@ func (handler *armHandler) deploy(ctx context.Context, recipeData []byte, subscr
 			},
 		},
 	)
+	if err != nil {
+		return nil, err
+	}
 	err = deploymentFuture.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
 	if err != nil {
 		return nil, err
