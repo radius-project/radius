@@ -49,14 +49,6 @@ type RendererOutput struct {
 	RecipeData     datamodel.RecipeData
 }
 
-// type RecipeData struct {
-// 	Name               string
-// 	RecipeTemplatePath string
-// 	APIVersion         string
-// 	AzureResourceType  resources.KnownType
-// 	Resources          []string // Resource id's of the resources deployed by the recipe
-// }
-
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
 // have been deployed.
 type ComputedValueReference struct {

@@ -106,7 +106,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 	return nil
 }
 
-func (handler *kubernetesHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *kubernetesHandler) Delete(ctx context.Context, resource *outputresource.OutputResource, resourceIdentity *resourcemodel.ResourceIdentity) error {
 	identity := &resourcemodel.KubernetesIdentity{}
 	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
 		return err

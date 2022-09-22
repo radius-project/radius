@@ -81,7 +81,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource, identity *resourcemodel.ResourceIdentity) error {
 	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.deleteDaprStateStore(ctx, properties)

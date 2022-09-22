@@ -852,18 +852,26 @@ func Test_Delete(t *testing.T) {
 	}
 
 	t.Run("Verify delete success", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 	})
 
@@ -890,7 +898,12 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -906,7 +919,11 @@ func Test_Delete(t *testing.T) {
 			},
 		}
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})

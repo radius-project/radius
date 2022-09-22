@@ -48,7 +48,14 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 
-func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource, identity *resourcemodel.ResourceIdentity) error {
+	if resource != nil {
+		identity = &resource.Identity
+	}
+	err := deleteByID(ctx, handler.arm.Auth, *identity)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -89,4 +96,26 @@ func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemod
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
 	return &resource, nil
+}
+
+func deleteByID(ctx context.Context, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) error {
+	id, apiVersion, err := identity.RequireARM()
+	if err != nil {
+		return err
+	}
+
+	parsed, err := ucpresources.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
+	_, err = rc.DeleteByID(ctx, id, apiVersion)
+	if err != nil {
+		if clients.Is404Error(err) {
+			return fmt.Errorf("provided Azure resource %q does not exist", id)
+		}
+		return fmt.Errorf("failed to delete resource %q", id)
+	}
+	return nil
 }

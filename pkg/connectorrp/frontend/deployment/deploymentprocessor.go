@@ -41,7 +41,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
+	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
@@ -235,10 +235,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID)
+func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceData.ID)
 
-	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {
 		return err
 	}
@@ -252,12 +252,26 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource, nil)
 		if err != nil {
 			return err
 		}
 	}
-
+	resourceIds := resourceData.RecipeData.Resources
+	for i := len(resourceIds) - 1; i >= 0; i-- {
+		id := resourceIds[i]
+		resourceType := resourceData.SecretValues[renderers.ConnectionStringValue].Transformer
+		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(resourceType)
+		// parsedID, err := resources.Parse(id)
+		// if err != nil {
+		// 	return errors.New("the 'resource' field must be a valid resource id")
+		// }
+		identity := resourcemodel.NewARMIdentity(&resourceType, id, resourceData.RecipeData.APIVersion)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, nil, &identity)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -311,7 +325,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	for _, id := range recipeData.Resources {
 		parsedID, err := resources.Parse(id)
 		if err != nil {
-			return nil, errors.New("the 'resource' field must be a valid resource id")
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
 		}
 		// Find resource that matches the expected Azure resource type
 		err = parsedID.ValidateResourceType(recipeData.AzureResourceType)
@@ -319,7 +333,10 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
 			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
 		}
+	}
 
+	if recipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.Name)
 	}
 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
