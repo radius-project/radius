@@ -57,7 +57,6 @@ type Runner struct {
 	K8sGoClient         client_go.Interface
 	KubeContext         string
 	ConnectionFactory   connections.Factory
-	ScopeID             resources.ID
 	ConfigFileInterface configFile.Interface
 	KubernetesInterface kubernetes.Interface
 }
@@ -109,7 +108,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
-		r.ScopeID = scopeId
 	}
 
 	kubeconfig, err := kubernetes.ReadKubeConfig()

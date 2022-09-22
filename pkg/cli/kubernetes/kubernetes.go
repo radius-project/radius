@@ -423,3 +423,7 @@ type Impl struct {
 func (i *Impl) GetKubeContext() (*api.Config, error) {
 	return ReadKubeConfig()
 }
+
+func (*Impl) EnsureNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
+	return EnsureNamespace(ctx, client, namespace)
+}

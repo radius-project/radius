@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 //go:generate mockgen -destination=./mock_config.go -package=configFile -self_package github.com/project-radius/radius/pkg/cli/configFile github.com/project-radius/radius/pkg/cli/configFile Interface
@@ -31,7 +32,11 @@ func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceNam
 
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(workspaceName)]
-		ws.Environment = environmentName
+		scopeId, err := resources.Parse(ws.Scope)
+		if err != nil {
+			return err
+		}
+		ws.Environment = scopeId.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: environmentName}).String()
 		section.Items[strings.ToLower(workspaceName)] = ws
 		return nil
 	})

@@ -51,23 +51,22 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithoutWorkspace,
 			},
 		},
-		// {
-		// 	Name:          "Delete command with incorrect args",
-		// 	Input:         []string{""},
-		// 	ExpectedValid: false,
-		// 	ConfigHolder: framework.ConfigHolder{
-		// 		ConfigFilePath: "",
-		// 		Config:         configWithWorkspace,
-		// 	},
-		// },
+		{
+			Name:          "Create command without invalid args",
+			Input:         []string{"testingenv", "-e", "testingenv"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Validate environment created with valid inputs", func(t *testing.T) {
+	t.Run("Run env create", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
-		// defer ctrl.Finish()
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 		k8sGoClient :=
@@ -125,13 +124,4 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 
 	})
-	t.Run("Validate environment not created with invalid inputs", func(t *testing.T) {
-
-	})
-	// t.Run("Validate Scenario 3", func(t *testing.T) {
-
-	// })
-	// t.Run("Validate Scenario i", func(t *testing.T) {
-
-	// })
 }

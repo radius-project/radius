@@ -16,7 +16,8 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 
-	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/envCreate/envCreate"
+	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/envCreate"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
@@ -31,7 +32,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
