@@ -271,6 +271,7 @@ func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string
 	return ws, nil
 }
 
+// ReadWorkspaceNameArgs is used to get the workspace name that is supplied as either the first argument or using a -w flag
 func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {
