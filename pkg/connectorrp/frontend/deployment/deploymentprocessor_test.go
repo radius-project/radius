@@ -319,7 +319,6 @@ type SharedMocks struct {
 	db                 *store.MockStorageClient
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
-	recipeHandler      *handlers.MockRecipeHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *rp.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
