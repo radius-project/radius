@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -23,9 +24,10 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath string
-	DB       store.StorageClient
-	Address  string
+	BasePath  string
+	DB        store.StorageClient
+	Address   string
+	AWSClient aws.AWSClient
 }
 
 type ControllerFunc func(Options) (Controller, error)
