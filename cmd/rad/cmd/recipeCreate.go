@@ -22,7 +22,7 @@ var recipeCreateCmd = &cobra.Command{
 	Use:     "create",
 	Short:   "Add a connector recipe to the environment.",
 	Long:    `Add a connector recipe to the environment.`,
-	Example: `rad recipe create --templatePath template_path --connectorType Applications.Connector/mongoDatabases --recipeName cosmosdb -e env_name -w workspace`,
+	Example: `rad recipe create --name cosmosdb -e env_name -w workspace --templatePath template_path --connectorType Applications.Connector/mongoDatabases`,
 	RunE:    recipeCreate,
 }
 
@@ -30,7 +30,7 @@ func init() {
 	recipeCmd.AddCommand(recipeCreateCmd)
 	recipeCreateCmd.Flags().String("templatePath", "", "specify the path to the template provided by the recipe.")
 	recipeCreateCmd.Flags().String("connectorType", "", "specify the type of the connector this recipe can be consumed by")
-	recipeCreateCmd.Flags().String("recipeName", "", "specify the name of the recipe")
+	recipeCreateCmd.Flags().String("name", "", "specify the name of the recipe")
 }
 
 func recipeCreate(cmd *cobra.Command, args []string) error {
@@ -128,7 +128,7 @@ func requireConnectorType(cmd *cobra.Command) (string, error) {
 }
 
 func requireRecipeName(cmd *cobra.Command) (string, error) {
-	recipeName, err := cmd.Flags().GetString("recipeName")
+	recipeName, err := cmd.Flags().GetString("name")
 	if err != nil {
 		return recipeName, err
 	}
