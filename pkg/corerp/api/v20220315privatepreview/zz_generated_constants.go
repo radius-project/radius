@@ -14,6 +14,24 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// CertType - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+type CertType string
+
+const (
+	CertTypeCertificate CertType = "certificate"
+	CertTypePublickey CertType = "publickey"
+	CertTypePrivatekey CertType = "privatekey"
+)
+
+// PossibleCertTypeValues returns the possible values for the CertType const type.
+func PossibleCertTypeValues() []CertType {
+	return []CertType{	
+		CertTypeCertificate,
+		CertTypePublickey,
+		CertTypePrivatekey,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 
@@ -141,24 +159,6 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
-	}
-}
-
-// Type - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
-type Type string
-
-const (
-	TypeCertificate Type = "certificate"
-	TypePublickey Type = "publickey"
-	TypePrivatekey Type = "privatekey"
-)
-
-// PossibleTypeValues returns the possible values for the Type const type.
-func PossibleTypeValues() []Type {
-	return []Type{	
-		TypeCertificate,
-		TypePublickey,
-		TypePrivatekey,
 	}
 }
 
