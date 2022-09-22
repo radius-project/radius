@@ -22,6 +22,14 @@ func AddWorkspaceFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
 }
 
+func AddResourceGroupFlag(cmd *cobra.Command) {
+	cmd.Flags().StringP("group", "g", "", "The resource group name")
+}
+
 func AddApplicationNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("application", "a", "", "The application name")
+}
+
+func AddConfirmationFlag(cmd *cobra.Command) {
+	cmd.Flags().BoolP("yes", "y", false, "The confirmation flag")
 }

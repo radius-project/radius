@@ -54,6 +54,21 @@ func GetResourceTableFormat() output.FormatterOptions {
 	}
 }
 
+func GetResourceGroupTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "ID",
+				JSONPath: "{ .id }",
+			},
+			{
+				Heading:  "Name",
+				JSONPath: "{ .name }",
+			},
+		},
+	}
+}
+
 func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
