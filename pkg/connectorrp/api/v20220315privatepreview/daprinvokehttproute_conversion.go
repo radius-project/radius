@@ -37,10 +37,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 	}
 
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 
 	return converted, nil
@@ -70,10 +67,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	}
 
 	if daprHttpRoute.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(daprHttpRoute.Properties.Recipe.Name),
-			Parameters: daprHttpRoute.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(daprHttpRoute.Properties.Recipe)
 	}
 
 	return nil

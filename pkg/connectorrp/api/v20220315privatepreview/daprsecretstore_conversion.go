@@ -39,10 +39,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -74,10 +71,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 		ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
 	}
 	if daprSecretStore.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(daprSecretStore.Properties.Recipe.Name),
-			Parameters: daprSecretStore.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 	}
 	return nil
 }
