@@ -6,6 +6,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -13,7 +14,7 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
@@ -78,7 +79,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindAzureTableStorage:
 		dst.Properties = &DaprStateStoreAzureTableStorageResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -90,7 +91,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindStateSqlServer:
 		dst.Properties = &DaprStateStoreSQLServerResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -102,7 +103,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindGeneric:
 		dst.Properties = &DaprStateStoreGenericResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),

@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -25,7 +26,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -66,7 +67,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RedisCacheResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -104,7 +105,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
@@ -145,7 +146,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),

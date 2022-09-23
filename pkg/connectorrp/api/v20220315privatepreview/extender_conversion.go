@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -25,7 +26,7 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -52,7 +53,7 @@ func (src *ExtenderResponseResource) ConvertTo() (conv.DataModelInterface, error
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.ExtenderResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -81,7 +82,7 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
 		Environment:          to.StringPtr(extender.Properties.Environment),
@@ -107,7 +108,7 @@ func (dst *ExtenderResponseResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.Tags = *to.StringMapPtr(extender.Tags)
 	dst.Properties = &ExtenderResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
 		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
 		Environment:          to.StringPtr(extender.Properties.Environment),

@@ -41,7 +41,7 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState               v1.ProvisioningState                              `json:"provisioningState,omitempty"`
 	Kind                            DaprStateStoreKind                                `json:"kind"`

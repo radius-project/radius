@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 )
@@ -43,7 +44,7 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -103,7 +104,7 @@ func Test_Render_MissingResource(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -126,7 +127,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -150,7 +151,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: "Applications.Connector/sqlDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "invalid-app-id",
 			},

@@ -7,6 +7,7 @@ package rp
 
 import (
 	"context"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -105,4 +106,43 @@ type DeploymentDataModel interface {
 type BasicDaprResourceProperties struct {
 	// ComponentName represents the name of the component.
 	ComponentName string `json:"componentName,omitempty"`
+}
+
+// BasicResourceProperties is the basic resource model for radius resources.
+type BasicResourceProperties struct {
+	// Environment represents the id of environment resource.
+	Environment string `json:"environment,omitempty"`
+	// Application represents the id of application resource.
+	Application string `json:"application,omitempty"`
+
+	// Status represents the resource status.
+	Status ResourceStatus `json:"status,omitempty"`
+}
+
+// EqualLinkedResource returns true if the resource belongs to the same environment and application.
+func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
+	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
+}
+
+type ResourceStatus struct {
+	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
+}
+
+func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
+	in.OutputResources = out.OutputResources
+}
+
+// OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
+func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
+	var externalOutputResources []map[string]interface{}
+	for _, or := range outputResources {
+		externalOutput := map[string]interface{}{
+			"LocalID":  or.LocalID,
+			"Provider": or.ResourceType.Provider,
+			"Identity": or.Identity.Data,
+		}
+		externalOutputResources = append(externalOutputResources, externalOutput)
+	}
+
+	return externalOutputResources
 }
