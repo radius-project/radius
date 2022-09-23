@@ -48,10 +48,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -82,10 +79,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -116,10 +110,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	if redis.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(redis.Properties.Recipe.Name),
-			Parameters: redis.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -157,10 +148,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	if redis.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(redis.Properties.Recipe.Name),
-			Parameters: redis.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	return nil
 }
