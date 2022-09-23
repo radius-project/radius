@@ -146,3 +146,12 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 
 	return externalOutputResources
 }
+
+type RadiusResourceModel interface {
+	conv.ResourceDataModel
+
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	OutputResources() []outputresource.OutputResource
+
+	ResourceMetadata() *BasicResourceProperties
+}

@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // Gateway represents Gateway resource.
@@ -36,9 +35,14 @@ func (g *Gateway) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	}
 }
 
-// OutputResources returns the output resources array.
-func (g *Gateway) OutputResources() []outputresource.OutputResource {
-	return g.Properties.Status.OutputResources
+// ResourceMetadata returns the application resource metadata.
+func (h *Gateway) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
+// RadiusCoreProperties returns the basic resource properties for radius resource.
+func (h *Gateway) RadiusCoreProperties() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
 }
 
 // GatewayProperties represents the properties of Gateway.
