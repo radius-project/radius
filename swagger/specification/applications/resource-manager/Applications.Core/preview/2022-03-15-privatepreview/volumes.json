@@ -391,7 +391,7 @@
               "privatekey"
             ],
             "x-ms-enum": {
-              "name": "type",
+              "name": "certType",
               "modelAsString": false
             }
           },
