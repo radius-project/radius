@@ -40,10 +40,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -83,10 +80,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -117,10 +111,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if mongo.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
-			Parameters: mongo.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	return nil
 }
@@ -151,10 +142,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if mongo.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
-			Parameters: mongo.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
 		dst.Properties.Secrets = &MongoDatabaseSecrets{

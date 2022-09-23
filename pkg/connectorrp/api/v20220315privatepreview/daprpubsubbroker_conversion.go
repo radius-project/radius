@@ -29,7 +29,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	}
 
 	if src.Properties.GetDaprPubSubBrokerProperties().Recipe != nil {
-		daprPubSubproperties.Recipe = toDaprPubSubBrokerRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
+		daprPubSubproperties.Recipe = toRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -112,7 +112,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	}
 
 	if daprPubSub.Properties.Recipe.Name != "" {
-		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromDaprPubSubBrokerRecipeDataModel(daprPubSub.Properties.Recipe)
+		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromRecipeDataModel(daprPubSub.Properties.Recipe)
 	}
 
 	return nil
@@ -141,22 +141,4 @@ func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *Dap
 		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
 	}
 	return &convertedKind
-}
-
-func toDaprPubSubBrokerRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
-	recipe := datamodel.ConnectorRecipe{
-		Name: to.String(r.Name),
-	}
-
-	if r.Parameters != nil {
-		recipe.Parameters = r.Parameters
-	}
-	return recipe
-}
-
-func fromDaprPubSubBrokerRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
-	return &Recipe{
-		Name:       to.StringPtr(r.Name),
-		Parameters: r.Parameters,
-	}
 }

@@ -23,11 +23,10 @@ type ConnectorMetadata struct {
 }
 
 type RecipeData struct {
-	Name               string
-	RecipeTemplatePath string
-	APIVersion         string
-	AzureResourceType  resources.KnownType
-	Resources          []string // Resource ids of the resources deployed by the recipe
+	RecipeProperty    RecipeProperty
+	APIVersion        string
+	AzureResourceType resources.KnownType
+	Resources         []string // Resource ids of the resources deployed by the recipe
 }
 
 // ConnectorRecipe is the recipe details used to automatically deploy underlying infrastructure for a connector
@@ -36,4 +35,9 @@ type ConnectorRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type RecipeProperty struct {
+	Recipe             ConnectorRecipe
+	RecipeTemplatePath string
 }
