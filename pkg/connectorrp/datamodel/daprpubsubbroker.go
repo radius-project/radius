@@ -50,7 +50,7 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState         v1.ProvisioningState                        `json:"provisioningState,omitempty"`
 	Kind                      DaprPubSubBrokerKind                        `json:"kind"`

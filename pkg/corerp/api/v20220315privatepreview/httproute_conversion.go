@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -32,7 +33,7 @@ func (src *HTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 			},
 		},
 		Properties: &datamodel.HTTPRouteProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Hostname: to.String(src.Properties.Hostname),
@@ -60,7 +61,7 @@ func (dst *HTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(route.Tags)
 	dst.Properties = &HTTPRouteProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(route.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(route.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(route.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(route.Properties.Application),

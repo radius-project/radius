@@ -18,6 +18,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -82,11 +83,11 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 					},
 				},
 			}
-			oldResourceProp := &v1.BasicResourceProperties{
+			oldResourceProp := &rp.BasicResourceProperties{
 				Application: tt.oldAppID,
 				Environment: tt.oldEnvID,
 			}
-			newResourceProp := &v1.BasicResourceProperties{
+			newResourceProp := &rp.BasicResourceProperties{
 				Application: tt.newAppID,
 				Environment: tt.newEnvID,
 			}

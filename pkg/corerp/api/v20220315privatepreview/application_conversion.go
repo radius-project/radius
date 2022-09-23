@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -32,7 +33,7 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.ApplicationProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 			},
 		},

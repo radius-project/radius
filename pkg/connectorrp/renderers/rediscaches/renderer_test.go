@@ -38,7 +38,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
@@ -105,7 +105,7 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
@@ -152,7 +152,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
@@ -176,7 +176,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			Type: "Applications.Connector/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
@@ -201,7 +201,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
@@ -228,7 +228,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
@@ -255,7 +255,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "invalid-app-id",
 				},

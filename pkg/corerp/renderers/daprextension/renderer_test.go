@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -54,7 +55,7 @@ func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{
@@ -96,7 +97,7 @@ func Test_Render_Success_AppID_FromRoute(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{
@@ -144,7 +145,7 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	ctnrProperties := datamodel.ContainerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{

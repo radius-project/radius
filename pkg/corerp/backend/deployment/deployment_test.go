@@ -193,7 +193,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -233,7 +233,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -253,7 +253,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: connectorrp_dm.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 					},
 				},
@@ -299,7 +299,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -339,7 +339,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -383,7 +383,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -423,7 +423,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -465,7 +465,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -505,7 +505,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -659,7 +659,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -699,7 +699,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -742,7 +742,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -782,7 +782,7 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
