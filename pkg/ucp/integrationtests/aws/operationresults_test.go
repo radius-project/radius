@@ -33,7 +33,7 @@ func Test_GetOperationResults(t *testing.T) {
 		return &output, nil
 	})
 
-	operationResultsRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
+	operationResultsRequest, err := http.NewRequest(http.MethodGet, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), nil)
 	require.NoError(t, err)
 	operationResultsResponse, err := ucpClient.httpClient.Do(operationResultsRequest)
 	require.NoError(t, err)

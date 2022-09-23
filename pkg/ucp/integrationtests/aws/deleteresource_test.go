@@ -51,7 +51,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	deleteRequest, err := http.NewRequest("DELETE", ucp.URL+basePath+testProxyRequestAWSPath, nil)
+	deleteRequest, err := http.NewRequest(http.MethodDelete, ucp.URL+basePath+testProxyRequestAWSPath, nil)
 	require.NoError(t, err)
 	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
 	require.NoError(t, err)

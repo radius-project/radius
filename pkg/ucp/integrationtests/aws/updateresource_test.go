@@ -61,7 +61,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	updateRequest, err := http.NewRequest("PUT", ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
+	updateRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	updateResponse, err := ucpClient.httpClient.Do(updateRequest)
 	require.NoError(t, err)

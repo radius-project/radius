@@ -41,7 +41,7 @@ func Test_GetAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	getRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestAWSPath, nil)
+	getRequest, err := http.NewRequest(http.MethodGet, ucp.URL+basePath+testProxyRequestAWSPath, nil)
 	require.NoError(t, err)
 	getResponse, err := ucpClient.httpClient.Do(getRequest)
 	require.NoError(t, err)

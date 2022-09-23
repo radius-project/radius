@@ -50,7 +50,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest("PUT", ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
+	createRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResponse, err := ucpClient.httpClient.Do(createRequest)
 	require.NoError(t, err)

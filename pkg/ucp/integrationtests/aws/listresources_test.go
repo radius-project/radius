@@ -45,7 +45,7 @@ func Test_ListAWSResources(t *testing.T) {
 		return &output, nil
 	})
 
-	listRequest, err := http.NewRequest("GET", ucp.URL+basePath+testProxyRequestAWSListPath, nil)
+	listRequest, err := http.NewRequest(http.MethodGet, ucp.URL+basePath+testProxyRequestAWSListPath, nil)
 	require.NoError(t, err)
 	listResponse, err := ucpClient.httpClient.Do(listRequest)
 	require.NoError(t, err)
