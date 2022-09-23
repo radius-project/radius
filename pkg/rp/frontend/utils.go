@@ -21,9 +21,11 @@ func PrepareRadiusResource[P interface {
 	if oldResource == nil {
 		return nil, nil
 	}
+
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	oldProp := P(oldResource).ResourceMetadata()
 	newProp := P(newResource).ResourceMetadata()
+
 	if !oldProp.EqualLinkedResource(newProp) {
 		return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
 	}
