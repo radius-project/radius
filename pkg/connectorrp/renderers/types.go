@@ -38,7 +38,7 @@ type Renderer interface {
 type RenderOptions struct {
 	Namespace           string
 	RecipeConnectorType string
-	RecipeTemplatePath  string
+	RecipeProperty      datamodel.RecipeProperty
 }
 
 type RendererOutput struct {
