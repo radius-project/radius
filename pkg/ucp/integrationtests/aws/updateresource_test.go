@@ -22,18 +22,29 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_CreateAWSResource(t *testing.T) {
+const ZeroAWSRequestToken = "00000000-0000-0000-0000-000000000000"
+
+func Test_UpdateAWSResource(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
 
+	getResponseBody := map[string]interface{}{
+		"RetentionPeriodHours": 178,
+		"ShardCount":           3,
+	}
+	getResponseBodyBytes, err := json.Marshal(getResponseBody)
+	require.NoError(t, err)
+
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		notfound := types.ResourceNotFoundException{
-			Message: to.StringPtr("Resource not found"),
+		output := cloudcontrol.GetResourceOutput{
+			ResourceDescription: &types.ResourceDescription{
+				Properties: to.StringPtr(string(getResponseBodyBytes)),
+			},
 		}
-		return nil, &notfound
+		return &output, nil
 	})
 
-	cloudcontrolClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
-		output := cloudcontrol.CreateResourceOutput{
+	cloudcontrolClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.UpdateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.UpdateResourceOutput, error) {
+		output := cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.StringPtr(testAWSRequestToken),
@@ -44,16 +55,16 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
-			"RetentionPeriodHours": 178,
-			"ShardCount":           3,
+			"RetentionPeriodHours": 180,
+			"ShardCount":           4,
 		},
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
+	updateRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
 	require.NoError(t, err)
-	createResponse, err := ucpClient.httpClient.Do(createRequest)
+	updateResponse, err := ucpClient.httpClient.Do(updateRequest)
 	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusCreated, createResponse.StatusCode)
+	assert.Equal(t, http.StatusCreated, updateResponse.StatusCode)
 }

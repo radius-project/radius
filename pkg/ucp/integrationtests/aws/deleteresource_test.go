@@ -8,7 +8,6 @@ package aws
 // Tests that test with Mock RP functionality and UCP Server
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
@@ -22,18 +21,28 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func Test_CreateAWSResource(t *testing.T) {
+func Test_DeleteAWSResource(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
 
+	getResponseBody := map[string]interface{}{
+		"RetentionPeriodHours": 178,
+		"ShardCount":           3,
+	}
+	getResponseBodyBytes, err := json.Marshal(getResponseBody)
+	require.NoError(t, err)
+
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		notfound := types.ResourceNotFoundException{
-			Message: to.StringPtr("Resource not found"),
+		output := cloudcontrol.GetResourceOutput{
+			ResourceDescription: &types.ResourceDescription{
+				Identifier: to.StringPtr(testAWSResourceName),
+				Properties: to.StringPtr(string(getResponseBodyBytes)),
+			},
 		}
-		return nil, &notfound
+		return &output, nil
 	})
 
-	cloudcontrolClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
-		output := cloudcontrol.CreateResourceOutput{
+	cloudcontrolClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
+		output := cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.StringPtr(testAWSRequestToken),
@@ -42,18 +51,10 @@ func Test_CreateAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
-			"RetentionPeriodHours": 178,
-			"ShardCount":           3,
-		},
-	}
-	body, err := json.Marshal(requestBody)
+	deleteRequest, err := http.NewRequest(http.MethodDelete, ucp.URL+basePath+testProxyRequestAWSPath, nil)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
-	require.NoError(t, err)
-	createResponse, err := ucpClient.httpClient.Do(createRequest)
+	deleteResponse, err := ucpClient.httpClient.Do(deleteRequest)
 	require.NoError(t, err)
 
-	assert.Equal(t, http.StatusCreated, createResponse.StatusCode)
+	assert.Equal(t, http.StatusAccepted, deleteResponse.StatusCode)
 }
