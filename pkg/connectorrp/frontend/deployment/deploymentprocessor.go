@@ -153,9 +153,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := make(map[string]interface{})
 
 	if rendererOutput.RecipeData.RecipeProperty.Recipe.Name != "" {
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("failed to parse resource id %s: %w", id, err)
-		}
 		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperty)
 		if err != nil {
 			return DeploymentOutput{}, err

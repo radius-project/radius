@@ -105,7 +105,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		deploymtName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
-				Template: recipe,
+				Template: recipeData,
 				Mode:     resources.DeploymentModeIncremental,
 			},
 		},
