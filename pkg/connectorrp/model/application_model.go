@@ -151,15 +151,18 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 	}
 
+	recipeModel := RecipeModel{
+		RecipeHandler: handlers.NewRecipeHandler(arm),
+	}
+
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
 	if err != nil {
 		return ApplicationModel{}, err
 	}
-
 	if arm != nil {
 		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
 	}
-	return NewModel(radiusResourceModel, outputResourceModel, supportedProviders), nil
+	return NewModel(recipeModel, radiusResourceModel, outputResourceModel, supportedProviders), nil
 }
 
 // checkForDuplicateRegistrations checks for duplicate registrations with the same resource type

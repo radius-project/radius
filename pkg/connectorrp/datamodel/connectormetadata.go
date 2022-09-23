@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // ConnectorMetadata represents internal DataModel properties common to all connector types.
@@ -17,6 +18,16 @@ type ConnectorMetadata struct {
 
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
 	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
+
+	RecipeData RecipeData
+}
+
+type RecipeData struct {
+	Name               string
+	RecipeTemplatePath string
+	APIVersion         string
+	AzureResourceType  resources.KnownType
+	Resources          []string // Resource ids of the resources deployed by the recipe
 }
 
 // ConnectorRecipe is the recipe details used to automatically deploy underlying infrastructure for a connector

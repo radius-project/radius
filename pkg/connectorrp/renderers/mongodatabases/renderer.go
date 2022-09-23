@@ -73,9 +73,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 	if options.RecipeConnectorType != resource.ResourceTypeName() {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Recipe Connector type must match the connector resource type.")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the connector resource type must match the Recipe Connector type.")
 	}
-	recipeData := renderers.RecipeData{
+	recipeData := datamodel.RecipeData{
 		Name:               properties.Recipe.Name,
 		RecipeTemplatePath: options.RecipeTemplatePath,
 		APIVersion:         clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),

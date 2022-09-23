@@ -41,7 +41,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
+	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
@@ -62,6 +62,7 @@ type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
 	SecretValues   map[string]rp.SecretValueReference
+	RecipeData     datamodel.RecipeData
 }
 
 type ResourceData struct {
@@ -70,6 +71,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
+	RecipeData      datamodel.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -147,6 +149,18 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 	updatedOutputResources := []outputresource.OutputResource{}
 	computedValues := make(map[string]interface{})
+
+	if rendererOutput.RecipeData.Name != "" {
+		parsed, err := resources.Parse(id.String())
+		if err != nil {
+			return DeploymentOutput{}, fmt.Errorf("failed to parse resource id %s: %w", id, err)
+		}
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeTemplatePath, parsed.FindScope(resources.SubscriptionsSegment), parsed.FindScope(resources.ResourceGroupsSegment))
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
+		rendererOutput.RecipeData.Resources = deployedRecipeResources
+	}
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
@@ -173,9 +187,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		Resources:      updatedOutputResources,
 		ComputedValues: computedValues,
 		SecretValues:   rendererOutput.SecretValues,
+		RecipeData:     rendererOutput.RecipeData,
 	}, nil
 }
-
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
@@ -228,10 +242,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID)
+func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceData.ID)
 
-	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {
 		return err
 	}
@@ -250,7 +264,16 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 			return err
 		}
 	}
+	resourceIds := resourceData.RecipeData.Resources
+	for i := len(resourceIds) - 1; i >= 0; i-- {
+		id := resourceIds[i]
+		logger.Info(fmt.Sprintf("Deleting resource: %s", id))
+		err = dp.appmodel.GetRecipeModel().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
+		if err != nil {
+			return err
+		}
 
+	}
 	return nil
 }
 
@@ -258,7 +281,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	secretValues := map[string]interface{}{}
 
 	for k, secretReference := range resourceData.SecretValues {
-		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
+		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference, resourceData.RecipeData)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 		}
@@ -283,7 +306,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (interface{}, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -299,6 +322,23 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 		if outputResource.LocalID == reference.LocalID {
 			return dp.secretClient.FetchSecret(ctx, outputResource.Identity, reference.Action, reference.ValueSelector)
 		}
+	}
+
+	for _, id := range recipeData.Resources {
+		parsedID, err := resources.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
+		}
+		// Find resource that matches the expected Azure resource type
+		err = parsedID.ValidateResourceType(recipeData.AzureResourceType)
+		if err == nil {
+			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
+			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	if recipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.Name)
 	}
 
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
