@@ -11,9 +11,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
-	"strings"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -57,23 +55,5 @@ func Test_CreateAWSResource(t *testing.T) {
 	createResponse, err := ucpClient.httpClient.Do(createRequest)
 	require.NoError(t, err)
 
-	responseBody, err := io.ReadAll(createResponse.Body)
-	require.NoError(t, err)
-	createResponseBody := map[string]interface{}{}
-	err = json.Unmarshal(responseBody, &createResponseBody)
-	require.NoError(t, err)
-
 	assert.Equal(t, http.StatusCreated, createResponse.StatusCode)
-	expectedResponse := map[string]interface{}{
-		"id":   testProxyRequestAWSPath,
-		"name": testAWSResourceName,
-		"type": testAWSResourceType,
-		"properties": map[string]interface{}{
-			"RetentionPeriodHours": float64(178),
-			"ShardCount":           float64(3),
-		},
-	}
-	assert.Equal(t, expectedResponse, createResponseBody)
-	assert.Equal(t, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationStatuses/"+strings.ToLower(testAWSRequestToken), createResponse.Header.Get("Azure-Asyncoperation"), "Azure-Asyncoperation header is not set correctly")
-	assert.Equal(t, ucp.URL+basePath+testProxyRequestAWSAsyncPath+"/operationResults/"+strings.ToLower(testAWSRequestToken), createResponse.Header.Get("Location"), "Location header is not set correctly")
 }

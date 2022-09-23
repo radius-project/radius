@@ -10,7 +10,6 @@ package aws
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"testing"
 
@@ -51,26 +50,5 @@ func Test_ListAWSResources(t *testing.T) {
 	listResponse, err := ucpClient.httpClient.Do(listRequest)
 	require.NoError(t, err)
 
-	responseBody, err := io.ReadAll(listResponse.Body)
-	require.NoError(t, err)
-	actualResponseBody := map[string]interface{}{}
-	err = json.Unmarshal(responseBody, &actualResponseBody)
-	require.NoError(t, err)
-
-	expectedResponse := map[string]interface{}{
-		"value": []interface{}{
-			map[string]interface{}{
-				"id":   testProxyRequestAWSListPath,
-				"name": testAWSResourceName,
-				"type": testAWSResourceType,
-				"properties": map[string]interface{}{
-					"RetentionPeriodHours": float64(178),
-					"ShardCount":           float64(3),
-				},
-			},
-		},
-	}
-
 	assert.Equal(t, http.StatusOK, listResponse.StatusCode)
-	assert.Equal(t, expectedResponse, actualResponseBody)
 }
