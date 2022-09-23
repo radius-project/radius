@@ -8,6 +8,7 @@ package datamodel
 import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 var _ conv.DataModelInterface = (*Application)(nil)
@@ -26,5 +27,5 @@ func (e *Application) ResourceTypeName() string {
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 }

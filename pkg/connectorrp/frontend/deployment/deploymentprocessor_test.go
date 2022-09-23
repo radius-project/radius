@@ -43,7 +43,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -109,7 +109,7 @@ func buildTestMongoResourceWithRecipe() (resourceID resources.ID, testResource d
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -181,7 +181,7 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -433,7 +433,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "invalid-id",
 					},
 				},
@@ -469,7 +469,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					},
@@ -494,7 +494,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 					},
 				},

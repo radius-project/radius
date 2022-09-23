@@ -41,7 +41,7 @@ func (h *VolumeResource) OutputResources() []outputresource.OutputResource {
 
 // VolumeResourceProperties represents the properties of VolumeResource.
 type VolumeResourceProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	// Kind represents the type of Volume resource.
 	Kind string `json:"kind,omitempty"`
 

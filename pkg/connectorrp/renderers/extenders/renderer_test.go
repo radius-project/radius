@@ -38,7 +38,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -80,7 +80,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "invalid-app-id",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},

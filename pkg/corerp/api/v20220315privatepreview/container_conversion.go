@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -95,7 +96,7 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.ContainerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Connections: connections,
@@ -189,7 +190,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),

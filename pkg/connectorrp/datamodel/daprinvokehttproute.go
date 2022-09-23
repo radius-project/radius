@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // DaprInvokeHttpRoute represents DaprInvokeHttpRoute connector resource.
@@ -31,7 +32,7 @@ func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
 
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.
 type DaprInvokeHttpRouteProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 	AppId             string               `json:"appId"`

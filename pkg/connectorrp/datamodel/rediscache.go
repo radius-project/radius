@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // RedisCache represents RedisCache connector resource.
@@ -54,7 +55,7 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 
 // RedisCacheProperties represents the properties of RedisCache resource.
 type RedisCacheResponseProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 	Resource          string               `json:"resource,omitempty"`

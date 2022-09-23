@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -24,7 +25,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -62,7 +63,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	dst.Properties = &DaprSecretStoreProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
