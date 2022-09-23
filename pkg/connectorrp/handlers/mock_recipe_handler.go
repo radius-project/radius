@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	datamodel "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 // MockRecipeHandler is a mock of RecipeHandler interface.
@@ -49,16 +50,16 @@ func (mr *MockRecipeHandlerMockRecorder) Delete(arg0, arg1, arg2 interface{}) *g
 }
 
 // DeployRecipe mocks base method.
-func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1, arg2, arg3 string) ([]string, error) {
+func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel.RecipeProperty) ([]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeployRecipe", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "DeployRecipe", arg0, arg1)
 	ret0, _ := ret[0].([]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DeployRecipe indicates an expected call of DeployRecipe.
-func (mr *MockRecipeHandlerMockRecorder) DeployRecipe(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+func (mr *MockRecipeHandlerMockRecorder) DeployRecipe(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployRecipe", reflect.TypeOf((*MockRecipeHandler)(nil).DeployRecipe), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeployRecipe", reflect.TypeOf((*MockRecipeHandler)(nil).DeployRecipe), arg0, arg1)
 }

@@ -16,6 +16,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/radlogger"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
@@ -25,7 +27,7 @@ import (
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, templatePath string, subscriptiionID string, resourceGroupName string) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperty) ([]string, error)
 	Delete(ctx context.Context, id string, apiVersion string) error
 }
 
@@ -42,22 +44,6 @@ type azureRecipeHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
-	parsed, err := ucpresources.Parse(id)
-	if err != nil {
-		return err
-	}
-
-	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
-	_, err = rc.DeleteByID(ctx, id, apiVersion)
-	if err != nil {
-		if !clients.Is404Error(err) {
-			return fmt.Errorf("failed to delete resource %q: %w", id, err)
-		}
-	}
-	return nil
-}
-
 const deplmtPrefix = "recipe"
 
 // DeployRecipe fetches the recipe ARM JSON template from ACR - Azure Container Registry and deploys it.
@@ -66,11 +52,28 @@ const deplmtPrefix = "recipe"
 // templatePath - ACR path for the recipe
 // subscriptionID - The subscription ID to which the recipe will be deployed
 // resourceGroupName - the resource group where the recipe will be deployed
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePath, subscriptionID, resourceGroupName string) ([]string, error) {
-	registryRepo, tag := strings.Split(templatePath, ":")[0], strings.Split(templatePath, ":")[1]
-	if templatePath == "" {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperty) ([]string, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, "recipe-handler")
+	// Deploy
+	logger.Info("Deploying recipe")
+
+	if recipe.RecipeTemplatePath == "" {
 		return nil, fmt.Errorf("templatePath cannot be empty")
 	}
+	if recipe.Recipe.Parameters["subscriptionID"] == "" {
+		return nil, fmt.Errorf("subscriptionID is missing in the recipe parameters")
+	}
+	if recipe.Recipe.Parameters["resourceGroup"] == "" {
+		return nil, fmt.Errorf("resourceGroup is missing in the recipe parameters")
+	}
+	subscriptionID := recipe.Recipe.Parameters["subscriptionID"].(string)
+	resourceGroup := recipe.Recipe.Parameters["resourceGroup"].(string)
+
+	logger.Info("resourceGroup - ", resourceGroup)
+	logger.Info("subscriptionID - ", subscriptionID)
+	logger.Info(fmt.Sprintf("recipe - %+v", recipe))
+
+	registryRepo, tag := strings.Split(recipe.RecipeTemplatePath, ":")[0], strings.Split(recipe.RecipeTemplatePath, ":")[1]
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
@@ -85,8 +88,8 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePat
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch recipe template from registry %s", err.Error())
 	}
-	recipe := make(map[string]interface{})
-	err = json.Unmarshal(recipeBytes, &recipe)
+	recipeData := make(map[string]interface{})
+	err = json.Unmarshal(recipeBytes, &recipeData)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +101,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, templatePat
 
 	dplResp, err := dClient.CreateOrUpdate(
 		ctx,
-		resourceGroupName,
+		resourceGroup,
 		deploymtName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
@@ -184,4 +187,20 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 		return nil, err
 	}
 	return pulledBlob, nil
+}
+
+func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
+	parsed, err := ucpresources.Parse(id)
+	if err != nil {
+		return err
+	}
+
+	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
+	_, err = rc.DeleteByID(ctx, id, apiVersion)
+	if err != nil {
+		if !clients.Is404Error(err) {
+			return fmt.Errorf("failed to delete resource %q: %w", id, err)
+		}
+	}
+	return nil
 }
