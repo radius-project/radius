@@ -43,7 +43,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -109,7 +109,7 @@ func buildTestMongoResourceWithRecipe() (resourceID resources.ID, testResource d
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -181,7 +181,7 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -257,7 +257,7 @@ func buildFetchSecretsInput() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
-	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
+	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
 func buildEnvironmentResource() store.Object {
@@ -329,8 +329,12 @@ func setup(t *testing.T) SharedMocks {
 
 	mockRenderer := renderers.NewMockRenderer(ctrl)
 	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 
 	model := model.NewModel(
+		model.RecipeModel{
+			RecipeHandler: mockRecipeHandler,
+		},
 		[]model.RadiusResourceModel{
 			{
 				ResourceType: mongodatabases.ResourceType,
@@ -389,7 +393,8 @@ func createContext(t *testing.T) context.Context {
 func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-
+	ctrl := gomock.NewController(t)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
@@ -428,7 +433,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "invalid-id",
 					},
 				},
@@ -464,7 +469,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					},
@@ -489,7 +494,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 					},
 				},
@@ -556,6 +561,9 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Azure provider unsupported", func(t *testing.T) {
 		testModel := model.NewModel(
+			model.RecipeModel{
+				RecipeHandler: mockRecipeHandler,
+			},
 			[]model.RadiusResourceModel{
 				{
 					ResourceType: mongodatabases.ResourceType,
@@ -855,7 +863,11 @@ func Test_Delete(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})
 
@@ -863,7 +875,11 @@ func Test_Delete(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 	})
 
@@ -890,7 +906,12 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -906,7 +927,11 @@ func Test_Delete(t *testing.T) {
 			},
 		}
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})

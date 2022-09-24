@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
 )
 
@@ -38,7 +39,7 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Connector/daprInvokeHttpRoutes",
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -72,7 +73,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: "Applications.Connector/daprInvokeHttpRoutes",
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},

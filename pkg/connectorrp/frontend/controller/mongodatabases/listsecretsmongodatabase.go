@@ -46,7 +46,7 @@ func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, req *http.Request
 		return nil, err
 	}
 
-	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues, RecipeData: resource.RecipeData})
 	if err != nil {
 		return nil, err
 	}

@@ -11,6 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -18,7 +19,7 @@ import (
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 			Application: to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		},
@@ -28,7 +29,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	}
 
 	if src.Properties.GetDaprPubSubBrokerProperties().Recipe != nil {
-		daprPubSubproperties.Recipe = toDaprPubSubBrokerRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
+		daprPubSubproperties.Recipe = toRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -81,7 +82,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
 		dst.Properties = &DaprPubSubAzureServiceBusResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -94,7 +95,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -111,7 +112,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	}
 
 	if daprPubSub.Properties.Recipe.Name != "" {
-		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromDaprPubSubBrokerRecipeDataModel(daprPubSub.Properties.Recipe)
+		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromRecipeDataModel(daprPubSub.Properties.Recipe)
 	}
 
 	return nil
@@ -140,22 +141,4 @@ func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *Dap
 		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
 	}
 	return &convertedKind
-}
-
-func toDaprPubSubBrokerRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
-	recipe := datamodel.ConnectorRecipe{
-		Name: to.String(r.Name),
-	}
-
-	if r.Parameters != nil {
-		recipe.Parameters = r.Parameters
-	}
-	return recipe
-}
-
-func fromDaprPubSubBrokerRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
-	return &Recipe{
-		Name:       to.StringPtr(r.Name),
-		Parameters: r.Parameters,
-	}
 }

@@ -106,7 +106,7 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -163,7 +163,7 @@ func TestDeleteDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 					Data:     daprPubSubDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
+		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,

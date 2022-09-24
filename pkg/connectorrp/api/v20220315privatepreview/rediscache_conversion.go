@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -25,7 +26,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -47,10 +48,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -66,7 +64,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RedisCacheResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -81,10 +79,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -104,7 +99,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
@@ -115,10 +110,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	if redis.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(redis.Properties.Recipe.Name),
-			Parameters: redis.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -145,7 +137,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
@@ -156,10 +148,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Username:          to.StringPtr(redis.Properties.Username),
 	}
 	if redis.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(redis.Properties.Recipe.Name),
-			Parameters: redis.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	return nil
 }

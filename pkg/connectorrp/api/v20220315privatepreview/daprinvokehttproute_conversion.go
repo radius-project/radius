@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -24,7 +25,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -37,10 +38,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 	}
 
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 
 	return converted, nil
@@ -61,7 +59,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
 	dst.Properties = &DaprInvokeHTTPRouteProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
 		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
@@ -70,10 +68,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	}
 
 	if daprHttpRoute.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(daprHttpRoute.Properties.Recipe.Name),
-			Parameters: daprHttpRoute.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(daprHttpRoute.Properties.Recipe)
 	}
 
 	return nil

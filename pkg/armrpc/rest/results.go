@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -321,7 +322,7 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.BasicResourceProperties, newProp *v1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rp.BasicResourceProperties, newProp *rp.BasicResourceProperties) Response {
 	newAppEnv := ""
 	if newProp.Application != "" {
 		name := newProp.Application

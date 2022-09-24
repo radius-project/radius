@@ -128,7 +128,7 @@ type CertificateObjectProperties struct {
 	Alias *string `json:"alias,omitempty"`
 
 	// Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
-	CertType *Type `json:"certType,omitempty"`
+	CertType *CertType `json:"certType,omitempty"`
 
 	// Encoding format. Default utf-8
 	Encoding *Encoding `json:"encoding,omitempty"`

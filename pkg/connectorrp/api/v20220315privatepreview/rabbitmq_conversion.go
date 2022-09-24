@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -25,7 +26,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -43,10 +44,7 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		}
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -62,7 +60,7 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -74,10 +72,7 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -97,7 +92,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
@@ -110,10 +105,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 		}
 	}
 	if rabbitmq.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(rabbitmq.Properties.Recipe.Name),
-			Parameters: rabbitmq.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 
 	return nil
@@ -134,7 +126,7 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
@@ -142,10 +134,7 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 		Queue:             to.StringPtr(rabbitmq.Properties.Queue),
 	}
 	if rabbitmq.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(rabbitmq.Properties.Recipe.Name),
-			Parameters: rabbitmq.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil
 }

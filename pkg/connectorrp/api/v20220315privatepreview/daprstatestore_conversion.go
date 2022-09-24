@@ -6,6 +6,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -13,16 +14,12 @@ import (
 // ConvertTo converts from the versioned DaprStateStore resource to version-agnostic datamodel.
 func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprStateStoreProperties := datamodel.DaprStateStoreProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprStateStoreProperties().Environment),
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
-	}
-
-	if src.Properties.GetDaprStateStoreProperties().Recipe != nil {
-		daprStateStoreProperties.Recipe = toDaprStateStoreRecipeDataModel(src.Properties.GetDaprStateStoreProperties().Recipe)
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -57,6 +54,9 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 	default:
 		return nil, errors.New("Kind of DaprStateStore is not specified.")
 	}
+	if src.Properties.GetDaprStateStoreProperties().Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.GetDaprStateStoreProperties().Recipe)
+	}
 	return converted, nil
 }
 
@@ -78,7 +78,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindAzureTableStorage:
 		dst.Properties = &DaprStateStoreAzureTableStorageResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -90,7 +90,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindStateSqlServer:
 		dst.Properties = &DaprStateStoreSQLServerResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -102,7 +102,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	case datamodel.DaprStateStoreKindGeneric:
 		dst.Properties = &DaprStateStoreGenericResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
@@ -118,7 +118,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	}
 
 	if daprStateStore.Properties.Recipe.Name != "" {
-		dst.Properties.GetDaprStateStoreProperties().Recipe = fromDaprStateStoreRecipeDataModel(daprStateStore.Properties.Recipe)
+		dst.Properties.GetDaprStateStoreProperties().Recipe = fromRecipeDataModel(daprStateStore.Properties.Recipe)
 	}
 
 	return nil
@@ -151,22 +151,4 @@ func fromDaprStateStoreKindDataModel(kind datamodel.DaprStateStoreKind) *DaprSta
 		convertedKind = DaprStateStorePropertiesKindGeneric
 	}
 	return &convertedKind
-}
-
-func toDaprStateStoreRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
-	recipe := datamodel.ConnectorRecipe{
-		Name: to.String(r.Name),
-	}
-
-	if r.Parameters != nil {
-		recipe.Parameters = r.Parameters
-	}
-	return recipe
-}
-
-func fromDaprStateStoreRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
-	return &Recipe{
-		Name:       to.StringPtr(r.Name),
-		Parameters: r.Parameters,
-	}
 }

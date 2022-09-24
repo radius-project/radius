@@ -41,7 +41,7 @@ import (
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
-	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
+	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
 
@@ -62,6 +62,7 @@ type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]interface{}
 	SecretValues   map[string]rp.SecretValueReference
+	RecipeData     datamodel.RecipeData
 }
 
 type ResourceData struct {
@@ -70,6 +71,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
+	RecipeData      datamodel.RecipeData
 }
 
 type EnvironmentMetadata struct {
@@ -88,13 +90,13 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment ID and recipe name from the resource
-	env, recipeName, err := dp.getMetadataFromResource(ctx, id, resource)
+	env, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe connector type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -102,8 +104,10 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
 		Namespace:           envMetadata.Namespace,
 		RecipeConnectorType: envMetadata.RecipeConnectorType,
-		RecipeTemplatePath:  envMetadata.RecipeTemplatePath,
-	})
+		RecipeProperty: datamodel.RecipeProperty{
+			Recipe:             recipe,
+			RecipeTemplatePath: envMetadata.RecipeTemplatePath,
+		}})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -147,6 +151,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 	updatedOutputResources := []outputresource.OutputResource{}
 	computedValues := make(map[string]interface{})
+
+	if rendererOutput.RecipeData.RecipeProperty.Recipe.Name != "" {
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperty)
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
+		rendererOutput.RecipeData.Resources = deployedRecipeResources
+	}
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
@@ -173,9 +185,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 		Resources:      updatedOutputResources,
 		ComputedValues: computedValues,
 		SecretValues:   rendererOutput.SecretValues,
+		RecipeData:     rendererOutput.RecipeData,
 	}, nil
 }
-
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
@@ -228,10 +240,10 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	return computedValues, nil
 }
 
-func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.ID, outputResources []outputresource.OutputResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID)
+func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceData.ID)
 
-	orderedOutputResources, err := outputresource.OrderOutputResources(outputResources)
+	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {
 		return err
 	}
@@ -250,7 +262,16 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceID resources.
 			return err
 		}
 	}
+	resourceIds := resourceData.RecipeData.Resources
+	for i := len(resourceIds) - 1; i >= 0; i-- {
+		id := resourceIds[i]
+		logger.Info(fmt.Sprintf("Deleting resource: %s", id))
+		err = dp.appmodel.GetRecipeModel().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
+		if err != nil {
+			return err
+		}
 
+	}
 	return nil
 }
 
@@ -258,7 +279,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	secretValues := map[string]interface{}{}
 
 	for k, secretReference := range resourceData.SecretValues {
-		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference)
+		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference, resourceData.RecipeData)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch secret %s for resource %s: %w", k, resourceData.ID.String(), err)
 		}
@@ -283,7 +304,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (interface{}, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -301,36 +322,57 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 		}
 	}
 
+	for _, id := range recipeData.Resources {
+		parsedID, err := resources.Parse(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
+		}
+		// Find resource that matches the expected Azure resource type
+		err = parsedID.ValidateResourceType(recipeData.AzureResourceType)
+		if err == nil {
+			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
+			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	if recipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.RecipeProperty.Recipe.Name)
+	}
+
 	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipeName string, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipe datamodel.ConnectorRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := resource.(*datamodel.Extender)
@@ -339,32 +381,36 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 		obj := resource.(*datamodel.DaprStateStore)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
 		envId = obj.Properties.Environment
 		if obj.Properties.Recipe.Name != "" {
-			recipeName = obj.Properties.Recipe.Name
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return "", "", fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		return "", recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 
-	return envId, recipeName, nil
+	return envId, recipe, nil
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the connector and linked resources ```
@@ -401,7 +447,6 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	} else {
 		return envMetadata, fmt.Errorf("cannot find namespace in the environment resource")
 	}
-
 	// identify recipe's template path associated with provided recipe name
 	recipe, ok := env.Properties.Recipes[recipeName]
 	if ok {

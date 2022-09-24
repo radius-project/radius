@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -87,7 +88,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = daprHttpRoute.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		err = daprHttpRoute.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
 		if err != nil {
 			return nil, err
 		}

@@ -56,7 +56,7 @@ func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
 
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	Hostname string `json:"hostname,omitempty"`
 	Port     int32  `json:"port,omitempty"`
 	Scheme   string `json:"scheme,omitempty"`

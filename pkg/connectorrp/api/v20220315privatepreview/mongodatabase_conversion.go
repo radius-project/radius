@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -24,7 +25,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -39,10 +40,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 		},
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -59,7 +57,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -82,10 +80,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe.Name = to.String(src.Properties.Recipe.Name)
-		if src.Properties.Recipe.Parameters != nil {
-			converted.Properties.Recipe.Parameters = src.Properties.Recipe.Parameters
-		}
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -105,7 +100,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -116,10 +111,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if mongo.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
-			Parameters: mongo.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	return nil
 }
@@ -139,7 +131,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -150,10 +142,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if mongo.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = &Recipe{
-			Name:       to.StringPtr(mongo.Properties.Recipe.Name),
-			Parameters: mongo.Properties.Recipe.Parameters,
-		}
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
 		dst.Properties.Secrets = &MongoDatabaseSecrets{
