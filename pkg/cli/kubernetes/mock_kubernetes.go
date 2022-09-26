@@ -36,20 +36,6 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
-// EnsureNamespace mocks base method.
-func (m *MockInterface) EnsureNamespace(arg0 context.Context, arg1 kubernetes.Interface, arg2 string) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EnsureNamespace", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// EnsureNamespace indicates an expected call of EnsureNamespace.
-func (mr *MockInterfaceMockRecorder) EnsureNamespace(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EnsureNamespace", reflect.TypeOf((*MockInterface)(nil).EnsureNamespace), arg0, arg1, arg2)
-}
-
 // GetKubeContext mocks base method.
 func (m *MockInterface) GetKubeContext() (*api.Config, error) {
 	m.ctrl.T.Helper()
@@ -63,4 +49,18 @@ func (m *MockInterface) GetKubeContext() (*api.Config, error) {
 func (mr *MockInterfaceMockRecorder) GetKubeContext() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetKubeContext", reflect.TypeOf((*MockInterface)(nil).GetKubeContext))
+}
+
+// ValidateNamespace mocks base method.
+func (m *MockInterface) ValidateNamespace(arg0 context.Context, arg1 kubernetes.Interface, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateNamespace", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ValidateNamespace indicates an expected call of ValidateNamespace.
+func (mr *MockInterfaceMockRecorder) ValidateNamespace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateNamespace", reflect.TypeOf((*MockInterface)(nil).ValidateNamespace), arg0, arg1, arg2)
 }

@@ -141,7 +141,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.KubernetesInterface.EnsureNamespace(ctx, r.K8sGoClient, r.Namespace)
+	err = r.KubernetesInterface.ValidateNamespace(ctx, r.K8sGoClient, r.Namespace)
 	if err != nil {
 		return err
 	}
