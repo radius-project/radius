@@ -80,7 +80,7 @@ func Test_Run(t *testing.T) {
 
 		kubernetesClient := kubernetes.NewMockInterface(ctrl)
 		kubernetesClient.EXPECT().
-			EnsureNamespace(context.Background(), k8sGoClient, "default").
+			ValidateNamespace(context.Background(), k8sGoClient, "default").
 			Return(nil).Times(1)
 
 		appManagementClient.EXPECT().
