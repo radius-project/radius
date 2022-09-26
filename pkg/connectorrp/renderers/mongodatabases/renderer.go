@@ -76,10 +76,9 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the connector resource type must match the Recipe Connector type.")
 	}
 	recipeData := datamodel.RecipeData{
-		Name:               properties.Recipe.Name,
-		RecipeTemplatePath: options.RecipeTemplatePath,
-		APIVersion:         clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-		AzureResourceType:  AzureCosmosMongoResourceType,
+		RecipeProperty:    options.RecipeProperty,
+		APIVersion:        clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		AzureResourceType: AzureCosmosMongoResourceType,
 	}
 	// Populate connection string reference if a value isn't provided
 	if properties.Secrets.IsEmpty() || properties.Secrets.ConnectionString == "" {

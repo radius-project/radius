@@ -111,7 +111,7 @@ func recipeCreate(cmd *cobra.Command, args []string) error {
 }
 
 func requireTemplatePath(cmd *cobra.Command) (string, error) {
-	templatePath, err := cmd.Flags().GetString("workspace")
+	templatePath, err := cmd.Flags().GetString("templatePath")
 	if err != nil {
 		return templatePath, err
 	}
