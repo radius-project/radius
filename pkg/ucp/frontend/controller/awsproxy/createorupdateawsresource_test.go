@@ -87,7 +87,8 @@ func Test_CreateAWSResource(t *testing.T) {
 	}
 
 	actualResponseObject := map[string]interface{}{}
-	json.Unmarshal(body, &actualResponseObject)
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
@@ -165,7 +166,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 	}
 
 	actualResponseObject := map[string]interface{}{}
-	json.Unmarshal(body, &actualResponseObject)
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
 
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
