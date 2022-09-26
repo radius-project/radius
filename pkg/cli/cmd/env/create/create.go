@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package envCreate
+package create
 
 import (
 	"context"
@@ -116,6 +116,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if kubeconfig.CurrentContext == "" {
+
 		return fmt.Errorf("the kubeconfig has no current context")
 	}
 
@@ -145,8 +146,8 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	_, err = client.GetUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
-	if err != nil {
+	isUCPGroupValid, err := client.CheckUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
+	if err != nil || !isUCPGroupValid {
 		return err
 	}
 

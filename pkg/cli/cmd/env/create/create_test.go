@@ -3,7 +3,7 @@
 // // Licensed under the MIT License.
 // // ------------------------------------------------------------
 
-package envCreate
+package create
 
 import (
 	"context"
@@ -52,7 +52,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command without invalid args",
+			Name:          "Create command with invalid args",
 			Input:         []string{"testingenv", "-e", "testingenv"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -79,11 +79,12 @@ func Test_Run(t *testing.T) {
 			})
 
 		kubernetesClient := kubernetes.NewMockInterface(ctrl)
-		kubernetesClient.EXPECT().EnsureNamespace(context.Background(), k8sGoClient, "default").
+		kubernetesClient.EXPECT().
+			EnsureNamespace(context.Background(), k8sGoClient, "default").
 			Return(nil).Times(1)
 
 		appManagementClient.EXPECT().
-			GetUCPGroup(context.Background(), "radius", "local", "default").
+			CheckUCPGroup(context.Background(), "radius", "local", "default").
 			Return(true, nil).Times(1)
 
 		appManagementClient.EXPECT().
@@ -122,6 +123,5 @@ func Test_Run(t *testing.T) {
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
-
 	})
 }

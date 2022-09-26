@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 
-	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/envCreate"
+	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"

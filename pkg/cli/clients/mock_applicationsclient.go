@@ -37,6 +37,21 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 	return m.recorder
 }
 
+// CheckUCPGroup mocks base method.
+func (m *MockApplicationsManagementClient) CheckUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CheckUCPGroup", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CheckUCPGroup indicates an expected call of CheckUCPGroup.
+func (mr *MockApplicationsManagementClientMockRecorder) CheckUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CheckUCPGroup), arg0, arg1, arg2, arg3)
+}
+
 // CreateEnvironment mocks base method.
 func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 map[string]*v20220315privatepreview.EnvironmentRecipeProperties) (bool, error) {
 	m.ctrl.T.Helper()
@@ -140,21 +155,6 @@ func (m *MockApplicationsManagementClient) GetEnvDetails(arg0 context.Context, a
 func (mr *MockApplicationsManagementClientMockRecorder) GetEnvDetails(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEnvDetails", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetEnvDetails), arg0, arg1)
-}
-
-// GetUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) GetUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUCPGroup", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUCPGroup indicates an expected call of GetUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) GetUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).GetUCPGroup), arg0, arg1, arg2, arg3)
 }
 
 // ListAllResourcesByApplication mocks base method.

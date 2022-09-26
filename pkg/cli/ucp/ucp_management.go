@@ -462,7 +462,7 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 	return resourceGroupResources, nil
 }
 
-func (amc *ARMApplicationsManagementClient) GetUCPGroup(ctx context.Context, planeType string, planeName string, rgName string) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CheckUCPGroup(ctx context.Context, planeType string, planeName string, rgName string) (bool, error) {
 	var resourceGroupOptions *ucpv20220315.ResourceGroupsClientListOptions
 	resourcegroupClient, err := ucpv20220315.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
