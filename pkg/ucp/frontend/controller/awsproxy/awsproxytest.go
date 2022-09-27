@@ -24,10 +24,18 @@ const (
 	testAWSRequestToken           = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
 )
 
-// setupMocks sets up a mock AWS client and Storage client for testing
-func setupMocks(t *testing.T) (*awsclient.MockAWSClient, *store.MockStorageClient) {
+type TestOptions struct {
+	AWSClient     *awsclient.MockAWSClient
+	StorageClient *store.MockStorageClient
+}
+
+// setupTest returns a TestOptions struct with mocked AWS and Storage clients
+func setupTest(t *testing.T) TestOptions {
 	mockCtrl := gomock.NewController(t)
 	mockClient := awsclient.NewMockAWSClient(mockCtrl)
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
-	return mockClient, mockStorageClient
+	return TestOptions{
+		AWSClient:     mockClient,
+		StorageClient: mockStorageClient,
+	}
 }

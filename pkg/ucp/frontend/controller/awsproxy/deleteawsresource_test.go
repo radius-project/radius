@@ -5,7 +5,6 @@
 package awsproxy
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -33,30 +32,26 @@ func Test_DeleteAWSResource(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		output := cloudcontrol.GetResourceOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String(testAWSResourceName),
 				Properties: aws.String(string(getResponseBodyBytes)),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
-	mockAWSClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error) {
-		output := cloudcontrol.DeleteResourceOutput{
+	testOptions.AWSClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -83,17 +78,15 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		notFound := types.ResourceNotFoundException{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
-		}
-		return nil, &notFound
-	})
+		})
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

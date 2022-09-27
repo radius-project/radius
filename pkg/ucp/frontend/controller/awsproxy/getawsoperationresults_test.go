@@ -5,7 +5,6 @@
 package awsproxy
 
 import (
-	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -25,20 +24,18 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
-		output := cloudcontrol.GetResourceRequestStatusOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -57,20 +54,18 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
-		output := cloudcontrol.GetResourceRequestStatusOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

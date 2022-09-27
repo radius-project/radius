@@ -5,7 +5,6 @@
 package awsproxy
 
 import (
-	"context"
 	"net/http"
 	"testing"
 	"time"
@@ -28,21 +27,19 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 
 	eventTime := time.Now()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
-		output := cloudcontrol.GetResourceRequestStatusOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				EventTime:       aws.Time(eventTime),
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -68,9 +65,9 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	errorCode := types.HandlerErrorCodeInternalFailure
 	errorStatusMessage := "AsyncOperation Failed"
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
-		output := cloudcontrol.GetResourceRequestStatusOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				EventTime:       aws.Time(eventTime),
 				OperationStatus: types.OperationStatusFailed,
@@ -78,13 +75,11 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 				StatusMessage:   aws.String(errorStatusMessage),
 				RequestToken:    aws.String(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

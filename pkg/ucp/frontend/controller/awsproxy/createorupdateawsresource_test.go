@@ -6,7 +6,6 @@ package awsproxy
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -27,23 +26,19 @@ func Test_CreateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		notFound := types.ResourceNotFoundException{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
-		}
-		return nil, &notFound
-	})
+		})
 
-	mockAWSClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.CreateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.CreateResourceOutput, error) {
-		output := cloudcontrol.CreateResourceOutput{
+	testOptions.AWSClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.StringPtr(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
@@ -55,8 +50,8 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -104,25 +99,21 @@ func Test_UpdateAWSResource(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		output := cloudcontrol.GetResourceOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.StringPtr(string(getResponseBodyBytes)),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
-	mockAWSClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.UpdateResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.UpdateResourceOutput, error) {
-		output := cloudcontrol.UpdateResourceOutput{
+	testOptions.AWSClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.StringPtr(testAWSRequestToken),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
@@ -134,8 +125,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -183,15 +174,13 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
-		output := cloudcontrol.GetResourceOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.StringPtr(string(getResponseBodyBytes)),
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
@@ -203,8 +192,8 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

@@ -5,7 +5,6 @@
 package awsproxy
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -45,9 +44,9 @@ func Test_ListAWSResources(t *testing.T) {
 	streamTwoResponseBodyBytes, err := json.Marshal(streamTwoResponseBody)
 	require.NoError(t, err)
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error) {
-		output := cloudcontrol.ListResourcesOutput{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.ListResourcesOutput{
 			ResourceDescriptions: []types.ResourceDescription{
 				{
 					Identifier: aws.String(streamOneResourceName),
@@ -58,13 +57,11 @@ func Test_ListAWSResources(t *testing.T) {
 					Properties: aws.String(string(streamTwoResponseBodyBytes)),
 				},
 			},
-		}
-		return &output, nil
-	})
+		}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -104,12 +101,12 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -130,12 +127,12 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -153,8 +150,8 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	mockAWSClient, mockStorageClient := setupMocks(t)
-	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+	testOptions := setupTest(t)
+	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{
 				Code:    "NotFound",
@@ -164,8 +161,8 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: mockAWSClient,
-		DB:        mockStorageClient,
+		AWSClient: testOptions.AWSClient,
+		DB:        testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
