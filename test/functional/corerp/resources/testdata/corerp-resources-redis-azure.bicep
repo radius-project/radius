@@ -2,6 +2,7 @@ import radius as radius
 
 param magpieimage string
 param environment string
+param redisresourceid string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
   name: 'corerp-resources-redis-azure'
@@ -41,6 +42,6 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   properties: {
     environment: environment
     application: app.id
-    resource: '/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Cache/Redis/redis-radiustest'
+    resource: redisresourceid
   }
 }
