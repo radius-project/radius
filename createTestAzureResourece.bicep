@@ -92,3 +92,17 @@ resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
     }
   }
 }
+
+resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
+  name: 'redis-radiustest'
+  location: location
+  properties: {
+    enableNonSslPort: false
+    minimumTlsVersion: '1.2'
+    sku: {
+      family: 'C'
+      capacity: 1
+      name: 'Basic'
+    }
+  }
+}
