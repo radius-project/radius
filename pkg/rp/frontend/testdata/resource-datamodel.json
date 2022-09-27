@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/httproutes/hrt0",
-    "name": "hrt0",
-    "type": "applications.core/httproutes",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/resources/resource0",
+    "name": "resource0",
+    "type": "applications.core/resources",
     "location": "West US",
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",
@@ -17,24 +17,23 @@
             "outputResources": [{
               "LocalID": "Deployment",
               "ResourceType": {
-                "Type": "httproutes",
+                "Type": "resources",
                 "Provider": "aks"
               },
               "Resource": null,
               "Identity": {
                 "data": null,
                 "resourceType": {
-                  "Type": "httproutes",
+                  "Type": "resources",
                   "Provider": "aks"
                 }
               }
             }]
           },
-        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
-        "hostname": "foo.example.com",
-        "port": 8080,
-        "scheme": "https",
-        "url": "https://foo.example.com"
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+          "propertyA": "propertyAValue",
+          "propertyB": "propertyBValue"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",
     "subscriptionId": "00000000-0000-0000-0000-000000000000",

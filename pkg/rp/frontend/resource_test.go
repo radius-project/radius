@@ -1,0 +1,269 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package frontend
+
+import (
+	"encoding/json"
+	"testing"
+
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/store"
+)
+
+const (
+	testHeaderfile = "resource-request-headers.json"
+	testAPIVersion = "2022-03-15-privatepreview"
+)
+
+// TestResourceDataModel represents test resource.
+type TestResourceDataModel struct {
+	v1.BaseResource
+
+	// Properties is the properties of the resource.
+	Properties *TestResourceDataModelProperties `json:"properties"`
+}
+
+// ResourceTypeName returns the qualified name of the resource
+func (r *TestResourceDataModel) ResourceTypeName() string {
+	return "Applications.Core/resources"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (c *TestResourceDataModel) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	c.Properties.Status.OutputResources = do.DeployedOutputResources
+}
+
+// OutputResources returns the output resources array.
+func (c *TestResourceDataModel) OutputResources() []outputresource.OutputResource {
+	return c.Properties.Status.OutputResources
+}
+
+// ResourceMetadata returns the application resource metadata.
+func (h *TestResourceDataModel) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
+// TestResourceDataModelProperties represents the properties of TestResourceDataModel.
+type TestResourceDataModelProperties struct {
+	rp.BasicResourceProperties
+	PropertyA string `json:"propertyA,omitempty"`
+	PropertyB string `json:"propertyB,omitempty"`
+}
+
+// TestResource represents test resource for api version.
+type TestResource struct {
+	ID         *string                 `json:"id,omitempty" azure:"ro"`
+	Name       *string                 `json:"name,omitempty" azure:"ro"`
+	SystemData *v1.SystemData          `json:"systemData,omitempty" azure:"ro"`
+	Type       *string                 `json:"type,omitempty" azure:"ro"`
+	Location   *string                 `json:"location,omitempty"`
+	Properties *TestResourceProperties `json:"properties,omitempty"`
+	Tags       map[string]*string      `json:"tags,omitempty"`
+}
+
+// TestResourceProperties - HTTP Route properties
+type TestResourceProperties struct {
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+	Environment       *string            `json:"environment,omitempty"`
+	Application       *string            `json:"application,omitempty"`
+	PropertyA         *string            `json:"propertyA,omitempty"`
+	PropertyB         *string            `json:"propertyB,omitempty"`
+	Status            *ResourceStatus    `json:"status,omitempty" azure:"ro"`
+}
+
+// ProvisioningState - Provisioning state of the resource at the time the operation was called.
+type ProvisioningState string
+
+const (
+	ProvisioningStateAccepted     ProvisioningState = "Accepted"
+	ProvisioningStateCanceled     ProvisioningState = "Canceled"
+	ProvisioningStateDeleting     ProvisioningState = "Deleting"
+	ProvisioningStateFailed       ProvisioningState = "Failed"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateSucceeded    ProvisioningState = "Succeeded"
+	ProvisioningStateUpdating     ProvisioningState = "Updating"
+)
+
+// PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
+func PossibleProvisioningStateValues() []ProvisioningState {
+	return []ProvisioningState{
+		ProvisioningStateAccepted,
+		ProvisioningStateCanceled,
+		ProvisioningStateDeleting,
+		ProvisioningStateFailed,
+		ProvisioningStateProvisioning,
+		ProvisioningStateSucceeded,
+		ProvisioningStateUpdating,
+	}
+}
+
+// ResourceStatus - Status of a resource.
+type ResourceStatus struct {
+	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
+func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
+	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
+	// TODO: Improve the validation.
+	converted := &TestResourceDataModel{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      testAPIVersion,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
+		},
+		Properties: &TestResourceDataModelProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: to.String(src.Properties.Environment),
+				Application: to.String(src.Properties.Application),
+			},
+			PropertyA: to.String(src.Properties.PropertyA),
+			PropertyB: to.String(src.Properties.PropertyB),
+		},
+	}
+	return converted, nil
+}
+
+// ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
+func (dst *TestResource) ConvertFrom(src conv.DataModelInterface) error {
+	// TODO: Improve the validation.
+	dm, ok := src.(*TestResourceDataModel)
+	if !ok {
+		return conv.ErrInvalidModelConversion
+	}
+
+	dst.ID = to.StringPtr(dm.ID)
+	dst.Name = to.StringPtr(dm.Name)
+	dst.Type = to.StringPtr(dm.Type)
+	dst.SystemData = &dm.SystemData
+	dst.Location = to.StringPtr(dm.Location)
+	dst.Tags = *to.StringMapPtr(dm.Tags)
+	dst.Properties = &TestResourceProperties{
+		Status: &ResourceStatus{
+			OutputResources: rp.BuildExternalOutputResources(dm.Properties.Status.OutputResources),
+		},
+		ProvisioningState: fromProvisioningStateDataModel(dm.InternalMetadata.AsyncProvisioningState),
+		Environment:       to.StringPtr(dm.Properties.Environment),
+		Application:       to.StringPtr(dm.Properties.Application),
+		PropertyA:         to.StringPtr(dm.Properties.PropertyA),
+		PropertyB:         to.StringPtr(dm.Properties.PropertyB),
+	}
+
+	return nil
+}
+
+func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
+	if state == nil {
+		return v1.ProvisioningStateAccepted
+	}
+
+	switch *state {
+	case ProvisioningStateUpdating:
+		return v1.ProvisioningStateUpdating
+	case ProvisioningStateDeleting:
+		return v1.ProvisioningStateDeleting
+	case ProvisioningStateAccepted:
+		return v1.ProvisioningStateAccepted
+	case ProvisioningStateSucceeded:
+		return v1.ProvisioningStateSucceeded
+	case ProvisioningStateFailed:
+		return v1.ProvisioningStateFailed
+	case ProvisioningStateCanceled:
+		return v1.ProvisioningStateCanceled
+	default:
+		return v1.ProvisioningStateAccepted
+	}
+}
+
+func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
+	var converted ProvisioningState
+	switch state {
+	case v1.ProvisioningStateUpdating:
+		converted = ProvisioningStateUpdating
+	case v1.ProvisioningStateDeleting:
+		converted = ProvisioningStateDeleting
+	case v1.ProvisioningStateAccepted:
+		converted = ProvisioningStateAccepted
+	case v1.ProvisioningStateSucceeded:
+		converted = ProvisioningStateSucceeded
+	case v1.ProvisioningStateFailed:
+		converted = ProvisioningStateFailed
+	case v1.ProvisioningStateCanceled:
+		converted = ProvisioningStateCanceled
+	default:
+		converted = ProvisioningStateAccepted // should we return error ?
+	}
+
+	return &converted
+}
+
+func testResourceDataModelToVersioned(model *TestResourceDataModel, version string) (conv.VersionedModelInterface, error) {
+	switch version {
+	case testAPIVersion:
+		versioned := &TestResource{}
+		err := versioned.ConvertFrom(model)
+		return versioned, err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func testResourceDataModelFromVersioned(content []byte, version string) (*TestResourceDataModel, error) {
+	switch version {
+	case testAPIVersion:
+		am := &TestResource{}
+		if err := json.Unmarshal(content, am); err != nil {
+			return nil, err
+		}
+		dm, err := am.ConvertTo()
+		return dm.(*TestResourceDataModel), err
+
+	default:
+		return nil, v1.ErrUnsupportedAPIVersion
+	}
+}
+
+func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {
+	reqBody := radiustesting.ReadFixture("resource-request.json")
+	reqModel := &TestResource{}
+	_ = json.Unmarshal(reqBody, reqModel)
+
+	rawDataModel := radiustesting.ReadFixture("resource-datamodel.json")
+	datamodel := &TestResourceDataModel{}
+	_ = json.Unmarshal(rawDataModel, datamodel)
+
+	respBody := radiustesting.ReadFixture("resource-response.json")
+	respModel := &TestResource{}
+	_ = json.Unmarshal(respBody, respModel)
+
+	return reqModel, datamodel, respModel
+}
+
+func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
+	mctrl := gomock.NewController(tb)
+	mds := store.NewMockStorageClient(mctrl)
+	msm := statusmanager.NewMockStatusManager(mctrl)
+
+	return func(tb testing.TB) {
+		mctrl.Finish()
+	}, mds, msm
+}

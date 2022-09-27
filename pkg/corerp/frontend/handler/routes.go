@@ -70,9 +70,9 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	gtwyRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/gateways").Subrouter()
 	gtwyResourceRouter := gtwyRTSubrouter.Path("/{gatewayName}").Subrouter()
 
-	// Adds gateway resource type routes
+	// Adds volume resource type routes
 	volRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
-	volResourceRouter := gtwyRTSubrouter.Path("/{volumeName}").Subrouter()
+	volResourceRouter := volRTSubrouter.Path("/{volumeName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.

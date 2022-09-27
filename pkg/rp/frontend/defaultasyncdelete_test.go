@@ -15,7 +15,6 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -48,7 +47,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			req.Header.Set("If-Match", tt.etag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
-			_, appDataModel, _ := getTestModels20220315privatepreview()
+			_, appDataModel, _ := loadTestResurce()
 
 			appDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
@@ -89,7 +88,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			// If happy path, expect that the returned object has Deleting state
 			if tt.code == http.StatusAccepted {
-				actualOutput := &v20220315privatepreview.HTTPRouteResource{}
+				actualOutput := &TestResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			}
 		})

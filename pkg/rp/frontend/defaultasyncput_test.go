@@ -17,43 +17,11 @@ import (
 
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
-
-const testHeaderfile = "requestheaders20220315privatepreview.json"
-
-func getTestModels20220315privatepreview() (*v20220315privatepreview.HTTPRouteResource, *datamodel.HTTPRoute, *v20220315privatepreview.HTTPRouteResource) {
-	rawInput := radiustesting.ReadFixture("httproute20220315privatepreview_input.json")
-	hrtInput := &v20220315privatepreview.HTTPRouteResource{}
-	_ = json.Unmarshal(rawInput, hrtInput)
-
-	rawDataModel := radiustesting.ReadFixture("httproute20220315privatepreview_datamodel.json")
-	hrtDataModel := &datamodel.HTTPRoute{}
-	_ = json.Unmarshal(rawDataModel, hrtDataModel)
-
-	rawExpectedOutput := radiustesting.ReadFixture("httproute20220315privatepreview_output.json")
-	expectedOutput := &v20220315privatepreview.HTTPRouteResource{}
-	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
-
-	return hrtInput, hrtDataModel, expectedOutput
-}
-
-func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
-	mctrl := gomock.NewController(tb)
-	mds := store.NewMockStorageClient(mctrl)
-	msm := statusmanager.NewMockStatusManager(mctrl)
-
-	return func(tb testing.TB) {
-		mctrl.Finish()
-	}, mds, msm
-}
 
 func TestDefaultAsyncPut_Create(t *testing.T) {
 	createCases := []struct {
@@ -66,7 +34,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 		rErr    error
 	}{
 		{
-			"async-create-new-httproute-success",
+			"async-create-new-resource-success",
 			&store.ErrNotFound{},
 			nil,
 			nil,
@@ -75,7 +43,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			nil,
 		},
 		{
-			"async-create-new-httproute-concurrency-error",
+			"async-create-new-resource-concurrency-error",
 			&store.ErrConcurrency{},
 			nil,
 			nil,
@@ -84,7 +52,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			&store.ErrConcurrency{},
 		},
 		{
-			"async-create-new-httproute-enqueue-error",
+			"async-create-new-resource-enqueue-error",
 			&store.ErrNotFound{},
 			nil,
 			errors.New("enqueuer client is unset"),
@@ -99,10 +67,10 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			httprouteInput, httprouteDataModel, _ := getTestModels20220315privatepreview()
+			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, httprouteInput)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, reqModel)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -135,7 +103,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 				StatusManager: msm,
 			}
 
-			ctl, err := NewDefaultAsyncPut(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned)
+			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
@@ -148,11 +116,11 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 				_ = resp.Apply(ctx, w, req)
 				require.Equal(t, tt.rCode, w.Result().StatusCode)
 
-				locationHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationResults", req)
+				locationHeader := getAsyncLocationPath(sCtx, reqDataModel.TrackedResource.Location, "operationResults", req)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationStatuses", req)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx, reqDataModel.TrackedResource.Location, "operationStatuses", req)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
@@ -175,10 +143,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 		rErr               error
 	}{
 		{
-			"async-update-existing-httproute-success",
+			"async-update-existing-resource-success",
 			v1.ProvisioningStateSucceeded,
-			"httproute20220315privatepreview_input.json",
-			"httproute20220315privatepreview_datamodel.json",
+			"resource-request.json",
+			"resource-datamodel.json",
 			nil,
 			false,
 			nil,
@@ -188,10 +156,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			nil,
 		},
 		{
-			"async-update-existing-httproute-mismatched-appid",
+			"async-update-existing-resource-mismatched-appid",
 			v1.ProvisioningStateSucceeded,
-			"httproute20220315privatepreview_input_appid.json",
-			"httproute20220315privatepreview_datamodel.json",
+			"resource-request-invalidapp.json",
+			"resource-datamodel.json",
 			nil,
 			true,
 			nil,
@@ -201,10 +169,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			nil,
 		},
 		{
-			"async-update-existing-httproute-concurrency-error",
+			"async-update-existing-resource-concurrency-error",
 			v1.ProvisioningStateSucceeded,
-			"httproute20220315privatepreview_input.json",
-			"httproute20220315privatepreview_datamodel.json",
+			"resource-request.json",
+			"resource-datamodel.json",
 			nil,
 			false,
 			&store.ErrConcurrency{},
@@ -214,10 +182,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			&store.ErrConcurrency{},
 		},
 		{
-			"async-update-existing-httproute-save-error",
+			"async-update-existing-resource-save-error",
 			v1.ProvisioningStateSucceeded,
-			"httproute20220315privatepreview_input.json",
-			"httproute20220315privatepreview_datamodel.json",
+			"resource-request.json",
+			"resource-datamodel.json",
 			nil,
 			false,
 			&store.ErrInvalid{Message: "testing initial save err"},
@@ -227,10 +195,10 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			&store.ErrInvalid{Message: "testing initial save err"},
 		},
 		{
-			"async-update-existing-httproute-enqueue-error",
+			"async-update-existing-resource-enqueue-error",
 			v1.ProvisioningStateSucceeded,
-			"httproute20220315privatepreview_input.json",
-			"httproute20220315privatepreview_datamodel.json",
+			"resource-request.json",
+			"resource-datamodel.json",
 			nil,
 			false,
 			nil,
@@ -246,16 +214,16 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			teardownTest, mds, msm := setupTest(t)
 			defer teardownTest(t)
 
-			httprouteInput := &v20220315privatepreview.HTTPRouteResource{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), httprouteInput)
+			reqModel := &TestResource{}
+			_ = json.Unmarshal(radiustesting.ReadFixture(tt.versionedInputFile), reqModel)
 
-			httprouteDataModel := &datamodel.HTTPRoute{}
-			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), httprouteDataModel)
+			reqDataModel := &TestResourceDataModel{}
+			_ = json.Unmarshal(radiustesting.ReadFixture(tt.datamodelFile), reqDataModel)
 
-			httprouteDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
+			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, httprouteInput)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, reqModel)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -263,7 +231,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 
 			so := &store.Object{
 				Metadata: store.Metadata{ID: sCtx.ResourceID.String()},
-				Data:     httprouteDataModel,
+				Data:     reqDataModel,
 			}
 
 			mds.EXPECT().Get(gomock.Any(), gomock.Any()).
@@ -293,7 +261,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 				StatusManager: msm,
 			}
 
-			ctl, err := NewDefaultAsyncPut(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned)
+			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, req)
@@ -305,11 +273,11 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			if tt.rCode == http.StatusAccepted {
 				require.NoError(t, err)
 
-				locationHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationResults", req)
+				locationHeader := getAsyncLocationPath(sCtx, reqDataModel.TrackedResource.Location, "operationResults", req)
 				require.NotNil(t, w.Header().Get("Location"))
 				require.Equal(t, locationHeader, w.Header().Get("Location"))
 
-				azureAsyncOpHeader := getAsyncLocationPath(sCtx, httprouteDataModel.TrackedResource.Location, "operationStatuses", req)
+				azureAsyncOpHeader := getAsyncLocationPath(sCtx, reqDataModel.TrackedResource.Location, "operationStatuses", req)
 				require.NotNil(t, w.Header().Get("Azure-AsyncOperation"))
 				require.Equal(t, azureAsyncOpHeader, w.Header().Get("Azure-AsyncOperation"))
 			}
