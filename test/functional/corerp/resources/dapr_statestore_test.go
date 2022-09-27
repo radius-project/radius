@@ -60,7 +60,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
 	requiredSecrets := map[string]map[string]string{}
-	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("TABLESTORAGE_RESOURCE_ID")
+	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("STORAGE_TABLE_RESOURCE_ID")
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
