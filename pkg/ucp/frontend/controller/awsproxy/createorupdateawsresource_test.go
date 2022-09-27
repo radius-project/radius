@@ -171,3 +171,72 @@ func Test_UpdateAWSResource(t *testing.T) {
 
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
+
+func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	getResponseBody := map[string]interface{}{
+		"RetentionPeriodHours": 178,
+		"ShardCount":           3,
+	}
+	getResponseBodyBytes, err := json.Marshal(getResponseBody)
+	require.NoError(t, err)
+
+	mockAWSClient, mockStorageClient := setupMocks(t)
+	mockAWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
+		output := cloudcontrol.GetResourceOutput{
+			ResourceDescription: &types.ResourceDescription{
+				Properties: to.StringPtr(string(getResponseBodyBytes)),
+			},
+		}
+		return &output, nil
+	})
+
+	requestBody := map[string]interface{}{
+		"properties": map[string]interface{}{
+			"RetentionPeriodHours": 178,
+			"ShardCount":           3,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
+		AWSClient: mockAWSClient,
+		DB:        mockStorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPut, testAWSSingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	err = actualResponse.Apply(ctx, w, request)
+	require.NoError(t, err)
+
+	res := w.Result()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	expectedResponseObject := map[string]interface{}{
+		"id":   testAWSSingleResourcePath,
+		"name": testAWSResourceName,
+		"type": testAWSResourceType,
+		"properties": map[string]interface{}{
+			"RetentionPeriodHours": float64(178),
+			"ShardCount":           float64(3),
+		},
+	}
+
+	actualResponseObject := map[string]interface{}{}
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
