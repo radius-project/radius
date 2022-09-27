@@ -160,7 +160,7 @@ func Test_Run(t *testing.T) {
 
 func initMocksWithoutCloudProvider(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
 	initGetKubeContextSuccess(kubernetesMock)
-	initDefaultKubeContextPromptYes(prompterMock)
+	initKubeContextWithKind(prompterMock)
 	initEnvNamePrompt(prompterMock)
 	initNameSpacePrompt(prompterMock)
 	initAddCloudProviderPromptNo(prompterMock)
@@ -179,13 +179,13 @@ func initMocksWithKubeContextSelectionError(kubernetesMock *kubernetes.MockInter
 
 func initMocksWithErrorEnvNameRead(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface) {
 	initGetKubeContextSuccess(kubernetesMock)
-	initDefaultKubeContextPromptYes(prompterMock)
+	initKubeContextWithKind(prompterMock)
 	initEnvNamePromptError(prompterMock)
 }
 
 func initMocksWithErrorNamespaceRead(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface) {
 	initGetKubeContextSuccess(kubernetesMock)
-	initDefaultKubeContextPromptYes(prompterMock)
+	initKubeContextWithKind(prompterMock)
 	initEnvNamePrompt(prompterMock)
 	initNameSpacePromptError(prompterMock)
 }
@@ -214,16 +214,16 @@ func getTestKubeConfig() *api.Config {
 	}
 }
 
-func initDefaultKubeContextPromptYes(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
-		Return("Y", nil).Times(1)
-}
-
 func initDefaultKubeContextPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
 		Return("N", nil).Times(1)
+}
+
+func initKubeContextWithKind(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunSelect(gomock.Any()).
+		Return(2, "", nil).Times(1)
 }
 
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
