@@ -111,6 +111,22 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
 
+	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
+	if err != nil {
+		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
+	}
+
+	if r.RadiusInstalled {
+		output.LogInfo(fmt.Sprintf("Radius control plane is already installed to context '%s'...", r.KubeContext))
+		y, err := prompt.YesOrNoPrompter("Would you like to reinstall Radius control plane and configure cloud providers [N/y]?", "N", r.Prompter)
+		if err != nil {
+			return &cli.FriendlyError{Message: "Unable to read reinstall prompt"}
+		}
+		if strings.ToLower(y)=="y" {
+			r.Reinstall = true
+		}
+	}
+
 	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read env name"}
@@ -169,26 +185,22 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return &cli.FriendlyError{Message: "Failed to read confirmation"}
 		}
 	}
-	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
-	}
-	//TODO: prompt for re-install of radius once the provider commands are in
-	// If the user prompts for re-install, then go ahead
-	// If the user says no, then use the provider create/update operations to update the provider config.
-	// issue: https://github.com/project-radius/radius/issues/3440
 
 	return nil
 }
 
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
-	// Install radius control plane
-	// TODO: Add check for user prompts (whether user has prompted to re-install or not),
-	// if not then use provider operations to update provider and avoid re-installing radius control plane
-	err := installRadius(ctx, r)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Failed to install radius"}
+	//TODO: Initialize cloud providers separately once providers commands are in
+	// If the user prompts for re-install, re-install and init providers
+	// If the user says no, then use the provider create/update operations to update the provider config.
+	// issue: https://github.com/project-radius/radius/issues/3440
+	if r.Reinstall {
+		// Install radius control plane
+		err := installRadius(ctx, r)
+		if err != nil {
+			return &cli.FriendlyError{Message: "Failed to install radius"}
+		}
 	}
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
