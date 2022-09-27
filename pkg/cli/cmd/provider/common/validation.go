@@ -38,8 +38,7 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		return "", err
 	}
 	if interactive && envStr == "" {
-		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault(promptMsg, defaultVal, prompt.ResourceName))
+		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault("Enter an environment name", defaultVal, prompt.ResourceName))
 		if err != nil {
 			return "", err
 		}
@@ -62,9 +61,8 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 	var val string
 	var err error
 	if interactive {
-		promptMsg := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultVal)
-		namespaceSelector := promptui.Prompt {
-			Label: promptMsg,
+		namespaceSelector := promptui.Prompt{
+			Label:   "Enter a namespace name to deploy apps into",
 			Default: defaultVal,
 			Validate: func(s string) error {
 				valid, msg, err := prompt.EmptyValidator(s)
@@ -76,6 +74,7 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 				}
 				return nil
 			},
+			AllowEdit: true,
 		}
 		val, err = prompter.RunPrompt(namespaceSelector)
 		if err != nil {
