@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd generate-rad-ucp-client## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
