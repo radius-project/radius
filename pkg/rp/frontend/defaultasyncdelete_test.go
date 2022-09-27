@@ -86,7 +86,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			result := w.Result()
 			require.Equal(t, tt.code, result.StatusCode)
 
-			// If happy path, expect that the returned object has Deleting state
+			// If happy path, expect that the returned object has Accepted state
 			if tt.code == http.StatusAccepted {
 				actualOutput := &TestResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
