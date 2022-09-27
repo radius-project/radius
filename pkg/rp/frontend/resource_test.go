@@ -76,38 +76,12 @@ type TestResource struct {
 
 // TestResourceProperties - HTTP Route properties
 type TestResourceProperties struct {
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
-	Environment       *string            `json:"environment,omitempty"`
-	Application       *string            `json:"application,omitempty"`
-	PropertyA         *string            `json:"propertyA,omitempty"`
-	PropertyB         *string            `json:"propertyB,omitempty"`
-	Status            *ResourceStatus    `json:"status,omitempty"`
-}
-
-// ProvisioningState - Provisioning state of the resource at the time the operation was called.
-type ProvisioningState string
-
-const (
-	ProvisioningStateAccepted     ProvisioningState = "Accepted"
-	ProvisioningStateCanceled     ProvisioningState = "Canceled"
-	ProvisioningStateDeleting     ProvisioningState = "Deleting"
-	ProvisioningStateFailed       ProvisioningState = "Failed"
-	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-	ProvisioningStateSucceeded    ProvisioningState = "Succeeded"
-	ProvisioningStateUpdating     ProvisioningState = "Updating"
-)
-
-// PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
-func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{
-		ProvisioningStateAccepted,
-		ProvisioningStateCanceled,
-		ProvisioningStateDeleting,
-		ProvisioningStateFailed,
-		ProvisioningStateProvisioning,
-		ProvisioningStateSucceeded,
-		ProvisioningStateUpdating,
-	}
+	ProvisioningState *v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Environment       *string               `json:"environment,omitempty"`
+	Application       *string               `json:"application,omitempty"`
+	PropertyA         *string               `json:"propertyA,omitempty"`
+	PropertyB         *string               `json:"propertyB,omitempty"`
+	Status            *ResourceStatus       `json:"status,omitempty"`
 }
 
 // ResourceStatus - Status of a resource.
@@ -168,46 +142,17 @@ func (dst *TestResource) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
-func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
+func toProvisioningStateDataModel(state *v1.ProvisioningState) v1.ProvisioningState {
 	if state == nil {
 		return v1.ProvisioningStateAccepted
 	}
-
-	switch *state {
-	case ProvisioningStateUpdating:
-		return v1.ProvisioningStateUpdating
-	case ProvisioningStateDeleting:
-		return v1.ProvisioningStateDeleting
-	case ProvisioningStateAccepted:
-		return v1.ProvisioningStateAccepted
-	case ProvisioningStateSucceeded:
-		return v1.ProvisioningStateSucceeded
-	case ProvisioningStateFailed:
-		return v1.ProvisioningStateFailed
-	case ProvisioningStateCanceled:
-		return v1.ProvisioningStateCanceled
-	default:
-		return v1.ProvisioningStateAccepted
-	}
+	return *state
 }
 
-func fromProvisioningStateDataModel(state v1.ProvisioningState) *ProvisioningState {
-	var converted ProvisioningState
-	switch state {
-	case v1.ProvisioningStateUpdating:
-		converted = ProvisioningStateUpdating
-	case v1.ProvisioningStateDeleting:
-		converted = ProvisioningStateDeleting
-	case v1.ProvisioningStateAccepted:
-		converted = ProvisioningStateAccepted
-	case v1.ProvisioningStateSucceeded:
-		converted = ProvisioningStateSucceeded
-	case v1.ProvisioningStateFailed:
-		converted = ProvisioningStateFailed
-	case v1.ProvisioningStateCanceled:
-		converted = ProvisioningStateCanceled
-	default:
-		converted = ProvisioningStateAccepted // should we return error ?
+func fromProvisioningStateDataModel(state v1.ProvisioningState) *v1.ProvisioningState {
+	converted := v1.ProvisioningStateAccepted
+	if state != "" {
+		converted = state
 	}
 
 	return &converted
