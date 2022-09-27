@@ -54,6 +54,11 @@ func (h *HTTPRoute) OutputResources() []outputresource.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *HTTPRoute) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 // HTTPRouteProperties represents the properties of HTTPRoute.
 type HTTPRouteProperties struct {
 	rp.BasicResourceProperties

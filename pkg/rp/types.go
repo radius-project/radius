@@ -146,3 +146,14 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 
 	return externalOutputResources
 }
+
+// RadiusResourceModel represents the interface of radius resource type.
+// TODO: Replace DeploymentDataModel with RadiusResourceModel later when connector rp leverages generic.
+type RadiusResourceModel interface {
+	conv.ResourceDataModel
+
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	OutputResources() []outputresource.OutputResource
+
+	ResourceMetadata() *BasicResourceProperties
+}

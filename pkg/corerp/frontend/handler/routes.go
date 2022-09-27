@@ -13,6 +13,7 @@ import (
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
@@ -22,6 +23,7 @@ import (
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	gtwy_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/gateway"
 	hrt_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/httproutes"
+	vol_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/volumes"
 )
 
 const (
@@ -67,6 +69,10 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	// Adds gateway resource type routes
 	gtwyRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/gateways").Subrouter()
 	gtwyResourceRouter := gtwyRTSubrouter.Path("/{gatewayName}").Subrouter()
+
+	// Adds volume resource type routes
+	volRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.core/volumes").Subrouter()
+	volResourceRouter := volRTSubrouter.Path("/{volumeName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{
 		// Environments resource handler registration.
@@ -242,6 +248,47 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType:   gtwy_ctrl.ResourceTypeName,
 			Method:         v1.OperationDelete,
 			HandlerFactory: gtwy_ctrl.NewDeleteGateway,
+		},
+		// Volumes resource handler registration.
+		{
+			ParentRouter: volRTSubrouter,
+			ResourceType: vol_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt, converter.VolumeResourceModelToVersioned)
+			},
+		},
+		{
+			ParentRouter: volResourceRouter,
+			ResourceType: vol_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt, converter.VolumeResourceModelToVersioned)
+			},
+		},
+		{
+			ParentRouter: volResourceRouter,
+			ResourceType: vol_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+			},
+		},
+		{
+			ParentRouter: volResourceRouter,
+			ResourceType: vol_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+			},
+		},
+		{
+			ParentRouter: volResourceRouter,
+			ResourceType: vol_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rp_frontend.NewDefaultAsyncDelete(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+			},
 		},
 	}
 	for _, h := range handlerOptions {
