@@ -17,11 +17,11 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -59,6 +59,7 @@ type Runner struct {
 	ConnectionFactory   connections.Factory
 	ConfigFileInterface configFile.Interface
 	KubernetesInterface kubernetes.Interface
+	NamespaceInterface  namespace.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -74,6 +75,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory:   factory.GetConnectionFactory(),
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
+		NamespaceInterface:  factory.GetNamespaceInterface(),
 	}
 }
 
@@ -139,7 +141,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.KubernetesInterface.ValidateNamespace(ctx, r.K8sGoClient, r.Namespace)
+	err = r.NamespaceInterface.ValidateNamespace(ctx, r.K8sGoClient, r.Namespace)
 	if err != nil {
 		return err
 	}

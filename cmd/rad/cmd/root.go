@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
@@ -113,6 +114,7 @@ func initSubCommands() {
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
+		NamespaceInterface:  &namespace.Impl{},
 	}
 
 	showCmd, _ := resource_show.NewCommand(framework)

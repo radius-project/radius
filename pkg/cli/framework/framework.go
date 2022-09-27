@@ -8,6 +8,7 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -25,6 +26,7 @@ type Factory interface {
 	GetConfigFileInterface() ConfigFileInterface
 	GetKubernetesInterface() kubernetes.Interface
 	GetHelmInterface() helm.Interface
+	GetNamespaceInterface() namespace.Interface
 }
 
 type Impl struct {
@@ -35,6 +37,7 @@ type Impl struct {
 	ConfigFileInterface ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	HelmInterface       helm.Interface
+	NamespaceInterface  namespace.Interface
 }
 
 func (i *Impl) GetConnectionFactory() connections.Factory {
@@ -67,6 +70,11 @@ func (i *Impl) GetKubernetesInterface() kubernetes.Interface {
 // Fetches the interface for operations related to radius installation
 func (i *Impl) GetHelmInterface() helm.Interface {
 	return i.HelmInterface
+}
+
+// Fetches the interface for operations related to radius installation
+func (i *Impl) GetNamespaceInterface() namespace.Interface {
+	return i.NamespaceInterface
 }
 
 type Runner interface {

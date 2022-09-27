@@ -11,10 +11,10 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
@@ -106,8 +106,8 @@ func Test_Run(t *testing.T) {
 				},
 			})
 
-		kubernetesClient := kubernetes.NewMockInterface(ctrl)
-		kubernetesClient.EXPECT().
+		namespaceClient := namespace.NewMockInterface(ctrl)
+		namespaceClient.EXPECT().
 			ValidateNamespace(context.Background(), k8sGoClient, "default").
 			Return(nil).Times(1)
 
@@ -144,7 +144,7 @@ func Test_Run(t *testing.T) {
 			UCPResourceGroup:    "default",
 			Namespace:           "default",
 			K8sGoClient:         k8sGoClient,
-			KubernetesInterface: kubernetesClient,
+			NamespaceInterface:  namespaceClient,
 			ConfigFileInterface: configFileInterface,
 		}
 

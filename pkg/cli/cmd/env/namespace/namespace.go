@@ -12,7 +12,7 @@ import (
 	k8s "k8s.io/client-go/kubernetes"
 )
 
-//go:generate mockgen -destination=./mock_namespace.go -package=namespace -self_package github.com/project-radius/radius/pkg/cli/cmd/env/create/namespace github.com/project-radius/radius/pkg/cli/cmd/env/create/namespace Interface
+//go:generate mockgen -destination=./mock_namespace.go -package=namespace -self_package github.com/project-radius/radius/pkg/cli/cmd/env/namespace github.com/project-radius/radius/pkg/cli/cmd/env/namespace Interface
 type Interface interface {
 	ValidateNamespace(ctx context.Context, client k8s.Interface, namespace string) error
 }
