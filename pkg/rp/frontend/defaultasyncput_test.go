@@ -289,6 +289,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 	}
 }
 
+// TODO: Use Referer header by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
 func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
 	dest := url.URL{
 		Host:   req.Host,
