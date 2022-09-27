@@ -4,8 +4,6 @@ param magpieimage string
 
 param environment string
 
-param tablestorageresourceid string
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-statestore-tablestorage'
   location: 'global'
@@ -49,6 +47,6 @@ resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepr
     environment: environment
     application: app.id
     kind: 'state.azure.tablestorage'
-    resource: tablestorageresourceid
+    resource: '/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Storage/storageAccounts/tsaccountradiustest/tableServices/default/tables/radiustest'
   }
 }
