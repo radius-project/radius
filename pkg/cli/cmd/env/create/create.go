@@ -134,8 +134,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	r.Output.LogInfo("Creating Environment...")
-
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
@@ -152,6 +150,8 @@ func (r *Runner) Run(ctx context.Context) error {
 	} else if err != nil || !isUCPGroupValid {
 		return err
 	}
+
+	r.Output.LogInfo("Creating Environment...")
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "")
 	if err != nil || !isEnvCreated {

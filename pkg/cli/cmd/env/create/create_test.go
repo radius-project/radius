@@ -62,7 +62,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid namespace",
-			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
+			Input:         []string{"-n", "invalidnamespace"}, // TODO
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -71,7 +71,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid workspace",
-			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
+			Input:         []string{"-w", "invalidworkspace"}, // TODO
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -80,7 +80,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid resource group",
-			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
+			Input:         []string{"-g", "invalidresourcegroup"}, // TODO
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -136,15 +136,14 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			ConfigHolder:      &framework.ConfigHolder{ConfigFilePath: "filePath"},
-			Output:            outputSink,
-			Workspace:         workspace,
-			EnvironmentName:   "default",
-			UCPResourceGroup:  "default",
-			Namespace:         "default",
-			K8sGoClient:       k8sGoClient,
-			// KubeContext:         "kind-kind",
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:              outputSink,
+			Workspace:           workspace,
+			EnvironmentName:     "default",
+			UCPResourceGroup:    "default",
+			Namespace:           "default",
+			K8sGoClient:         k8sGoClient,
 			KubernetesInterface: kubernetesClient,
 			ConfigFileInterface: configFileInterface,
 		}
