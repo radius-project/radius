@@ -211,7 +211,7 @@ func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *stat
 	}, mds, msm
 }
 
-// TODO: Use Referer header by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
+// TODO: Use Referer header instead of X-Forwarded-Proto by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
 func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
 	dest := url.URL{
 		Host:   req.Host,
@@ -224,7 +224,6 @@ func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceT
 	query.Add("api-version", sCtx.APIVersion)
 	dest.RawQuery = query.Encode()
 
-	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get("X-Forwarded-Proto")
 	if protocol != "" {
 		dest.Scheme = protocol
