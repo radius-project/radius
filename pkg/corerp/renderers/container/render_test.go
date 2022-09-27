@@ -178,7 +178,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 		// Revert this once TODO: https://github.com/project-radius/core-team/issues/238 is done.
 		Connections: map[string]datamodel.ConnectionProperties{
 			"AzureResourceTest": {
-				Source: "/subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace",
+				Source: "//subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace",
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindAzure,
 				},
@@ -194,7 +194,7 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
 	require.Equal(t, err.(*conv.ErrClientRP).Code, apiv1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "'subscriptions/test-sub-id/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }

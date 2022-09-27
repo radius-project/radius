@@ -205,7 +205,7 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				},
-				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/Microsoft.Cache/Redis/testCache",
+				Resource: "//subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
 			},
 		},
 	}
