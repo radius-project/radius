@@ -7,6 +7,7 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"path"
 	"testing"
@@ -14,6 +15,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/smithy-go"
+	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
 
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -118,6 +121,65 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 
 	expectedResponse := rest.NewOKResponse(map[string]interface{}{
 		"value": []interface{}{},
+	})
+
+	require.Equal(t, expectedResponse, actualResponse)
+}
+
+func Test_ListAWSResource_UnknownError(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	mockAWSClient, mockStorageClient := setupMocks(t)
+	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+
+	awsController, err := NewListAWSResources(ctrl.Options{
+		AWSClient: mockAWSClient,
+		DB:        mockStorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.Error(t, err)
+
+	require.Nil(t, actualResponse)
+	require.Equal(t, "something bad happened", err.Error())
+}
+
+func Test_ListAWSResource_SmithyError(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	mockAWSClient, mockStorageClient := setupMocks(t)
+	mockAWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+		Err: &smithyhttp.ResponseError{
+			Err: &smithy.GenericAPIError{
+				Code:    "NotFound",
+				Message: "Resource not found",
+			},
+		},
+	})
+
+	awsController, err := NewListAWSResources(ctrl.Options{
+		AWSClient: mockAWSClient,
+		DB:        mockStorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	expectedResponse := rest.NewInternalServerErrorARMResponse(rest.ErrorResponse{
+		Error: rest.ErrorDetails{
+			Code:    "NotFound",
+			Message: "Resource not found",
+		},
 	})
 
 	require.Equal(t, expectedResponse, actualResponse)
