@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateGateway)(nil)
@@ -50,25 +51,8 @@ func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (res
 		return r, err
 	}
 
-	if old != nil {
-		oldProp := &old.Properties.BasicResourceProperties
-		newProp := &newResource.Properties.BasicResourceProperties
-		if !oldProp.EqualLinkedResource(newProp) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
-		}
-
-		// Gateway is a resource that is asyncly processed. Here, in createOrUpdateGateway, we
-		// don't do the rendering and the deployment. newResource is collected from the request and
-		// that is why newResource doesn't have outputResources. It is wiped in the save call 2
-		// lines below. Because we are saving newResource and newResource doesn't have the output
-		// resources array. When we don't know the outputResources of a resource, we can't delete
-		// the ones that are not needed when we are deploying a new version of that resource.
-		// Gateway X - v1 => OutputResources[Y,Z]
-		// During the createOrUpdateGateway call Gateway X loses the OutputResources array
-		// because it is wiped from the DB when we are saving the newResource.
-		// Gateway X - v2 needs to be deployed and because we don't know the outputResources
-		// of v1, we don't know which one to delete.
-		newResource.Properties.Status.DeepCopy(&old.Properties.Status)
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+		return r, err
 	}
 
 	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutGatewayOperationTimeout, &etag); r != nil || err != nil {

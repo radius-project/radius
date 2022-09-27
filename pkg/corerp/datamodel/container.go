@@ -39,6 +39,11 @@ func (c *ContainerResource) OutputResources() []outputresource.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *ContainerResource) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 	if conn.DisableDefaultEnvVars == nil {
 		return false

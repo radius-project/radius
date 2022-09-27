@@ -39,12 +39,17 @@ func (h *VolumeResource) OutputResources() []outputresource.OutputResource {
 	return h.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *VolumeResource) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 // VolumeResourceProperties represents the properties of VolumeResource.
 type VolumeResourceProperties struct {
 	rp.BasicResourceProperties
 	// Kind represents the type of Volume resource.
 	Kind string `json:"kind,omitempty"`
-
+	// AzureKeyVault represents Azure Keyvault volume properties
 	AzureKeyVault *AzureKeyVaultVolumeProperties `json:"azureKeyVault,omitempty"`
 }
 

@@ -41,6 +41,11 @@ func (g *Gateway) OutputResources() []outputresource.OutputResource {
 	return g.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *Gateway) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
 	rp.BasicResourceProperties
