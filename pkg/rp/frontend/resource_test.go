@@ -7,6 +7,9 @@ package frontend
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/url"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -62,10 +65,10 @@ type TestResourceDataModelProperties struct {
 
 // TestResource represents test resource for api version.
 type TestResource struct {
-	ID         *string                 `json:"id,omitempty" azure:"ro"`
-	Name       *string                 `json:"name,omitempty" azure:"ro"`
-	SystemData *v1.SystemData          `json:"systemData,omitempty" azure:"ro"`
-	Type       *string                 `json:"type,omitempty" azure:"ro"`
+	ID         *string                 `json:"id,omitempty"`
+	Name       *string                 `json:"name,omitempty"`
+	SystemData *v1.SystemData          `json:"systemData,omitempty"`
+	Type       *string                 `json:"type,omitempty"`
 	Location   *string                 `json:"location,omitempty"`
 	Properties *TestResourceProperties `json:"properties,omitempty"`
 	Tags       map[string]*string      `json:"tags,omitempty"`
@@ -73,12 +76,12 @@ type TestResource struct {
 
 // TestResourceProperties - HTTP Route properties
 type TestResourceProperties struct {
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty"`
 	Environment       *string            `json:"environment,omitempty"`
 	Application       *string            `json:"application,omitempty"`
 	PropertyA         *string            `json:"propertyA,omitempty"`
 	PropertyB         *string            `json:"propertyB,omitempty"`
-	Status            *ResourceStatus    `json:"status,omitempty" azure:"ro"`
+	Status            *ResourceStatus    `json:"status,omitempty"`
 }
 
 // ProvisioningState - Provisioning state of the resource at the time the operation was called.
@@ -112,10 +115,7 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
-// ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
 func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
-	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	// TODO: Improve the validation.
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -142,9 +142,7 @@ func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
 	return converted, nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned HTTPRoute resource.
 func (dst *TestResource) ConvertFrom(src conv.DataModelInterface) error {
-	// TODO: Improve the validation.
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {
 		return conv.ErrInvalidModelConversion
@@ -266,4 +264,30 @@ func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *stat
 	return func(tb testing.TB) {
 		mctrl.Finish()
 	}, mds, msm
+}
+
+// TODO: Use Referer header by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
+func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
+	dest := url.URL{
+		Host:   req.Host,
+		Scheme: req.URL.Scheme,
+		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
+			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
+	}
+
+	query := url.Values{}
+	query.Add("api-version", sCtx.APIVersion)
+	dest.RawQuery = query.Encode()
+
+	// In production this is the header we get from app service for the 'real' protocol
+	protocol := req.Header.Get("X-Forwarded-Proto")
+	if protocol != "" {
+		dest.Scheme = protocol
+	}
+
+	if dest.Scheme == "" {
+		dest.Scheme = "http"
+	}
+
+	return dest.String()
 }

@@ -9,10 +9,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -287,30 +285,4 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			}
 		})
 	}
-}
-
-// TODO: Use Referer header by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
-func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
-	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
-			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
-	}
-
-	query := url.Values{}
-	query.Add("api-version", sCtx.APIVersion)
-	dest.RawQuery = query.Encode()
-
-	// In production this is the header we get from app service for the 'real' protocol
-	protocol := req.Header.Get("X-Forwarded-Proto")
-	if protocol != "" {
-		dest.Scheme = protocol
-	}
-
-	if dest.Scheme == "" {
-		dest.Scheme = "http"
-	}
-
-	return dest.String()
 }
