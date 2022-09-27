@@ -235,22 +235,15 @@ func installRadius(ctx context.Context, r *Runner) error {
 func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.Interface) (string, error) {
 	values := []string{}
 	if interactive {
-		confirmDefaultContext, err := prompt.YesOrNoPrompter(
-			fmt.Sprintf("Confirm default context: %s, %s", currentContext, "[Y/n]"),
-			"Y",
-			prompter,
-		)
-		if err != nil {
-			return "", err
-		}
-		if strings.ToLower(confirmDefaultContext) == "y" {
-			return currentContext, nil
-		}
+		defaultValue := fmt.Sprintf("%s (current)", currentContext)
+		values = append(values, defaultValue)
 		for k := range kubeContexts {
-			values = append(values, k)
+			if k != currentContext {
+				values = append(values, k)
+			}
 		}
 		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
-			"Select the context for radius installation",
+			"Select the kubeconfig context to install Radius installation",
 			values,
 		))
 		if err != nil {
