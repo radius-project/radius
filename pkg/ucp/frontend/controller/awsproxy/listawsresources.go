@@ -8,6 +8,7 @@ import (
 	"context"
 	"encoding/json"
 	http "net/http"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
@@ -55,8 +56,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 			}
 		}
 
+		resourceName := *result.Identifier
 		item := map[string]interface{}{
-			"id":         id.String(),
+			"id":         path.Join(id.String(), resourceName),
 			"name":       result.Identifier,
 			"type":       id.Type(),
 			"properties": properties,
