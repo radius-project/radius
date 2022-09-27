@@ -1,0 +1,1 @@
+az bicep deploy createTestAzureResourece.bicep
