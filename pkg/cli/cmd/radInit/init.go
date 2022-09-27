@@ -198,7 +198,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
-
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 	//TODO: Initialize cloud providers separately once providers commands are in
 	// If the user prompts for re-install, re-install and init providers
