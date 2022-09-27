@@ -52,8 +52,35 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command with invalid args",
+			Name:          "Create command with invalid environment",
 			Input:         []string{"testingenv", "-e", "testingenv"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Create command with invalid namespace",
+			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Create command with invalid workspace",
+			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Create command with invalid resource group",
+			Input:         []string{"testingenv", "-e", "testingenv"}, // TODO
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -65,6 +92,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
+	// TODO add failure cases
 	t.Run("Run env create", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -84,7 +112,7 @@ func Test_Run(t *testing.T) {
 			Return(nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CheckUCPGroup(context.Background(), "radius", "local", "default").
+			CheckUCPGroupExistence(context.Background(), "radius", "local", "default").
 			Return(true, nil).Times(1)
 
 		appManagementClient.EXPECT().
@@ -93,7 +121,7 @@ func Test_Run(t *testing.T) {
 
 		configFileInterface := configFile.NewMockInterface(ctrl)
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), "filePath", "defaultWorkspace", "default").
+			EditWorkspaces(context.Background(), "filePath", "defaultWorkspace", "default", "default").
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
@@ -108,15 +136,15 @@ func Test_Run(t *testing.T) {
 		}
 
 		runner := &Runner{
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-			Output:              outputSink,
-			Workspace:           workspace,
-			EnvironmentName:     "default",
-			UCPResourceGroup:    "default",
-			Namespace:           "default",
-			K8sGoClient:         k8sGoClient,
-			KubeContext:         "kind-kind",
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigHolder:      &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			Output:            outputSink,
+			Workspace:         workspace,
+			EnvironmentName:   "default",
+			UCPResourceGroup:  "default",
+			Namespace:         "default",
+			K8sGoClient:       k8sGoClient,
+			// KubeContext:         "kind-kind",
 			KubernetesInterface: kubernetesClient,
 			ConfigFileInterface: configFileInterface,
 		}

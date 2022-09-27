@@ -37,19 +37,19 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 	return m.recorder
 }
 
-// CheckUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) CheckUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
+// CheckUCPGroupExistence mocks base method.
+func (m *MockApplicationsManagementClient) CheckUCPGroupExistence(arg0 context.Context, arg1, arg2, arg3 string) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CheckUCPGroup", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "CheckUCPGroupExistence", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CheckUCPGroup indicates an expected call of CheckUCPGroup.
-func (mr *MockApplicationsManagementClientMockRecorder) CheckUCPGroup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// CheckUCPGroupExistence indicates an expected call of CheckUCPGroupExistence.
+func (mr *MockApplicationsManagementClientMockRecorder) CheckUCPGroupExistence(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckUCPGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CheckUCPGroup), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CheckUCPGroupExistence", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CheckUCPGroupExistence), arg0, arg1, arg2, arg3)
 }
 
 // CreateEnvironment mocks base method.

@@ -7,23 +7,23 @@ package configFile
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 //go:generate mockgen -destination=./mock_config.go -package=configFile -self_package github.com/project-radius/radius/pkg/cli/configFile github.com/project-radius/radius/pkg/cli/configFile Interface
 
 type Interface interface {
-	EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string) error
+	EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string, resourceGroup string) error
 }
 
 type Impl struct {
 }
 
 // Edits and updates the rad config file with the specified sections to edit
-func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string) error {
+func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceName string, environmentName string, resourceGroup string) error {
 	// Reload config so we can see the updates
 	config, err := cli.LoadConfig(filePath)
 	if err != nil {
@@ -32,11 +32,13 @@ func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceNam
 
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(workspaceName)]
-		scopeId, err := resources.Parse(ws.Scope)
-		if err != nil {
-			return err
-		}
-		ws.Environment = scopeId.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: environmentName}).String()
+		// scopeId, err := resources.Parse(ws.Scope)
+		// if err != nil {
+		// 	return err
+		// }
+
+		envID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroup, "Applications.Core/environments/", environmentName)
+		ws.Environment = envID
 		section.Items[strings.ToLower(workspaceName)] = ws
 		return nil
 	})

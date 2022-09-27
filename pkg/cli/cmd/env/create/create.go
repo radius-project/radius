@@ -20,8 +20,8 @@ import (
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -35,7 +35,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short:   "create environment",
 		Long:    "Create a new Radius environment",
 		Args:    cobra.MinimumNArgs(1),
-		Example: `rad env create -e myenv`,
+		Example: `rad env create myenv`,
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -48,14 +48,14 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder        *framework.ConfigHolder
-	Output              output.Interface
-	Workspace           *workspaces.Workspace
-	EnvironmentName     string
-	UCPResourceGroup    string
-	Namespace           string
-	K8sGoClient         client_go.Interface
-	KubeContext         string
+	ConfigHolder     *framework.ConfigHolder
+	Output           output.Interface
+	Workspace        *workspaces.Workspace
+	EnvironmentName  string
+	UCPResourceGroup string
+	Namespace        string
+	K8sGoClient      client_go.Interface
+	//	KubeContext         string
 	ConnectionFactory   connections.Factory
 	ConfigFileInterface configFile.Interface
 	KubernetesInterface kubernetes.Interface
@@ -110,25 +110,25 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
 	}
 
-	kubeconfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return err
-	}
+	// kubeconfig, err := kubernetes.ReadKubeConfig()
+	// if err != nil {
+	// 	return err
+	// }
 
-	if kubeconfig.CurrentContext == "" {
+	// if kubeconfig.CurrentContext == "" {
 
-		return fmt.Errorf("the kubeconfig has no current context")
-	}
+	// 	return fmt.Errorf("the kubeconfig has no current context")
+	// }
 
-	r.KubeContext = kubeconfig.CurrentContext
-	isRadiusInstalled, err := helm.CheckRadiusInstall(r.KubeContext)
-	if err != nil {
-		return err
-	}
+	// r.KubeContext = kubeconfig.CurrentContext
+	// isRadiusInstalled, err := helm.CheckRadiusInstall(r.KubeContext)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if !isRadiusInstalled {
-		return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", r.Workspace.Name)
-	}
+	// if !isRadiusInstalled {
+	// 	return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", r.Workspace.Name)
+	// }
 
 	return nil
 }
@@ -146,8 +146,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	isUCPGroupValid, err := client.CheckUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
-	if err != nil || !isUCPGroupValid {
+	isUCPGroupValid, err := client.CheckUCPGroupExistence(ctx, "radius", "local", r.UCPResourceGroup)
+	if cli.Is404ErrorForAzureError(err) {
+		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
+	} else if err != nil || !isUCPGroupValid {
 		return err
 	}
 
@@ -156,7 +158,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvironmentName)
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvironmentName, r.UCPResourceGroup)
 	if err != nil {
 		return err
 	}
