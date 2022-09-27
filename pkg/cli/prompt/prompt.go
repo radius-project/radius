@@ -166,7 +166,7 @@ func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
 	return prompter.Run()
 }
 
-//Prompts user to select from a list of values
+// Prompts user to select from a list of values
 func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 	return selector.Run()
 }
@@ -174,8 +174,8 @@ func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 // Creates a Yes or No prompts where user has to enter either a Y or N as input
 func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
 	textPrompt := promptui.Prompt{
-		Label:     label,
-		Default:   defaultValue,
+		Label:    label,
+		Default:  defaultValue,
 		Validate: validateYesOrNo,
 	}
 	result, err := prompter.RunPrompt(textPrompt)
@@ -197,8 +197,8 @@ func validateYesOrNo(s string) error {
 // Creates a prompt where a user is asked for a value suggesting a default Val
 func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {
 	return promptui.Prompt{
-		Label:     label,
-		Default:   defaultVal,
+		Label:   label,
+		Default: defaultVal,
 		Validate: func(s string) error {
 			valid, msg, err := f(s)
 			if err != nil {
@@ -209,6 +209,7 @@ func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bo
 			}
 			return nil
 		},
+		AllowEdit: true,
 	}
 }
 
@@ -218,7 +219,7 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 		Label: label,
 		Items: items,
 		Searcher: func(input string, index int) bool {
-			return strings.HasPrefix(items[index],input)
+			return strings.HasPrefix(items[index], input)
 		},
 	}
 }
