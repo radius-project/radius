@@ -21,7 +21,6 @@ func Test_ParseInvalidIDs(t *testing.T) {
 		"//subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders/resourceProviders//",
 		"/subscriptions/{%s}/resourceGroups/{%s}/providers/Microsoft.CustomProviders//",
-		"/subscriptions/{%s}/resourceGroups/{%s}/ddproviders/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups//providers/Microsoft.CustomProviders/resourceProviders",
 		"/subscriptions/{%s}/resourceGroups/providers/Microsoft.CustomProviders/resourceProviders",
 		"/planes/radius",
@@ -262,6 +261,17 @@ func Test_ParseValidIDs(t *testing.T) {
 			provider: "",
 		},
 		{
+			id:       "/planes/radius/local/resourceGroups/r1/resources",
+			expected: "/planes/radius/local/resourceGroups/r1/resources",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+				{Type: "resources", Name: ""},
+			},
+			types:    []TypeSegment{},
+			provider: "",
+		},
+		{
 			id:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
 			expected: "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
 			scopes: []ScopeSegment{
@@ -272,6 +282,20 @@ func Test_ParseValidIDs(t *testing.T) {
 				Type: "Applications.Core/environments", Name: "env"},
 			},
 			provider: "Applications.Core",
+		},
+
+		// NOTE: this is NOT actually invalid, just confusing.
+		{
+			id:       "/planes/radius/local/resourceGroups/r1/Applications.Core/environments/env",
+			expected: "/planes/radius/local/resourceGroups/r1/Applications.Core/environments/env",
+			scopes: []ScopeSegment{
+				{Type: "radius", Name: "local"},
+				{Type: "resourceGroups", Name: "r1"},
+				{Type: "Applications.Core", Name: "environments"},
+				{Type: "env", Name: ""},
+			},
+			types:    []TypeSegment{},
+			provider: "",
 		},
 	}
 

@@ -111,6 +111,7 @@ func (ri ID) FindScope(scopeType string) string {
 // RootScope returns the root-scope (the part before 'providers').
 //
 // Examples:
+//
 //	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
 func (ri ID) RootScope() string {
@@ -133,6 +134,7 @@ func (ri ID) RootScope() string {
 // PlaneScope returns plane or subscription scope without resourceGroup
 //
 // Examples:
+//
 //	/subscriptions/{guid}
 //	/planes/radius/local
 func (ri ID) PlaneScope() string {
@@ -158,6 +160,7 @@ func (ri ID) PlaneScope() string {
 // ProviderNamespace returns the providers part of the ID
 //
 // Examples:
+//
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
 	if len(ri.typeSegments) == 0 {
@@ -179,6 +182,7 @@ func (ri ID) IsRadiusRPResource() bool {
 // a chance that it is going to trigger a panic.
 //
 // Examples:
+//
 //	radius
 func (ri ID) PlaneNamespace() string {
 	if !ri.IsUCPQualfied() {
@@ -196,6 +200,7 @@ func (ri ID) PlaneNamespace() string {
 // RoutingScope returns the routing-scope (the part after 'providers').
 //
 // Examples:
+//
 //	/Applications.Core/applications/my-app
 func (ri ID) RoutingScope() string {
 	segments := []string{}
@@ -410,23 +415,33 @@ func Parse(id string) (ID, error) {
 	}
 
 	// Parse scopes - iterate until we get to "providers"
+	//
+	// Each id has a 'scope' portion and an optional 'resource'. The 'providers' segment is the
+	// delimiter between these.
 	scopes := []ScopeSegment{}
 
 	i := 0
 	for i < len(segments) {
-		if len(segments)-i < 2 {
-			// odd number of non-providers segments remaining, this is invalid.
-			return ID{}, invalid(id)
-		}
-
 		// We're done parsing scopes
 		if strings.ToLower(segments[i]) == ProvidersSegment {
 			i++ // advance past "providers"
 			break
 		}
 
+		if len(segments)-i < 2 {
+			// One non-providers segments remaining, this is a collection.
+			//
+			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|
+			//
+			scopes = append(scopes, ScopeSegment{Type: segments[i], Name: ""})
+			i += 1
+			break
+		}
+
 		if strings.ToLower(segments[i+1]) == ProvidersSegment {
-			// odd number of non-providers segments inside the root scope, this is invalid.
+			// odd number of non-providers segments inside the root scope followed by 'providers', this is invalid.
+			//
+			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|/providers/....
 			return ID{}, invalid(id)
 		}
 
@@ -513,7 +528,10 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 		PlanesSegment,
 	}
 	for _, scope := range scopes {
-		segments = append(segments, scope.Type, scope.Name)
+		segments = append(segments, scope.Type)
+		if scope.Name != "" {
+			segments = append(segments, scope.Name)
+		}
 	}
 
 	if len(resourceTypes) != 0 {
