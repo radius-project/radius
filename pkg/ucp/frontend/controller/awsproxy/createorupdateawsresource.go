@@ -87,6 +87,21 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		return awserror.HandleAWSError(err)
 	}
 
+	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
+	// simulate that here.
+	responseProperties := map[string]interface{}{}
+	if getResponse != nil {
+		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+		if err != nil {
+			return awserror.HandleAWSError(err)
+		}
+	}
+
+	// Properties specified by users take precedence
+	for k, v := range properties {
+		responseProperties[k] = v
+	}
+
 	if existing {
 		// For an existing resource we need to convert the desired state into a JSON-patch document
 		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
@@ -124,9 +139,21 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
+		} else {
+			// mark provisioning state as succeeded here
+			// and return 200, telling the deployment engine that the resource has already been created
+			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
+			responseBody := map[string]interface{}{
+				"id":         id.String(),
+				"name":       id.Name(),
+				"type":       id.Type(),
+				"properties": responseProperties,
+			}
+
+			resp := radrprest.NewOKResponse(responseBody)
+			return resp, nil
 		}
 	} else {
-
 		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
@@ -139,21 +166,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
-	}
-
-	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
-	// simulate that here.
-	responseProperties := map[string]interface{}{}
-	if getResponse != nil {
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-	}
-
-	// Properties specified by users take precedence
-	for k, v := range properties {
-		responseProperties[k] = v
 	}
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
