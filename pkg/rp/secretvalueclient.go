@@ -33,7 +33,7 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 		return nil, fmt.Errorf("unsupported resource type: %+v. Currently only ARM resources are supported", identity)
 	}
 
-	parsed, err := resources.Parse(arm.ID)
+	parsed, err := resources.ParseResource(arm.ID)
 	if err != nil {
 		return nil, err
 	}

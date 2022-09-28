@@ -373,7 +373,7 @@ func setup(t *testing.T) SharedMocks {
 }
 
 func getResourceID(id string) resources.ID {
-	resourceID, err := resources.Parse(id)
+	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
 	}

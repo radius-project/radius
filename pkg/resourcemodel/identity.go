@@ -158,7 +158,7 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 	case ProviderAzure:
 		// We can't report an error here so this is best-effort.
 		data := r.Data.(ARMIdentity)
-		id, err := resources.Parse(data.ID)
+		id, err := resources.ParseResource(data.ID)
 		if err != nil {
 			return []interface{}{radlogger.LogFieldResourceID, data.ID}
 		}

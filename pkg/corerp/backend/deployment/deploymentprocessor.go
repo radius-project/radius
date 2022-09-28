@@ -510,7 +510,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
 	var appID resources.ID
 	if applicationID != "" {
-		parsedID, err := resources.Parse(applicationID)
+		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
@@ -598,7 +598,7 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 
 // getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
 func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
-	envId, err := resources.Parse(environmentID)
+	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
 	}

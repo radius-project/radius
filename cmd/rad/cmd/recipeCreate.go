@@ -58,7 +58,7 @@ func recipeCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	scopeId, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.ParseScope(workspace.Scope)
 	if err != nil {
 		return err
 	}

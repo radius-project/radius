@@ -33,7 +33,7 @@ func NewGetPlane(opts ctrl.Options) (ctrl.Controller, error) {
 func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
-	resourceId, err := resources.Parse(path)
+	resourceId, err := resources.ParseScope(path)
 	if err != nil {
 		if err != nil {
 			return rest.NewBadRequestResponse(err.Error()), nil

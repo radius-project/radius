@@ -52,7 +52,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", ResourceIDKey)
 	}
 
-	parsedID, err := resources.Parse(id)
+	parsedID, err := resources.ParseResource(id)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
@@ -137,7 +137,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 }
 
 func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, id string) (*storage.AccountKey, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, err
 	}

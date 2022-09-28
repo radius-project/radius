@@ -308,7 +308,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	rID, err := resources.Parse(req.ResourceID)
+	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
 		logger.Error(err, "failed to parse resource ID")
 		return err
@@ -334,7 +334,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 }
 
 func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
-	rID, err := resources.Parse(resourceID)
+	rID, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return false, err
 	}

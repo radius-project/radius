@@ -46,7 +46,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 
 	rg.ID = path
 	rgExists := true
-	ID, err := resources.Parse(rg.ID)
+	ID, err := resources.ParseScope(rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil

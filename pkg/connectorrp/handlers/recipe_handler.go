@@ -190,7 +190,7 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 }
 
 func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
-	parsed, err := ucpresources.Parse(id)
+	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return err
 	}

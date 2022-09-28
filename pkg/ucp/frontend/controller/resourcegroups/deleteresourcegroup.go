@@ -33,7 +33,7 @@ func NewDeleteResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
-	resourceID, err := resources.Parse(path)
+	resourceID, err := resources.ParseScope(path)
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil
 	}

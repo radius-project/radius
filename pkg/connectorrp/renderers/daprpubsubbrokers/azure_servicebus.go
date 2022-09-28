@@ -27,7 +27,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 	}
 
 	//Validate fully qualified resource identifier of the source resource is supplied for this connector
-	azureServiceBusNamespaceID, err := resources.Parse(properties.Resource)
+	azureServiceBusNamespaceID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}

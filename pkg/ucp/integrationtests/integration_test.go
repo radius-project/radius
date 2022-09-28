@@ -316,7 +316,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 		return &data, nil
 	})
 
-	rgID, err := resources.Parse("/planes/radius/local/resourceGroups/rg1")
+	rgID, err := resources.ParseScope("/planes/radius/local/resourceGroups/rg1")
 	require.NoError(t, err)
 	db.EXPECT().Get(gomock.Any(), rgID.String())
 
@@ -369,7 +369,7 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 		return &data, nil
 	})
 
-	rgID, err := resources.Parse("/planes/radius/local/resourceGroups/rg1")
+	rgID, err := resources.ParseScope("/planes/radius/local/resourceGroups/rg1")
 	require.NoError(t, err)
 
 	db.EXPECT().Get(gomock.Any(), rgID.String()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {

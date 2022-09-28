@@ -102,7 +102,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties, secretValues map[string]rp.SecretValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
-	cosmosMongoDBID, err := resources.Parse(properties.Resource)
+	cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}

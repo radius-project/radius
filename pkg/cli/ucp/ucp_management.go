@@ -286,7 +286,7 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	idParsed, err := resources.Parse(associatedAppId)
+	idParsed, err := resources.ParseResource(associatedAppId)
 	if err != nil {
 		return false
 	}
@@ -310,7 +310,7 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	idParsed, err := resources.Parse(associatedEnvId)
+	idParsed, err := resources.ParseResource(associatedEnvId)
 	if err != nil {
 		return false
 	}

@@ -62,7 +62,7 @@ func showApplicationStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	for _, resource := range resourceList {
-		resourceID, err := resources.Parse(*resource.ID)
+		resourceID, err := resources.ParseResource(*resource.ID)
 		if err != nil {
 			return err
 		}
