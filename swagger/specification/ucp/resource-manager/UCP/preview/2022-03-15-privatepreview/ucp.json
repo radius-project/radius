@@ -581,7 +581,7 @@
             "x-ms-secret": true
           },
           "tenantId": {
-            "description": "tentantId when the CredentialKind is ServicePrincipal",
+            "description": "tenantId when the CredentialKind is ServicePrincipal",
             "type": "string"
           },
           "storage": {
