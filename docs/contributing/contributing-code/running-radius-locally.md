@@ -113,14 +113,15 @@ To do this, open your Radius config file (`$HOME/.rad/config.yaml`) and edit it 
 You'll need to:
 
 - Duplicate the contents of a workspace
-- Give the new workspace a memorable name like `test` or `local`
+- Give the new workspace a memorable name (like `localrp`)
 - Add overrides for the UCP URL
+  - Note: The UCP URL is the only one that needs to be overridden because all calls from the CLI will be proxied through UCP. See [ucp-self-hosted-dev.yaml](https://github.com/project-radius/radius/blob/main/cmd/ucpd/ucp-self-hosted-dev.yaml) - notice that the UCP config includes the same URLs for the running processes of Applications.Core, Applications.Connector, and Deployment Engine as were set up in steps 1 and 3.
 
 **Example**
 
 ```yaml
 workspaces:
-  default: local
+  default: localrp
   items:
     existing:
       connection:
@@ -131,18 +132,20 @@ workspaces:
       providerConfig:
         azure:
           subscriptionId: your-subscription-id
-          resourceGroup: your-resource-group>
+          resourceGroup: your-resource-group
 
     # This is mostly a copy of `existing`
-    local:
+    localrp:
       connection:
         context: your-context
         kind: kubernetes
-        # This is the part that you add
+        # Add the UCP URL override here
         overrides:
           ucp: http://localhost:9000
-      environment: /planes/radius/local/resourcegroups/your-resource-group/providers/applications.core/environments/your-environment
-      scope: /planes/radius/local/resourceGroups/your-resource-group
+      # Make sure to update /resourcegroups/your-resource-group to /resourcegroups/localrp here
+      environment: /planes/radius/local/resourcegroups/localrp/providers/applications.core/environments/your-environment
+      # Here as well
+      scope: /planes/radius/local/resourceGroups/localrp
       providerConfig:
         azure:
           subscriptionId: your-subscription-id
@@ -151,21 +154,21 @@ workspaces:
 
 ## Step 5: Register planes and create an environment
 
-We need to initialize the `local` resource group in each of the `deployments/local` and `radius/local` planes. We also need to initialize an environment so that we can deploy Radius resources.
+We need to initialize the `localrp` resource group in each of the `deployments/local` and `radius/local` planes. We also need to initialize an environment so that we can deploy Radius resources.
 
 ``` bash
-# 1: Create local resource group in UCP deployments/local plane
-curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/deployments/local/resourceGroups/local' \
+# 1: Create localrp resource group in UCP deployments/local plane
+curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/deployments/local/resourceGroups/localrp' \
 --header 'Content-Type: application/json' \
 --data-raw '{}'
 
-# 2: Create local resource group in UCP radius/local plane
-curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/local' \
+# 2: Create localrp resource group in UCP radius/local plane
+curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/localrp' \
 --header 'Content-Type: application/json' \
 --data-raw '{}'
 
-# 3: Create environment
-curl --location --request PUT 'http://localhost:8080/planes/radius/local/resourceGroups/local/providers/Applications.Core/environments/your-environment?api-version=2022-03-15-privatepreview' \
+# 3: Create your-environment environment (make sure this matches the name of your environment in the config)
+curl --location --request PUT 'http://localhost:8080/planes/radius/local/resourceGroups/localrp/providers/Applications.Core/environments/your-environment?api-version=2022-03-15-privatepreview' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "location": "global",
