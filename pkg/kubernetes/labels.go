@@ -22,9 +22,6 @@ const (
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
 
-	// DaprComponentName Label is used to make it easier to list the Dapr components with given name
-	LabelDaprComponentName = "daprComponentName"
-
 	// TODO: Are we removing this too?
 	LabelManagedByRadiusRP = "radius-rp"
 	LabelAADPodIdentity    = "aadpodidbinding"

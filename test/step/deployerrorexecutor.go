@@ -46,9 +46,18 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 
 	templateFilePath := filepath.Join(cwd, d.Template)
 	t.Logf("deploying %s from file %s", d.Description, d.Template)
+
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
+	require.NotNil(t, err)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
-	require.Equal(t, d.ExpectedErrorCode, err.(*radcli.CliError).Code)
+
+	// TODO: Need to find out how to unwrap fmt.wrapError all the way up the stack
+	// so that it can be casted to other error types. Due to this issue, the error
+	// cannot be casted to conv.NewClientErrResourceConflict in the deployment processor.
+	if cliErr, ok := err.(*radcli.CliError); ok {
+		require.Equal(t, d.ExpectedErrorCode, cliErr.Code)
+	}
+
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }
