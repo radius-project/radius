@@ -95,7 +95,7 @@ func GetDownloadURI(downloadURIFmt string, binaryName string) (string, error) {
 		return "", fmt.Errorf("unsupported platform %s/%s", runtime.GOOS, runtime.GOARCH)
 	}
 
-	return fmt.Sprintf(downloadURIFmt, version.Channel(), fmt.Sprint(platform, "-x64"), filename), nil
+	return fmt.Sprintf(downloadURIFmt, "pr-500", fmt.Sprint(platform, "-x64"), filename), nil
 }
 
 func DownloadToFolder(filepath string, resp *http.Response) error {
