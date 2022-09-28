@@ -259,3 +259,78 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }
+
+func Test_Render_Recipe_Success(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			Name: "mongo0",
+			Type: "Applications.Connector/mongoDatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "mongodb",
+				},
+			},
+		},
+	}
+
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
+		RecipeConnectorType: "Applications.Connector/mongoDatabases",
+		RecipeProperty: datamodel.RecipeProperty{
+			Recipe: datamodel.ConnectorRecipe{
+				Name: "mongodb",
+			},
+			RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+		}})
+	require.NoError(t, err)
+	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.RecipeProperty.Recipe.Name)
+	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.RecipeProperty.RecipeTemplatePath)
+	require.Equal(t, "2021-10-15", output.RecipeData.APIVersion)
+	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
+	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
+}
+
+func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			Name: "mongo0",
+			Type: "Applications.Connector/mongoDatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "mongodb",
+				},
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
+		RecipeConnectorType: "Applications.Connector/redisCaches",
+		RecipeProperty: datamodel.RecipeProperty{
+			Recipe: datamodel.ConnectorRecipe{
+				Name: "mongodb",
+			},
+			RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+		}})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "the connector resource type must match the Recipe Connector type.", err.(*conv.ErrClientRP).Message)
+}
