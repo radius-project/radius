@@ -100,59 +100,6 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 	return
 }
 
-func buildTestMongoRecipeWithEmptyName() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
-	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
-	resourceID = getResourceID(id)
-	testResource = datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   id,
-			Name: "mongo0",
-			Type: "applications.connector/mongodatabases",
-		},
-		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
-				Recipe: datamodel.ConnectorRecipe{},
-			},
-		},
-	}
-
-	rendererOutput = renderers.RendererOutput{
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.ConnectionStringValue: {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-				Action:        "listConnectionStrings",
-				ValueSelector: "/connectionStrings/0/connectionString",
-				Transformer: resourcemodel.ResourceType{
-					Provider: resourcemodel.ProviderAzure,
-					Type:     resourcekinds.AzureCosmosDBMongo,
-				},
-			},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
-				Value: "test-database",
-			},
-		},
-		RecipeData: datamodel.RecipeData{
-			RecipeProperty: datamodel.RecipeProperty{
-				Recipe: datamodel.ConnectorRecipe{
-					Name:       testResource.Properties.Recipe.Name,
-					Parameters: testResource.Properties.Recipe.Parameters,
-				},
-				RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			},
-			APIVersion:        clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-			AzureResourceType: mongodatabases.AzureCosmosMongoResourceType,
-		},
-	}
-
-	return
-}
 func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
