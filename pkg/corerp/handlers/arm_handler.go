@@ -81,7 +81,7 @@ func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemod
 		return nil, err
 	}
 
-	parsed, err := ucpresources.Parse(id)
+	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return nil, err
 	}

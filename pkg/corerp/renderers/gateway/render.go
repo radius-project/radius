@@ -37,7 +37,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	gtwyProperties := gateway.Properties
 	// Get all httproutes that are used by this gateway
 	for _, httpRoute := range gtwyProperties.Routes {
-		resourceID, err := resources.Parse(httpRoute.Destination)
+		resourceID, err := resources.ParseResource(httpRoute.Destination)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -55,7 +55,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-	appId, err := resources.Parse(gateway.Properties.Application)
+	appId, err := resources.ParseResource(gateway.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
@@ -249,7 +249,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
-	resourceID, err := resources.Parse(route.Destination)
+	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
 		return "", conv.NewClientErrInvalidRequest(err.Error())
 	}

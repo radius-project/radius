@@ -54,12 +54,11 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 
 	// Lookup the plane
 	planePath := PlanesPath + "/" + planeType + "/" + name
-	planeID, err := resources.Parse(planePath)
+	planeID, err := resources.ParseScope(planePath)
 	if err != nil {
-		if err != nil {
-			return nil, err
-		}
+		return nil, err
 	}
+
 	plane := rest.Plane{}
 	_, err = p.GetResource(ctx, planeID.String(), &plane)
 	if err != nil {
@@ -80,7 +79,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			return nil, err
 		}
 		rgPath := id.RootScope()
-		rgID, err := resources.Parse(rgPath)
+		rgID, err := resources.ParseScope(rgPath)
 		if err != nil {
 			return nil, err
 		}
@@ -101,6 +100,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		return nil, err
 	}
 
+	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
 		err = fmt.Errorf("Invalid resourceID specified with no provider")
 		return rest.NewBadRequestResponse(err.Error()), err

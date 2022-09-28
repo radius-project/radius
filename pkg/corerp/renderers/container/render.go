@@ -74,7 +74,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		resourceID, err := resources.Parse(connection.Source)
+		resourceID, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -97,7 +97,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 			continue
 		}
 
-		resourceID, err := resources.Parse(provides)
+		resourceID, err := resources.ParseResource(provides)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -111,7 +111,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	for _, volume := range properties.Container.Volumes {
 		switch volume.Kind {
 		case datamodel.Persistent:
-			resourceID, err := resources.Parse(volume.Persistent.Source)
+			resourceID, err := resources.ParseResource(volume.Persistent.Source)
 			if err != nil {
 				return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
@@ -133,7 +133,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	appId, err := resources.Parse(resource.Properties.Application)
+	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
@@ -199,7 +199,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.Parse(provides)
+			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
 				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
@@ -349,7 +349,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					// The storage account was not created when the computed value was rendered
 					// Lookup the actual storage account name from the local id
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
-					r, err := resources.Parse(id)
+					r, err := resources.ParseResource(id)
 					if err != nil {
 						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 					}
@@ -554,7 +554,7 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
 	volumeSpec.AzureFile.SecretName = applicationName
-	resourceID, err := resources.Parse(persistentVolume.Source)
+	resourceID, err := resources.ParseResource(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err
 	}

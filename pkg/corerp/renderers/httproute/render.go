@@ -38,7 +38,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
-	appId, err := resources.Parse(route.Properties.Application)
+	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
@@ -77,7 +77,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
-	appId, err := resources.Parse(route.Properties.Application)
+	appId, err := resources.ParseResource(route.Properties.Application)
 
 	if err != nil {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))

@@ -40,7 +40,7 @@ const (
 )
 
 func (handler *azureCosmosDBBaseHandler) GetCosmosDBAccountByID(ctx context.Context, accountID string) (*documentdb.DatabaseAccountGetResults, error) {
-	parsed, err := resources.Parse(accountID)
+	parsed, err := resources.ParseResource(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse CosmosDB Account resource id: %w", err)
 	}

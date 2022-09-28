@@ -323,7 +323,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 	}
 
 	for _, id := range recipeData.Resources {
-		parsedID, err := resources.Parse(id)
+		parsedID, err := resources.ParseResource(id)
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
 		}
@@ -415,7 +415,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the connector and linked resources ```
 func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
-	envId, err := resources.Parse(environmentID)
+	envId, err := resources.ParseResource(environmentID)
 	envMetadata = EnvironmentMetadata{}
 	if err != nil {
 		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))

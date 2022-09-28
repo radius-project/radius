@@ -64,7 +64,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 }
 
 func makeResourceID(t *testing.T, resourceType string, resourceName string) resources.ID {
-	id, err := resources.Parse(resources.MakeRelativeID(
+	id, err := resources.ParseResource(resources.MakeRelativeID(
 		[]resources.ScopeSegment{
 			{Type: "subscriptions", Name: "test-subscription"},
 			{Type: "resourceGroups", Name: "test-resourcegroup"},
@@ -363,7 +363,7 @@ func Test_Render_Connections(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "ResourceType", "A").String(),
+				Source: makeResourceID(t, "SomeProvider/ResourceType", "A").String(),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -379,8 +379,8 @@ func Test_Render_Connections(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -464,7 +464,7 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source:                makeResourceID(t, "ResourceType", "A").String(),
+				Source:                makeResourceID(t, "SomeProvider/ResourceType", "A").String(),
 				DisableDefaultEnvVars: to.Ptr(true),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
@@ -477,8 +477,8 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -514,7 +514,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "ResourceType", "A").String(),
+				Source: makeResourceID(t, "SomeProvider/ResourceType", "A").String(),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -530,8 +530,8 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -553,7 +553,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	hash1 := deployment.Spec.Template.Annotations[kubernetes.AnnotationSecretHash]
 
 	// Update and render again
-	dependencies[makeResourceID(t, "ResourceType", "A").String()].ComputedValues["ComputedKey1"] = "new value"
+	dependencies[makeResourceID(t, "SomeProvider/ResourceType", "A").String()].ComputedValues["ComputedKey1"] = "new value"
 
 	output, err = renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{Namespace: "default"}})
 	require.NoError(t, err)
@@ -573,7 +573,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 		},
 		Connections: map[string]datamodel.ConnectionProperties{
 			"A": {
-				Source: makeResourceID(t, "ResourceType", "A").String(),
+				Source: makeResourceID(t, "SomeProvider/ResourceType", "A").String(),
 				IAM: datamodel.IAMProperties{
 					Kind: datamodel.KindHTTP,
 				},
@@ -585,8 +585,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -599,7 +599,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 						Type:     "dummy",
 						Provider: resourcemodel.ProviderAzure,
 					},
-					makeResourceID(t, "TargetResourceType", "TargetResource").String(),
+					makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(),
 					"2020-01-01"),
 			},
 		},
@@ -636,11 +636,11 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole1",
-				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").String(),
+				handlers.RoleAssignmentScope: makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(),
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -653,11 +653,11 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
+			LocalID:  outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
 			Deployed: false,
 			Resource: map[string]string{
 				handlers.RoleNameKey:         "TestRole2",
-				handlers.RoleAssignmentScope: makeResourceID(t, "TargetResourceType", "TargetResource").String(),
+				handlers.RoleAssignmentScope: makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(),
 			},
 			Dependencies: []outputresource.Dependency{
 				{
@@ -706,10 +706,10 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
 				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole1"),
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
 				},
 				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "TargetResourceType", "TargetResource").String(), "TestRole2"),
+					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
 				},
 			},
 		},
@@ -718,7 +718,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 }
 
 func Test_Render_AzureConnection(t *testing.T) {
-	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
+	testARMID := makeResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	expectedRole := "administrator"
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
@@ -788,7 +788,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 }
 
 func Test_Render_AzureConnectionEmptyRoleAllowed(t *testing.T) {
-	testARMID := makeResourceID(t, "ResourceType", "test-azure-resource").String()
+	testARMID := makeResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
@@ -845,8 +845,8 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID:     makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID:     makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition:     map[string]interface{}{},
 			ComputedValues: map[string]interface{}{},
 		},
@@ -917,7 +917,7 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 		},
 	}
 	resource := makeResource(t, properties)
-	resourceID, _ := resources.Parse(testResourceID)
+	resourceID, _ := resources.ParseResource(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
@@ -990,7 +990,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 		},
 	}
 	resource := makeResource(t, properties)
-	resourceID, _ := resources.Parse(testResourceID)
+	resourceID, _ := resources.ParseResource(testResourceID)
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
@@ -1098,8 +1098,8 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -1173,8 +1173,8 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -1241,8 +1241,8 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
@@ -1300,8 +1300,8 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{
-		(makeResourceID(t, "ResourceType", "A").String()): {
-			ResourceID: makeResourceID(t, "ResourceType", "A"),
+		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
+			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
 			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",

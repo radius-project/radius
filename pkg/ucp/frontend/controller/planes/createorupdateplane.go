@@ -53,7 +53,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 
 	plane.Type = planes.PlaneTypePrefix + "/" + planeType
 	plane.Name = name
-	id, err := resources.Parse(plane.ID)
+	id, err := resources.ParseScope(plane.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
 		return rest.NewBadRequestResponse(err.Error()), nil

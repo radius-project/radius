@@ -230,7 +230,7 @@ func (c *CosmosDBStorageClient) Query(ctx context.Context, query store.Query, op
 
 	cfg := store.NewQueryConfig(opts...)
 
-	resourceID, err := resources.Parse(query.RootScope)
+	resourceID, err := resources.ParseScope(query.RootScope)
 	if err != nil {
 		return nil, err
 	}

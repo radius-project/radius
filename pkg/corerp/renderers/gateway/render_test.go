@@ -381,7 +381,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 		},
 	})
 	resource := makeResource(t, properties)
-	appId, err := resources.Parse(resource.Properties.Application)
+	appId, err := resources.ParseResource(resource.Properties.Application)
 	require.NoError(t, err)
 	appName := appId.Name()
 	dependencies := map[string]renderers.RendererDependency{}
@@ -903,7 +903,7 @@ func makeDependentResource(t *testing.T, properties datamodel.HTTPRoutePropertie
 	return &dm
 }
 func makeResourceID(t *testing.T, resourceID string) resources.ID {
-	id, err := resources.Parse(resourceID)
+	id, err := resources.ParseResource(resourceID)
 	require.NoError(t, err)
 
 	return id

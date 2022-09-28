@@ -56,6 +56,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, resource *ou
 		return errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 
+	// Scope may be a resource ID or an azure scope. We don't really need to know which so we're using the generic 'Parse' function.
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return err
@@ -85,6 +86,8 @@ func (handler *azureRoleAssignmentHandler) GetResourceIdentity(ctx context.Conte
 	}
 	roleName := properties[RoleNameKey]
 	scope := properties[RoleAssignmentScope]
+
+	// Scope may be a resource ID or an azure scope. We don't really need to know which so we're using the generic 'Parse' function.
 	parsedScope, err := resources.Parse(scope)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, err

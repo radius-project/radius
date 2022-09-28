@@ -23,8 +23,8 @@ const (
 	ConnectorRPNamespace = "Applications.Connector"
 )
 
-// ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() to create IDs and use
-// String() to convert back to strings.
+// ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
+// to create IDs and use String() to convert back to strings.
 type ID struct {
 	id            string
 	scopeSegments []ScopeSegment
@@ -40,6 +40,8 @@ type ScopeSegment struct {
 	//	subscription
 	//
 	Type string
+
+	// Name is the name of the scope.
 	Name string
 }
 
@@ -53,6 +55,8 @@ type TypeSegment struct {
 	//  database
 	//
 	Type string
+
+	// Name is the name of the resource.
 	Name string
 }
 
@@ -65,18 +69,46 @@ func (ri ID) IsEmpty() bool {
 	return ri.id == ""
 }
 
-// IsCollection returns true if the ID represents a collection (final segment has no name).
-func (ri ID) IsCollection() bool {
-	if ri.IsScope() {
-		return ri.scopeSegments[len(ri.scopeSegments)-1].Name == ""
-	}
-
-	return ri.typeSegments[len(ri.typeSegments)-1].Name == ""
+// IsScope returns true if the ID represents a named scope (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local
+func (ri ID) IsScope() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) == 0 && // Not a type
+		(len(ri.scopeSegments) == 0 || len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) > 0) // No scope segments or last one is named
 }
 
-// IsScope returns true if the ID represents a scope.
-func (ri ID) IsScope() bool {
-	return !ri.IsEmpty() && len(ri.typeSegments) == 0
+// IsResource returns true if the ID represents a named resource (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
+func (ri ID) IsResource() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) > 0 // Has type segments and last one is named
+}
+
+// IsScopeCollection returns true if the ID represents a collection or custom action on a scope.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/resources
+func (ri ID) IsScopeCollection() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) == 0 && // No type segments
+		len(ri.scopeSegments) > 0 && len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) == 0 // Has scope segments and last one is un-named
+}
+
+// IsResourceCollection returns true if the ID represents a collection or custom action on a resource.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications
+func (ri ID) IsResourceCollection() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) == 0 // Has type segments and last one is un-named
 }
 
 // IsUCPQualfied returns true if the ID is a UCP id.
@@ -360,7 +392,45 @@ func ParseByMethod(id string, method string) (ID, error) {
 	return parsedID, nil
 }
 
-// Parse parses a resource ID.
+// ParseScope returns a parsed resource ID if the ID represents a named scope (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1
+func ParseScope(id string) (ID, error) {
+	parsed, err := Parse(id)
+	if err != nil {
+		return ID{}, err
+	}
+
+	if !parsed.IsScope() {
+		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a scope", id)
+	}
+
+	return parsed, err
+}
+
+// ParseResource returns a parsed resource ID if the ID represents a named resource (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
+func ParseResource(id string) (ID, error) {
+	parsed, err := Parse(id)
+	if err != nil {
+		return ID{}, err
+	}
+
+	if !parsed.IsResource() {
+		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a resource", id)
+	}
+
+	return parsed, err
+}
+
+// Parse parses a resource ID. Parse will parse ALL valid resource IDs in the most permissive way.
+// Most code should use a more specific function like ParseResource to parse the specific kind of ID
+// they want to handle.
 func Parse(id string) (ID, error) {
 	isUCPQualified := false
 	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {

@@ -67,6 +67,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
+	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
 	id, err := resources.Parse(request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err

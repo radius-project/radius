@@ -74,7 +74,7 @@ func (handler *azureFileShareStorageAccountHandler) GetResourceNativeIdentityKey
 }
 
 func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {
-	parsed, err := resources.Parse(accountID)
+	parsed, err := resources.ParseResource(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}

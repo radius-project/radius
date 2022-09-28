@@ -326,7 +326,7 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rp.B
 	newAppEnv := ""
 	if newProp.Application != "" {
 		name := newProp.Application
-		if rid, err := resources.Parse(newProp.Application); err == nil {
+		if rid, err := resources.ParseResource(newProp.Application); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' application", name)
@@ -336,7 +336,7 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rp.B
 			newAppEnv += " and "
 		}
 		name := newProp.Environment
-		if rid, err := resources.Parse(newProp.Environment); err == nil {
+		if rid, err := resources.ParseResource(newProp.Environment); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' environment", name)

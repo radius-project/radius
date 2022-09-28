@@ -24,7 +24,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
-		azuretableStorageID, err = resources.Parse(properties.Resource)
+		azuretableStorageID, err = resources.ParseResource(properties.Resource)
 		if err != nil {
 			return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 		}
@@ -36,7 +36,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
 		//Validate fully qualified resource identifier of the source resource is supplied for this connector
-		azuretableStorageID, err = resources.Parse(properties.Resource)
+		azuretableStorageID, err = resources.ParseResource(properties.Resource)
 		if err != nil {
 			return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 		}

@@ -69,7 +69,7 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 		},
 	}
 
-	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
+	resource, err := resources.ParseResource("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
 	require.NoError(t, err)
 
 	for _, tt := range errTests {
@@ -181,7 +181,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			resourceID, err := resources.Parse(tt.rID)
+			resourceID, err := resources.ParseResource(tt.rID)
 			require.NoError(t, err)
 
 			body := &datamodel.ContainerResource{}

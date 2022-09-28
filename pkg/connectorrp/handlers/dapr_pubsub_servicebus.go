@@ -150,7 +150,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
@@ -170,7 +170,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, id string) (*string, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, err
 	}

@@ -21,9 +21,9 @@ import (
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -73,7 +73,7 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 		op.Sender = &sender{RoundTripper: roundTripper}
 
 		// This client wants a resource group name, but we store the ID instead, so compute that.
-		id, err := resources.Parse(workspace.Scope)
+		id, err := resources.ParseScope(workspace.Scope)
 		if err != nil {
 			return nil, err
 		}

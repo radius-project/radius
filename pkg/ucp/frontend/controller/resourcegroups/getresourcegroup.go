@@ -35,7 +35,7 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	id := strings.ToLower(path)
-	resourceID, err := resources.Parse(id)
+	resourceID, err := resources.ParseScope(id)
 	if err != nil {
 		if err != nil {
 			return rest.NewBadRequestResponse(err.Error()), nil

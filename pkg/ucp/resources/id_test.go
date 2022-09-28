@@ -35,12 +35,23 @@ func Test_ParseInvalidIDs(t *testing.T) {
 	}
 }
 
+type idkind string
+
+const (
+	kindnone               idkind = "none"
+	kindscope              idkind = "scope"
+	kindscopecollection    idkind = "scopecollection"
+	kindresource           idkind = "resource"
+	kindresourcecollection idkind = "resourcecollection"
+)
+
 func Test_ParseValidIDs(t *testing.T) {
 	values := []struct {
 		id       string
 		expected string
 		scopes   []ScopeSegment
 		types    []TypeSegment
+		kind     idkind
 		provider string
 	}{
 		{
@@ -54,6 +65,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/planes",
@@ -61,6 +73,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			scopes:   []ScopeSegment{},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscope,
 		},
 		{
 			id:       "/planes/",
@@ -68,6 +81,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			scopes:   []ScopeSegment{},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscope,
 		},
 		{
 			id:       "/",
@@ -75,6 +89,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			scopes:   []ScopeSegment{},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscope,
 		},
 		{
 			id:       "/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/",
@@ -87,6 +102,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
@@ -99,6 +115,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders",
@@ -111,6 +128,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/foo/bar",
@@ -123,6 +141,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "foo/bar"},
 			},
 			provider: "foo",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius",
@@ -135,6 +154,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/",
@@ -147,6 +167,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/",
@@ -159,6 +180,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Microsoft.CustomProviders/resourceProviders", Name: "radius"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications",
@@ -172,6 +194,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app",
@@ -185,6 +208,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications", Name: "test-app"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers",
@@ -199,6 +223,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Containers"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresourcecollection,
 		},
 		{
 			id:       "/Subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
@@ -213,6 +238,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Containers", Name: "test"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/planes/azure/azurecloud/subscriptions/s1/resourceGroups/r1/providers/Microsoft.CustomProviders/resourceProviders/radius/Applications/test-app/Containers/test",
@@ -228,6 +254,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Containers", Name: "test"},
 			},
 			provider: "Microsoft.CustomProviders/resourceProviders",
+			kind:     kindresource,
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/applications/cool-app",
@@ -240,6 +267,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				{Type: "Applications.Core/applications", Name: "cool-app"},
 			},
 			provider: "Applications.Core",
+			kind:     kindresource,
 		},
 		{
 			id:       "/planes/radius/local/",
@@ -249,6 +277,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscope,
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1",
@@ -259,6 +288,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscope,
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1/resources",
@@ -270,6 +300,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscopecollection,
 		},
 		{
 			id:       "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env",
@@ -282,6 +313,7 @@ func Test_ParseValidIDs(t *testing.T) {
 				Type: "Applications.Core/environments", Name: "env"},
 			},
 			provider: "Applications.Core",
+			kind:     kindresource,
 		},
 
 		// NOTE: this is NOT actually invalid, just confusing.
@@ -296,6 +328,7 @@ func Test_ParseValidIDs(t *testing.T) {
 			},
 			types:    []TypeSegment{},
 			provider: "",
+			kind:     kindscopecollection,
 		},
 	}
 
@@ -307,12 +340,54 @@ func Test_ParseValidIDs(t *testing.T) {
 			require.Equalf(t, v.expected, id.id, "id comparison failed for %s", v.id)
 			require.Equalf(t, v.scopes, id.scopeSegments, "scope comparison failed for %s", v.id)
 
+			require.NotEqual(t, kindnone, v.kind, "test must specify id kind")
+			require.Equal(t, v.kind == kindresource, id.IsResource(), "IsResource")
+			require.Equal(t, v.kind == kindscope, id.IsScope(), "IsScope")
+			require.Equal(t, v.kind == kindresourcecollection, id.IsResourceCollection(), "IsResourceCollection")
+			require.Equal(t, v.kind == kindscopecollection, id.IsScopeCollection(), "IsScopeCollection")
+
 			require.Lenf(t, id.typeSegments, len(v.types), "types comparison failed for %s", v.id)
 			for i := range id.typeSegments {
 				require.Equalf(t, v.types[i], id.typeSegments[i], "types comparison failed for %s", v.id)
 			}
 		})
 	}
+}
+
+func Test_ParseResource_Valid(t *testing.T) {
+	input := "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
+	_, err := ParseResource(input)
+	require.NoError(t, err)
+}
+
+func Test_ParseResource_InvalidID(t *testing.T) {
+	input := "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
+	_, err := ParseResource(input)
+	require.Error(t, err)
+}
+
+func Test_ParseResource_NotResource(t *testing.T) {
+	input := "/planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env/listAction"
+	_, err := ParseResource(input)
+	require.Error(t, err)
+}
+
+func Test_ParseScope_Valid(t *testing.T) {
+	input := "/planes/radius/local/resourceGroups/r1"
+	_, err := ParseScope(input)
+	require.NoError(t, err)
+}
+
+func Test_ParseScope_InvalidID(t *testing.T) {
+	input := "//planes/radius/local/resourceGroups/r1/providers/Applications.Core/environments/env"
+	_, err := ParseScope(input)
+	require.Error(t, err)
+}
+
+func Test_ParseResource_NotScope(t *testing.T) {
+	input := "/planes/radius/local/resourceGroups/r1/listAction"
+	_, err := ParseScope(input)
+	require.Error(t, err)
 }
 
 func Test_MakeRelativeID(t *testing.T) {

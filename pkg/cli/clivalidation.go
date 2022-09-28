@@ -37,7 +37,7 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 
 	// We store the environment id in config, but most commands work with the environment name.
 	if environmentName == "" && workspace.Environment != "" {
-		id, err := resources.Parse(workspace.Environment)
+		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return "", err
 		}
@@ -61,7 +61,7 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 
 	// We store the environment id in config, but most commands work with the environment name.
 	if environmentName == "" && workspace.Environment != "" {
-		id, err := resources.Parse(workspace.Environment)
+		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return "", err
 		}

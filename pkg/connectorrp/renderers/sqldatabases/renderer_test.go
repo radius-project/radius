@@ -131,7 +131,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
-			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/sqlDatabases/test-database",
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/servers/test-database",
 		},
 	}
 

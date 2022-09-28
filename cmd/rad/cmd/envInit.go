@@ -338,7 +338,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	step = output.BeginStep("Creating Environment...")
 
-	scopeId, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.ParseScope(workspace.Scope)
 	if err != nil {
 		return err
 	}

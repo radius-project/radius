@@ -263,7 +263,7 @@ func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource out
 }
 
 func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Context, msiResourceID string) error {
-	parsed, err := resources.Parse(msiResourceID)
+	parsed, err := resources.ParseResource(msiResourceID)
 	if err != nil {
 		return err
 	}
