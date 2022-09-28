@@ -9,6 +9,16 @@
 
 package v20220315privatepreview
 
+// CredentialClientCreateOrUpdateResponse contains the response from method CredentialClient.CreateOrUpdate.
+type CredentialClientCreateOrUpdateResponse struct {
+	CredentialResource
+}
+
+// CredentialsClientGetResponse contains the response from method CredentialsClient.Get.
+type CredentialsClientGetResponse struct {
+	CredentialResource
+}
+
 // PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.CreateOrUpdate.
 type PlanesClientCreateOrUpdateResponse struct {
 	PlaneResource

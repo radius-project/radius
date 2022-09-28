@@ -14,6 +14,34 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// CredentialKind - Credential kinds supported.
+type CredentialKind string
+
+const (
+	CredentialKindServicePrincipal CredentialKind = "ServicePrincipal"
+)
+
+// PossibleCredentialKindValues returns the possible values for the CredentialKind const type.
+func PossibleCredentialKindValues() []CredentialKind {
+	return []CredentialKind{	
+		CredentialKindServicePrincipal,
+	}
+}
+
+// CredentialStorageKind - credential store kinds supported.
+type CredentialStorageKind string
+
+const (
+	CredentialStorageKindKubernetes CredentialStorageKind = "Kubernetes"
+)
+
+// PossibleCredentialStorageKindValues returns the possible values for the CredentialStorageKind const type.
+func PossibleCredentialStorageKindValues() []CredentialStorageKind {
+	return []CredentialStorageKind{	
+		CredentialStorageKindKubernetes,
+	}
+}
+
 // PlaneKind - Plane kinds supported.
 type PlaneKind string
 

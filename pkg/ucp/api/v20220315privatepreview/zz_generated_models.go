@@ -9,6 +9,45 @@
 
 package v20220315privatepreview
 
+// CredentialClientCreateOrUpdateOptions contains the optional parameters for the CredentialClient.CreateOrUpdate method.
+type CredentialClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// CredentialResource - Credential to a plane instance
+type CredentialResource struct {
+	// REQUIRED; Credentials properties
+	Properties *CredentialResourceProperties `json:"properties,omitempty"`
+}
+
+// CredentialResourceProperties - Credentials properties
+type CredentialResourceProperties struct {
+	// REQUIRED; Credential kinds supported.
+	Kind *CredentialKind `json:"kind,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+
+	// appId when the CredentialKind is ServicePrincipal
+	AppID *string `json:"appId,omitempty"`
+
+	// secret when the CredentialKind is ServicePrincipal
+	Secret *string `json:"secret,omitempty"`
+
+	// tenantId when the CredentialKind is ServicePrincipal
+	TenantID *string `json:"tenantId,omitempty"`
+}
+
+type CredentialResourcePropertiesStorage struct {
+	// REQUIRED; credential store kinds supported.
+	Kind *CredentialStorageKind `json:"kind,omitempty"`
+}
+
+// CredentialsClientGetOptions contains the optional parameters for the CredentialsClient.Get method.
+type CredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
