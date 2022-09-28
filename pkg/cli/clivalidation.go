@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -75,6 +76,29 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	}
 
 	return environmentName, err
+}
+
+func RequireKubeContext(cmd *cobra.Command) error {
+	kubecontext, err := cmd.Flags().GetString("kubecontext")
+	if err != nil {
+		return err
+	}
+	// We validate the context and make sure we actually store a named context (not the empty string)
+	kubeconfig, err := kubernetes.ReadKubeConfig()
+	if err != nil {
+		return err
+	}
+	if kubecontext == "" && kubeconfig.CurrentContext == "" {
+		return errors.New("the kubeconfig has no current context")
+	} else if kubecontext == "" {
+		kubecontext = kubeconfig.CurrentContext
+	}
+	_, ok := kubeconfig.Contexts[kubecontext]
+	if !ok {
+		return fmt.Errorf("the kubeconfig does not contain a context called %q", kubecontext)
+	}
+
+	return nil
 }
 
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
