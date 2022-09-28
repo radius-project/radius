@@ -7,7 +7,6 @@ package radInit
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
