@@ -14,8 +14,6 @@ import (
 	"runtime"
 
 	"github.com/mitchellh/go-homedir"
-
-	"github.com/project-radius/radius/pkg/version"
 )
 
 // GetLocalFilepath returns the local binary file path. It does not verify that the file
