@@ -94,7 +94,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 		envRecipes = append(envRecipes, recipe)
 	}
-	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetRecipeTableFormat())
+	err = r.Output.WriteFormatted(r.Format, envRecipes, objectformats.GetEnvironmentRecipesTableFormat())
 	if err != nil {
 		return err
 	}

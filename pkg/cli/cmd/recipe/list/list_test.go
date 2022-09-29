@@ -109,7 +109,7 @@ func Test_Run(t *testing.T) {
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     recipes,
-					Options: objectformats.GetRecipeTableFormat(),
+					Options: objectformats.GetEnvironmentRecipesTableFormat(),
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

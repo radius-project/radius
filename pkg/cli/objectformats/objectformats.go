@@ -54,25 +54,6 @@ func GetResourceTableFormat() output.FormatterOptions {
 	}
 }
 
-func GetRecipeTableFormat() output.FormatterOptions {
-	return output.FormatterOptions{
-		Columns: []output.Column{
-			{
-				Heading:  "NAME",
-				JSONPath: "{ .Name }",
-			},
-			{
-				Heading:  "TYPE",
-				JSONPath: "{ .ConnectorType }",
-			},
-			{
-				Heading:  "TEMPLATE",
-				JSONPath: "{ .TemplatePath }",
-			},
-		},
-	}
-}
-
 func GetResourceGroupTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
