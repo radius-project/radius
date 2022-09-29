@@ -58,7 +58,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
 }
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
-  name: 'daprns-${guid(resourceGroup().name)}'
+  name: 'daprns-${guid(resourceGroup().id)}'
   location: location
   tags: {
     radiustest: 'corerp-resources-dapr-pubsub-servicebus'
