@@ -7,7 +7,6 @@ package radInit
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
@@ -235,15 +234,15 @@ func installRadius(ctx context.Context, r *Runner) error {
 func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.Interface) (string, error) {
 	values := []string{}
 	if interactive {
-		defaultValue := fmt.Sprintf("%s (current)", currentContext)
-		values = append(values, defaultValue)
+		// Ensure current context is at the top as the default
+		values = append(values, currentContext)
 		for k := range kubeContexts {
 			if k != currentContext {
 				values = append(values, k)
 			}
 		}
 		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
-			"Select the kubeconfig context to install Radius installation",
+			"Select the kubeconfig context to install Radius into",
 			values,
 		))
 		if err != nil {
