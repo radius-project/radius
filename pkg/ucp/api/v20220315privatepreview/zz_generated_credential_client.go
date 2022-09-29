@@ -78,7 +78,7 @@ func (client *CredentialClient) CreateOrUpdate(ctx context.Context, planeType st
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *CredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, credential CredentialResource, options *CredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}}/{planeName}/providers/System.Azure/credentials/{credentialName}"
+	urlPath := "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}

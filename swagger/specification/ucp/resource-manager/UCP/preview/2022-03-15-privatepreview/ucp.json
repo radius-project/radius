@@ -364,7 +364,7 @@
           }
         }
       },
-    "/planes/{planeType}}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
+    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
         "operationId": "Credentials_Get",
@@ -392,7 +392,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Name of the secret",
+            "description": "Credential resource. Secrets not displayed",
             "schema": {
               "$ref": "#/definitions/CredentialResource"
             }
@@ -460,6 +460,89 @@
             }
           }
         }
+      },
+      "delete": {
+        "description": "Delete credential resource for this plane instance",
+        "operationId": "Credentials_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialsGet": {
+            "$ref": "./examples/CredentialsDelete.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "#/parameters/CredentialNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The credential was successfully deleted."
+          },
+          "204": {
+            "description": "The credential does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
+      }
+
+    },
+
+    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials": {
+      "get": {
+        "description": "List the credentials for this plane instance",
+        "operationId": "Credentials_List",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialsGet": {
+            "$ref": "./examples/CredentialsList.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credentials list.",
+            "schema": {
+              "$ref": "#/definitions/CredentialResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
       }
     }
   },
@@ -547,6 +630,19 @@
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
           }
         ]
+      },
+      "CredentialResourceList": {
+        "description": "The list of credentials.",
+        "type": "object",
+        "properties": {
+          "value": {
+            "description": "The list of credentials.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CredentialResource"
+            }
+          }
+        }
       },
       "CredentialResource": {
         "description": "Credential to a plane instance",

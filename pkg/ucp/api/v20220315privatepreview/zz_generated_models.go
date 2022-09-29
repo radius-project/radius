@@ -16,11 +16,17 @@ type CredentialClientCreateOrUpdateOptions struct {
 
 // CredentialResource - Credential to a plane instance
 type CredentialResource struct {
-	// REQUIRED; Credentials properties
+	// REQUIRED; Credential properties
 	Properties *CredentialResourceProperties `json:"properties,omitempty"`
 }
 
-// CredentialResourceProperties - Credentials properties
+// CredentialResourceList - The list of credentials.
+type CredentialResourceList struct {
+	// The list of credentials.
+	Value []*CredentialResource `json:"value,omitempty"`
+}
+
+// CredentialResourceProperties - Credential properties
 type CredentialResourceProperties struct {
 	// REQUIRED; Credential kinds supported.
 	Kind *CredentialKind `json:"kind,omitempty"`
@@ -43,8 +49,18 @@ type CredentialResourcePropertiesStorage struct {
 	Kind *CredentialStorageKind `json:"kind,omitempty"`
 }
 
+// CredentialsClientDeleteOptions contains the optional parameters for the CredentialsClient.Delete method.
+type CredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
 // CredentialsClientGetOptions contains the optional parameters for the CredentialsClient.Get method.
 type CredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// CredentialsClientListOptions contains the optional parameters for the CredentialsClient.List method.
+type CredentialsClientListOptions struct {
 	// placeholder for future optional parameters
 }
 

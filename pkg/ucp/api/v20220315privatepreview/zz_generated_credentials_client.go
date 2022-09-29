@@ -52,6 +52,51 @@ pl: pl,
 	return client, nil
 }
 
+// Delete - Delete credential resource for this plane instance
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The type of the plane
+// planeName - The name of the plane
+// credentialName - The name of the credential
+// options - CredentialsClientDeleteOptions contains the optional parameters for the CredentialsClient.Delete method.
+func (client *CredentialsClient) Delete(ctx context.Context, planeType string, planeName string, credentialName string, options *CredentialsClientDeleteOptions) (CredentialsClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, planeName, credentialName, options)
+	if err != nil {
+		return CredentialsClientDeleteResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return CredentialsClientDeleteResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusNoContent) {
+		return CredentialsClientDeleteResponse{}, runtime.NewResponseError(resp)
+	}
+	return CredentialsClientDeleteResponse{}, nil
+}
+
+// deleteCreateRequest creates the Delete request.
+func (client *CredentialsClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *CredentialsClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	if credentialName == "" {
+		return nil, errors.New("parameter credentialName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
 // Get - Get name of the secret that is holding credentials for the plane instance
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
@@ -76,7 +121,7 @@ func (client *CredentialsClient) Get(ctx context.Context, planeType string, plan
 
 // getCreateRequest creates the Get request.
 func (client *CredentialsClient) getCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *CredentialsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}}/{planeName}/providers/System.Azure/credentials/{credentialName}"
+	urlPath := "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
@@ -102,6 +147,55 @@ func (client *CredentialsClient) getHandleResponse(resp *http.Response) (Credent
 	result := CredentialsClientGetResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.CredentialResource); err != nil {
 		return CredentialsClientGetResponse{}, err
+	}
+	return result, nil
+}
+
+// List - List the credentials for this plane instance
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The type of the plane
+// planeName - The name of the plane
+// options - CredentialsClientListOptions contains the optional parameters for the CredentialsClient.List method.
+func (client *CredentialsClient) List(ctx context.Context, planeType string, planeName string, options *CredentialsClientListOptions) (CredentialsClientListResponse, error) {
+	req, err := client.listCreateRequest(ctx, planeType, planeName, options)
+	if err != nil {
+		return CredentialsClientListResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return CredentialsClientListResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
+		return CredentialsClientListResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.listHandleResponse(resp)
+}
+
+// listCreateRequest creates the List request.
+func (client *CredentialsClient) listCreateRequest(ctx context.Context, planeType string, planeName string, options *CredentialsClientListOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/providers/System.Azure/credentials"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	if planeName == "" {
+		return nil, errors.New("parameter planeName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, nil
+}
+
+// listHandleResponse handles the List response.
+func (client *CredentialsClient) listHandleResponse(resp *http.Response) (CredentialsClientListResponse, error) {
+	result := CredentialsClientListResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.CredentialResourceList); err != nil {
+		return CredentialsClientListResponse{}, err
 	}
 	return result, nil
 }
