@@ -19,14 +19,20 @@ type ConnectorMetadata struct {
 	// Stores action to retrieve secret values. For Azure, connectionstring is accessed through cosmos listConnectionString operation, if secrets are not provided as input
 	SecretValues map[string]rp.SecretValueReference `json:"secretValues,omitempty"`
 
-	RecipeData RecipeData
+	RecipeData RecipeData `json:"recipeData,omitempty"`
 }
 
 type RecipeData struct {
-	RecipeProperty    RecipeProperty
+	RecipeProperties
 	APIVersion        string
 	AzureResourceType resources.KnownType
 	Resources         []string // Resource ids of the resources deployed by the recipe
+}
+
+type RecipeProperties struct {
+	ConnectorRecipe
+	ConnectorType string
+	TemplatePath  string
 }
 
 // ConnectorRecipe is the recipe details used to automatically deploy underlying infrastructure for a connector
@@ -35,9 +41,4 @@ type ConnectorRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
-}
-
-type RecipeProperty struct {
-	Recipe             ConnectorRecipe
-	RecipeTemplatePath string
 }

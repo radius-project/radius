@@ -36,9 +36,8 @@ type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 type RenderOptions struct {
-	Namespace           string
-	RecipeConnectorType string
-	RecipeProperty      datamodel.RecipeProperty
+	Namespace        string
+	RecipeProperties datamodel.RecipeProperties
 }
 
 type RendererOutput struct {
