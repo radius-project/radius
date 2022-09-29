@@ -52,28 +52,25 @@ const deplmtPrefix = "recipe"
 // templatePath - ACR path for the recipe
 // subscriptionID - The subscription ID to which the recipe will be deployed
 // resourceGroupName - the resource group where the recipe will be deployed
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperty) ([]string, error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipeProperty datamodel.RecipeProperty) ([]string, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, "recipe-handler")
 	// Deploy
 	logger.Info("Deploying recipe")
 
-	if recipe.RecipeTemplatePath == "" {
+	if recipeProperty.RecipeTemplatePath == "" {
 		return nil, fmt.Errorf("templatePath cannot be empty")
 	}
-	if recipe.Recipe.Parameters["subscriptionID"] == "" {
+	if recipeProperty.Recipe.Parameters["subscriptionID"] == "" {
 		return nil, fmt.Errorf("subscriptionID is missing in the recipe parameters")
 	}
-	if recipe.Recipe.Parameters["resourceGroup"] == "" {
+	if recipeProperty.Recipe.Parameters["resourceGroup"] == "" {
 		return nil, fmt.Errorf("resourceGroup is missing in the recipe parameters")
 	}
-	subscriptionID := recipe.Recipe.Parameters["subscriptionID"].(string)
-	resourceGroup := recipe.Recipe.Parameters["resourceGroup"].(string)
+	// TODO: Implement fetching the subscriptionID, resourceGroup from te environment
+	// place holders for the code to compile
+	var subscriptionID, resourceGroup string
 
-	logger.Info("resourceGroup - ", resourceGroup)
-	logger.Info("subscriptionID - ", subscriptionID)
-	logger.Info(fmt.Sprintf("recipe - %+v", recipe))
-
-	registryRepo, tag := strings.Split(recipe.RecipeTemplatePath, ":")[0], strings.Split(recipe.RecipeTemplatePath, ":")[1]
+	registryRepo, tag := strings.Split(recipeProperty.RecipeTemplatePath, ":")[0], strings.Split(recipeProperty.RecipeTemplatePath, ":")[1]
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
@@ -105,8 +102,9 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		deploymtName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
-				Template: recipeData,
-				Mode:     resources.DeploymentModeIncremental,
+				Template:   recipeData,
+				Parameters: recipeProperty.Recipe.Parameters,
+				Mode:       resources.DeploymentModeIncremental,
 			},
 		},
 	)
