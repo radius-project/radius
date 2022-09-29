@@ -561,7 +561,7 @@
         }
       },
       "CredentialResourceProperties": {
-        "description": "Credentials properties",
+        "description": "Credential properties",
         "type": "object",
         "required": [
           "kind",
