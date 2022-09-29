@@ -23,7 +23,7 @@ param username string = 'guest'
 
 @description('Specifies the RabbitMQ password.')
 @secure()
-param password string = newGuid()
+param password string 
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-rabbitmq'
