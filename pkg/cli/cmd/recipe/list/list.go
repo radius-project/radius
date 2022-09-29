@@ -23,8 +23,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "List environment recipes",
-		Long:    "List recipes linked to the Radius environment",
+		Short:   "List connector recipes",
+		Long:    "List connector recipes within an environment",
 		Example: `rad recipe list`,
 		RunE:    framework.RunCommand(runner),
 		Args:    cobra.ExactArgs(0),

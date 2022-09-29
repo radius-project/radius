@@ -25,8 +25,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Add a connector recipe to the environment.",
-		Long:    `Add a connector recipe to the environment.`,
+		Short:   "Add a connector recipe to an environment.",
+		Long:    `Add a connector recipe to an environment.`,
 		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --templatePath template_path --connectorType Applications.Connector/mongoDatabases`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
