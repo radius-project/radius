@@ -125,7 +125,7 @@ func Test_Run(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "Kubernetes", gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().
