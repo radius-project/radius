@@ -18,8 +18,6 @@ param adminUsername string = 'cooluser'
 @description('Specifies the SQL password.')
 param adminPassword string = 'p@ssw0rd'
 
-param resourceIdentifier string = newGuid()
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'
   location: location
@@ -63,7 +61,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
 }
 
 resource server 'Microsoft.Sql/servers@2021-02-01-preview' = {
-  name: 'mssql-${resourceIdentifier}'
+  name: 'mssql-${guid(resourceGroup().name)}'
   location: location
   tags: {
     radiustest: 'corerp-resources-microsoft-sql'

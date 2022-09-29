@@ -22,6 +22,7 @@ param rabbitmqPort int = 5672
 param username string = 'guest'
 
 @description('Specifies the RabbitMQ password.')
+@secure()
 param password string = 'guest'
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {

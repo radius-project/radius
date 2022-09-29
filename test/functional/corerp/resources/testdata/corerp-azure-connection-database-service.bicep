@@ -6,8 +6,6 @@ param environment string
 
 param location string = resourceGroup().location
 
-param resourceIdentifier string = newGuid()
-
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-azure-connection-database-service'
   location: 'global'
@@ -33,7 +31,7 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'dbacc-${resourceIdentifier}'
+  name: 'dbacc-${guid(resourceGroup().name)}'
   location: location
   kind: 'MongoDB'
   properties: {
