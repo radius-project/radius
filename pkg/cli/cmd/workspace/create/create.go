@@ -26,9 +26,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "create [envType]",
 		Short: "create workspace",
 		Long:  "Show details of the specified Radius resource",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  cobra.MaximumNArgs(2),
 		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
-	rad workspace create kubernetes -w myworkspace --context aks`,
+	rad workspace create kubernetes myworkspace --context aks`,
 		RunE: framework.RunCommand(runner),
 	}
 
@@ -36,7 +36,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().BoolP("force", "f", false, "Overwrite existing workspace if present")
-	cmd.Flags().StringP("kubecontext", "", "", "the Kubernetes context to use, will use the default if unset")
+	cmd.Flags().StringP("context", "c", "", "the Kubernetes context to use, will use the default if unset")
 
 	return cmd, runner
 }
@@ -67,12 +67,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	env, err := cmd.Flags().GetString("env")
+	env, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return err
 	}
 
-	workspaceName, err := cmd.Flags().GetString("workspace")
+	workspaceName, err := cli.ReadWorkspaceNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
@@ -99,22 +99,27 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Workspace = workspace
 	} else {
 		r.Workspace = &workspaces.Workspace{}
+		r.Workspace.Name = workspaceName
 	}
 
-	err = cli.RequireKubeContext(cmd)
+	context, err := cli.RequireKubeContext(cmd)
 	if err != nil {
 		return err
 	}
 
+	r.Workspace.Connection = map[string]interface{}{}
+	r.Workspace.Connection["context"] = context
+	r.Workspace.Connection["kind"] = args[0]
+
+	//we want to make sure we dont make a workspace which has environment in a different scope from workspace's scope
 	if group != "" {
 		r.Workspace.Scope = "/planes/radius/local/resourceGroups/" + group
+		if r.Workspace.Environment != "" && !strings.HasPrefix(r.Workspace.Environment, r.Workspace.Scope) && env == "" {
+			return fmt.Errorf("workspace is currently using an environment which is in different scope. use -e to specify an environment which is in the scope of this workspace. ")
+		}
 	}
 	if env != "" {
 		r.Workspace.Environment = r.Workspace.Scope + "/providers/applications.core/environments/" + env
-	}
-
-	if !strings.HasPrefix(r.Workspace.Environment, r.Workspace.Scope) {
-		return fmt.Errorf("Please use an environment which is in the scope of this workspace")
 	}
 
 	return nil

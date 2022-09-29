@@ -78,27 +78,27 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	return environmentName, err
 }
 
-func RequireKubeContext(cmd *cobra.Command) error {
-	kubecontext, err := cmd.Flags().GetString("kubecontext")
+func RequireKubeContext(cmd *cobra.Command) (string, error) {
+	kubecontext, err := cmd.Flags().GetString("context")
 	if err != nil {
-		return err
+		return "", err
 	}
 	// We validate the context and make sure we actually store a named context (not the empty string)
 	kubeconfig, err := kubernetes.ReadKubeConfig()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if kubecontext == "" && kubeconfig.CurrentContext == "" {
-		return errors.New("the kubeconfig has no current context")
+		return "", errors.New("the kubeconfig has no current context")
 	} else if kubecontext == "" {
 		kubecontext = kubeconfig.CurrentContext
 	}
 	_, ok := kubeconfig.Contexts[kubecontext]
 	if !ok {
-		return fmt.Errorf("the kubeconfig does not contain a context called %q", kubecontext)
+		return "", fmt.Errorf("the kubeconfig does not contain a context called %q", kubecontext)
 	}
 
-	return nil
+	return kubecontext, nil
 }
 
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
@@ -244,6 +244,19 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
+// RequireWorkspaceName is used by commands that require specifying a workspace name using flag or positional args
+func RequireWorkspaceName(cmd *cobra.Command, args []string) (string, error) {
+	workspace, err := ReadWorkspaceNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if workspace == "" {
+		return "", fmt.Errorf("workspace name is not provided or is empty ")
+	}
+
+	return workspace, nil
+}
+
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
 func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
 	group, err := ReadResourceGroupNameArgs(cmd, args)
@@ -302,11 +315,11 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 		return "", err
 	}
 
-	if len(args) > 1 {
+	if len(args) > 2 {
 		if name != "" {
 			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
 		}
-		name = args[0]
+		name = args[1]
 	}
 
 	return name, err

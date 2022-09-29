@@ -18,13 +18,14 @@ import (
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
+	workspace "github.com/project-radius/radius/pkg/cli/cmd/workspace"
+
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
-	"github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -47,8 +48,6 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
-var workspaceCmd = NewWorkspaceCommand()
-
 var ConfigHolderKey = NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
@@ -133,11 +132,11 @@ func initSubCommands() {
 	groupCmd := group.NewCommand(framework)
 	RootCmd.AddCommand(groupCmd)
 
+	workspaceCmd := workspace.NewCommand(framework)
+	RootCmd.AddCommand(workspaceCmd)
+
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
-
-	createCmd, _ := create.NewCommand(framework)
-	workspaceCmd.AddCommand(createCmd)
 
 }
 
