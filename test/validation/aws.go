@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -80,6 +81,7 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 
 func getResourceIdentifier(t *testing.T, resourceType string, name string) string {
 	creds := credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
+	fmt.Println("@@@@@@ AWS_ACCESS_KEY_ID" + os.Getenv("AWS_ACCESS_KEY_ID") + " AWS_SECRET_ACCESS_KEY" + os.Getenv("AWS_SECRET_ACCESS_KEY"))
 	awsConfig := awsclient.NewConfig().WithCredentials(creds).WithMaxRetries(3)
 	mySession, err := session.NewSession(awsConfig)
 	require.NoError(t, err)
