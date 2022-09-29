@@ -22,7 +22,8 @@ param sqlPort int = 1433
 param username string = 'sa'
 
 @description('Specifies the SQL password.')
-param password string = 'p@ssw0rd'
+@secure()
+param password string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-sql'
