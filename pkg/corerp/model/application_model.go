@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"k8s.io/client-go/kubernetes"
@@ -81,6 +82,16 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			ResourceType: gateway.ResourceType,
 			Renderer:     &gateway.Renderer{},
 		},
+	}
+
+	if arm != nil {
+		radiusResourceModel = append(radiusResourceModel, RadiusResourceModel{
+			ResourceType: volume.ResourceType,
+			Renderer: &volume.Renderer{
+				VolumeRenderers: volume.GetSupportedRenderers(),
+				Arm:             arm,
+			},
+		})
 	}
 
 	outputResourceModel := []OutputResourceModel{
