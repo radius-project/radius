@@ -3,26 +3,21 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package list
+package create
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
-	client_go "k8s.io/client-go/kubernetes"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -33,6 +28,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Short:   "Add a connector recipe to the environment.",
 		Long:    `Add a connector recipe to the environment.`,
 		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --templatePath template_path --connectorType Applications.Connector/mongoDatabases`,
+		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
 
@@ -51,11 +47,11 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
+	NameSpace         string
 	Format            string
 	TemplatePath      string
 	ConnectorType     string
 	RecipeName        string
-	ResourceGroupName string
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -98,11 +94,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.RecipeName = recipeName
 
-	scopeId, err := resources.ParseScope(workspace.Scope)
+	r.NameSpace, err = common.SelectNamespace(cmd, "default", false, nil)
 	if err != nil {
-		return err
+		return &cli.FriendlyError{Message: "Namespace not specified"}
 	}
-	r.ResourceGroupName = scopeId.FindScope(resources.ResourceGroupsSegment)
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -114,12 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
-	var contextName string
-	_, _, contextName, err := createKubernetesClients("")
-	if err != nil {
-		return err
-	}
-	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
 		return err
 	}
@@ -140,22 +130,11 @@ func (r *Runner) Run(ctx context.Context) error {
 			},
 		}
 	}
-	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(contextName, "")
-	if err != nil {
-		return fmt.Errorf("failed to create environment client: %w", err)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, envResource.Properties.Recipes)
+	if err != nil || !isEnvCreated {
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource with recipe: %s", err.Error())}
 	}
 
-	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", r.ResourceGroupName)
-
-	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, connections.GetClientOptions(baseURL, transporter))
-	if err != nil {
-		return fmt.Errorf("failed to create environment client: %w", err)
-	}
-
-	_, err = envClient.CreateOrUpdate(ctx, r.Workspace.Environment, envResource, nil)
-	if err != nil {
-		return fmt.Errorf("failed to update Applications.Core/environments resource with recipe: %w", err)
-	}
 	r.Output.LogInfo("Successfully linked recipe %q to environment %q ", r.RecipeName, r.Workspace.Environment)
 	return nil
 }
@@ -183,34 +162,4 @@ func requireRecipeName(cmd *cobra.Command) (string, error) {
 		return recipeName, err
 	}
 	return recipeName, nil
-}
-
-func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
-	}
-
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
-	}
-
-	client, _, err := kubernetes.CreateTypedClient(contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
 }

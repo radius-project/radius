@@ -257,14 +257,14 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 }
 
 // Creates a radius environment resource
-func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties) (bool, error) {
 	client, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
 
 	envCompute := corerp.KubernetesCompute{Kind: &envKind, Namespace: &namespace, ResourceID: &resourceId}
-	properties := corerp.EnvironmentProperties{Compute: &envCompute}
+	properties := corerp.EnvironmentProperties{Compute: &envCompute, Recipes: recipeProperties}
 	_, err = client.CreateOrUpdate(ctx, envName, corerp.EnvironmentResource{Location: &location, Properties: &properties}, &corerp.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return false, err

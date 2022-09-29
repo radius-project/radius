@@ -22,10 +22,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: "List environment recipes",
-		Long:  "List recipes linked to the Radius environment",
-		RunE:  framework.RunCommand(runner),
+		Use:     "list",
+		Short:   "List environment recipes",
+		Long:    "List recipes linked to the Radius environment",
+		Example: `rad recipe list`,
+		RunE:    framework.RunCommand(runner),
+		Args:    cobra.ExactArgs(0),
 	}
 
 	commonflags.AddOutputFlag(cmd)
@@ -40,9 +42,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
-	ApplicationName   string
 	Format            string
-	ResourceType      string
 }
 
 func NewRunner(factory framework.Factory) *Runner {
