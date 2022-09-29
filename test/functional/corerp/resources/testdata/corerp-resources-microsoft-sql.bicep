@@ -16,7 +16,7 @@ param environment string = 'test'
 param adminUsername string = 'cooluser'
 
 @description('Specifies the SQL password.')
-param adminPassword string = 'p@ssw0rd'
+param adminPassword string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'

@@ -23,7 +23,7 @@ param username string = 'sa'
 
 @description('Specifies the SQL password.')
 @secure()
-param password string = 'p@ssw0rd'
+param password string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-sql'
