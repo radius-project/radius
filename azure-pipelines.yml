@@ -160,7 +160,7 @@ stages:
         REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
         MSSQL_USERNAME: $(MSSQL_USERNAME)
         MSSQL_PASSWORD: $(MSSQL_PASSWORD)
-        STORAGE_TABLE_RESOURCE_ID: $(STORAGE_TABLE_RESOURCE_ID)
+        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
       displayName: run functional corerp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH

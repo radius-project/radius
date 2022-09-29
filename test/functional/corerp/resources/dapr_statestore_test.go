@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -59,12 +60,11 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 	name := "corerp-resources-dapr-statestore-tablestorage"
 
 	requiredSecrets := map[string]map[string]string{}
-	//tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("STORAGE_TABLE_RESOURCE_ID")
+	tablestorageresourceid := "tablestorageresourceid=" + os.Getenv("TABLESTORAGE_RESOURCE_ID")
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			//Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), tablestorageresourceid),
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), tablestorageresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
