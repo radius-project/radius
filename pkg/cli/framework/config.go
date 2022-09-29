@@ -60,11 +60,7 @@ func (i *ConfigFileInterfaceImpl) EditWorkspaces(ctx context.Context, config *vi
 		}
 
 		name := strings.ToLower(workspace.Name)
-		// Set the default workspace only if it is run for the first time
-		// Workspace switch should be used after
-		if section.Default == "" {
-			section.Default = name
-		}
+		section.Default = name
 		section.Items[name] = *workspace
 
 		return nil

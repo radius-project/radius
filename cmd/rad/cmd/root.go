@@ -45,7 +45,7 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
-var ConfigHolderKey = NewContextKey("config")
+var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {

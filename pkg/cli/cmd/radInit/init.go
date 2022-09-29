@@ -135,12 +135,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	r.Workspace = &workspaces.Workspace{
-		Name: r.KubeContext,
+		Name: r.EnvName,
 		Connection: map[string]interface{}{
 			"context": r.KubeContext,
 			"kind":    kubernetesKind, // we support only kubernetes for now
 		},
-		Environment: r.EnvName,
+		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", r.EnvName, r.EnvName),
 		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName),
 	}
 
@@ -221,7 +221,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
+	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
+	// We'll remove this in the future.
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
+	if err != nil {
+		return err
+	}
+
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
