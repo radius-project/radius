@@ -83,7 +83,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
 	if err != nil {
-		return awserror.HandleAWSError(err)
+		return awsclient.HandleAWSError(err)
 	}
 
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
