@@ -8,7 +8,6 @@ package framework
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -23,7 +22,7 @@ type Factory interface {
 	GetConfigHolder() *ConfigHolder
 	GetOutput() output.Interface
 	GetPrompter() prompt.Interface
-	GetConfigFileInterface() configFile.Interface
+	GetConfigFileInterface() ConfigFileInterface
 	GetKubernetesInterface() kubernetes.Interface
 	GetHelmInterface() helm.Interface
 }
@@ -33,7 +32,7 @@ type Impl struct {
 	ConfigHolder        *ConfigHolder
 	Output              output.Interface
 	Prompter            prompt.Interface
-	ConfigFileInterface configFile.Interface
+	ConfigFileInterface ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	HelmInterface       helm.Interface
 }
@@ -56,7 +55,7 @@ func (i *Impl) GetPrompter() prompt.Interface {
 }
 
 // Fetches the interface to interace with radius config file
-func (i *Impl) GetConfigFileInterface() configFile.Interface {
+func (i *Impl) GetConfigFileInterface() ConfigFileInterface {
 	return i.ConfigFileInterface
 }
 

@@ -7,6 +7,7 @@ package radInit
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
@@ -14,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
-	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -32,6 +32,10 @@ import (
 const (
 	Azure int = iota
 	AWS
+)
+
+const (
+	kubernetesKind = "kubernetes"
 )
 
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
@@ -69,7 +73,7 @@ type Runner struct {
 	RadiusInstalled        bool
 	Reinstall              bool
 	Prompter               prompt.Interface
-	ConfigFileInterface    configFile.Interface
+	ConfigFileInterface    framework.ConfigFileInterface
 	KubernetesInterface    kubernetes.Interface
 	HelmInterface          helm.Interface
 }
@@ -88,25 +92,18 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validates the user prompts, values provided and builds the picture for the backend to execute
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Workspace not specified"}
-	}
-	r.Workspace = workspace
-
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return &cli.FriendlyError{Message: "Output format not specified"}
 	}
 	r.Format = format
 
-	kubeContext, err := r.KubernetesInterface.GetKubeContext()
+	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
 
-	r.KubeContext, err = selectKubeContext(kubeContext.CurrentContext, kubeContext.Contexts, true, r.Prompter)
+	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
@@ -122,7 +119,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return &cli.FriendlyError{Message: "Unable to read reinstall prompt"}
 		}
-		if strings.ToLower(y)=="y" {
+		if strings.ToLower(y) == "y" {
 			r.Reinstall = true
 		}
 	}
@@ -137,10 +134,20 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "Namespace not specified"}
 	}
 
+	r.Workspace = &workspaces.Workspace{
+		Name: r.KubeContext,
+		Connection: map[string]interface{}{
+			"context": r.KubeContext,
+			"kind":    kubernetesKind, // we support only kubernetes for now
+		},
+		Environment: r.EnvName,
+		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName),
+	}
+
 	// This loop is required for adding multiple cloud providers
 	// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
 	addingAnotherProvider := "y"
-	for strings.ToLower(addingAnotherProvider) == "y" {
+	for strings.ToLower(addingAnotherProvider) == "y" && r.Reinstall {
 		var cloudProvider int
 		// This loop is required to move up a level when the user selects [back] as an option
 		// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
@@ -191,11 +198,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
+
+	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 	//TODO: Initialize cloud providers separately once providers commands are in
 	// If the user prompts for re-install, re-install and init providers
 	// If the user says no, then use the provider create/update operations to update the provider config.
 	// issue: https://github.com/project-radius/radius/issues/3440
-	if r.Reinstall {
+	if r.Reinstall || !r.RadiusInstalled {
 		// Install radius control plane
 		err := installRadius(ctx, r)
 		if err != nil {
@@ -206,7 +215,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-
+	//ignore the id of the resource group created
 	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
 	if err != nil || !isGroupCreated {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
@@ -217,7 +226,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
 
-	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvName)
+	err = r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, r.AzureCloudProvider)
 	if err != nil {
 		return err
 	}
@@ -261,7 +270,10 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		if err != nil {
 			return "", err
 		}
-
+		// if default is selected return currentContext as the value is appended with (current)
+		if index == 0 {
+			return currentContext, nil
+		}
 		return values[index], nil
 	}
 	return currentContext, nil

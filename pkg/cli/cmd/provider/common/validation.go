@@ -6,18 +6,15 @@
 package common
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func ValidateCloudProviderName(name string) error {
@@ -88,20 +85,4 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 		}
 	}
 	return val, nil
-}
-
-type contextKey string
-
-func NewContextKey(purpose string) contextKey {
-	return contextKey("radius context " + purpose)
-}
-
-// Fetches radius config from the viper context
-func ConfigFromContext(ctx context.Context) *viper.Viper {
-	holder := ctx.Value(NewContextKey("config")).(*framework.ConfigHolder)
-	if holder == nil {
-		return nil
-	}
-
-	return holder.Config
 }

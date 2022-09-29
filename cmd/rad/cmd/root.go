@@ -24,7 +24,6 @@ import (
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
-	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -105,7 +104,7 @@ func initSubCommands() {
 			Writer: RootCmd.OutOrStdout(),
 		},
 		Prompter:            &prompt.Impl{},
-		ConfigFileInterface: &configFile.Impl{},
+		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
 	}
@@ -150,14 +149,9 @@ func initConfig() {
 	ConfigHolder.Config = v
 }
 
-type contextKey string
-
-func NewContextKey(purpose string) contextKey {
-	return contextKey("radius context " + purpose)
-}
-
+//TODO: Deprecate once all the commands are moved to new framework
 func ConfigFromContext(ctx context.Context) *viper.Viper {
-	holder := ctx.Value(NewContextKey("config")).(*framework.ConfigHolder)
+	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
 	if holder == nil {
 		return nil
 	}
