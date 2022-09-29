@@ -78,6 +78,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
+			"provisioningState":    "Provisioning",
 		},
 	}
 
@@ -153,6 +154,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(180),
 			"ShardCount":           float64(4),
+			"provisioningState":    "Provisioning",
 		},
 	}
 
@@ -208,7 +210,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	res := w.Result()
-	require.Equal(t, http.StatusCreated, res.StatusCode)
+	require.Equal(t, http.StatusOK, res.StatusCode)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
 	defer res.Body.Close()
@@ -220,6 +222,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
+			"provisioningState":    "Succeeded",
 		},
 	}
 

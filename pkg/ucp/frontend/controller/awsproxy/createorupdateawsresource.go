@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -80,6 +81,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		return awserror.HandleAWSError(err)
 	}
 
+	var operation uuid.UUID
+	desiredState, err := json.Marshal(properties)
+	if err != nil {
+		return awserror.HandleAWSError(err)
+	}
+
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
 	// simulate that here.
 	responseProperties := map[string]interface{}{}
@@ -93,18 +100,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// Properties specified by users take precedence
 	for k, v := range properties {
 		responseProperties[k] = v
-	}
-
-	responseBody := map[string]interface{}{
-		"id":         id.String(),
-		"name":       id.Name(),
-		"type":       id.Type(),
-		"properties": responseProperties,
-	}
-	var operation uuid.UUID
-	desiredState, err := json.Marshal(properties)
-	if err != nil {
-		return awserror.HandleAWSError(err)
 	}
 
 	if existing {
@@ -144,9 +139,21 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
+		} else {
+			// mark provisioning state as succeeded here
+			// and return 200, telling the deployment engine that the resource has already been created
+			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
+			responseBody := map[string]interface{}{
+				"id":         id.String(),
+				"name":       id.Name(),
+				"type":       id.Type(),
+				"properties": responseProperties,
+			}
+
+			resp := radrprest.NewOKResponse(responseBody)
+			return resp, nil
 		}
 	} else {
-
 		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
@@ -159,6 +166,15 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
+	}
+
+	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
+
+	responseBody := map[string]interface{}{
+		"id":         id.String(),
+		"name":       id.Name(),
+		"type":       id.Type(),
+		"properties": responseProperties,
 	}
 
 	resp := radrprest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
