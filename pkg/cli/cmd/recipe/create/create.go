@@ -63,7 +63,7 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// Validate command line args and
+	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
 	if err != nil {
 		return err
@@ -117,22 +117,24 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	if envResource.Properties.Recipes != nil {
-		envResource.Properties.Recipes[r.RecipeName] = &coreRpApps.EnvironmentRecipeProperties{
+
+	recipeProperties := envResource.Properties.Recipes
+	if recipeProperties != nil {
+		recipeProperties[r.RecipeName] = &coreRpApps.EnvironmentRecipeProperties{
 			ConnectorType: &r.ConnectorType,
 			TemplatePath:  &r.TemplatePath,
 		}
 	} else {
-		envResource.Properties.Recipes = map[string]*coreRpApps.EnvironmentRecipeProperties{
+		recipeProperties = map[string]*coreRpApps.EnvironmentRecipeProperties{
 			r.RecipeName: {
 				ConnectorType: &r.ConnectorType,
 				TemplatePath:  &r.TemplatePath,
 			},
 		}
 	}
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, envResource.Properties.Recipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties)
 	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource with recipe: %s", err.Error())}
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
 	}
 
 	r.Output.LogInfo("Successfully linked recipe %q to environment %q ", r.RecipeName, r.Workspace.Environment)
