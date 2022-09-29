@@ -149,18 +149,18 @@ stages:
         kubectl create secret generic mysecret --from-literal=mysecret=mysecret
       condition: always()
       continueOnError: 'true'
-    - script: |
-        export PATH=$(Build.SourcesDirectory)/dist:$PATH
-        export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
-        make test-functional-corerp
-      displayName: run functional corerp tests
-    - script: |
-        export PATH=$(Build.SourcesDirectory)/dist:$PATH
-        export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/ucptest
-        make test-functional-ucp
-      displayName: run functional ucp tests
+    # - script: |
+    #     export PATH=$(Build.SourcesDirectory)/dist:$PATH
+    #     export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
+    #     export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
+    #     make test-functional-corerp
+    #   displayName: run functional corerp tests
+    # - script: |
+    #     export PATH=$(Build.SourcesDirectory)/dist:$PATH
+    #     export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
+    #     export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/ucptest
+    #     make test-functional-ucp
+    #   displayName: run functional ucp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
