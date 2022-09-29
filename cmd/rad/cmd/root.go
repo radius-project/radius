@@ -19,6 +19,8 @@ import (
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
+	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
+	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
@@ -43,6 +45,7 @@ var RootCmd = &cobra.Command{
 }
 
 var resourceCmd = NewResourceCommand()
+var recipeCmd = NewRecipeCommand()
 var ConfigHolderKey = NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
@@ -114,6 +117,12 @@ func initSubCommands() {
 
 	deleteCmd, _ := resource_delete.NewCommand(framework)
 	resourceCmd.AddCommand(deleteCmd)
+
+	listRecipeCmd, _ := recipe_list.NewCommand(framework)
+	recipeCmd.AddCommand(listRecipeCmd)
+
+	createRecipeCmd, _ := recipe_create.NewCommand(framework)
+	recipeCmd.AddCommand(createRecipeCmd)
 
 	providerCmd := provider.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)

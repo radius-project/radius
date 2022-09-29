@@ -7,7 +7,6 @@ package radInit
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/manifoldco/promptui"
@@ -24,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -200,7 +200,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "Kubernetes", "")
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
@@ -235,15 +235,15 @@ func installRadius(ctx context.Context, r *Runner) error {
 func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.Interface) (string, error) {
 	values := []string{}
 	if interactive {
-		defaultValue := fmt.Sprintf("%s (current)", currentContext)
-		values = append(values, defaultValue)
+		// Ensure current context is at the top as the default
+		values = append(values, currentContext)
 		for k := range kubeContexts {
 			if k != currentContext {
 				values = append(values, k)
 			}
 		}
 		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
-			"Select the kubeconfig context to install Radius installation",
+			"Select the kubeconfig context to install Radius into",
 			values,
 		))
 		if err != nil {
