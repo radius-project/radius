@@ -285,16 +285,16 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	}
 
 	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeConnectorType: "Applications.Connector/mongoDatabases",
-		RecipeProperty: datamodel.RecipeProperty{
-			Recipe: datamodel.ConnectorRecipe{
+		RecipeProperties: datamodel.RecipeProperties{
+			ConnectorRecipe: datamodel.ConnectorRecipe{
 				Name: "mongodb",
 			},
-			RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			ConnectorType: ResourceType,
 		}})
 	require.NoError(t, err)
-	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.RecipeProperty.Recipe.Name)
-	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.RecipeProperty.RecipeTemplatePath)
+	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
+	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
 	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
@@ -324,14 +324,14 @@ func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
 	}
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
-		RecipeConnectorType: "Applications.Connector/redisCaches",
-		RecipeProperty: datamodel.RecipeProperty{
-			Recipe: datamodel.ConnectorRecipe{
+		RecipeProperties: datamodel.RecipeProperties{
+			ConnectorRecipe: datamodel.ConnectorRecipe{
 				Name: "mongodb",
 			},
-			RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			ConnectorType: "Applications.Connector/redisCaches",
 		}})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the connector resource type must match the Recipe Connector type.", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, "connector type \"Applications.Connector/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Connector/mongoDatabases\" resource type. Recipe connector type must match connector resource type.", err.(*conv.ErrClientRP).Message)
 }

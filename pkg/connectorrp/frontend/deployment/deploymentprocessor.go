@@ -152,13 +152,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	updatedOutputResources := []outputresource.OutputResource{}
 	computedValues := make(map[string]interface{})
 
-	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties)
-		if err != nil {
-			return DeploymentOutput{}, err
-		}
-		rendererOutput.RecipeData.Resources = deployedRecipeResources
-	}
 	for _, outputResource := range orderedOutputResources {
 		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
 		if err != nil {
@@ -172,6 +165,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 				computedValues[k] = computedValue
 			}
 		}
+	}
+
+	if rendererOutput.RecipeData.Name != "" {
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties)
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
+		rendererOutput.RecipeData.Resources = deployedRecipeResources
 	}
 
 	// Update static values for connections
@@ -328,9 +329,9 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
 		}
+
 		// Find resource that matches the expected Azure resource type
-		err = parsedID.ValidateResourceType(recipeData.AzureResourceType)
-		if err == nil {
+		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
 			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
 			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
 		}

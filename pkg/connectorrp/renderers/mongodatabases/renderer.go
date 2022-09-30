@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
@@ -78,9 +79,8 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	}
 
 	recipeData := datamodel.RecipeData{
-		RecipeProperties:  options.RecipeProperties,
-		APIVersion:        clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-		AzureResourceType: AzureCosmosMongoResourceType,
+		RecipeProperties: options.RecipeProperties,
+		APIVersion:       clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 	}
 
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
@@ -173,9 +173,10 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
 		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:       cosmosAccountDependency.LocalID,
-			Action:        "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			ValueSelector: "/connectionStrings/0/connectionString",
+			LocalID:              cosmosAccountDependency.LocalID,
+			Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			ValueSelector:        "/connectionStrings/0/connectionString",
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 			Transformer: resourcemodel.ResourceType{
 				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureCosmosDBMongo,

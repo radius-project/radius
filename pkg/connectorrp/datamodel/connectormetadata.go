@@ -7,7 +7,6 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // ConnectorMetadata represents internal DataModel properties common to all connector types.
@@ -24,9 +23,8 @@ type ConnectorMetadata struct {
 
 type RecipeData struct {
 	RecipeProperties
-	APIVersion        string
-	AzureResourceType resources.KnownType
-	Resources         []string // Resource ids of the resources deployed by the recipe
+	APIVersion string
+	Resources  []string // Resource ids of the resources deployed by the recipe
 }
 
 type RecipeProperties struct {
