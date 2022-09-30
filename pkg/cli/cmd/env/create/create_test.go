@@ -109,7 +109,7 @@ func Test_Run(t *testing.T) {
 		testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		namespaceClient.EXPECT().
-			ValidateNamespace(context.Background(), k8sGoClient, "default").
+			ValidateNamespace(context.Background(), gomock.Any(), "default").
 			Return(nil).Times(1)
 
 		appManagementClient.EXPECT().
@@ -117,7 +117,7 @@ func Test_Run(t *testing.T) {
 			Return(testResourceGroup, nil)
 
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any()).
+			CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface := configFile.NewMockInterface(ctrl)

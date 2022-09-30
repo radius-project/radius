@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	env_common "github.com/project-radius/radius/pkg/cli/cmd/env/common"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
@@ -151,7 +150,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 		output.CompleteStep(step)
-		k8sGoClient, _, _, err = env_common.CreateKubernetesClients(cluster.ContextName)
+		k8sGoClient, _, _, err = kubernetes.CreateKubernetesClients(cluster.ContextName)
 		if err != nil {
 			return err
 		}
@@ -164,7 +163,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 
 	case Kubernetes:
-		k8sGoClient, _, contextName, err = env_common.CreateKubernetesClients("")
+		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
 		if err != nil {
 			return err
 		}

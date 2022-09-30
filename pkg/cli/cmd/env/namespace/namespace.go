@@ -21,6 +21,6 @@ type Impl struct {
 }
 
 // Ensure sure namespace is available
-func (*Impl) ValidateNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
+func (i *Impl) ValidateNamespace(ctx context.Context, client k8s.Interface, namespace string) error {
 	return kubernetes.EnsureNamespace(ctx, client, namespace)
 }

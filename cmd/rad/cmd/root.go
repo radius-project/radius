@@ -50,7 +50,7 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
-var envCreateCmd = NewEnvironmentCommand()
+var envCmd = NewEnvironmentCommand()
 
 var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}

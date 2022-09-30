@@ -40,6 +40,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli/output"
+	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
@@ -408,6 +409,37 @@ func CreateAPIServerTransporter(kubeContext string, overrideURL string) (string,
 	}
 
 	return baseURL, &KubernetesTransporter{Client: roundTripper}, nil
+}
+
+// Creating a Kubernetes client
+func CreateKubernetesClients(contextName string) (k8s.Interface, runtime_client.Client, string, error) {
+	k8sConfig, err := ReadKubeConfig()
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	if contextName == "" && k8sConfig.CurrentContext == "" {
+		return nil, nil, "", errors.New("no kubernetes context is set")
+	} else if contextName == "" {
+		contextName = k8sConfig.CurrentContext
+	}
+
+	context := k8sConfig.Contexts[contextName]
+	if context == nil {
+		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
+	}
+
+	client, _, err := CreateTypedClient(contextName)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	runtimeClient, err := CreateRuntimeClient(contextName, Scheme)
+	if err != nil {
+		return nil, nil, "", err
+	}
+
+	return client, runtimeClient, contextName, nil
 }
 
 //go:generate mockgen -destination=./mock_kubernetes.go -package=kubernetes -self_package github.com/project-radius/radius/pkg/cli/kubernetes github.com/project-radius/radius/pkg/cli/kubernetes Interface

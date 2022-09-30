@@ -9,12 +9,12 @@ import (
 	"context"
 	"fmt"
 
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/env/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -62,15 +62,9 @@ type Runner struct {
 }
 
 func NewRunner(factory framework.Factory) *Runner {
-	k8sGoClient, _, _, err := common.CreateKubernetesClients("")
-	if err != nil {
-		fmt.Println(err)
-	}
-
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
 		Output:              factory.GetOutput(),
-		K8sGoClient:         k8sGoClient,
 		ConnectionFactory:   factory.GetConnectionFactory(),
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
@@ -120,6 +114,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	r.K8sGoClient, _, _, err = kubernetes.CreateKubernetesClients("")
+	if err != nil {
+		return err
+	}
 	err = r.NamespaceInterface.ValidateNamespace(ctx, r.K8sGoClient, r.Namespace)
 	if err != nil {
 		return err
@@ -134,7 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("Creating Environment...")
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "")
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
 	if err != nil || !isEnvCreated {
 		return err
 	}
