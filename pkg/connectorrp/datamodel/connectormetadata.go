@@ -23,8 +23,13 @@ type ConnectorMetadata struct {
 
 type RecipeData struct {
 	RecipeProperties
+
+	// API version to use to perform operations on resources supported by the connector.
+	// For example for Azure resources, every service has different REST API version that must be specified in the request.
 	APIVersion string
-	Resources  []string // Resource ids of the resources deployed by the recipe
+
+	// Resource ids of the resources deployed by the recipe
+	Resources []string
 }
 
 type RecipeProperties struct {
