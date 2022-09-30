@@ -12,6 +12,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -26,7 +27,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "create [envType]",
 		Short: "create workspace",
 		Long:  "Show details of the specified Radius resource",
-		Args:  cobra.MaximumNArgs(2),
+		Args:  cobra.RangeArgs(1, 2),
 		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
 	rad workspace create kubernetes myworkspace --context aks`,
 		RunE: framework.RunCommand(runner),
@@ -42,16 +43,20 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder      *framework.ConfigHolder
-	ConnectionFactory connections.Factory
-	Workspace         *workspaces.Workspace
-	Force             bool
+	ConfigHolder        *framework.ConfigHolder
+	ConnectionFactory   connections.Factory
+	Workspace           *workspaces.Workspace
+	Force               bool
+	ConfigFileInterface configFile.Interface
+	Output              output.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConnectionFactory: factory.GetConnectionFactory(),
-		ConfigHolder:      factory.GetConfigHolder(),
+		ConnectionFactory:   factory.GetConnectionFactory(),
+		ConfigHolder:        factory.GetConfigHolder(),
+		ConfigFileInterface: factory.GetConfigFileInterface(),
+		Output:              factory.GetOutput(),
 	}
 }
 
@@ -60,16 +65,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	if args[0] != "kubernetes" {
 		return fmt.Errorf("currently we support only kubernetes")
-	}
-
-	group, err := cmd.Flags().GetString("group")
-	if err != nil {
-		return err
-	}
-
-	env, err := cmd.Flags().GetString("environment")
-	if err != nil {
-		return err
 	}
 
 	workspaceName, err := cli.ReadWorkspaceNameArgs(cmd, args)
@@ -88,7 +83,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if !force && workspaceExists {
-		return fmt.Errorf("Workspace exists. Please specify --force to overwrite")
+		return fmt.Errorf("workspace exists. please specify --force to overwrite")
 	}
 
 	if workspaceExists {
@@ -111,11 +106,21 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace.Connection["context"] = context
 	r.Workspace.Connection["kind"] = args[0]
 
+	group, err := cmd.Flags().GetString("group")
+	if err != nil {
+		return err
+	}
+
+	env, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return err
+	}
+
 	//we want to make sure we dont make a workspace which has environment in a different scope from workspace's scope
 	if group != "" {
 		r.Workspace.Scope = "/planes/radius/local/resourceGroups/" + group
 		if r.Workspace.Environment != "" && !strings.HasPrefix(r.Workspace.Environment, r.Workspace.Scope) && env == "" {
-			return fmt.Errorf("workspace is currently using an environment which is in different scope. use -e to specify an environment which is in the scope of this workspace. ")
+			return fmt.Errorf("workspace is currently using an environment which is in different scope. use -e to specify an environment which is in the scope of this workspace")
 		}
 	}
 	if env != "" {
@@ -127,22 +132,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 func (r *Runner) Run(ctx context.Context) error {
 
-	step := output.BeginStep("Creating Workspace...")
-
-	err := cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
-		workspace := r.Workspace
-		name := strings.ToLower(workspace.Name)
-		section.Default = name
-		section.Items[name] = *workspace
-
-		return nil
-	})
+	r.Output.LogInfo("creating workspace...")
+	err := r.ConfigFileInterface.UpdateWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace)
 	if err != nil {
 		return err
 	}
-
 	output.LogInfo("Set %q as current workspace", r.Workspace.Name)
-	output.CompleteStep(step)
 
 	return nil
 }

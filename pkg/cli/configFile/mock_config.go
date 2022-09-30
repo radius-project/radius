@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	workspaces "github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 // MockInterface is a mock of Interface interface.
@@ -34,16 +35,30 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
-// EditWorkspaces mocks base method.
-func (m *MockInterface) EditWorkspaces(arg0 context.Context, arg1, arg2, arg3 string) error {
+// EditWorkspacesByName mocks base method.
+func (m *MockInterface) EditWorkspacesByName(arg0 context.Context, arg1, arg2, arg3 string) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "EditWorkspaces", arg0, arg1, arg2, arg3)
+	ret := m.ctrl.Call(m, "EditWorkspacesByName", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// EditWorkspaces indicates an expected call of EditWorkspaces.
-func (mr *MockInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+// EditWorkspacesByName indicates an expected call of EditWorkspacesByName.
+func (mr *MockInterfaceMockRecorder) EditWorkspacesByName(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockInterface)(nil).EditWorkspaces), arg0, arg1, arg2, arg3)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspacesByName", reflect.TypeOf((*MockInterface)(nil).EditWorkspacesByName), arg0, arg1, arg2, arg3)
+}
+
+// UpdateWorkspaces mocks base method.
+func (m *MockInterface) UpdateWorkspaces(arg0 context.Context, arg1 string, arg2 *workspaces.Workspace) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateWorkspaces", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// UpdateWorkspaces indicates an expected call of UpdateWorkspaces.
+func (mr *MockInterfaceMockRecorder) UpdateWorkspaces(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkspaces", reflect.TypeOf((*MockInterface)(nil).UpdateWorkspaces), arg0, arg1, arg2)
 }

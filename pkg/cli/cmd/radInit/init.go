@@ -205,7 +205,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
 
-	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvName)
+	err = r.ConfigFileInterface.EditWorkspacesByName(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvName)
 	if err != nil {
 		return err
 	}

@@ -131,7 +131,7 @@ func Test_Run(t *testing.T) {
 
 		configFileInterface := configFile.NewMockInterface(ctrl)
 		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), "filePath", "defaultWorkspace", "default").
+			EditWorkspacesByName(context.Background(), "filePath", "defaultWorkspace", "default").
 			Return(nil).Times(1)
 
 		outputSink := &output.MockOutput{}
