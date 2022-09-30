@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
@@ -23,17 +25,15 @@ import (
 	"oras.land/oras-go/v2/registry/remote"
 )
 
-// RecipeHandler is an interface for the recipe to deploy
-//
+const deploymentPrefix = "recipe"
+
+// RecipeHandler is an interface to deploy and delete recipe resources
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperty) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties) ([]string, error)
 	Delete(ctx context.Context, id string, apiVersion string) error
 }
 
-// NewRecipeHandler creates a recipe handler
-// parameters:
-// ArmConfig which has the arm authoriser
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
 	return &azureRecipeHandler{
 		arm: arm,
@@ -44,65 +44,62 @@ type azureRecipeHandler struct {
 	arm *armauth.ArmConfig
 }
 
-const deplmtPrefix = "recipe"
-
-// DeployRecipe fetches the recipe ARM JSON template from ACR - Azure Container Registry and deploys it.
-// Parameters:
-// ctx - context
-// templatePath - ACR path for the recipe
-// subscriptionID - The subscription ID to which the recipe will be deployed
-// resourceGroupName - the resource group where the recipe will be deployed
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperty) ([]string, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, "recipe-handler")
-	// Deploy
-	logger.Info("Deploying recipe")
-
-	if recipe.RecipeTemplatePath == "" {
-		return nil, fmt.Errorf("templatePath cannot be empty")
+// DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath.
+// Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
+// Returns resource IDs of the resources deployed by the template
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties) (deployedResources []string, err error) {
+	if recipe.TemplatePath == "" {
+		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
-	if recipe.Recipe.Parameters["subscriptionID"] == "" {
-		return nil, fmt.Errorf("subscriptionID is missing in the recipe parameters")
-	}
-	if recipe.Recipe.Parameters["resourceGroup"] == "" {
-		return nil, fmt.Errorf("resourceGroup is missing in the recipe parameters")
-	}
-	subscriptionID := recipe.Recipe.Parameters["subscriptionID"].(string)
-	resourceGroup := recipe.Recipe.Parameters["resourceGroup"].(string)
 
-	logger.Info("resourceGroup - ", resourceGroup)
-	logger.Info("subscriptionID - ", subscriptionID)
-	logger.Info(fmt.Sprintf("recipe - %+v", recipe))
+	if recipe.Parameters[azresources.SubscriptionIDKey] == "" {
+		return nil, conv.NewClientErrInvalidRequest("subscriptionID for recipe deployment must be provided in the recipe parameters")
+	}
 
-	registryRepo, tag := strings.Split(recipe.RecipeTemplatePath, ":")[0], strings.Split(recipe.RecipeTemplatePath, ":")[1]
+	if recipe.Parameters[azresources.ResourceGroupKey] == "" {
+		return nil, conv.NewClientErrInvalidRequest("resourceGroup for recipe deployment must be provided in the recipe parameters")
+	}
+
+	subscriptionID := recipe.Parameters[azresources.SubscriptionIDKey].(string)
+	resourceGroup := recipe.Parameters[azresources.ResourceGroupKey].(string)
+
+	logger := radlogger.GetLogger(ctx).WithValues(
+		radlogger.LogFieldResourceGroup, resourceGroup,
+		radlogger.LogFieldSubscriptionID, subscriptionID,
+	)
+	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
+
+	registryRepo, tag := strings.Split(recipe.TemplatePath, ":")[0], strings.Split(recipe.TemplatePath, ":")[1]
 	// get the recipe from ACR
 	// client to the ACR repository in the templatePath
 	repo, err := remote.NewRepository(registryRepo)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
+
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch recipe manifest from registry %s", err.Error())
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
+
 	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch recipe template from registry %s", err.Error())
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
+
 	recipeData := make(map[string]interface{})
 	err = json.Unmarshal(recipeBytes, &recipeData)
 	if err != nil {
 		return nil, err
 	}
 
-	// create a ARM Deployment Client
-	// deploy the ARM JSON template fetched from ACR
+	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
-	deploymtName := deplmtPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
-
+	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
 	dplResp, err := dClient.CreateOrUpdate(
 		ctx,
 		resourceGroup,
-		deploymtName,
+		deploymentName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
 				Template: recipeData,
@@ -113,25 +110,28 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	if err != nil {
 		return nil, err
 	}
+
 	err = dplResp.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
 	if err != nil {
 		return nil, err
 	}
 
-	// get the outputResources id from the recipe deployment CreateOrUpdate response
 	resp, err := dplResp.Result(dClient)
 	if err != nil {
 		return nil, err
 	}
+
 	// return error if the Provisioning is not success
 	if resp.Properties.ProvisioningState != resources.ProvisioningStateSucceeded {
-		return nil, fmt.Errorf("failed to deploy recipe - %s", deploymtName)
+		return nil, fmt.Errorf("failed to deploy the recipe %q, template path: %q, deployment: %q", recipe.Name, recipe.TemplatePath, deploymentName)
 	}
-	var result []string
+
+	// Get list of output resources deployed
 	for _, id := range *resp.Properties.OutputResources {
-		result = append(result, *id.ID)
+		deployedResources = append(deployedResources, *id.ID)
 	}
-	return result, nil
+
+	return deployedResources, nil
 }
 
 // getDigestFromManifest gets the layers digest from the manifest
@@ -190,6 +190,7 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 }
 
 func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
+	logger := radlogger.GetLogger(ctx)
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return err
@@ -201,6 +202,7 @@ func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVer
 		if !clients.Is404Error(err) {
 			return fmt.Errorf("failed to delete resource %q: %w", id, err)
 		}
+		logger.Info(fmt.Sprintf("Recipe resource %s does not exist: %s", id, err.Error()))
 	}
 	return nil
 }

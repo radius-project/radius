@@ -18,6 +18,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
@@ -133,8 +134,9 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 			renderers.ConnectionStringValue: {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-				Action:        "listConnectionStrings",
-				ValueSelector: "/connectionStrings/0/connectionString",
+				Action:               "listConnectionStrings",
+				ValueSelector:        "/connectionStrings/0/connectionString",
+				ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 				Transformer: resourcemodel.ResourceType{
 					Provider: resourcemodel.ProviderAzure,
 					Type:     resourcekinds.AzureCosmosDBMongo,
@@ -147,15 +149,14 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 			},
 		},
 		RecipeData: datamodel.RecipeData{
-			RecipeProperty: datamodel.RecipeProperty{
-				Recipe: datamodel.ConnectorRecipe{
+			RecipeProperties: datamodel.RecipeProperties{
+				ConnectorRecipe: datamodel.ConnectorRecipe{
 					Name:       testResource.Properties.Recipe.Name,
 					Parameters: testResource.Properties.Recipe.Parameters,
 				},
-				RecipeTemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
-			APIVersion:        clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-			AzureResourceType: mongodatabases.AzureCosmosMongoResourceType,
+			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 		},
 	}
 
@@ -647,7 +648,8 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
-		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
+		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
 		resourceID, _, testRendererOutput := buildTestMongoRecipe()
@@ -900,15 +902,15 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
-		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
 		resourceID, _, rendererOutput := buildTestMongoRecipe()
 		resourceData := ResourceData{
 			ID: resourceID,
 			RecipeData: datamodel.RecipeData{
-				RecipeProperty:    rendererOutput.RecipeData.RecipeProperty,
-				APIVersion:        rendererOutput.RecipeData.APIVersion,
-				Resources:         []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
-				AzureResourceType: rendererOutput.RecipeData.AzureResourceType,
+				RecipeProperties: rendererOutput.RecipeData.RecipeProperties,
+				APIVersion:       rendererOutput.RecipeData.APIVersion,
+				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 			},
 		}
 		err := dp.Delete(ctx, resourceData)

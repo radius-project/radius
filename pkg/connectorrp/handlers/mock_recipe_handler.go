@@ -50,7 +50,7 @@ func (mr *MockRecipeHandlerMockRecorder) Delete(arg0, arg1, arg2 interface{}) *g
 }
 
 // DeployRecipe mocks base method.
-func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel.RecipeProperty) ([]string, error) {
+func (m *MockRecipeHandler) DeployRecipe(arg0 context.Context, arg1 datamodel.RecipeProperties) ([]string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeployRecipe", arg0, arg1)
 	ret0, _ := ret[0].([]string)
