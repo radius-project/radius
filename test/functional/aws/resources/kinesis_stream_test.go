@@ -13,9 +13,9 @@ import (
 	"github.com/project-radius/radius/test/validation"
 )
 
-func Test_MemoryDB_Cluster(t *testing.T) {
-	template := "testdata/aws-memorydb.bicep"
-	name := "my-test-cluster"
+func Test_KinesisStream(t *testing.T) {
+	template := "testdata/aws-kinesis.bicep"
+	name := "my-stream"
 
 	test := awstest.NewAWSTest(t, name, []awstest.TestStep{
 		{
@@ -24,7 +24,7 @@ func Test_MemoryDB_Cluster(t *testing.T) {
 				Resources: []validation.AWSResource{
 					{
 						Name: name,
-						Type: validation.MemoryDBResourceType,
+						Type: validation.KinesisResourceType,
 					},
 				},
 			},

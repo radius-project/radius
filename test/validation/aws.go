@@ -23,7 +23,7 @@ import (
 )
 
 const (
-	MemoryDBResourceType = "AWS.MemoryDB/Cluster"
+	KinesisResourceType = "AWS.Kinesis/Stream"
 )
 
 type AWSResource struct {
