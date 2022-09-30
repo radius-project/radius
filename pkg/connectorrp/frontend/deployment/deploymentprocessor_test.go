@@ -648,7 +648,8 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
-		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
+		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
 		resourceID, _, testRendererOutput := buildTestMongoRecipe()
@@ -901,14 +902,15 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
-		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
 		resourceID, _, rendererOutput := buildTestMongoRecipe()
 		resourceData := ResourceData{
 			ID: resourceID,
 			RecipeData: datamodel.RecipeData{
 				RecipeProperties: rendererOutput.RecipeData.RecipeProperties,
 				APIVersion:       rendererOutput.RecipeData.APIVersion,
-				Resources:        []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 			},
 		}
 		err := dp.Delete(ctx, resourceData)
