@@ -7,7 +7,6 @@ package configFile
 
 import (
 	"context"
-	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -32,12 +31,7 @@ func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceNam
 
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(workspaceName)]
-		// scopeId, err := resources.Parse(ws.Scope)
-		// if err != nil {
-		// 	return err
-		// }
-
-		envID := fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroup, "Applications.Core/environments/", environmentName)
+		envID := "/planes/radius/local/resourceGroups/" + resourceGroup + "/Applications.Core/environments/" + environmentName
 		ws.Environment = envID
 		section.Items[strings.ToLower(workspaceName)] = ws
 		return nil

@@ -18,8 +18,8 @@ func init() {
 func NewEnvironmentCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "env",
-		Short: "Manage RAD environment",
-		Long: `The environment is a local configuration entry that stores the connection information for a Radius installation.
-		You can use environments to store all of the Radius installations you interact with, and easily switch between them.`,
+		Short: "Manage Radius environments",
+		Long: `Manage Radius environments
+Radius environments are prepared “landing zones” for Radius applications. Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
 	}
 }

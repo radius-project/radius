@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
@@ -62,7 +63,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid namespace",
-			Input:         []string{"-n", "invalidnamespace"}, // TODO
+			Input:         []string{"-n", "invalidnamespace"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -71,7 +72,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid workspace",
-			Input:         []string{"-w", "invalidworkspace"}, // TODO
+			Input:         []string{"-w", "invalidworkspace"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -80,7 +81,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create command with invalid resource group",
-			Input:         []string{"-g", "invalidresourcegroup"}, // TODO
+			Input:         []string{"-g", "invalidresourcegroup"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -92,7 +93,6 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	// TODO add failure cases
 	t.Run("Run env create", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -106,14 +106,15 @@ func Test_Run(t *testing.T) {
 				},
 			})
 
+		testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
 		namespaceClient := namespace.NewMockInterface(ctrl)
 		namespaceClient.EXPECT().
 			ValidateNamespace(context.Background(), k8sGoClient, "default").
 			Return(nil).Times(1)
 
 		appManagementClient.EXPECT().
-			CheckUCPGroupExistence(context.Background(), "radius", "local", "default").
-			Return(true, nil).Times(1)
+			ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "default").
+			Return(testResourceGroup, nil)
 
 		appManagementClient.EXPECT().
 			CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any()).

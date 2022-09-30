@@ -7,16 +7,14 @@ package create
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
-
 	client_go "k8s.io/client-go/kubernetes"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/common"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -31,9 +29,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "create environment",
-		Short:   "create environment",
-		Long:    "Create a new Radius environment",
+		Use:   "Create a new environment",
+		Short: "Create a new environment",
+		Long: `Create a new Radius environment
+		Radius environments are prepared “landing zones” for Radius applications.
+		Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
 		Args:    cobra.MinimumNArgs(1),
 		Example: `rad env create myenv`,
 		RunE:    framework.RunCommand(runner),
@@ -48,14 +48,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder     *framework.ConfigHolder
-	Output           output.Interface
-	Workspace        *workspaces.Workspace
-	EnvironmentName  string
-	UCPResourceGroup string
-	Namespace        string
-	K8sGoClient      client_go.Interface
-	//	KubeContext         string
+	ConfigHolder        *framework.ConfigHolder
+	Output              output.Interface
+	Workspace           *workspaces.Workspace
+	EnvironmentName     string
+	UCPResourceGroup    string
+	Namespace           string
+	K8sGoClient         client_go.Interface
 	ConnectionFactory   connections.Factory
 	ConfigFileInterface configFile.Interface
 	KubernetesInterface kubernetes.Interface
@@ -63,7 +62,7 @@ type Runner struct {
 }
 
 func NewRunner(factory framework.Factory) *Runner {
-	k8sGoClient, _, _, err := CreateKubernetesClients("")
+	k8sGoClient, _, _, err := common.CreateKubernetesClients("")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -112,26 +111,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
 	}
 
-	// kubeconfig, err := kubernetes.ReadKubeConfig()
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if kubeconfig.CurrentContext == "" {
-
-	// 	return fmt.Errorf("the kubeconfig has no current context")
-	// }
-
-	// r.KubeContext = kubeconfig.CurrentContext
-	// isRadiusInstalled, err := helm.CheckRadiusInstall(r.KubeContext)
-	// if err != nil {
-	// 	return err
-	// }
-
-	// if !isRadiusInstalled {
-	// 	return fmt.Errorf("unable to reach workspace %s. Check your workspace configuration and try again", r.Workspace.Name)
-	// }
-
 	return nil
 }
 
@@ -146,10 +125,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	isUCPGroupValid, err := client.CheckUCPGroupExistence(ctx, "radius", "local", r.UCPResourceGroup)
+	_, err = client.ShowUCPGroup(ctx, "radius", "local", r.UCPResourceGroup)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
-	} else if err != nil || !isUCPGroupValid {
+	} else if err != nil {
 		return err
 	}
 
@@ -168,34 +147,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Set %q as current environment for workspace %q", r.EnvironmentName, r.Workspace.Name)
 
 	return nil
-}
-
-func CreateKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
-	}
-
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
-	}
-
-	client, _, err := kubernetes.CreateTypedClient(contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
 }

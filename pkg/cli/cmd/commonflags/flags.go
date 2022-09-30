@@ -39,5 +39,5 @@ func AddEnvironmentNameFlag(cmd *cobra.Command) {
 }
 
 func AddNamespaceFlag(cmd *cobra.Command) {
-	cmd.Flags().StringP("namespace", "n", "", "The namespace")
+	cmd.Flags().StringP("namespace", "n", "", "The Kubernetes namespace")
 }

@@ -140,7 +140,6 @@ type ApplicationsManagementClient interface {
 	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
 	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220315privatepreview.ResourceGroupResource, error)
 	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220315privatepreview.ResourceGroupResource, error)
-	CheckUCPGroupExistence(ctx context.Context, planeType string, planeName string, rgName string) (bool, error)
 }
 
 //go:generate mockgen -destination=./mock_cloudproviderclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CloudProviderManagementClient
