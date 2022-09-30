@@ -63,13 +63,13 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 			RequestToken: deleteOutput.ProgressEvent.RequestToken,
 		})
 		require.NoError(t, err)
-		if getRequestStatus.ProgressEvent.OperationStatus == types.OperationStatusSuccess {
+		if getRequestStatus.ProgressEvent.OperationStatus != types.OperationStatusInProgress {
+			require.Equal(t, types.OperationStatusSuccess, getRequestStatus.ProgressEvent.OperationStatus, "Delete operation failed")
 			break
 		}
 		time.Sleep(10 * time.Second)
 	}
 	require.Less(t, i, maxRetries, "Delete operation timed out")
-
 	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,
