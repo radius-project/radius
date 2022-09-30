@@ -78,8 +78,7 @@ func (at AWSTest) Test(t *testing.T) {
 	cfg.ClientLogMode |= aws.LogRequestWithBody
 	cfg.ClientLogMode |= aws.LogResponseWithBody
 
-	var client awsclient.AWSClient
-	client = cloudcontrol.NewFromConfig(cfg)
+	var client awsclient.AWSClient = cloudcontrol.NewFromConfig(cfg)
 
 	// Capture all logs from all pods (only run one of these as it will monitor everything)
 	// Each of our tests are isolated, so they can run in parallel.
