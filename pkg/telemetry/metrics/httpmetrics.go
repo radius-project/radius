@@ -9,9 +9,10 @@ import (
 	"context"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/unit"
+	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+	"go.opentelemetry.io/otel/metric/unit"
 )
 
 const (
@@ -21,16 +22,26 @@ const (
 )
 
 type HTTPMetrics struct {
-	RequestCounter  metric.Int64Counter
-	LatencyRecorder metric.Int64ValueRecorder
+	RequestCounter  syncint64.Counter
+	LatencyRecorder syncint64.Histogram
 }
 
 // NewHTTPMetrics creates new otel instruments to record metrics.
-func NewHTTPMetrics() *HTTPMetrics {
-	return &HTTPMetrics{
-		RequestCounter:  metric.Must(global.GetMeterProvider().Meter(coreRPMeterName)).NewInt64Counter(requestMetricName, metric.WithUnit(unit.Dimensionless)),
-		LatencyRecorder: metric.Must(global.GetMeterProvider().Meter(coreRPMeterName)).NewInt64ValueRecorder(timeMetricsName, metric.WithUnit(unit.Milliseconds)),
+func NewHTTPMetrics() (*HTTPMetrics, error) {
+	var err error
+
+	hm := &HTTPMetrics{}
+	corerpmeter := global.Meter(coreRPMeterName)
+	hm.RequestCounter, err = corerpmeter.SyncInt64().Counter(requestMetricName, instrument.WithUnit(unit.Dimensionless))
+	if err != nil {
+		return nil, err
 	}
+	hm.LatencyRecorder, err = corerpmeter.SyncInt64().Histogram(timeMetricsName, instrument.WithUnit(unit.Milliseconds))
+	if err != nil {
+		return nil, err
+	}
+
+	return hm, nil
 
 }
 
