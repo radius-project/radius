@@ -460,6 +460,36 @@
         ],
         "type": "object"
       },
+      "AzureIdentity": {
+        "properties": {
+          "kind": {
+            "description": "Identity Kind",
+            "type": "string",
+            "enum": [
+              "Workload",
+              "UserAssigned"
+            ],
+            "default": "UserAssigned",
+            "x-ms-enum": {
+              "name": "AzureIdentityKind",
+              "modelAsString": false
+            }
+          },
+          "clientId": {
+            "description": "The client ID for workload and user assigned managed identity",
+            "type": "string"
+          },
+          "tenantId": {
+            "description": "The tenant ID for workload identity.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "clientId"
+        ],
+        "type": "object"
+      },
       "AzureKeyVaultVolumeProperties": {
         "additionalProperties": false,
         "allOf": [
@@ -468,6 +498,10 @@
           }
         ],
         "properties": {
+          "identity": {
+            "description": "The Azure AD identity settings",
+            "$ref": "#/definitions/AzureIdentity"
+          },
           "certificates": {
             "additionalProperties": {
               "$ref": "#/definitions/CertificateObjectProperties"
@@ -495,7 +529,9 @@
           }
         },
         "required": [
-          "kind"
+          "kind",
+          "identity",
+          "resource"
         ],
         "type": "object",
         "x-ms-discriminator-value": "azure.com.keyvault"
