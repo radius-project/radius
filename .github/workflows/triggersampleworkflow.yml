@@ -26,5 +26,5 @@ jobs:
               owner: 'project-radius',
               repo: 'samples',
               workflow_id: 'test.yaml',
-              ref: 'v0.12'
+              ref: 'v0.13'
             })
