@@ -43,8 +43,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 			Identifier: to.StringPtr(resource.Name),
 			TypeName:   &resourceType,
 		})
-		notFound := aws.IsAWSResourceNotFound(err)
-		require.False(t, notFound)
+		require.NoError(t, err, err.Error())
 	}
 }
 
@@ -94,6 +93,6 @@ func getResourceTypeName(t *testing.T, resource *AWSResource) string {
 	id := getResourceIdentifier(t, resource.Type, resource.Name)
 	resourceID, err := resources.Parse(id)
 	require.NoError(t, err)
-	resourceType := resources.ToARN(resourceID)
+	resourceType := resources.ToAWSResourceType(resourceID)
 	return resourceType
 }

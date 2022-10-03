@@ -133,7 +133,6 @@ func (at AWSTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range at.Steps {
-
 		for _, resource := range step.AWSResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			validation.DeleteAWSResource(ctx, t, &resource, client)
