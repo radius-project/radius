@@ -9,9 +9,9 @@ import (
 	"encoding/json"
 	http "net/http"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 var _ ctrl.Controller = (*DiscoveryDoc)(nil)
@@ -26,7 +26,7 @@ func NewDiscoveryDoc(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DiscoveryDoc{ctrl.NewBaseController(opts)}, nil
 }
 
-func (e *DiscoveryDoc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (e *DiscoveryDoc) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	// Required for the K8s scenario, we are required to respond to a request
 	// to /apis/api.ucp.dev/v1alpha3 with a 200 OK response and the following
 	// format.

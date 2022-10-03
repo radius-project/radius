@@ -10,6 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -68,7 +70,7 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewOKResponse(plane)
+	expectedResponse := armrpc_rest.NewOKResponse(plane)
 	response, err := planesCtrl.Run(ctx, nil, request)
 
 	require.NoError(t, err)
@@ -98,10 +100,10 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	badResponse := &rest.BadRequestResponse{
-		Body: rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.Invalid,
+	badResponse := &armrpc_rest.BadRequestResponse{
+		Body: armrpc_v1.ErrorResponse{
+			Error: armrpc_v1.ErrorDetails{
+				Code:    armrpc_v1.CodeInvalid,
 				Message: "At least one resource provider must be configured for UCP native plane: local",
 			},
 		},
@@ -133,10 +135,10 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	badResponse := &rest.BadRequestResponse{
-		Body: rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.Invalid,
+	badResponse := &armrpc_rest.BadRequestResponse{
+		Body: armrpc_v1.ErrorResponse{
+			Error: armrpc_v1.ErrorDetails{
+				Code:    armrpc_v1.CodeInvalid,
 				Message: "URL must be specified for plane: azurecloud",
 			},
 		},

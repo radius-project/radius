@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -52,7 +53,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	require.NoError(t, err)
 	// Issue Delete request
 	response, err := rgCtrl.Run(ctx, nil, request)
-	expectedResponse := rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewNoContentResponse()
 
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)
@@ -107,7 +108,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	require.NoError(t, err)
 	// Issue Delete request
 	response, err := rgCtrl.Run(ctx, nil, request)
-	conflictResponse := rest.NewConflictResponse("Resource group is not empty and cannot be deleted")
+	conflictResponse := armrpc_rest.NewConflictResponse("Resource group is not empty and cannot be deleted")
 
 	assert.DeepEqual(t, conflictResponse, response)
 	require.NoError(t, err)

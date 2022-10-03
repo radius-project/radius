@@ -13,9 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 var _ ctrl.Controller = (*GetAWSOperationStatuses)(nil)
@@ -30,7 +30,7 @@ func NewGetAWSOperationStatuses(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetAWSOperationStatuses{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	client, _, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -40,13 +40,13 @@ func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter
 		RequestToken: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return rest.NewNotFoundResponse(id.String()), nil
+		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
 
 	opStatus := getAsyncOperationStatus(response)
-	return rest.NewOKResponse(opStatus), nil
+	return armrpc_rest.NewOKResponse(opStatus), nil
 }
 
 func getAsyncOperationStatus(response *cloudcontrol.GetResourceRequestStatusOutput) armrpcv1.AsyncOperationStatus {

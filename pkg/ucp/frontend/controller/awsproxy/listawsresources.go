@@ -11,9 +11,9 @@ import (
 	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 var _ ctrl.Controller = (*ListAWSResources)(nil)
@@ -28,7 +28,7 @@ func NewListAWSResources(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListAWSResources{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -69,5 +69,5 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	body := map[string]interface{}{
 		"value": items,
 	}
-	return rest.NewOKResponse(body), nil
+	return armrpc_rest.NewOKResponse(body), nil
 }

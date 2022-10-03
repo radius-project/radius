@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -36,7 +37,7 @@ func Test_ListPlanes(t *testing.T) {
 	query.IsScopeQuery = true
 
 	expectedPlaneList := rest.PlaneList{}
-	expectedResponse := rest.NewOKResponse(expectedPlaneList)
+	expectedResponse := armrpc_rest.NewOKResponse(expectedPlaneList)
 
 	mockStorageClient.EXPECT().Query(gomock.Any(), query).Return(&store.ObjectQueryResult{}, nil)
 

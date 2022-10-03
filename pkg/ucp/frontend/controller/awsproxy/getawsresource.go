@@ -11,9 +11,9 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 var _ ctrl.Controller = (*GetAWSResource)(nil)
@@ -28,7 +28,7 @@ func NewGetAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -39,7 +39,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		Identifier: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return rest.NewNotFoundResponse(id.String()), nil
+		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
@@ -58,5 +58,5 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		"type":       id.Type(),
 		"properties": properties,
 	}
-	return rest.NewOKResponse(body), nil
+	return armrpc_rest.NewOKResponse(body), nil
 }

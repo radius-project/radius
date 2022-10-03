@@ -10,7 +10,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -55,7 +57,7 @@ func Test_GetPlaneByID(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, path, nil)
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	expectedResponse := rest.NewOKResponse(rest.Plane{
+	expectedResponse := armrpc_rest.NewOKResponse(rest.Plane{
 		ID:   "/planes/radius/local",
 		Type: "radius",
 		Name: "local",
@@ -93,7 +95,11 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	request, err := http.NewRequest(http.MethodGet, path, nil)
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	expectedResponse := rest.NewNotFoundResponse("/planes/radius/local")
 	require.NoError(t, err)
+
+	id, err := resources.ParseScope("/planes/radius/local")
+	require.NoError(t, err)
+
+	expectedResponse := armrpc_rest.NewNotFoundResponse(id)
 	assert.DeepEqual(t, expectedResponse, response)
 }

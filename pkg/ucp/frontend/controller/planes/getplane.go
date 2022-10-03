@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -30,13 +31,13 @@ func NewGetPlane(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetPlane{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
 		if err != nil {
-			return rest.NewBadRequestResponse(err.Error()), nil
+			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 		}
 	}
 	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
@@ -44,12 +45,12 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 	_, err = p.GetResource(ctx, resourceId.String(), &plane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
-			restResponse := rest.NewNotFoundResponse(path)
+			restResponse := armrpc_rest.NewNotFoundResponse(resourceId)
 			logger.Info(fmt.Sprintf("Plane %s not found in db", resourceId))
 			return restResponse, nil
 		}
 		return nil, err
 	}
-	restResponse := rest.NewOKResponse(plane)
+	restResponse := armrpc_rest.NewOKResponse(plane)
 	return restResponse, nil
 }

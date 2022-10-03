@@ -15,8 +15,8 @@ import (
 	"github.com/golang/mock/gomock"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -49,7 +49,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewOKResponse(v1.AsyncOperationStatus{
+	expectedResponse := armrpc_rest.NewOKResponse(v1.AsyncOperationStatus{
 		Status:    v1.ProvisioningStateSucceeded,
 		StartTime: eventTime,
 	})
@@ -89,7 +89,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewOKResponse(v1.AsyncOperationStatus{
+	expectedResponse := armrpc_rest.NewOKResponse(v1.AsyncOperationStatus{
 		Status:    v1.ProvisioningStateFailed,
 		StartTime: eventTime,
 		Error: &v1.ErrorDetails{

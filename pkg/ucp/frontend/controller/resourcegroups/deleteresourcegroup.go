@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -30,19 +31,19 @@ func NewDeleteResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	resourceID, err := resources.ParseScope(path)
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	existingRG := rest.ResourceGroup{}
 	etag, err := r.GetResource(ctx, resourceID.String(), &existingRG)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
-			restResponse := rest.NewNoContentResponse()
+			restResponse := armrpc_rest.NewNoContentResponse()
 			return restResponse, nil
 		}
 		return nil, err
@@ -60,14 +61,14 @@ func (r *DeleteResourceGroup) Run(ctx context.Context, w http.ResponseWriter, re
 			resources += r.ID + "\n"
 		}
 		logger.Info(fmt.Sprintf("Found %d resources in resource group %s:\n%s", len(listOfResources.Value), resourceID, resources))
-		return rest.NewConflictResponse("Resource group is not empty and cannot be deleted"), nil
+		return armrpc_rest.NewConflictResponse("Resource group is not empty and cannot be deleted"), nil
 	}
 
 	err = r.DeleteResource(ctx, resourceID.String(), etag)
 	if err != nil {
 		return nil, err
 	}
-	restResponse := rest.NewNoContentResponse()
+	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Delete resource group %s successfully", resourceID))
 	return restResponse, nil
 }
