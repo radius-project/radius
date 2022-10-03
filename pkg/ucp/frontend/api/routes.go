@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
+	azurecredentials_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/azurecredentials"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -25,8 +26,10 @@ import (
 const (
 	planeCollectionPath       = "/planes"
 	awsPlaneType              = "/planes/aws"
+	azurePlaneType            = "/planes/azure"
 	planeItemPath             = "/planes/{PlaneType}/{PlaneID}"
 	planeCollectionByType     = "/planes/{PlaneType}"
+	azurePlaneCredentialPath  = "/{PlaneName}/providers/System.Azure/credentials/{credentialName}"
 	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
@@ -35,6 +38,7 @@ const (
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
 var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
+var azureCredentialItemPath = fmt.Sprintf("%s%s", planeItemPath, azurePlaneCredentialPath)
 
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
@@ -80,6 +84,8 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
 	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
+
+	azureCredentialSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, azureCredentialItemPath)).Subrouter()
 
 	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
 	awsResourceCollectionSubRouter := awsResourcesSubRouter.Path(awsResourceCollectionPath).Subrouter()
@@ -135,7 +141,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:         v1.OperationDelete,
 			HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
 		},
-
+		// Azure credentials handlers
+		{
+			ParentRouter:   azureCredentialSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: azurecredentials_ctrl.NewCreateOrUpdateAzureCredentials,
+		},
 		// AWS Plane handlers
 		{
 			ParentRouter:   awsOperationResultsSubRouter,
