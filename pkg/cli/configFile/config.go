@@ -10,6 +10,8 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
@@ -18,6 +20,7 @@ import (
 type Interface interface {
 	EditWorkspacesByName(ctx context.Context, filePath string, workspaceName string, environmentName string) error
 	UpdateWorkspaces(ctx context.Context, filePath string, workspace *workspaces.Workspace) error
+	ShowWorkspace(output output.Interface, Format string, workspace *workspaces.Workspace) error
 }
 
 type Impl struct {
@@ -61,5 +64,14 @@ func (i *Impl) UpdateWorkspaces(ctx context.Context, filePath string, workspace 
 	if err != nil {
 		return err
 	}
+	return nil
+}
+
+func (i *Impl) ShowWorkspace(output output.Interface, Format string, workspace *workspaces.Workspace) error {
+	err := output.WriteFormatted(Format, workspace, objectformats.GetWorkspaceTableFormat())
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

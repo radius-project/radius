@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
+	output "github.com/project-radius/radius/pkg/cli/output"
 	workspaces "github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
@@ -47,6 +48,20 @@ func (m *MockInterface) EditWorkspacesByName(arg0 context.Context, arg1, arg2, a
 func (mr *MockInterfaceMockRecorder) EditWorkspacesByName(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspacesByName", reflect.TypeOf((*MockInterface)(nil).EditWorkspacesByName), arg0, arg1, arg2, arg3)
+}
+
+// ShowWorkspace mocks base method.
+func (m *MockInterface) ShowWorkspace(arg0 output.Interface, arg1 string, arg2 *workspaces.Workspace) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ShowWorkspace", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ShowWorkspace indicates an expected call of ShowWorkspace.
+func (mr *MockInterfaceMockRecorder) ShowWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ShowWorkspace", reflect.TypeOf((*MockInterface)(nil).ShowWorkspace), arg0, arg1, arg2)
 }
 
 // UpdateWorkspaces mocks base method.

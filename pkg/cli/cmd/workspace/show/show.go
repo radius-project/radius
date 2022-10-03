@@ -1,0 +1,86 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package show
+
+import (
+	"context"
+
+	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
+	"github.com/project-radius/radius/pkg/cli/configFile"
+	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/framework"
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/spf13/cobra"
+)
+
+func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
+	runner := NewRunner(factory)
+
+	cmd := &cobra.Command{
+		Use:   "show",
+		Short: "show workspace",
+		Long:  "Show details of the specified workspace",
+		Args:  cobra.MaximumNArgs(1),
+		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
+	rad workspace show myworkspace`,
+		RunE: framework.RunCommand(runner),
+	}
+
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddOutputFlag(cmd)
+	return cmd, runner
+}
+
+type Runner struct {
+	ConfigHolder        *framework.ConfigHolder
+	ConnectionFactory   connections.Factory
+	Workspace           *workspaces.Workspace
+	ConfigFileInterface configFile.Interface
+	Output              output.Interface
+	Format              string
+}
+
+func NewRunner(factory framework.Factory) *Runner {
+	return &Runner{
+		ConnectionFactory:   factory.GetConnectionFactory(),
+		ConfigHolder:        factory.GetConfigHolder(),
+		ConfigFileInterface: factory.GetConfigFileInterface(),
+		Output:              factory.GetOutput(),
+	}
+}
+
+func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
+	config := r.ConfigHolder.Config
+
+	workspace, err := cli.RequireWorkspaceArgs(cmd, config, args)
+	if err != nil {
+		return err
+	}
+	r.Workspace = workspace
+
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+	if format == "" {
+		format = "table"
+	}
+	r.Format = format
+
+	return nil
+}
+
+func (r *Runner) Run(ctx context.Context) error {
+
+	err := r.ConfigFileInterface.ShowWorkspace(r.Output, r.Format, r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}

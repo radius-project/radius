@@ -7,6 +7,7 @@ package workspace
 
 import (
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
+	workspace_show "github.com/project-radius/radius/pkg/cli/cmd/workspace/show"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
@@ -37,6 +38,9 @@ rad workspace switch newworkspace
 
 	create, _ := workspace_create.NewCommand(factory)
 	cmd.AddCommand(create)
+
+	show, _ := workspace_show.NewCommand(factory)
+	cmd.AddCommand(show)
 
 	return cmd
 

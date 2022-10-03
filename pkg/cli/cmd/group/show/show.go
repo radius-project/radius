@@ -64,7 +64,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspaceArgs(cmd, config, args)
 	if err != nil {
 		return err
 	}
