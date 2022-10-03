@@ -60,7 +60,7 @@ func New(ctx context.Context, options Options) (*http.Server, error) {
 	r.Path(versionEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(versionAPIName)
 	r.Path(healthzEndpoint).Methods(http.MethodGet).HandlerFunc(version.ReportVersionHandler).Name(healthzAPIName)
 	// setup metrics object
-	httpMetrics, err := metrics.NewHTTPMetrics()
+	httpMetrics, err := metrics.NewHTTPMetrics(options.ProviderNamespace)
 	if err != nil {
 		return nil, err
 	}

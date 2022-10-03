@@ -16,9 +16,8 @@ import (
 )
 
 const (
-	timeMetricsName   = "corerp_request_duration"
-	requestMetricName = "corerp_request_counts"
-	coreRPMeterName   = "rad-coreRP"
+	timeMetricsName   = "request_duration"
+	requestMetricName = "request_counts"
 )
 
 type HTTPMetrics struct {
@@ -27,16 +26,16 @@ type HTTPMetrics struct {
 }
 
 // NewHTTPMetrics creates new otel instruments to record metrics.
-func NewHTTPMetrics() (*HTTPMetrics, error) {
+func NewHTTPMetrics(name string) (*HTTPMetrics, error) {
 	var err error
 
 	hm := &HTTPMetrics{}
-	corerpmeter := global.Meter(coreRPMeterName)
-	hm.RequestCounter, err = corerpmeter.SyncInt64().Counter(requestMetricName, instrument.WithUnit(unit.Dimensionless))
+	globalMeter := global.Meter(name)
+	hm.RequestCounter, err = globalMeter.SyncInt64().Counter(requestMetricName, instrument.WithUnit(unit.Dimensionless))
 	if err != nil {
 		return nil, err
 	}
-	hm.LatencyRecorder, err = corerpmeter.SyncInt64().Histogram(timeMetricsName, instrument.WithUnit(unit.Milliseconds))
+	hm.LatencyRecorder, err = globalMeter.SyncInt64().Histogram(timeMetricsName, instrument.WithUnit(unit.Milliseconds))
 	if err != nil {
 		return nil, err
 	}

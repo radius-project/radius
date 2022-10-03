@@ -25,7 +25,7 @@ func GetConfig() (*rest.Config, error) {
 	var config *rest.Config
 	var err error
 
-	useLocal := os.Getenv("K8S_LOCAL")
+	useLocal := "true"
 	useCluster := os.Getenv("K8S_CLUSTER")
 	if useLocal == "true" {
 		config, err = createLocal()
