@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strings"
 
-	helm "helm.sh/helm/v3/pkg/action"
+	helmaction "helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/storage/driver"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -196,7 +196,7 @@ func CheckRadiusInstall(kubeContext string) (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
 	}
-	histClient := helm.NewHistory(helmConf)
+	histClient := helmaction.NewHistory(helmConf)
 	histClient.Max = 1 // Only need to check if at least 1 exists
 
 	_, err = histClient.Run(radiusReleaseName)
