@@ -57,8 +57,9 @@ func (s *Service) Run(ctx context.Context) error {
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err = s.Start(ctx, server.Options{
-		Address:  address,
-		PathBase: s.Options.Config.Server.PathBase,
+		ProviderNamespace: s.ProviderName,
+		Address:           address,
+		PathBase:          s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
