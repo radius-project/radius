@@ -75,7 +75,7 @@ func Test_Render_WithPort(t *testing.T) {
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resource.Name), service.Name)
 	require.Equal(t, "", service.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resource.ResourceTypeName()), service.Labels)
 
 	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeSuffix, resourceName), service.Spec.Selector)
 	require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
@@ -120,7 +120,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resource.Name), service.Name)
 	require.Equal(t, "", service.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resource.ResourceTypeName()), service.Labels)
 
 	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeSuffix, resourceName), service.Spec.Selector)
 	require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
@@ -166,7 +166,7 @@ func Test_Render_WithNameSpace(t *testing.T) {
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resource.Name), service.Name)
 	require.Equal(t, options.Environment.Namespace, service.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), service.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, resource.ResourceTypeName()), service.Labels)
 
 	require.Equal(t, kubernetes.MakeRouteSelectorLabels(applicationName, ResourceTypeSuffix, resourceName), service.Spec.Selector)
 	require.Equal(t, corev1.ServiceTypeClusterIP, service.Spec.Type)
@@ -195,9 +195,7 @@ func makeHTTPRouteProperties(port int32) datamodel.HTTPRouteProperties {
 }
 
 func makeResource(t *testing.T, properties *datamodel.HTTPRouteProperties) *datamodel.HTTPRoute {
-
 	dm := datamodel.HTTPRoute{Properties: properties}
 	dm.Name = resourceName
-
 	return &dm
 }

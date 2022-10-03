@@ -225,7 +225,7 @@ func Test_Render_Basic(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
+	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -326,8 +326,8 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
+	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 	podLabels["radius.dev/route-httproutes-a"] = "true"
 
 	t.Run("verify deployment", func(t *testing.T) {
@@ -395,7 +395,7 @@ func Test_Render_Connections(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
 
-	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
+	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
 	t.Run("verify deployment", func(t *testing.T) {
 		deployment, _ := kubernetes.FindDeployment(output.Resources)

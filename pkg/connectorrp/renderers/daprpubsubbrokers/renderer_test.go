@@ -78,7 +78,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -193,7 +193,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test")
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test", ResourceType)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
@@ -203,7 +203,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,

@@ -143,7 +143,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resourceName),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, gateway.ResourceTypeName()),
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
@@ -220,7 +220,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      routeResourceName,
 				Namespace: options.Environment.Namespace,
-				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName),
+				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName, resource.ResourceTypeName()),
 			},
 			Spec: contourv1.HTTPProxySpec{
 				Routes: []contourv1.Route{

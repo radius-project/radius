@@ -48,13 +48,14 @@ const (
 
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
-func MakeDescriptiveLabels(application string, resource string) map[string]string {
+func MakeDescriptiveLabels(application string, resource string, resourceType string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication: application,
-		LabelRadiusResource:    resource,
-		LabelName:              resource,
-		LabelPartOf:            application,
-		LabelManagedBy:         LabelManagedByRadiusRP,
+		LabelRadiusApplication:  application,
+		LabelRadiusResource:     resource,
+		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelName:               resource,
+		LabelPartOf:             application,
+		LabelManagedBy:          LabelManagedByRadiusRP,
 	}
 }
 
@@ -136,4 +137,18 @@ func MakeResourceName(application string, resource string) string {
 
 	// We should never have this case
 	return "resource-name"
+}
+
+// ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it
+// to a value that Kubernetes allows.
+// Example: Applications.Core/containers becomes Applications.Core.Containers
+func ConvertResourceTypeToLabelValue(resourceType string) string {
+	return strings.Replace(resourceType, "/", "-", 1)
+}
+
+// ConvertLabelToResourceType function gets a label and converts it
+// to a Radius Resource type.
+// Example: Applications.Core-containers becomes Applications.Core/Containers
+func ConvertLabelToResourceType(labelValue string) string {
+	return strings.Replace(labelValue, "-", "/", 1)
 }

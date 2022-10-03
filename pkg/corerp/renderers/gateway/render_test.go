@@ -815,7 +815,7 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), gateway.Name)
 	require.Equal(t, applicationName, gateway.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), gateway.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), gateway.Labels)
 
 	var expectedVirtualHost *contourv1.VirtualHost = nil
 	var expectedGatewaySpec contourv1.HTTPProxySpec
@@ -844,7 +844,7 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 
 	require.Equal(t, kubernetes.MakeResourceName(applicationName, expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName), httpRoute.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName, ResourceType), httpRoute.Labels)
 
 	require.Nil(t, httpRoute.Spec.VirtualHost)
 
