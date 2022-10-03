@@ -45,6 +45,14 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 			Resource: to.String(p.Resource),
 		}
 
+		if p.Identity != nil {
+			dm.Identity = datamodel.AzureIdentity{
+				Kind:     toAzureIdentityKind(p.Identity.Kind),
+				ClientID: to.String(p.Identity.ClientID),
+				TenantID: to.String(p.Identity.TenantID),
+			}
+		}
+
 		if p.Certificates != nil {
 			dm.Certificates = map[string]datamodel.CertificateObjectProperties{}
 			for k, v := range p.Certificates {
@@ -89,8 +97,13 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
 			},
-			Kind:              azto.Ptr(resource.Properties.Kind),
-			Application:       azto.Ptr(resource.Properties.Application),
+			Kind:        azto.Ptr(resource.Properties.Kind),
+			Application: azto.Ptr(resource.Properties.Application),
+			Identity: &AzureIdentity{
+				Kind:     fromAzureIdentityKind(azProp.Identity.Kind),
+				ClientID: toStringPtr(azProp.Identity.ClientID),
+				TenantID: toStringPtr(azProp.Identity.TenantID),
+			},
 			Resource:          azto.Ptr(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
 		}
@@ -116,6 +129,32 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 	}
 
 	return nil
+}
+
+func fromAzureIdentityKind(kind datamodel.AzureIdentityKind) *AzureIdentityKind {
+	switch kind {
+	case datamodel.AzureIdentityUserAssigned:
+		return azto.Ptr(AzureIdentityKindUserAssigned)
+	case datamodel.AzureIdentityWorkload:
+		return azto.Ptr(AzureIdentityKindWorkload)
+	default:
+		return nil
+	}
+}
+
+func toAzureIdentityKind(kind *AzureIdentityKind) datamodel.AzureIdentityKind {
+	if kind == nil {
+		return datamodel.AzureIdentityNone
+	}
+
+	switch *kind {
+	case AzureIdentityKindUserAssigned:
+		return datamodel.AzureIdentityUserAssigned
+	case AzureIdentityKindWorkload:
+		return datamodel.AzureIdentityWorkload
+	default:
+		return datamodel.AzureIdentityNone
+	}
 }
 
 func toStringPtr(v string) *string {

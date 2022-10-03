@@ -6,8 +6,7 @@
   "responses": {
     "200": {
       "body": {
-        "value": [
-          {
+        "value": [{
             "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/volumes/keyvault0",
             "name": "keyvault0",
             "type": "Applications.Core/volumes",
@@ -15,6 +14,10 @@
               "provisioningState": "Succeeded",
               "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "kind": "azure.com.keyvault",
+              "identity": {
+                "kind": "UserAssigned",
+                "clientId": "00000000-0000-0000-0000-000000000000"
+              },
               "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
               "secrets": {
                 "mysecret-1": {
@@ -57,6 +60,10 @@
               "provisioningState": "Succeeded",
               "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
               "kind": "azure.com.keyvault",
+              "identity": {
+                "kind": "UserAssigned",
+                "clientId": "00000000-0000-0000-0000-000000000000"
+              },
               "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
               "secrets": {
                 "mysecret-1": {

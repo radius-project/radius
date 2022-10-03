@@ -129,11 +129,47 @@ func (a *ApplicationResourceList) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type AzureIdentity.
+func (a AzureIdentity) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "clientId", a.ClientID)
+	populate(objectMap, "kind", a.Kind)
+	populate(objectMap, "tenantId", a.TenantID)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureIdentity.
+func (a *AzureIdentity) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", a, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "clientId":
+				err = unpopulate(val, "ClientID", &a.ClientID)
+				delete(rawMsg, key)
+		case "kind":
+				err = unpopulate(val, "Kind", &a.Kind)
+				delete(rawMsg, key)
+		case "tenantId":
+				err = unpopulate(val, "TenantID", &a.TenantID)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", a, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultVolumeProperties.
 func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", a.Application)
 	populate(objectMap, "certificates", a.Certificates)
+	populate(objectMap, "identity", a.Identity)
 	populate(objectMap, "keys", a.Keys)
 	objectMap["kind"] = "azure.com.keyvault"
 	populate(objectMap, "provisioningState", a.ProvisioningState)
@@ -157,6 +193,9 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "certificates":
 				err = unpopulate(val, "Certificates", &a.Certificates)
+				delete(rawMsg, key)
+		case "identity":
+				err = unpopulate(val, "Identity", &a.Identity)
 				delete(rawMsg, key)
 		case "keys":
 				err = unpopulate(val, "Keys", &a.Keys)

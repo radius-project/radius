@@ -304,9 +304,10 @@
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
+* **identity**: [AzureIdentity](#azureidentity) (Required)
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
 * **kind**: 'azure.com.keyvault' (Required): The volume kind
-* **resource**: string: The ID of the keyvault to use for this volume resource
+* **resource**: string (Required): The ID of the keyvault to use for this volume resource
 * **secrets**: [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets): The KeyVault secrets that this volume exposes
 
 
@@ -323,6 +324,12 @@
 * **format**: 'pem' | 'pfx': Certificate format. Default pem
 * **name**: string (Required): The name of the certificate
 * **version**: string: Certificate version
+
+## AzureIdentity
+### Properties
+* **clientId**: string (Required): The client ID for workload and user assigned managed identity
+* **kind**: 'UserAssigned' | 'Workload' (Required): Identity Kind
+* **tenantId**: string: The tenant ID for workload identity.
 
 ## AzureKeyVaultVolumePropertiesKeys
 ### Properties

@@ -14,6 +14,22 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// AzureIdentityKind - Identity Kind
+type AzureIdentityKind string
+
+const (
+	AzureIdentityKindWorkload AzureIdentityKind = "Workload"
+	AzureIdentityKindUserAssigned AzureIdentityKind = "UserAssigned"
+)
+
+// PossibleAzureIdentityKindValues returns the possible values for the AzureIdentityKind const type.
+func PossibleAzureIdentityKindValues() []AzureIdentityKind {
+	return []AzureIdentityKind{	
+		AzureIdentityKindWorkload,
+		AzureIdentityKindUserAssigned,
+	}
+}
+
 // CertType - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
 type CertType string
 

@@ -25,6 +25,10 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
         "kind": "azure.com.keyvault",
+        "identity": {
+            "kind": "Workload",
+            "clientId": "00000000-0000-0000-0000-000000000000"
+        },
         "secrets": {
             "mysecret-1": {
                 "name": "mysecret-1",
