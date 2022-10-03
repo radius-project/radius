@@ -78,9 +78,26 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
+type AzureIdentity struct {
+	// REQUIRED; The client ID for workload and user assigned managed identity
+	ClientID *string `json:"clientId,omitempty"`
+
+	// REQUIRED; Identity Kind
+	Kind *AzureIdentityKind `json:"kind,omitempty"`
+
+	// The tenant ID for workload identity.
+	TenantID *string `json:"tenantId,omitempty"`
+}
+
 type AzureKeyVaultVolumeProperties struct {
+	// REQUIRED; The Azure AD identity settings
+	Identity *AzureIdentity `json:"identity,omitempty"`
+
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The ID of the keyvault to use for this volume resource
+	Resource *string `json:"resource,omitempty"`
 
 	// Fully qualified resource ID for the application that the volume is connected to.
 	Application *string `json:"application,omitempty"`
@@ -90,9 +107,6 @@ type AzureKeyVaultVolumeProperties struct {
 
 	// The KeyVault keys that this volume exposes
 	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
-
-	// The ID of the keyvault to use for this volume resource
-	Resource *string `json:"resource,omitempty"`
 
 	// The KeyVault secrets that this volume exposes
 	Secrets map[string]*SecretObjectProperties `json:"secrets,omitempty"`
