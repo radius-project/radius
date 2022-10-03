@@ -1,0 +1,288 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package volume
+
+import (
+	"context"
+	"errors"
+
+	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	"gopkg.in/yaml.v3"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
+)
+
+var (
+	errCreateSecretResource      = errors.New("unable to create secret provider class")
+	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
+	errInvalidIdentity           = errors.New("invalid identity options")
+)
+
+// Possible values for certificate value field
+const (
+	CertificateValueCertificate = "certificate"
+	CertificateValuePrivateKey  = "privatekey"
+	CertificateValuePublicKey   = "publickey"
+)
+
+// SecretObjects wraps the different secret objects to be configured on the SecretProvider class
+type SecretObjects struct {
+	secrets      map[string]datamodel.SecretObjectProperties
+	certificates map[string]datamodel.CertificateObjectProperties
+	keys         map[string]datamodel.KeyObjectProperties
+}
+
+// GetAzureKeyVaultVolume constructs a SecretProviderClass for Azure Key Vault CSI Driver volume
+func GetAzureKeyVaultVolume(ctx context.Context, arm *armauth.ArmConfig, resource conv.DataModelInterface, options *renderers.RenderOptions) (renderers.RendererOutput, error) {
+	dm, ok := resource.(*datamodel.VolumeResource)
+	if !ok {
+		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+	}
+
+	properties := dm.Properties.AzureKeyVault
+
+	secretObjects := &SecretObjects{
+		secrets:      properties.Secrets,
+		certificates: properties.Certificates,
+		keys:         properties.Keys,
+	}
+
+	secretProviderClassName := dm.Name + "-sp"
+	outputResource, err := makeSecretProviderClass(options.Environment.Namespace, secretProviderClassName, properties.Resource, secretObjects, &dm.Properties.AzureKeyVault.Identity)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	return renderers.RendererOutput{
+		Resources:      []outputresource.OutputResource{outputResource},
+		ComputedValues: map[string]rp.ComputedValueReference{},
+		SecretValues:   map[string]rp.SecretValueReference{},
+	}, nil
+}
+
+type objectValues struct {
+	alias    string
+	version  string
+	encoding string
+	format   string
+}
+
+func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretObjectProperties) objectValues {
+	var alias, version, encoding, format string
+	if secretObject.Alias == "" {
+		alias = name
+	} else {
+		alias = secretObject.Alias
+	}
+
+	if secretObject.Version == "" {
+		version = ""
+	} else {
+		version = secretObject.Version
+	}
+
+	if secretObject.Encoding == nil {
+		encoding = string(datamodel.SecretObjectPropertiesEncodingUTF8)
+	} else {
+		encoding = string(*secretObject.Encoding)
+	}
+
+	return objectValues{
+		alias:    alias,
+		version:  version,
+		encoding: encoding,
+		format:   format,
+	}
+}
+
+func getValuesOrDefaultsForKeys(name string, keyObject *datamodel.KeyObjectProperties) objectValues {
+	var alias, version, encoding, format string
+	if keyObject.Alias == "" {
+		alias = name
+	} else {
+		alias = keyObject.Alias
+	}
+
+	if keyObject.Version == "" {
+		version = ""
+	} else {
+		version = keyObject.Version
+	}
+
+	return objectValues{
+		alias:    alias,
+		version:  version,
+		encoding: encoding,
+		format:   format,
+	}
+}
+
+func getValuesOrDefaultsForCertificates(name string, certificateObject *datamodel.CertificateObjectProperties) objectValues {
+	var alias, version, encoding, format string
+	if certificateObject.Alias == "" {
+		alias = name
+	} else {
+		alias = certificateObject.Alias
+	}
+
+	if certificateObject.Version == "" {
+		version = ""
+	} else {
+		version = certificateObject.Version
+	}
+
+	// CSI driver supports object encoding only when object type = secret i.e. cert value is privatekey
+	encoding = ""
+	if *certificateObject.CertType == datamodel.CertificateTypePrivateKey {
+		if certificateObject.Encoding == nil {
+			encoding = string(datamodel.SecretObjectPropertiesEncodingUTF8)
+		} else {
+			encoding = string(*certificateObject.Encoding)
+		}
+	}
+
+	if certificateObject.Format == nil {
+		format = string(datamodel.CertificateFormatPFX)
+	} else {
+		format = string(*certificateObject.Format)
+	}
+
+	return objectValues{
+		alias:    alias,
+		version:  version,
+		encoding: encoding,
+		format:   format,
+	}
+}
+
+func makeSecretProviderClass(namespace string, secretProviderName string, keyVaultResourceID string, secretObjects *SecretObjects, identity *datamodel.AzureIdentity) (outputresource.OutputResource, error) {
+	keyVaultObjects := []azcsi.KeyVaultObject{}
+	// Construct the spec for the secret objects
+	for name, secret := range secretObjects.secrets {
+		secretValues := getValuesOrDefaultsForSecrets(name, &secret)
+		secretSpec := azcsi.KeyVaultObject{
+			ObjectName:     secret.Name,
+			ObjectAlias:    secretValues.alias,
+			ObjectType:     "secret",
+			ObjectVersion:  secretValues.version,
+			ObjectEncoding: secretValues.encoding,
+		}
+		keyVaultObjects = append(keyVaultObjects, secretSpec)
+	}
+
+	for name, key := range secretObjects.keys {
+		keyValues := getValuesOrDefaultsForKeys(name, &key)
+		keySpec := azcsi.KeyVaultObject{
+			ObjectName:    key.Name,
+			ObjectAlias:   keyValues.alias,
+			ObjectType:    "key",
+			ObjectVersion: keyValues.version,
+		}
+		keyVaultObjects = append(keyVaultObjects, keySpec)
+	}
+
+	for name, cert := range secretObjects.certificates {
+		certValues := getValuesOrDefaultsForCertificates(name, &cert)
+		certSpec := azcsi.KeyVaultObject{
+			ObjectName:     cert.Name,
+			ObjectAlias:    certValues.alias,
+			ObjectVersion:  certValues.version,
+			ObjectEncoding: certValues.encoding,
+			ObjectFormat:   certValues.format,
+		}
+
+		switch *cert.CertType {
+		case datamodel.CertificateTypeCertificate:
+			// Setting objectType: cert will fetch and write only the certificate from keyvault
+			certSpec.ObjectType = "certificate"
+		case datamodel.CertificateTypePublicKey:
+			// Setting objectType: key will fetch and write only the public key from keyvault
+			certSpec.ObjectType = "key"
+		case datamodel.CertificateTypePrivateKey:
+			// Setting objectType: secret will fetch and write the certificate and private key from keyvault. The private key and certificate are written to a single file.
+			certSpec.ObjectType = "secret"
+		}
+
+		keyVaultObjects = append(keyVaultObjects, certSpec)
+	}
+
+	keyVaultObjectsSpec, err := getKeyVaultObjectsSpec(keyVaultObjects)
+	if err != nil {
+		return outputresource.OutputResource{}, errCreateSecretResource
+	}
+
+	kvResourceID, err := resources.ParseResource(keyVaultResourceID)
+	if err != nil {
+		return outputresource.OutputResource{}, errInvalidKeyVaultResourceID
+	}
+
+	if identity.ClientID == "" {
+		return outputresource.OutputResource{}, errInvalidKeyVaultResourceID
+	}
+
+	params := map[string]string{
+		"usePodIdentity": "false",
+		"clientID":       identity.ClientID,
+		"keyvaultName":   kvResourceID.Name(),
+		"objects":        keyVaultObjectsSpec,
+	}
+
+	switch identity.Kind {
+	case datamodel.AzureIdentityUserAssigned:
+		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/user-assigned-msi-mode/
+		params["useVMManagedIdentity"] = "true"
+
+	case datamodel.AzureIdentityWorkload:
+		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/workload-identity-mode/
+		params["useVMManagedIdentity"] = "false"
+		params["tenantId"] = identity.TenantID
+
+	default:
+		return outputresource.OutputResource{}, errInvalidIdentity
+	}
+
+	secretProvider := csiv1.SecretProviderClass{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "SecretProviderClass",
+			APIVersion: "secrets-store.csi.x-k8s.io/v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretProviderName,
+			Namespace: namespace,
+		},
+		Spec: csiv1.SecretProviderClassSpec{
+			Provider:   "azure",
+			Parameters: params,
+		},
+	}
+
+	return outputresource.NewKubernetesOutputResource(resourcekinds.SecretProviderClass, outputresource.LocalIDSecretProviderClass, &secretProvider, secretProvider.ObjectMeta), nil
+}
+
+func getKeyVaultObjectsSpec(keyVaultObjects []azcsi.KeyVaultObject) (string, error) {
+	yamlArray := azcsi.StringArray{Array: []string{}}
+	for _, object := range keyVaultObjects {
+		obj, err := yaml.Marshal(object)
+		if err != nil {
+			return "", errCreateSecretResource
+		}
+		yamlArray.Array = append(yamlArray.Array, string(obj))
+	}
+
+	objects, err := yaml.Marshal(yamlArray)
+	if err != nil {
+		return "", errCreateSecretResource
+	}
+	return string(objects), nil
+}
