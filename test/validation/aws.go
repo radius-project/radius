@@ -12,7 +12,6 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	awsclient "github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -43,7 +42,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 			Identifier: to.StringPtr(resource.Name),
 			TypeName:   &resourceType,
 		})
-		require.NoError(t, err, err.Error())
+		require.NoError(t, err)
 	}
 }
 
@@ -55,20 +54,15 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	})
 	require.NoError(t, err)
 
-	maxRetries := 60
-	i := 0
-	for i = 0; i < maxRetries; i++ {
-		getRequestStatus, err := client.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
-			RequestToken: deleteOutput.ProgressEvent.RequestToken,
-		})
-		require.NoError(t, err)
-		if getRequestStatus.ProgressEvent.OperationStatus != types.OperationStatusInProgress {
-			require.Equal(t, types.OperationStatusSuccess, getRequestStatus.ProgressEvent.OperationStatus, "Delete operation failed")
-			break
-		}
-		time.Sleep(10 * time.Second)
-	}
-	require.Less(t, i, maxRetries, "Delete operation timed out")
+	// Wait till the delete is complete
+	maxWaitTime := 300 * time.Second
+	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
+	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+		RequestToken: deleteOutput.ProgressEvent.RequestToken,
+	}, maxWaitTime)
+	require.NoError(t, err)
+
+	// Verify that the resource is indeed deleted
 	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,

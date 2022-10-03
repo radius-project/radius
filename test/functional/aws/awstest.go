@@ -11,7 +11,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
@@ -74,9 +73,6 @@ func (at AWSTest) Test(t *testing.T) {
 
 	cfg, err := config.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-
-	cfg.ClientLogMode |= aws.LogRequestWithBody
-	cfg.ClientLogMode |= aws.LogResponseWithBody
 
 	var client awsclient.AWSClient = cloudcontrol.NewFromConfig(cfg)
 
