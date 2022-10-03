@@ -29,7 +29,7 @@ const (
 	azurePlaneType            = "/planes/azure"
 	planeItemPath             = "/planes/{PlaneType}/{PlaneID}"
 	planeCollectionByType     = "/planes/{PlaneType}"
-	azurePlaneCredentialPath  = "/{PlaneName}/providers/System.Azure/credentials/{credentialName}"
+	azurePlaneCredentialPath  = "/{PlaneName}/providers/System.Azure/credentials/default"
 	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
@@ -38,7 +38,7 @@ const (
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
 var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
-var azureCredentialItemPath = fmt.Sprintf("%s%s", planeItemPath, azurePlaneCredentialPath)
+var azureCredentialItemPath = fmt.Sprintf("%s%s", azurePlaneType, azurePlaneCredentialPath)
 
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {

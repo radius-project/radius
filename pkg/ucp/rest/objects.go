@@ -66,3 +66,9 @@ func (plane *Plane) LookupResourceProvider(key string) string {
 	}
 	return value
 }
+
+type AzureProviderSecrets struct {
+	ClientID     string `json:"clientId" yaml:"clientId"`
+	ClientSecret string `json:"clientSecret" yaml:"clientSecret"`
+	TenantID     string `json:"tenantID" yaml:"tenantID"`
+}

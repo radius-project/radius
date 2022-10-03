@@ -16,17 +16,18 @@ import (
 
 // UCP Logging context fields
 const (
-	LogFieldPlaneID       string = "PlaneID"
-	LogFieldPlaneKind     string = "PlaneKind"
-	LogFieldRequestPath   string = "Path"
-	LogFieldHTTPScheme    string = "HTTPScheme"
-	LogFieldPlaneURL      string = "ProxyURL"
-	LogFieldProvider      string = "Provider"
-	LogFieldResourceGroup string = "ResourceGroup"
-	LogFieldHTTPMethod    string = "HttpMethod"
-	LogFieldRequestURL    string = "RequestURL"
-	LogFieldContentLength string = "ContentLength"
-	LogFieldUCPHost       string = "UCPHost"
+	LogFieldPlaneID          string = "PlaneID"
+	LogFieldPlaneKind        string = "PlaneKind"
+	LogFieldRequestPath      string = "Path"
+	LogFieldHTTPScheme       string = "HTTPScheme"
+	LogFieldPlaneURL         string = "ProxyURL"
+	LogFieldProvider         string = "Provider"
+	LogFieldResourceGroup    string = "ResourceGroup"
+	LogFieldHTTPMethod       string = "HttpMethod"
+	LogFieldRequestURL       string = "RequestURL"
+	LogFieldContentLength    string = "ContentLength"
+	LogFieldUCPHost          string = "UCPHost"
+	LogFieldAzureCredentials string = "AzureCrendentials"
 )
 
 func NewLogger() logr.Logger {

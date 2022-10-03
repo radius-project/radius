@@ -6,10 +6,13 @@ package azurecredentials
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateAzureCredentials)(nil)
@@ -25,6 +28,27 @@ func NewCreateOrUpdateAzureCredentials(opts ctrl.Options) (ctrl.Controller, erro
 }
 
 func (r *CreateOrUpdateAzureCredentials) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
+	body, err := ctrl.ReadRequestBody(req)
+	if err != nil {
+		return nil, err
+	}
+	var aps rest.AzureProviderSecrets
+	err = json.Unmarshal(body, &aps)
+	if err != nil {
+		return rest.NewBadRequestResponse(err.Error()), nil
+	}
 
-	return nil, nil
+	_, err = r.SaveResource(ctx, path, aps, "")
+	if err != nil {
+		return nil, err
+	}
+
+	restResp := rest.NewOKResponse(aps)
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldAzureCredentials, path)
+	logger := ucplog.GetLogger(ctx)
+
+	logger.Info("Created resource group default successfully")
+
+	return restResp, nil
 }
