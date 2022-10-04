@@ -46,7 +46,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSClient) {
+func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSClient) error {
 	resourceType := getResourceTypeName(t, resource)
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		Identifier: to.StringPtr(resource.Name),
@@ -60,13 +60,18 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
-	require.NoError(t, err)
 
+	return err
+}
+
+func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSClient) {
 	// Verify that the resource is indeed deleted
-	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	resourceType := getResourceTypeName(t, resource)
+	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,
 	})
+
 	notFound := aws.IsAWSResourceNotFound(err)
 	require.True(t, notFound)
 }

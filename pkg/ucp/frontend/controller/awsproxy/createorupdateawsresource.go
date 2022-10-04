@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
+	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/wI2L/jsondiff"
 )
@@ -74,10 +74,10 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
-	if awsclient.IsAWSResourceNotFound(err) {
+	if awserror.IsAWSResourceNotFound(err) {
 		existing = false
 	} else if err != nil {
-		return awsclient.HandleAWSError(err)
+		return awserror.HandleAWSError(err)
 	}
 
 	var operation uuid.UUID
@@ -92,7 +92,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	if getResponse != nil {
 		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 		if err != nil {
-			return awsclient.HandleAWSError(err)
+			return awserror.HandleAWSError(err)
 		}
 	}
 
@@ -105,7 +105,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		// For an existing resource we need to convert the desired state into a JSON-patch document
 		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
 		if err != nil {
-			return awsclient.HandleAWSError(err)
+			return awserror.HandleAWSError(err)
 		}
 
 		// We need to take out readonly properties. Those are usually not specified by the client, and so
@@ -122,7 +122,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		if len(patch) > 0 {
 			marshaled, err := json.Marshal(&patch)
 			if err != nil {
-				return awsclient.HandleAWSError(err)
+				return awserror.HandleAWSError(err)
 			}
 
 			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
@@ -131,12 +131,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				PatchDocument: aws.String(string(marshaled)),
 			})
 			if err != nil {
-				return awsclient.HandleAWSError(err)
+				return awserror.HandleAWSError(err)
 			}
 
 			operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 			if err != nil {
-				return awsclient.HandleAWSError(err)
+				return awserror.HandleAWSError(err)
 			}
 		} else {
 			// mark provisioning state as succeeded here
@@ -158,12 +158,12 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			DesiredState: aws.String(string(desiredState)),
 		})
 		if err != nil {
-			return awsclient.HandleAWSError(err)
+			return awserror.HandleAWSError(err)
 		}
 
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
-			return awsclient.HandleAWSError(err)
+			return awserror.HandleAWSError(err)
 		}
 	}
 
