@@ -31,8 +31,7 @@ func (i *Impl) EditWorkspaces(ctx context.Context, filePath string, workspaceNam
 
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
 		ws := section.Items[strings.ToLower(workspaceName)]
-		envID := "/planes/radius/local/resourceGroups/" + resourceGroup + "/Applications.Core/environments/" + environmentName
-		ws.Environment = envID
+		ws.Environment = environmentName
 		section.Items[strings.ToLower(workspaceName)] = ws
 		return nil
 	})

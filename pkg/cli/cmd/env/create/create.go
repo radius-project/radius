@@ -29,11 +29,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "Create a new environment",
+		Use:   "create",
 		Short: "Create a new environment",
 		Long: `Create a new Radius environment
-		Radius environments are prepared “landing zones” for Radius applications.
-		Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
+Radius environments are prepared "landing zones" for Radius applications.
+Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
 		Args:    cobra.MinimumNArgs(1),
 		Example: `rad env create myenv`,
 		RunE:    framework.RunCommand(runner),
@@ -137,12 +137,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	err = r.ConfigFileInterface.EditWorkspaces(ctx, r.ConfigHolder.ConfigFilePath, r.Workspace.Name, r.EnvironmentName, r.UCPResourceGroup)
-	if err != nil {
-		return err
-	}
-
-	r.Output.LogInfo("Set %q as current environment for workspace %q", r.EnvironmentName, r.Workspace.Name)
+	r.Output.LogInfo("Successfully created environment %q in workspace %q", r.EnvironmentName, r.Workspace.Name)
 
 	return nil
 }
