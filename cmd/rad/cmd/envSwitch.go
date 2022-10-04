@@ -6,7 +6,6 @@
 package cmd
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -43,7 +42,6 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(scope)
 
 	id := scope.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: environmentName})
 
