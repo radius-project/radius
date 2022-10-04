@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Parse release version and set enviroment variables
+        run: |
+             python ./.github/scripts/get_release_version.py
+             echo "this build version: ${{ env.REL_VERSION }}"
       - uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -31,5 +35,5 @@ jobs:
               owner: 'project-radius',
               repo: 'samples',
               workflow_id: 'test.yaml',
-              ref: 'edge'
+              ref: ${{ env.REL_VERSION }}
             })
