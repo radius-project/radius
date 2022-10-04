@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	Azure int = iota
+	Azure = iota
 	AWS
 )
 
@@ -161,7 +161,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 				cloudProvider = -1
 				break
 			}
-			cloudProvider, err := selectCloudProvider(r.Output, r.Prompter)
+			cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
 			if err != nil {
 				return &cli.FriendlyError{Message: "Error reading cloud provider"}
 			}
@@ -182,14 +182,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			}
 		case AWS:
 			r.Output.LogInfo("AWS is not supported")
-		}
-		addingAnotherProvider, err = r.Prompter.RunPrompt(prompt.TextPromptWithDefault(
-			"Would you like to add another cloud provider [y/N]",
-			"N",
-			nil,
-		))
-		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to read confirmation"}
 		}
 	}
 
@@ -296,9 +288,6 @@ func selectCloudProvider(output output.Interface, prompter prompt.Interface) (in
 	index, _, err := prompter.RunSelect(cloudProviderSelector)
 	if err != nil {
 		return -1, err
-	}
-	if values[index] == "AWS" {
-		return -2, nil
 	}
 	if values[index] == "[back]" {
 		return -1, nil
