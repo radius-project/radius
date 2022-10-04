@@ -160,6 +160,10 @@ stages:
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
         make test-functional-corerp
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
       displayName: run functional corerp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
@@ -167,16 +171,6 @@ stages:
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/ucptest
         make test-functional-ucp
       displayName: run functional ucp tests
-    - script: |
-        export PATH=$(Build.SourcesDirectory)/dist:$PATH
-        export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
-        export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/awstest
-        make test-functional-aws
-      env:
-        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
-        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
-        AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
-      displayName: run functional aws tests
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       artifact: FunctionalTest.ApplicationsCoreRPLogs.$(Build.BuildNumber)

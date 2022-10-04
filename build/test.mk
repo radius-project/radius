@@ -42,8 +42,5 @@ test-functional-corerp: ## Runs Applications.Core functional tests
 test-functional-ucp: ## Runs UCP functional tests
 	CGO_ENABLED=1 go test ./test/functional/ucp/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
 
-test-functional-aws: ## Runs AWS functional tests
-	CGO_ENABLED=1 go test ./test/functional/aws/... -timeout ${TEST_TIMEOUT} -v -parallel 5 $(GOTEST_OPTS)
-
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
