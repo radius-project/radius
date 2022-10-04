@@ -26,7 +26,7 @@ import (
 var (
 	errCreateSecretResource      = errors.New("unable to create secret provider class")
 	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
-	errInvalidIdentity           = errors.New("invalid identity options")
+	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )
 
 // Possible values for certificate value field
@@ -79,22 +79,14 @@ type objectValues struct {
 }
 
 func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretObjectProperties) objectValues {
-	var alias, version, encoding, format string
-	if secretObject.Alias == "" {
+	alias := secretObject.Alias
+	if alias == "" {
 		alias = name
-	} else {
-		alias = secretObject.Alias
 	}
 
-	if secretObject.Version == "" {
-		version = ""
-	} else {
-		version = secretObject.Version
-	}
-
-	if secretObject.Encoding == nil {
-		encoding = string(datamodel.SecretObjectPropertiesEncodingUTF8)
-	} else {
+	version := secretObject.Version
+	encoding := string(datamodel.SecretObjectPropertiesEncodingUTF8)
+	if secretObject.Encoding != nil {
 		encoding = string(*secretObject.Encoding)
 	}
 
@@ -102,7 +94,7 @@ func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretOb
 		alias:    alias,
 		version:  version,
 		encoding: encoding,
-		format:   format,
+		format:   "",
 	}
 }
 
@@ -129,21 +121,11 @@ func getValuesOrDefaultsForKeys(name string, keyObject *datamodel.KeyObjectPrope
 }
 
 func getValuesOrDefaultsForCertificates(name string, certificateObject *datamodel.CertificateObjectProperties) objectValues {
-	var alias, version, encoding, format string
-	if certificateObject.Alias == "" {
-		alias = name
-	} else {
-		alias = certificateObject.Alias
-	}
-
-	if certificateObject.Version == "" {
-		version = ""
-	} else {
-		version = certificateObject.Version
-	}
+	alias := certificateObject.Alias
+	version := certificateObject.Version
 
 	// CSI driver supports object encoding only when object type = secret i.e. cert value is privatekey
-	encoding = ""
+	encoding := ""
 	if *certificateObject.CertType == datamodel.CertificateTypePrivateKey {
 		if certificateObject.Encoding == nil {
 			encoding = string(datamodel.SecretObjectPropertiesEncodingUTF8)
@@ -152,9 +134,8 @@ func getValuesOrDefaultsForCertificates(name string, certificateObject *datamode
 		}
 	}
 
-	if certificateObject.Format == nil {
-		format = string(datamodel.CertificateFormatPFX)
-	} else {
+	format := string(datamodel.CertificateFormatPFX)
+	if certificateObject.Format != nil {
 		format = string(*certificateObject.Format)
 	}
 
@@ -239,17 +220,13 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 	}
 
 	switch identity.Kind {
-	case datamodel.AzureIdentityUserAssigned:
-		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/user-assigned-msi-mode/
+	case datamodel.AzureIdentitySystemAssigned:
+		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
-
-	case datamodel.AzureIdentityWorkload:
-		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/workload-identity-mode/
-		params["useVMManagedIdentity"] = "false"
-		params["tenantId"] = identity.TenantID
+		params["clientID"] = ""
 
 	default:
-		return outputresource.OutputResource{}, errInvalidIdentity
+		return outputresource.OutputResource{}, errUnsupportedIdentityKind
 	}
 
 	secretProvider := csiv1.SecretProviderClass{
@@ -271,13 +248,13 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 }
 
 func getKeyVaultObjectsSpec(keyVaultObjects []azcsi.KeyVaultObject) (string, error) {
-	yamlArray := azcsi.StringArray{Array: []string{}}
+	yamlArray := []string{}
 	for _, object := range keyVaultObjects {
 		obj, err := yaml.Marshal(object)
 		if err != nil {
 			return "", errCreateSecretResource
 		}
-		yamlArray.Array = append(yamlArray.Array, string(obj))
+		yamlArray = append(yamlArray, string(obj))
 	}
 
 	objects, err := yaml.Marshal(yamlArray)

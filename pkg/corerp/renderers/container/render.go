@@ -41,16 +41,12 @@ const (
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
-
-	PersistentVolumeKindAzureFileShare = "azure.com.fileshare"
-	PersistentVolumeKindAzureKeyVault  = "azure.com.keyvault"
 )
 
 // GetSupportedKinds returns a list of supported volume kinds
 func GetSupportedKinds() []string {
 	keys := []string{}
-	keys = append(keys, PersistentVolumeKindAzureFileShare)
-	keys = append(keys, PersistentVolumeKindAzureKeyVault)
+	keys = append(keys, datamodel.AzureKeyVaultVolume)
 	return keys
 }
 
@@ -292,38 +288,9 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			properties := dependencies[volumeProperties.Persistent.Source]
 
 			switch properties.Definition["kind"] {
-			case PersistentVolumeKindAzureFileShare:
-				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volumeProperties.Persistent, resource.Name, options)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("unable to create persistent volume spec for volume: %s - %s", volumeName, err.Error()))
-				}
-			case PersistentVolumeKindAzureKeyVault:
-				// Make Managed Identity
-				managedIdentity := r.makeManagedIdentity(ctx, resource, applicationName)
-				outputResources = append(outputResources, managedIdentity)
-
-				// Make Role assignments
-				roleNames := []string{}
-				if properties.Definition["secrets"] != nil {
-					roleNames = append(roleNames, AzureKeyVaultSecretsUserRole)
-				}
-				if properties.Definition["certificates"] != nil || properties.Definition["keys"] != nil {
-					roleNames = append(roleNames, AzureKeyVaultCryptoUserRole)
-				}
-				kvID := properties.Definition["resource"].(string)
-				roleAssignments, err := r.makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx, kvID, roleNames)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create role assignments for volume: %s - %w", volumeName, err)
-				}
-				outputResources = append(outputResources, roleAssignments...)
-
-				// Make Pod Identity
-				podIdentity := r.makePodIdentity(ctx, resource, applicationName, []outputresource.OutputResource{})
-				outputResources = append(outputResources, podIdentity)
-				// We need to add labels for pod identity created to the pod metadata
-				podIDLabel := kubernetes.MakeAADPodIdentityBindingLabels(podIdentity.Resource.(map[string]string)[handlers.PodIdentityNameKey])
-				podLabels = labels.Merge(podIDLabel, podLabels)
+			case datamodel.AzureKeyVaultVolume:
+				// TODO: Support Workload Identity
+				// Pod identity implementation: https://github.com/project-radius/radius/blob/ae2fcb230e40c64f7e85470e2986100fe49e288a/pkg/renderers/containerv1alpha3/render.go#L305-L331
 
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
 				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
