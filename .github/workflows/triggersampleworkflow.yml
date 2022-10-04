@@ -23,6 +23,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
       - name: Parse release version and set enviroment variables
         run: |
              python ./.github/scripts/get_release_version.py
