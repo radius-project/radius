@@ -18,8 +18,9 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -71,7 +72,7 @@ func Test_ListAWSResources(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewOKResponse(map[string]interface{}{
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
 		"value": []interface{}{
 			map[string]interface{}{
 				"id":   path.Join(testAWSResourceCollectionPath, streamOneResourceName),
@@ -116,7 +117,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewOKResponse(map[string]interface{}{
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
 		"value": []interface{}{},
 	})
 
@@ -172,8 +173,8 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := rest.NewInternalServerErrorARMResponse(rest.ErrorResponse{
-		Error: rest.ErrorDetails{
+	expectedResponse := armrpc_rest.NewInternalServerErrorARMResponse(armrpc_v1.ErrorResponse{
+		Error: armrpc_v1.ErrorDetails{
 			Code:    "NotFound",
 			Message: "Resource not found",
 		},

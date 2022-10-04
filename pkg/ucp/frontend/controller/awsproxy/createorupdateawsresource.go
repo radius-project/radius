@@ -13,10 +13,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/wI2L/jsondiff"
 )
 
@@ -32,7 +31,7 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -44,14 +43,14 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	body := map[string]interface{}{}
 	err = decoder.Decode(&body)
 	if err != nil {
-		e := rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.Invalid,
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
 				Message: "failed to read request body",
 			},
 		}
 
-		response := rest.NewBadRequestARMResponse(e)
+		response := armrpc_rest.NewBadRequestARMResponse(e)
 		err = response.Apply(ctx, w, req)
 		if err != nil {
 			return nil, err
@@ -150,7 +149,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				"properties": responseProperties,
 			}
 
-			resp := radrprest.NewOKResponse(responseBody)
+			resp := armrpc_rest.NewOKResponse(responseBody)
 			return resp, nil
 		}
 	} else {
@@ -177,6 +176,6 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		"properties": responseProperties,
 	}
 
-	resp := radrprest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -55,6 +56,6 @@ func Test_GetResourceGroupByID(t *testing.T) {
 		ID:   testResourceGroupID,
 		Name: testResourceGroupName,
 	}
-	expectedResponse := rest.NewOKResponse(expectedResourceGroup)
+	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroup)
 	assert.DeepEqual(t, expectedResponse, actualResponse)
 }

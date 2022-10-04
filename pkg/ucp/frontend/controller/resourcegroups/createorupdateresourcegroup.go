@@ -11,6 +11,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -31,7 +32,7 @@ func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (ctrl.Controller, error) 
 	return &CreateOrUpdateResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	body, err := ctrl.ReadRequestBody(req)
 	if err != nil {
@@ -41,7 +42,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	var rg rest.ResourceGroup
 	err = json.Unmarshal(body, &rg)
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	rg.ID = path
@@ -49,7 +50,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	ID, err := resources.ParseScope(rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, rg.ID)
@@ -72,7 +73,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	restResp := rest.NewOKResponse(rg)
+	restResp := armrpc_rest.NewOKResponse(rg)
 	if rgExists {
 		logger.Info(fmt.Sprintf("Updated resource group %s successfully", rg.Name))
 	} else {

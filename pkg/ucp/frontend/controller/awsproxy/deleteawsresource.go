@@ -11,10 +11,9 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
-	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
 var _ ctrl.Controller = (*DeleteAWSResource)(nil)
@@ -29,7 +28,7 @@ func NewDeleteAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -40,7 +39,7 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		Identifier: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return rest.NewNoContentResponse(), nil
+		return armrpc_rest.NewNoContentResponse(), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
@@ -58,6 +57,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := radrprest.NewAsyncOperationResponse(map[string]interface{}{}, "global", 202, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]interface{}{}, "global", 202, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
 }

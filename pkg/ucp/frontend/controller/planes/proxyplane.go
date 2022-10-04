@@ -11,6 +11,7 @@ import (
 	http "net/http"
 	"net/url"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -33,7 +34,7 @@ func NewProxyPlane(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ProxyPlane{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.GetLogger(ctx)
 
 	logger.Info("starting proxy request", "url", req.URL.String(), "method", req.Method)
@@ -63,7 +64,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	_, err = p.GetResource(ctx, planeID.String(), &plane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
-			return rest.NewNotFoundResponse(planePath), nil
+			return armrpc_rest.NewNotFoundResponse(planeID), nil
 		}
 		return nil, err
 	}
@@ -88,7 +89,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		_, err = p.GetResource(ctx, rgID.String(), &existingPlane)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
-				return rest.NewNotFoundResponse(rgID.String()), nil
+				return armrpc_rest.NewNotFoundResponse(rgID), nil
 			}
 			return nil, err
 		}
@@ -103,7 +104,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
 		err = fmt.Errorf("Invalid resourceID specified with no provider")
-		return rest.NewBadRequestResponse(err.Error()), err
+		return armrpc_rest.NewBadRequestResponse(err.Error()), err
 	}
 
 	// Lookup the resource providers configured to determine the URL to proxy to

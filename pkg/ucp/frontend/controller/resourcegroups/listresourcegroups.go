@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -29,7 +30,7 @@ func NewListResourceGroups(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListResourceGroups{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	var query store.Query
@@ -51,7 +52,7 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 		return nil, err
 	}
 
-	var ok = rest.NewOKResponse(listOfResourceGroups)
+	var ok = armrpc_rest.NewOKResponse(listOfResourceGroups)
 	return ok, nil
 }
 
