@@ -20,9 +20,9 @@ func Test_KinesisStream(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                     step.NewDeployExecutor(template),
-			SkipRadiusResourceValidation: true,
-			SkipObjectValidation:         true,
+			Executor:                               step.NewDeployExecutor(template),
+			SkipKubernetesOutputResourceValidation: true,
+			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{

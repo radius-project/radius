@@ -39,15 +39,15 @@ const (
 )
 
 type TestStep struct {
-	Executor                     step.Executor
-	CoreRPResources              *validation.CoreRPResourceSet
-	K8sOutputResources           []unstructured.Unstructured
-	K8sObjects                   *validation.K8sObjectSet
-	AWSResources                 *validation.AWSResourceSet
-	PostStepVerify               func(ctx context.Context, t *testing.T, ct CoreRPTest)
-	SkipRadiusResourceValidation bool
-	SkipObjectValidation         bool
-	SkipResourceDeletion         bool
+	Executor                               step.Executor
+	CoreRPResources                        *validation.CoreRPResourceSet
+	K8sOutputResources                     []unstructured.Unstructured
+	K8sObjects                             *validation.K8sObjectSet
+	AWSResources                           *validation.AWSResourceSet
+	PostStepVerify                         func(ctx context.Context, t *testing.T, ct CoreRPTest)
+	SkipKubernetesOutputResourceValidation bool
+	SkipObjectValidation                   bool
+	SkipResourceDeletion                   bool
 }
 
 type CoreRPTest struct {
@@ -228,7 +228,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
-			if step.SkipRadiusResourceValidation {
+			if step.SkipKubernetesOutputResourceValidation {
 				t.Logf("skipping validation of resources...")
 			} else if step.CoreRPResources == nil || len(step.CoreRPResources.Resources) == 0 {
 				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
@@ -289,7 +289,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
 		}
 
-		if (step.CoreRPResources == nil && step.SkipRadiusResourceValidation) || step.SkipResourceDeletion {
+		if (step.CoreRPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
 			continue
 		}
 		for _, resource := range step.CoreRPResources.Resources {
