@@ -9,10 +9,6 @@ assignees: ''
 
 <!--What are you proposing Project Radius add/update/remove?-->
 
-### Screenshots
-
-<!--If applicable, add screenshots to help explain your problem-->
-
 ## Acceptance criteria
 
 <!--What will need to be completed/working for this feature to be marked "Done"-->
