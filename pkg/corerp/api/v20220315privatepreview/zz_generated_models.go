@@ -11,6 +11,12 @@ package v20220315privatepreview
 
 import "time"
 
+// AZProviderProperties - Azure provider information
+type AZProviderProperties struct {
+	// scope for the resources to be deployed. For example:
+	Scope *string `json:"scope,omitempty"`
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
@@ -328,10 +334,19 @@ type EnvironmentProperties struct {
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
 	// Dictionary of
+	Provider map[string]*EnvironmentProviderProperties `json:"provider,omitempty"`
+
+	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// EnvironmentProviderProperties - Properties of a Recipe linked to an Environment.
+type EnvironmentProviderProperties struct {
+	// Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+	Az *AZProviderProperties `json:"az,omitempty"`
 }
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.

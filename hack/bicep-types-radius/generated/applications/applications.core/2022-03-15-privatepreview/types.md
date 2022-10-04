@@ -224,6 +224,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
+* **provider**: [EnvironmentPropertiesProvider](#environmentpropertiesprovider): Dictionary of <EnvironmentProviderProperties>
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 
@@ -237,6 +238,19 @@
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.
 
+
+## EnvironmentPropertiesProvider
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [EnvironmentProviderProperties](#environmentproviderproperties)
+
+## EnvironmentProviderProperties
+### Properties
+* **az**: [AZProviderProperties](#azproviderproperties): Azure provider information
+
+## AZProviderProperties
+### Properties
+* **scope**: string: scope for the resources to be deployed. For example:
 
 ## EnvironmentPropertiesRecipes
 ### Properties

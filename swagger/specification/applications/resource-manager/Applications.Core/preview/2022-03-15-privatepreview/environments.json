@@ -364,6 +364,13 @@
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute"
           },
+          "provider": {
+            "additionalProperties": {
+              "$ref": "#/definitions/EnvironmentProviderProperties",
+              "description": "Specifies provider information."
+            },
+            "type": "object"
+          },
           "recipes": {
             "additionalProperties": {
               "$ref": "#/definitions/EnvironmentRecipeProperties",
@@ -371,6 +378,25 @@
             },
             "type": "object"
           }
+        }
+      },
+      "EnvironmentProviderProperties": {
+        "description": "Properties of a Recipe linked to an Environment.",
+        "properties": {
+            "az": {
+              "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
+              "type": "object",
+              "$ref": "#/definitions/AZProviderProperties"
+            }
+        }
+      },
+      "AZProviderProperties": {
+        "description": "Azure provider information",
+        "properties": {
+            "scope" : {
+              "type":"string",
+              "description": "scope for the resources to be deployed. For example: "
+            }
         }
       },
       "EnvironmentRecipeProperties": {
