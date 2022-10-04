@@ -3,20 +3,25 @@
 # Licensed under the MIT License. 
 # ------------------------------------------------------------
 
-name: Draft Trigger Samples Workflow
+name: Test samples
 on:
   push:
     branches:
-      - v*.*
+      - main
+      - release/*
+    tags:
+      - v*
   pull_request:
     branches:
-      - main    
+      - main
+      - features/*
+      - release/*
 
 jobs:
-  update-types:
+  samples:
     name: Trigger samples workflow
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/github-script@v6
         with:
