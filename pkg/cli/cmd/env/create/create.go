@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
-	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -56,7 +55,7 @@ type Runner struct {
 	Namespace           string
 	K8sGoClient         client_go.Interface
 	ConnectionFactory   connections.Factory
-	ConfigFileInterface configFile.Interface
+	ConfigFileInterface framework.ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	NamespaceInterface  namespace.Interface
 }

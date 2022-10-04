@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
-	"github.com/project-radius/radius/pkg/cli/configFile"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -126,7 +125,7 @@ func Test_Run(t *testing.T) {
 				CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
-			configFileInterface := configFile.NewMockInterface(ctrl)
+			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
 				Connection: map[string]interface{}{
@@ -196,7 +195,7 @@ func Test_Run(t *testing.T) {
 				ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "c").
 				Return(testResourceGroup, &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", "c")})
 
-			configFileInterface := configFile.NewMockInterface(ctrl)
+			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
 				Name: "defaultWorkspace",
@@ -246,7 +245,7 @@ func Test_Run(t *testing.T) {
 				ValidateNamespace(context.Background(), gomock.Any(), gomock.Any()).
 				Return(errors.New(fmt.Sprintf("failed to create namespace %s", "notthedefault")))
 
-			configFileInterface := configFile.NewMockInterface(ctrl)
+			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
 				Connection: map[string]interface{}{
