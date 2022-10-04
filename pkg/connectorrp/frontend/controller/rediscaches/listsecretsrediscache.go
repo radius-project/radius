@@ -33,7 +33,7 @@ func NewListSecretsRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run returns secrets values for the specified RedisCache resource
-func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.RedisCache{}

@@ -33,7 +33,7 @@ func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, err
 }
 
 // Run returns secrets values for the specified RabbitMQMessageQueue resource
-func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.RabbitMQMessageQueue{}

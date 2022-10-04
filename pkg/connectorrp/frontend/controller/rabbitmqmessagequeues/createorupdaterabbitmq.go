@@ -34,7 +34,7 @@ func NewCreateOrUpdateRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, 
 }
 
 // Run executes CreateOrUpdateRabbitMQMessageQueue operation.
-func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := rabbitmq.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {

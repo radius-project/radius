@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -18,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListResourceGroups)(nil)
+var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
@@ -26,7 +27,7 @@ type ListResourceGroups struct {
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
-func NewListResourceGroups(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{ctrl.NewBaseController(opts)}, nil
 }
 

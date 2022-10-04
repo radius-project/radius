@@ -30,7 +30,7 @@ func NewDeleteDaprSecretStore(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteDaprSecretStore{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Read resource metadata from the storage

@@ -55,7 +55,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteRedisCache(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -124,7 +124,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteRedisCache(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
@@ -153,6 +153,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 			_, redisDataModel, _ := getTestModels20220315privatepreview()
+			w := httptest.NewRecorder()
 
 			mStorageClient.
 				EXPECT().
@@ -174,7 +175,7 @@ func TestDeleteRedisCache_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteRedisCache(opts)
 			require.NoError(t, err)
-			_, err = ctl.Run(ctx, req)
+			_, err = ctl.Run(ctx, w, req)
 			require.Error(t, err)
 		})
 	}

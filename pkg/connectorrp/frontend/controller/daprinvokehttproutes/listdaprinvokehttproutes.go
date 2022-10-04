@@ -30,7 +30,7 @@ func NewListDaprInvokeHttpRoutes(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListDaprInvokeHttpRoutes{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprHttpRoute *ListDaprInvokeHttpRoutes) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprHttpRoute *ListDaprInvokeHttpRoutes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{

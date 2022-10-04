@@ -33,7 +33,7 @@ func NewCreateOrUpdateSqlDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run executes CreateOrUpdateSqlDatabase operation.
-func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := sql.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {

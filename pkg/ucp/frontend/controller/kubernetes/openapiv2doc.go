@@ -9,12 +9,13 @@ import (
 	"encoding/json"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ ctrl.Controller = (*OpenAPIv2Doc)(nil)
+var _ armrpc_controller.Controller = (*OpenAPIv2Doc)(nil)
 
 // OpenAPIv2Doc is the controller implementation to handle the OpenAPIv2Doc endpoint.
 type OpenAPIv2Doc struct {
@@ -22,7 +23,7 @@ type OpenAPIv2Doc struct {
 }
 
 // NewOpenAPIv2Doc creates a new OpenAPIv2Doc.
-func NewOpenAPIv2Doc(opts ctrl.Options) (ctrl.Controller, error) {
+func NewOpenAPIv2Doc(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &OpenAPIv2Doc{ctrl.NewBaseController(opts)}, nil
 }
 

@@ -30,7 +30,7 @@ func NewCreateOrUpdateSubscription(opts ctrl.Options) (ctrl.Controller, error) {
 
 // CreateOrUpdateSubscription is triggered when the state of the user subscription is changed (setup or tear down).
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/subscription-lifecycle-api-reference.md#subscription-lifecycle-api-reference
-func (a *CreateOrUpdateSubscription) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (a *CreateOrUpdateSubscription) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	// TODO: implement data store check for subscriptions
 	log := radlogger.GetLogger(ctx)
 	log.Info("Within Create or Update Subscription")

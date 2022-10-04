@@ -53,7 +53,7 @@ func TestGetOperationResultRun(t *testing.T) {
 		})
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusNotFound, w.Result().StatusCode)
@@ -120,7 +120,7 @@ func TestGetOperationResultRun(t *testing.T) {
 			})
 
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, tt.respCode, w.Result().StatusCode)

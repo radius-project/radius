@@ -11,12 +11,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ ctrl.Controller = (*DeleteAWSResource)(nil)
+var _ armrpc_controller.Controller = (*DeleteAWSResource)(nil)
 
 // DeleteAWSResource is the controller implementation to delete AWS resource.
 type DeleteAWSResource struct {
@@ -24,7 +25,7 @@ type DeleteAWSResource struct {
 }
 
 // NewDeleteAWSResource creates a new DeleteAWSResource.
-func NewDeleteAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 

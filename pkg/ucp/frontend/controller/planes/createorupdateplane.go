@@ -11,6 +11,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -22,7 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdatePlane)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdatePlane)(nil)
 
 // CreateOrUpdatePlane is the controller implementation to create/update a UCP plane.
 type CreateOrUpdatePlane struct {
@@ -30,7 +31,7 @@ type CreateOrUpdatePlane struct {
 }
 
 // NewCreateOrUpdatePlane creates a new CreateOrUpdatePlane.
-func NewCreateOrUpdatePlane(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdatePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdatePlane{ctrl.NewBaseController(opts)}, nil
 }
 

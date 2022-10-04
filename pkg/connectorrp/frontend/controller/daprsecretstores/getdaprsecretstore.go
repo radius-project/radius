@@ -30,7 +30,7 @@ func NewGetDaprSecretStore(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetDaprSecretStore{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprSecretStore *GetDaprSecretStore) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprSecretStore *GetDaprSecretStore) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.DaprSecretStore{}

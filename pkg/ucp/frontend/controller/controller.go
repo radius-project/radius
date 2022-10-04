@@ -15,6 +15,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/aws"
@@ -30,7 +31,7 @@ type Options struct {
 	AWSClient aws.AWSClient
 }
 
-type ControllerFunc func(Options) (Controller, error)
+type ControllerFunc func(Options) (armrpc_controller.Controller, error)
 
 type HandlerOptions struct {
 	ParentRouter   *mux.Router
@@ -38,12 +39,6 @@ type HandlerOptions struct {
 	Path           string
 	Method         v1.OperationMethod
 	HandlerFactory ControllerFunc
-}
-
-// Controller is an interface of each operation controller.
-type Controller interface {
-	// Run executes the operation.
-	Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error)
 }
 
 // BaseController is the base operation controller.

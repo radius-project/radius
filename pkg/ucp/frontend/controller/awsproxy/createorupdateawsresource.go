@@ -13,13 +13,14 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/wI2L/jsondiff"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateAWSResource)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
@@ -27,7 +28,7 @@ type CreateOrUpdateAWSResource struct {
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
-func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 

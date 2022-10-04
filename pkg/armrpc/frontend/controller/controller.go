@@ -49,7 +49,7 @@ type Options struct {
 // Controller is an interface of each operation controller.
 type Controller interface {
 	// Run executes the operation.
-	Run(ctx context.Context, req *http.Request) (rest.Response, error)
+	Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error)
 }
 
 // BaseController is the base operation controller.
