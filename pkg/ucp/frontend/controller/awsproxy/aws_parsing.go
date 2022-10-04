@@ -9,7 +9,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -25,9 +24,6 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 		return nil, "", resources.ID{}, err
 	}
 
-	cfg.ClientLogMode |= aws.LogRequestWithBody
-	cfg.ClientLogMode |= aws.LogResponseWithBody
-
 	var client awsclient.AWSClient
 	if opts.AWSClient == nil {
 		client = cloudcontrol.NewFromConfig(cfg)
@@ -40,6 +36,6 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 		return nil, "", resources.ID{}, err
 	}
 
-	resourceType := resources.ToARN(id)
+	resourceType := resources.ToAWSResourceType(id)
 	return client, resourceType, id, nil
 }
