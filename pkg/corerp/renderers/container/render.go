@@ -270,7 +270,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 	outputResources := []outputresource.OutputResource{}
 
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
+	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
 	// Add volumes
 	volumes := []corev1.Volume{}
@@ -377,7 +377,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -605,7 +605,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: secrets,

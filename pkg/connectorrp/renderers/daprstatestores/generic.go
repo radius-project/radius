@@ -35,7 +35,7 @@ func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface, ap
 	if !ok {
 		return nil, conv.ErrInvalidModelConversion
 	}
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace, ResourceType)
 	if err != nil {
 		return nil, err
 	}

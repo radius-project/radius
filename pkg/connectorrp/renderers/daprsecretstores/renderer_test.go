@@ -114,7 +114,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "Applications.Connector/daprSecretStores",

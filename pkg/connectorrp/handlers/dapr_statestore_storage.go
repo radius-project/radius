@@ -18,13 +18,15 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	StorageAccountNameKey = "storageaccount"
-	ResourceIDKey         = "resourceid"
+	StorageAccountNameKey      = "storageaccount"
+	ResourceIDKey              = "resourceid"
+	DaprStateStoreResourceType = "Applications.Connector/daprStateStores"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
@@ -105,7 +107,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName]),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",

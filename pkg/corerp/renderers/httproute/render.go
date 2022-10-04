@@ -95,7 +95,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name, route.ResourceTypeName()),
 		},
 		Spec: corev1.ServiceSpec{
 			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, resourceTypeSuffix, route.Name),
