@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	Azure = iota
+	Azure int = iota
 	AWS
 )
 
