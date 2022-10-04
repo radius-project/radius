@@ -19,13 +19,13 @@ func InjectEnvironmentParam(deploymentTemplate map[string]interface{}, parameter
 	}
 	innerParameters := deploymentTemplate["parameters"].(map[string]interface{})
 
-	if innerParameters["environment"] == nil {
+	if innerParameters["radEnvironment"] == nil {
 		return nil
 	}
 
-	// If we got here, it means an environment is an input parameter, inject if it isn't an input param
-	if _, ok := parameters["environment"]; !ok {
-		parameters["environment"] = map[string]interface{}{
+	// If we got here, it means an radEnvironment is an input parameter, inject if it isn't an input param
+	if _, ok := parameters["radEnvironment"]; !ok {
+		parameters["radEnvironment"] = map[string]interface{}{
 			"value": environmentId,
 		}
 	}
