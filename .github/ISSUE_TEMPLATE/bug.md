@@ -1,8 +1,7 @@
 ---
 name: Bug Report
-about: Report broken functionality within Radius
+about: Report broken functionality within Project Radius
 title: "<BUG TITLE>"
-labels: kind/bug
 assignees: ''
 ---
 
