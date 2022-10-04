@@ -28,7 +28,7 @@ jobs:
       - name: Parse release version and set enviroment variables
         run: |
              python ./.github/scripts/get_release_version.py
-             echo "this build version: ${{ env.$REL_CHANNEL }}"
+             echo "this build version: ${{ env.REL_CHANNEL }}"
       - uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
@@ -37,5 +37,5 @@ jobs:
               owner: 'project-radius',
               repo: 'samples',
               workflow_id: 'test.yaml',
-              ref: ${{ env.$REL_CHANNEL }}
+              ref: ${{ env.REL_CHANNEL }}
             })
