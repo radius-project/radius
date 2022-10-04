@@ -7,7 +7,6 @@ package create
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"path"
 	"testing"
@@ -243,7 +242,7 @@ func Test_Run(t *testing.T) {
 			namespaceClient := namespace.NewMockInterface(ctrl)
 			namespaceClient.EXPECT().
 				ValidateNamespace(context.Background(), gomock.Any(), gomock.Any()).
-				Return(errors.New(fmt.Sprintf("failed to create namespace %s", "notthedefault")))
+				Return(fmt.Errorf("failed to create namespace %s", "notthedefault"))
 
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
@@ -268,7 +267,7 @@ func Test_Run(t *testing.T) {
 				ConfigFileInterface: configFileInterface,
 			}
 
-			expected := errors.New(fmt.Sprintf("failed to create namespace %s", "notthedefault"))
+			expected := fmt.Errorf("failed to create namespace %s", "notthedefault")
 			err := runner.Run(context.Background())
 			require.Equal(t, expected, err)
 		})
