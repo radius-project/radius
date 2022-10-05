@@ -51,10 +51,3 @@ func NewClientErrInvalidRequest(message string) *ErrClientRP {
 	err.Code = v1.CodeInvalid
 	return err
 }
-
-func NewClientErrResourceConflict(message string) *ErrClientRP {
-	err := new(ErrClientRP)
-	err.Message = message
-	err.Code = v1.CodeConflict
-	return err
-}

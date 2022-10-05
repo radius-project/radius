@@ -2,6 +2,8 @@ import radius as radius
 
 param environment string
 
+param location string = resourceGroup().location
+
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-component-name-conflict'
   location: 'global'
@@ -24,7 +26,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
 
 resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
   name: 'dapr-ns-${guid(resourceGroup().name)}'
-  location: resourceGroup().location
+  location: location
   tags: {
     radiustest: 'corerp-resources-dapr-pubsub-servicebus'
   }

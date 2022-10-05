@@ -26,7 +26,6 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -34,10 +33,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -95,18 +90,13 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment ID and recipe name from the resource
-	envId, applicationId, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
+	env, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe connector type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, envId, recipe.Name)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-
-	err = dp.checkResourceNameUniqueness(ctx, id, applicationId, envMetadata.Namespace)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -355,7 +345,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, applicationId string, recipe datamodel.ConnectorRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipe datamodel.ConnectorRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
@@ -365,7 +355,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		envId = obj.Properties.Environment
@@ -373,7 +362,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		envId = obj.Properties.Environment
@@ -381,7 +369,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		envId = obj.Properties.Environment
@@ -389,11 +376,9 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(extenders.ResourceType):
 		obj := resource.(*datamodel.Extender)
 		envId = obj.Properties.Environment
-		applicationId = obj.Properties.Application
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		envId = obj.Properties.Environment
@@ -401,7 +386,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
 		envId = obj.Properties.Environment
@@ -409,7 +393,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		envId = obj.Properties.Environment
@@ -417,7 +400,6 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
 		envId = obj.Properties.Environment
@@ -425,13 +407,12 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
-		applicationId = obj.Properties.Application
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return "", "", recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		return "", recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 
-	return envId, applicationId, recipe, nil
+	return envId, recipe, nil
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the connector and linked resources ```
@@ -480,42 +461,4 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 
 	// no recipe is associated with resource
 	return envMetadata, nil
-}
-
-func (dp *deploymentProcessor) checkResourceNameUniqueness(ctx context.Context, resourceID resources.ID, applicationID string, namespace string) error {
-	var applicationName string
-	if applicationID != "" {
-		applicationID, err := renderers.ValidateApplicationID(applicationID)
-		if err != nil {
-			return err
-		}
-		applicationName = applicationID.Name()
-	}
-
-	componentName := kubernetes.MakeResourceName(applicationName, resourceID.Name())
-
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "",
-		Kind:    "Component",
-		Version: "dapr.io/v1alpha1",
-	})
-	err := dp.k8s.Get(ctx, client.ObjectKey{
-		Namespace: namespace,
-		Name:      componentName,
-	}, u)
-	// Object with the same name doesn't exist.
-	if k8serrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	// Object with the same name exists, checking the labels to see if they are the same objects.
-	if label, ok := u.GetLabels()[kubernetes.LabelRadiusResourceType]; ok && kubernetes.ConvertLabelToResourceType(label) != strings.ToLower(resourceID.Type()) {
-		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component names must be unique regardless of the type of Dapr component in use (eg: state store, pub/sub, secret store). Please select a new name", componentName)
-	}
-
-	return nil
 }

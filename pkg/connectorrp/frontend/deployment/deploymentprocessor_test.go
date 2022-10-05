@@ -16,8 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
-
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -36,67 +34,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	fakek8s "k8s.io/client-go/kubernetes/fake"
-	k8stesting "k8s.io/client-go/testing"
-	k8sclient "sigs.k8s.io/controller-runtime/pkg/client"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"github.com/stretchr/testify/require"
 )
-
-const trackerAddResourceVersion = "999"
-
-var (
-	d = &appsv1.Deployment{
-		TypeMeta: metav1.TypeMeta{
-			APIVersion: "apps/v1",
-			Kind:       "Deployment",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:            "test-deployment",
-			Namespace:       "ns1",
-			ResourceVersion: trackerAddResourceVersion,
-		},
-	}
-
-	daprComponent = &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"apiVersion": "dapr.io/v1alpha1",
-			"kind":       "Component",
-			"metadata": map[string]interface{}{
-				"namespace": "radius-test",
-				"name":      "testapplication-mongo0",
-				"labels": map[string]interface{}{
-					"radius.dev/resource-type": "applications.connector-daprPubSubBrokers",
-				},
-			},
-		},
-	}
-)
-
-type KubeFakeClient struct {
-	clientset *fakek8s.Clientset
-}
-
-func (c *KubeFakeClient) Fake() *k8stesting.Fake {
-	return &c.clientset.Fake
-}
-
-func (c *KubeFakeClient) DynamicClient(initObjs ...k8sclient.Object) k8sclient.WithWatch {
-	return fakeclient.NewClientBuilder().
-		WithRuntimeObjects(d).
-		WithObjects(initObjs...).
-		WithObjectTracker(c.clientset.Tracker()).
-		Build()
-}
-
-func newKubeFakeClient() *KubeFakeClient {
-	return &KubeFakeClient{
-		clientset: fakek8s.NewSimpleClientset(),
-	}
-}
 
 func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
@@ -390,7 +329,6 @@ type SharedMocks struct {
 	renderer           *renderers.MockRenderer
 	secretsValueClient *rp.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
-	k8sClient          *k8sclient.WithWatch
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -431,9 +369,6 @@ func setup(t *testing.T) SharedMocks {
 			resourcemodel.ProviderAzure:      true,
 		})
 
-	fakeClient := newKubeFakeClient()
-	fakeDynamicClient := fakeClient.DynamicClient()
-
 	return SharedMocks{
 		model:              model,
 		db:                 store.NewMockStorageClient(ctrl),
@@ -442,7 +377,6 @@ func setup(t *testing.T) SharedMocks {
 		resourceHandler:    mockResourceHandler,
 		renderer:           mockRenderer,
 		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
-		k8sClient:          &fakeDynamicClient,
 	}
 }
 
@@ -469,14 +403,12 @@ func Test_Render(t *testing.T) {
 	mocks := setup(t)
 	ctrl := gomock.NewController(t)
 	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, *mocks.k8sClient}
-
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-
 		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
@@ -487,10 +419,8 @@ func Test_Render(t *testing.T) {
 
 	t.Run("verify render success with recipe", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoRecipe()
-
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-
 		er := buildEnvironmentResource()
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
@@ -667,7 +597,7 @@ func Test_Render(t *testing.T) {
 			},
 		)
 
-		mockdp := deploymentProcessor{testModel, mocks.dbProvider, mocks.secretsValueClient, *mocks.k8sClient}
+		mockdp := deploymentProcessor{testModel, mocks.dbProvider, mocks.secretsValueClient, nil}
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -682,35 +612,10 @@ func Test_Render(t *testing.T) {
 	})
 }
 
-func Test_Render_WithExistingDaprComponent(t *testing.T) {
-	ctx := createContext(t)
-	mocks := setup(t)
-	fakeClient := fakeclient.NewClientBuilder().WithObjects(daprComponent).Build()
-	deploymentProcessor := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, fakeClient}
-
-	t.Run("verify render failure due to existing Dapr component", func(t *testing.T) {
-		resourceID, testResource, _ := buildTestMongoResource()
-
-		mocks.dbProvider.EXPECT().
-			GetStorageClient(gomock.Any(), gomock.Any()).
-			Times(1).
-			Return(mocks.db, nil)
-
-		er := buildEnvironmentResource()
-		mocks.db.EXPECT().
-			Get(gomock.Any(), gomock.Any()).
-			Times(1).
-			Return(&er, nil)
-
-		_, err := deploymentProcessor.Render(ctx, resourceID, &testResource)
-		require.Error(t, err)
-	})
-}
-
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
 		expectedCosmosMongoDBIdentity := resourcemodel.ResourceIdentity{
@@ -815,7 +720,7 @@ func Test_Deploy(t *testing.T) {
 func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -875,7 +780,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -909,7 +814,7 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 func Test_Deploy_MissingJsonPointer(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	resourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -946,7 +851,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	testOutputResources := []outputresource.OutputResource{
 		{
@@ -1081,7 +986,7 @@ func Test_Delete(t *testing.T) {
 func Test_FetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	input := buildFetchSecretsInput(false)
 	secrets, err := dp.FetchSecrets(ctx, input)
@@ -1105,7 +1010,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 	mocks := setup(t)
 	recipeName := "cosmos-recipe"
 
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, *mocks.k8sClient}
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("successfully get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		er := buildEnvironmentResourceWithRecipe(recipeName)
