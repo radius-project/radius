@@ -17,7 +17,7 @@
         "description": "Specifies the location for resources."
       }
     },
-    "environment": {
+    "environmentId": {
       "type": "string",
       "defaultValue": "test",
       "metadata": {
@@ -45,7 +45,7 @@
         "name": "kubernetes-cli-json",
         "location": "[parameters('location')]",
         "properties": {
-          "environment": "[parameters('environment')]"
+          "environment": "[parameters('environmentId')]"
         }
       }
     },
