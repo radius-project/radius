@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -46,6 +47,8 @@ func getDataModel(id resources.ID) (conv.DataModelInterface, error) {
 		return &datamodel.Gateway{}, nil
 	case strings.ToLower(httproute.ResourceType):
 		return &datamodel.HTTPRoute{}, nil
+	case strings.ToLower(volume.ResourceType):
+		return &datamodel.VolumeResource{}, nil
 	default:
 		return nil, fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, id.String())
 	}

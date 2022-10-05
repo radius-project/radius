@@ -82,6 +82,10 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			ResourceType: gateway.ResourceType,
 			Renderer:     &gateway.Renderer{},
 		},
+		{
+			ResourceType: volume.ResourceType,
+			Renderer:     &volume.Renderer{},
+		},
 	}
 
 	if arm != nil {
@@ -126,6 +130,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Gateway,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Volume,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
