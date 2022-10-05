@@ -16,19 +16,19 @@ import (
 	"reflect"
 )
 
-// MarshalJSON implements the json.Marshaller interface for type AzureSPNProperties.
-func (a AzureSPNProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type AzureServicePrincipalProperties.
+func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "clientId", a.ClientID)
-	objectMap["kind"] = "azure.spn"
+	objectMap["kind"] = "ServicePrincipal"
 	populate(objectMap, "secret", a.Secret)
 	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureSPNProperties.
-func (a *AzureSPNProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type AzureServicePrincipalProperties.
+func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", a, err)

@@ -21,8 +21,8 @@ func unmarshalCredentialResourcePropertiesClassification(rawMsg json.RawMessage)
 	}
 	var b CredentialResourcePropertiesClassification
 	switch m["kind"] {
-	case "azure.spn":
-		b = &AzureSPNProperties{}
+	case "ServicePrincipal":
+		b = &AzureServicePrincipalProperties{}
 	default:
 		b = &CredentialResourceProperties{}
 	}

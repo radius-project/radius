@@ -9,25 +9,25 @@
 
 package v20220315privatepreview
 
-type AzureSPNProperties struct {
-	// REQUIRED; clientId when the CredentialKind is azure.spn
+type AzureServicePrincipalProperties struct {
+	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
 
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; secret when the CredentialKind is azure.spn
+	// REQUIRED; secret when the CredentialKind is ServicePrincipal
 	Secret *string `json:"secret,omitempty"`
 
 	// REQUIRED
 	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
 
-	// REQUIRED; tenantId when the CredentialKind is azure.spn
+	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
 }
 
-// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureSPNProperties.
-func (a *AzureSPNProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
+// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
+func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
 	return &CredentialResourceProperties{
 		Kind: a.Kind,
 		Storage: a.Storage,
@@ -54,7 +54,7 @@ type CredentialResourceList struct {
 // CredentialResourcePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetCredentialResourceProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureSPNProperties, *CredentialResourceProperties
+// - *AzureServicePrincipalProperties, *CredentialResourceProperties
 type CredentialResourcePropertiesClassification interface {
 	// GetCredentialResourceProperties returns the CredentialResourceProperties content of the underlying type.
 	GetCredentialResourceProperties() *CredentialResourceProperties
