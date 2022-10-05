@@ -14,20 +14,6 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// CredentialKind - Credential kinds supported.
-type CredentialKind string
-
-const (
-	CredentialKindServicePrincipal CredentialKind = "ServicePrincipal"
-)
-
-// PossibleCredentialKindValues returns the possible values for the CredentialKind const type.
-func PossibleCredentialKindValues() []CredentialKind {
-	return []CredentialKind{	
-		CredentialKindServicePrincipal,
-	}
-}
-
 // CredentialStorageKind - credential store kinds supported.
 type CredentialStorageKind string
 
