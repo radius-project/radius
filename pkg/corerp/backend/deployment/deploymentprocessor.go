@@ -76,6 +76,7 @@ type ResourceData struct {
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
 	AppID           resources.ID // Application ID for which the resource is created
+	RecipeData      connector_dm.RecipeData
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -348,6 +349,24 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 		}
 	}
 
+	var recipeData = dependency.RecipeData
+
+	for _, id := range recipeData.Resources {
+		parsedID, err := resources.ParseResource(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
+		}
+		// Find resource that matches the expected Azure resource type
+		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
+			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
+			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	if recipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.Name)
+	}
+
 	if match == nil {
 		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
 	}
@@ -453,25 +472,64 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.MongoDatabaseResponseProperties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := &connector_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.RecipeData.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := &connector_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := &connector_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.RabbitMQMessageQueueResponseProperties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(extenders.ResourceType):
 		obj := &connector_dm.Extender{}
 		if err = resource.As(obj); err != nil {
@@ -483,25 +541,65 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := &connector_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := &connector_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := &connector_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+
+		resourceData, err := dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		if err != nil {
+			return resourceData, err
+		}
+
+		if obj.Properties.Recipe.Name != "" {
+			resourceData.RecipeData = obj.RecipeData
+		}
+
+		return resourceData, nil
 	default:
 		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
