@@ -378,10 +378,11 @@
         }
       },
       "ProviderProperties": {
-        "description": "Azure provider information",
+        "description": "Provider information",
         "properties": {
           "azure": {
             "type":"object",
+            "description": "Azure provider information",
             "properties" : {
               "scope" : {
                 "type":"string",

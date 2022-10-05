@@ -224,7 +224,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **providers**: [ProviderProperties](#providerproperties): Azure provider information
+* **providers**: [ProviderProperties](#providerproperties): Provider information
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 
@@ -241,7 +241,7 @@
 
 ## ProviderProperties
 ### Properties
-* **azure**: [ProviderPropertiesAzure](#providerpropertiesazure)
+* **azure**: [ProviderPropertiesAzure](#providerpropertiesazure): Azure provider information
 
 ## ProviderPropertiesAzure
 ### Properties

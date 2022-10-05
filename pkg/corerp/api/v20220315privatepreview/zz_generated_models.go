@@ -831,11 +831,13 @@ func (p *PersistentVolume) GetVolume() *Volume {
 	}
 }
 
-// ProviderProperties - Azure provider information
+// ProviderProperties - Provider information
 type ProviderProperties struct {
+	// Azure provider information
 	Azure *ProviderPropertiesAzure `json:"azure,omitempty"`
 }
 
+// ProviderPropertiesAzure - Azure provider information
 type ProviderPropertiesAzure struct {
 	// scope for the resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 	Scope *string `json:"scope,omitempty"`
