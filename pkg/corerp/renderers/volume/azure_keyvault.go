@@ -211,6 +211,7 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 	params := map[string]string{
 		"usePodIdentity": "false",
 		"clientID":       identity.ClientID,
+		"tenantID":       identity.TenantID,
 		"keyvaultName":   kvResourceID.Name(),
 		"objects":        keyVaultObjectsSpec,
 	}
@@ -219,7 +220,10 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 	case datamodel.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
+		// clientID must be empty for system assigned managed identity
 		params["clientID"] = ""
+		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
+		params["tenantID"] = "placeholder"
 
 	default:
 		return outputresource.OutputResource{}, errUnsupportedIdentityKind
@@ -244,13 +248,13 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 }
 
 func getKeyVaultObjectsSpec(keyVaultObjects []azcsi.KeyVaultObject) (string, error) {
-	yamlArray := []string{}
+	yamlArray := azcsi.StringArray{Array: []string{}}
 	for _, object := range keyVaultObjects {
 		obj, err := yaml.Marshal(object)
 		if err != nil {
 			return "", errCreateSecretResource
 		}
-		yamlArray = append(yamlArray, string(obj))
+		yamlArray.Array = append(yamlArray.Array, string(obj))
 	}
 
 	objects, err := yaml.Marshal(yamlArray)

@@ -34,6 +34,9 @@ type RendererDependency struct {
 	// Definition is the definition (`properties` node) of the dependency.
 	Definition map[string]interface{}
 
+	// REsource is the datamodel of depedency resource.
+	Resource conv.DataModelInterface
+
 	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]interface{}
 

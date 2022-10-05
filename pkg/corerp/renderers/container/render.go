@@ -8,6 +8,7 @@ package container
 import (
 	"context"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 const (
@@ -285,17 +287,26 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		case datamodel.Persistent:
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
-			properties := dependencies[volumeProperties.Persistent.Source]
 
-			switch properties.Definition["kind"] {
+			properties := dependencies[volumeProperties.Persistent.Source]
+			vol, ok := properties.Resource.(*datamodel.VolumeResource)
+			if !ok {
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("invalid depedency resource")
+			}
+
+			switch vol.Properties.Kind {
 			case datamodel.AzureKeyVaultVolume:
 				// TODO: Support Workload Identity
 				// Pod identity implementation: https://github.com/project-radius/radius/blob/ae2fcb230e40c64f7e85470e2986100fe49e288a/pkg/renderers/containerv1alpha3/render.go#L305-L331
 
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
-				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
+				identity := &resourcemodel.KubernetesIdentity{}
+				if err := store.DecodeMap(secretProviderClass.Data, identity); err != nil {
+					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+				}
+
 				// Create spec for secret store
-				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, secretProviderClassName, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, identity.Name, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
