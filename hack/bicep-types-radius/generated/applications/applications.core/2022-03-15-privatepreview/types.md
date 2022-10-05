@@ -246,7 +246,7 @@
 
 ## EnvironmentProviderProperties
 ### Properties
-* **az**: [AZProviderProperties](#azproviderproperties): Azure provider information
+* **azure**: [AZProviderProperties](#azproviderproperties): Azure provider information
 
 ## AZProviderProperties
 ### Properties

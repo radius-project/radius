@@ -346,7 +346,7 @@ type EnvironmentProperties struct {
 // EnvironmentProviderProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentProviderProperties struct {
 	// Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
-	Az *AZProviderProperties `json:"az,omitempty"`
+	Azure *AZProviderProperties `json:"azure,omitempty"`
 }
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.

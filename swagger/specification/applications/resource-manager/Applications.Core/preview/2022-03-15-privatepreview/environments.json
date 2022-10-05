@@ -383,7 +383,7 @@
       "EnvironmentProviderProperties": {
         "description": "Properties of a Recipe linked to an Environment.",
         "properties": {
-            "az": {
+            "azure": {
               "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
               "type": "object",
               "$ref": "#/definitions/AZProviderProperties"

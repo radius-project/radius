@@ -690,7 +690,7 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentProviderProperties.
 func (e EnvironmentProviderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "az", e.Az)
+	populate(objectMap, "azure", e.Azure)
 	return json.Marshal(objectMap)
 }
 
@@ -703,8 +703,8 @@ func (e *EnvironmentProviderProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "az":
-				err = unpopulate(val, "Az", &e.Az)
+		case "azure":
+				err = unpopulate(val, "Azure", &e.Azure)
 				delete(rawMsg, key)
 		}
 		if err != nil {
