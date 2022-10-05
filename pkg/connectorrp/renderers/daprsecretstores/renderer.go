@@ -100,7 +100,7 @@ func GetDaprGeneric(daprGeneric dapr.DaprGeneric, resource datamodel.DaprSecretS
 		return nil, err
 	}
 
-	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace)
+	daprGenericResource, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resource.Name, namespace, resource.ResourceTypeName())
 	if err != nil {
 		return nil, err
 	}

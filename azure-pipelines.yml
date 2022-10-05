@@ -137,11 +137,17 @@ stages:
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
           --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
-          
+          --provider-aws \
+          --provider-aws-access-key-id $(AWS_ACCESS_KEY_ID) \
+          --provider-aws-secret-access-key $(AWS_SECRET_ACCESS_KEY) \
+          --provider-aws-region $(AWS_DEFAULT_REGION)
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
       displayName: rad env init kubernetes
     - script: |
         kubectl get pods -n radius-system
@@ -154,6 +160,10 @@ stages:
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
         make test-functional-corerp
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_DEFAULT_REGION: $(AWS_DEFAULT_REGION)
       displayName: run functional corerp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH

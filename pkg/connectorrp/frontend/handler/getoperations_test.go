@@ -7,6 +7,7 @@ package handler
 
 import (
 	"context"
+	"net/http/httptest"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -24,9 +25,10 @@ func TestRunWith20220315PrivatePreview(t *testing.T) {
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: v20220315privatepreview.Version,
 	})
+	w := httptest.NewRecorder()
 
 	// act
-	resp, err := op.Run(ctx, nil)
+	resp, err := op.Run(ctx, w, nil)
 
 	// assert
 	require.NoError(t, err)
@@ -48,9 +50,10 @@ func TestRunWithUnsupportedAPIVersion(t *testing.T) {
 	ctx := v1.WithARMRequestContext(context.Background(), &v1.ARMRequestContext{
 		APIVersion: "unknownversion",
 	})
+	w := httptest.NewRecorder()
 
 	// act
-	resp, err := op.Run(ctx, nil)
+	resp, err := op.Run(ctx, w, nil)
 
 	// assert
 	require.NoError(t, err)

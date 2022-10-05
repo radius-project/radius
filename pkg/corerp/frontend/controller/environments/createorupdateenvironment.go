@@ -33,7 +33,7 @@ func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run executes CreateOrUpdateEnvironment operation.
-func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
 	if err != nil {

@@ -30,7 +30,7 @@ func NewListDaprStateStores(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListDaprStateStores{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprStateStore *ListDaprStateStores) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprStateStore *ListDaprStateStores) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{

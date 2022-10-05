@@ -38,7 +38,7 @@ func NewCreateOrUpdateHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run executes CreateOrUpdateHTTPRoute operation.
-func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
 	if err != nil {

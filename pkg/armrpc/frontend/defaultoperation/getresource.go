@@ -34,7 +34,7 @@ func NewGetResource[P interface {
 }
 
 // Run fetches the resource from the datastore.
-func (e *GetResource[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *GetResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)

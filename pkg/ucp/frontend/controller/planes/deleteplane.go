@@ -10,6 +10,8 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -18,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*DeletePlane)(nil)
+var _ armrpc_controller.Controller = (*DeletePlane)(nil)
 
 // DeletePlane is the controller implementation to delete a UCP Plane.
 type DeletePlane struct {
@@ -26,22 +28,22 @@ type DeletePlane struct {
 }
 
 // NewDeletePlane creates a new DeletePlane.
-func NewDeletePlane(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeletePlane{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	existingPlane := rest.Plane{}
 	etag, err := p.GetResource(ctx, resourceId.String(), &existingPlane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
-			restResponse := rest.NewNoContentResponse()
+			restResponse := armrpc_rest.NewNoContentResponse()
 			return restResponse, nil
 		}
 		return nil, err
@@ -51,7 +53,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	if err != nil {
 		return nil, err
 	}
-	restResponse := rest.NewNoContentResponse()
+	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
 }

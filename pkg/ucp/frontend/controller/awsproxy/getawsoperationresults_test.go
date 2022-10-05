@@ -14,8 +14,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
 
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
 )
@@ -44,7 +44,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
-	expectedResponse := rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewNoContentResponse()
 
 	require.NoError(t, err)
 	require.Equal(t, expectedResponse, actualResponse)

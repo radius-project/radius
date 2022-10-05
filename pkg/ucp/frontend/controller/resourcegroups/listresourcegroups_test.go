@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -50,7 +51,7 @@ func Test_ListResourceGroups(t *testing.T) {
 			},
 		},
 	}
-	expectedResponse := rest.NewOKResponse(expectedResourceGroupList)
+	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroupList)
 
 	rg := rest.ResourceGroup{
 		ID:   testResourceGroupID,

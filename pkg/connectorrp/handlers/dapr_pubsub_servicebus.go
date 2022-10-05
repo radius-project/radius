@@ -18,15 +18,17 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	ServiceBusNamespaceIDKey   = "servicebusid"
-	RootManageSharedAccessKey  = "RootManageSharedAccessKey"
-	ServiceBusTopicNameKey     = "servicebustopic"
-	ServiceBusNamespaceNameKey = "servicebusnamespace"
+	ServiceBusNamespaceIDKey     = "servicebusid"
+	RootManageSharedAccessKey    = "RootManageSharedAccessKey"
+	ServiceBusTopicNameKey       = "servicebustopic"
+	ServiceBusNamespaceNameKey   = "servicebusnamespace"
+	DaprPubSubBrokerResourceType = "Applications.Connector/daprPubSubBrokers"
 )
 
 type daprPubSubServiceBusBaseHandler struct {
@@ -106,7 +108,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName]),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprPubSubBrokerResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",

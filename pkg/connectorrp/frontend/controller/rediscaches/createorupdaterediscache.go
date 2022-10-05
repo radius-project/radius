@@ -35,7 +35,7 @@ func NewCreateOrUpdateRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run executes CreateOrUpdateRedisCache operation.
-func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := redis.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
