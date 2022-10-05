@@ -23,7 +23,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:   "show",
-		Short: "show workspace",
+		Short: "Show details of workspace",
 		Long:  "Show details of the specified workspace",
 		Args:  cobra.MaximumNArgs(1),
 		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
