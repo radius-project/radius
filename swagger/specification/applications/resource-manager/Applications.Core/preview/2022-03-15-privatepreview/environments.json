@@ -366,7 +366,7 @@
           },
           "providers": {
               "$ref": "#/definitions/ProviderProperties",
-              "description": "Specifies azure provider information."
+              "description": "Specifies provider information."
           },
           "recipes": {
             "additionalProperties": {

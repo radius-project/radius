@@ -327,7 +327,7 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
-	// Specifies azure provider information.
+	// Specifies provider information.
 	Providers *ProviderProperties `json:"providers,omitempty"`
 
 	// Dictionary of
