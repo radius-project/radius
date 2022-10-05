@@ -24,7 +24,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	cmd := &cobra.Command{
 		Use:   "show",
 		Short: "Show details of workspace",
-		Long:  "Show details of the specified workspace",
+		Long:  `Show details of workspace
+
+Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file.
+
+Details include the workspace name, kubectl context, default resource group, and default environment.
+`,
 		Args:  cobra.MaximumNArgs(1),
 		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
 	rad workspace show myworkspace`,
