@@ -208,10 +208,6 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 		return outputresource.OutputResource{}, errInvalidKeyVaultResourceID
 	}
 
-	if identity.ClientID == "" {
-		return outputresource.OutputResource{}, errInvalidKeyVaultResourceID
-	}
-
 	params := map[string]string{
 		"usePodIdentity": "false",
 		"clientID":       identity.ClientID,

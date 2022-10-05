@@ -84,18 +84,11 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: volume.ResourceType,
-			Renderer:     &volume.Renderer{},
-		},
-	}
-
-	if arm != nil {
-		radiusResourceModel = append(radiusResourceModel, RadiusResourceModel{
-			ResourceType: volume.ResourceType,
 			Renderer: &volume.Renderer{
 				VolumeRenderers: volume.GetSupportedRenderers(),
 				Arm:             arm,
 			},
-		})
+		},
 	}
 
 	outputResourceModel := []OutputResourceModel{
