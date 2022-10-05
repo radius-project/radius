@@ -10,7 +10,7 @@ param magpieImage string
 param magpiePort int = 3000
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environmentId string = 'test'
 
 @description('Specifies the image for the RabbitMQ container resource.')
 param rabbitmqImage string = 'rabbitmq:3.10'
@@ -29,7 +29,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-rabbitmq'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -85,7 +85,7 @@ resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-priva
   location: location
   properties: {
     application: app.id
-    environment: environment
+    environment: environmentId
     queue: 'queue'
     secrets: {
       connectionString: 'amqp://${username}:${password}@${rabbitmqRoute.properties.hostname}:${rabbitmqRoute.properties.port}'

@@ -1,14 +1,14 @@
 import radius as radius
 
 param location string = resourceGroup().location
-param environment string
+param environmentId string
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'dapr-invokehttproute'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -72,7 +72,7 @@ resource daprBackend 'Applications.Connector/daprInvokeHttpRoutes@2022-03-15-pri
   name: 'dapr-backend-httproute'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     appId: 'backend'
   }

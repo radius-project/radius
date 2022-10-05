@@ -2,7 +2,7 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
+param environmentId string
 
 param location string = resourceGroup().location
 
@@ -10,7 +10,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-pubsub-servicebus-invalid'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -50,7 +50,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
   name: 'sb-pubsub'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     kind: 'pubsub.azure.servicebus'
     resource: namespace::topic.id

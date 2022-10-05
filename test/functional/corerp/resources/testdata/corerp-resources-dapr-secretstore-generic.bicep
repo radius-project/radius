@@ -2,7 +2,7 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
+param environmentId string
 
 param location string = resourceGroup().location
 
@@ -10,7 +10,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-secretstore-generic'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -46,7 +46,7 @@ resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-private
   name: 'gnrc-scs'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     kind: 'generic'
     type: 'secretstores.kubernetes'

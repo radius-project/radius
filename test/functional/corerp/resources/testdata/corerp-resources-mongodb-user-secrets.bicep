@@ -7,7 +7,7 @@ param username string = 'admin'
 @secure()
 param password string = newGuid()
 
-param environment string
+param environmentId string
 
 param magpieimage string
 
@@ -15,7 +15,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb-user-secrets'
   location: 'global'
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -74,7 +74,7 @@ resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview'
   location: 'global'
   properties: {
     application: app.id
-    environment: environment
+    environment: environmentId
     secrets: {
       connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'
       username: username

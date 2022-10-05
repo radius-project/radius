@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'global'
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environmentId string = 'test'
 
 @description('Specifies the tag of the image to be deployed.')
 param magpietag string = 'latest'
@@ -16,7 +16,7 @@ resource parametersApp 'Applications.Core/applications@2022-03-15-privatepreview
   name: 'kubernetes-cli-params'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 

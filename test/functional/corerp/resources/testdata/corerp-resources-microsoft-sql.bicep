@@ -10,7 +10,7 @@ param magpieImage string
 param magpiePort int = 3000
 
 @description('Specifies the environment for resources.')
-param environment string = 'test'
+param environmentId string = 'test'
 
 @description('Specifies the SQL username.')
 param adminUsername string = 'cooluser'
@@ -23,7 +23,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-microsoft-sql'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -56,7 +56,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
   location: location
   properties: {
     application: app.id
-    environment: environment
+    environment: environmentId
     resource: server::dbinner.id
   }
 }

@@ -2,7 +2,7 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
+param environmentId string
 
 param location string = resourceGroup().location
 
@@ -10,7 +10,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-statestore-tablestorage'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -66,7 +66,7 @@ resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepr
   name: 'ts-sts'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     kind: 'state.azure.tablestorage'
     resource: account::tableServices::table.id

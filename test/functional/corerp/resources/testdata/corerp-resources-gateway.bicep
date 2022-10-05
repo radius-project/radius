@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'local'
 
 @description('Specifies the environment for resources.')
-param environment string
+param environmentId string
 
 @description('Specifies the port for the container resource.')
 param port int = 3000
@@ -16,7 +16,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-gateway'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 

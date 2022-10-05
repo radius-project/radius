@@ -2,7 +2,7 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
+param environmentId string
 
 param location string = resourceGroup().location
 
@@ -10,7 +10,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-mongodb'
   location: 'global'
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -40,7 +40,7 @@ resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = 
   location: 'global'
   properties: {
     application: app.id
-    environment: environment
+    environment: environmentId
     resource: account::dbinner.id
   }
 }

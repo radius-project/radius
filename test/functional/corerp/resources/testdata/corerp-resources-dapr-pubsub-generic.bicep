@@ -2,7 +2,7 @@ import radius as radius
 
 param magpieimage string
 
-param environment string
+param environmentId string
 
 param location string = resourceGroup().location
 
@@ -10,7 +10,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-dapr-pubsub-generic'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -72,7 +72,7 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   name: 'gnrc-redis-rds'
   location: 'global'
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
@@ -87,7 +87,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
   name: 'gnrc-pubsub'
   location: location
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     kind: 'generic'
     type: 'pubsub.redis'

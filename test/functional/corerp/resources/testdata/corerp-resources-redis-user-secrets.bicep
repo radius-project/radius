@@ -1,13 +1,13 @@
 import radius as radius
 
 param magpieimage string
-param environment string
+param environmentId string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview'  = {
   name: 'corerp-resources-redis-user-secrets'
   location: 'global'
   properties:{
-    environment: environment
+    environment: environmentId
   }
 }
 
@@ -65,7 +65,7 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   name: 'rds-rds'
   location: 'global'
   properties: {
-    environment: environment
+    environment: environmentId
     application: app.id
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
