@@ -364,12 +364,9 @@
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute"
           },
-          "provider": {
-            "additionalProperties": {
-              "$ref": "#/definitions/EnvironmentProviderProperties",
-              "description": "Specifies provider information."
-            },
-            "type": "object"
+          "providers": {
+              "$ref": "#/definitions/ProviderProperties",
+              "description": "Specifies azure provider information."
           },
           "recipes": {
             "additionalProperties": {
@@ -380,23 +377,18 @@
           }
         }
       },
-      "EnvironmentProviderProperties": {
-        "description": "Properties of a Recipe linked to an Environment.",
-        "properties": {
-            "azure": {
-              "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
-              "type": "object",
-              "$ref": "#/definitions/AZProviderProperties"
-            }
-        }
-      },
-      "AZProviderProperties": {
+      "ProviderProperties": {
         "description": "Azure provider information",
         "properties": {
-            "scope" : {
-              "type":"string",
-              "description": "scope for the resources to be deployed. For example: "
+          "azure": {
+            "type":"object",
+            "properties" : {
+              "scope" : {
+                "type":"string",
+                "description": "scope for the resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+              }
             }
+          }
         }
       },
       "EnvironmentRecipeProperties": {

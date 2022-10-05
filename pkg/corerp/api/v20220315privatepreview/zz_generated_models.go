@@ -11,12 +11,6 @@ package v20220315privatepreview
 
 import "time"
 
-// AZProviderProperties - Azure provider information
-type AZProviderProperties struct {
-	// scope for the resources to be deployed. For example:
-	Scope *string `json:"scope,omitempty"`
-}
-
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
@@ -333,20 +327,14 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
-	// Dictionary of
-	Provider map[string]*EnvironmentProviderProperties `json:"provider,omitempty"`
+	// Specifies azure provider information.
+	Providers *ProviderProperties `json:"providers,omitempty"`
 
 	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-}
-
-// EnvironmentProviderProperties - Properties of a Recipe linked to an Environment.
-type EnvironmentProviderProperties struct {
-	// Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
-	Azure *AZProviderProperties `json:"azure,omitempty"`
 }
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
@@ -841,6 +829,16 @@ func (p *PersistentVolume) GetVolume() *Volume {
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
+}
+
+// ProviderProperties - Azure provider information
+type ProviderProperties struct {
+	Azure *ProviderPropertiesAzure `json:"azure,omitempty"`
+}
+
+type ProviderPropertiesAzure struct {
+	// scope for the resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+	Scope *string `json:"scope,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
