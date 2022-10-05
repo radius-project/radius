@@ -31,8 +31,13 @@ Workspaces allow you to manage multiple Radius platforms and environments using 
 Details include the workspace name, kubectl context, default resource group, and default environment.
 `,
 		Args:  cobra.MaximumNArgs(1),
-		Example: `# create a kubernetes workspace with name 'myworkspace' and kuberentes context 'aks'
-	rad workspace show myworkspace`,
+		Example: `
+# Show the details of the default workspace
+rad workspace show
+
+# Show the details of workspace 'myworkspace'
+rad workspace show myworkspace
+`,
 		RunE: framework.RunCommand(runner),
 	}
 
