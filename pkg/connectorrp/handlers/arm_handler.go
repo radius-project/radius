@@ -31,15 +31,20 @@ type armHandler struct {
 }
 
 func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+	id, apiVersion, err := resource.Identity.RequireARM()
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
+	}
+
 	// Do a GET just to validate that the resource exists.
-	res, err := getByID(ctx, handler.arm.Auth, resource.Identity)
+	res, err := GetByID(ctx, handler.arm.Auth, id, apiVersion)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	// Return the resource so renderers can use it for computed values.
 	// TODO: it may not require such serialization.
-	serialized, err := handler.serializeResource(*res)
+	serialized, err := SerializeResource(*res)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -52,7 +57,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 	return nil
 }
 
-func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
+func SerializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
 	b, err := json.Marshal(&resource)
@@ -69,12 +74,7 @@ func (handler *armHandler) serializeResource(resource resources.GenericResource)
 	return data, nil
 }
 
-func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
-	id, apiVersion, err := identity.RequireARM()
-	if err != nil {
-		return nil, err
-	}
-
+func GetByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion string) (*resources.GenericResource, error) {
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return nil, err

@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
@@ -32,6 +33,7 @@ const deploymentPrefix = "recipe"
 type RecipeHandler interface {
 	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties) ([]string, error)
 	Delete(ctx context.Context, id string, apiVersion string) error
+	GetResource(ctx context.Context, provider, id, apiVersion string) (map[string]interface{}, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -205,4 +207,23 @@ func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVer
 		logger.Info(fmt.Sprintf("Recipe resource %s does not exist: %s", id, err.Error()))
 	}
 	return nil
+}
+
+func (handler *azureRecipeHandler) GetResource(ctx context.Context, provider, id, apiVersion string) (resource map[string]interface{}, err error) {
+	if provider == resourcemodel.ProviderAzure {
+		resource, err := GetByID(ctx, handler.arm.Auth, id, apiVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		// Return the serialized resource so renderers can use it for computed values.
+		serialized, err := SerializeResource(*resource)
+		if err != nil {
+			return nil, err
+		}
+
+		return serialized, nil
+	}
+
+	return map[string]interface{}{}, nil
 }
