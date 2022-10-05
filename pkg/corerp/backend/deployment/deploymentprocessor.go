@@ -478,7 +478,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.MongoDatabaseResponseProperties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -509,7 +509,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -525,7 +525,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.RabbitMQMessageQueueResponseProperties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -547,7 +547,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -563,7 +563,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -579,7 +579,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
@@ -595,7 +595,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return resourceData, err
 		}
 
-		if obj.Properties.Recipe.Name != "" {
+		if obj.RecipeData.Name != "" {
 			resourceData.RecipeData = obj.RecipeData
 		}
 
