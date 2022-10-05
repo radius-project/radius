@@ -11,6 +11,7 @@ import (
 	http "net/http"
 	"strings"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -20,7 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*GetResourceGroup)(nil)
+var _ armrpc_controller.Controller = (*GetResourceGroup)(nil)
 
 // GetResourceGroup is the controller implementation to get the details of a UCP resource group
 type GetResourceGroup struct {
@@ -28,7 +29,7 @@ type GetResourceGroup struct {
 }
 
 // NewGetResourceGroup creates a new GetResourceGroup.
-func NewGetResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 

@@ -11,12 +11,13 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ ctrl.Controller = (*GetAWSResource)(nil)
+var _ armrpc_controller.Controller = (*GetAWSResource)(nil)
 
 // GetAWSResource is the controller implementation to get AWS resource.
 type GetAWSResource struct {
@@ -24,7 +25,7 @@ type GetAWSResource struct {
 }
 
 // NewGetAWSResource creates a new GetAWSResource.
-func NewGetAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 

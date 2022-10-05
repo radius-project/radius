@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -19,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*DeleteResourceGroup)(nil)
+var _ armrpc_controller.Controller = (*DeleteResourceGroup)(nil)
 
 // DeleteResourceGroup is the controller implementation to delete a UCP resource group.
 type DeleteResourceGroup struct {
@@ -27,7 +28,7 @@ type DeleteResourceGroup struct {
 }
 
 // NewDeleteResourceGroup creates a new DeleteResourceGroup.
-func NewDeleteResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeleteResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 

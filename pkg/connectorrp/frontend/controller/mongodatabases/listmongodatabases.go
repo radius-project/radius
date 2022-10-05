@@ -30,7 +30,7 @@ func NewListMongoDatabases(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListMongoDatabases{ctrl.NewBaseController(opts)}, nil
 }
 
-func (mongo *ListMongoDatabases) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (mongo *ListMongoDatabases) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{

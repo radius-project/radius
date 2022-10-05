@@ -112,7 +112,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
@@ -190,7 +190,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateRabbitMQMessageQueue(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)

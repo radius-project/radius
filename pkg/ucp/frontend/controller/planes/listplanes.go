@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -17,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListPlanes)(nil)
+var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
@@ -25,7 +26,7 @@ type ListPlanes struct {
 }
 
 // NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{ctrl.NewBaseController(opts)}, nil
 }
 

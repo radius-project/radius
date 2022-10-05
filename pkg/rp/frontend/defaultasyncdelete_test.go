@@ -77,7 +77,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			ctl, err := NewDefaultAsyncDelete(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned)
 			require.NoError(t, err)
 
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 
 			err = resp.Apply(ctx, w, req)

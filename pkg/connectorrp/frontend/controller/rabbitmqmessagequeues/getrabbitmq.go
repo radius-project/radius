@@ -30,7 +30,7 @@ func NewGetRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &GetRabbitMQMessageQueue{ctrl.NewBaseController(opts)}, nil
 }
 
-func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	existingResource := &datamodel.RabbitMQMessageQueueResponse{}

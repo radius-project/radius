@@ -30,7 +30,7 @@ func NewDeleteDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteDaprPubSubBroker{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprPubSub *DeleteDaprPubSubBroker) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprPubSub *DeleteDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Read resource metadata from the storage

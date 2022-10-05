@@ -35,7 +35,7 @@ func NewCreateOrUpdateDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, erro
 }
 
 // Run executes CreateOrUpdateDaprPubSubBroker operation.
-func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := daprPubSub.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {

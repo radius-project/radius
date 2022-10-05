@@ -33,7 +33,7 @@ func NewListSecretsMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run returns secrets values for the specified MongoDatabase resource
-func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (ctrl *ListSecretsMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.MongoDatabase{}

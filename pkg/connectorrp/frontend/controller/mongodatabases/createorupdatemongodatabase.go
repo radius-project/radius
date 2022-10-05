@@ -35,7 +35,7 @@ func NewCreateOrUpdateMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) 
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
-func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := mongo.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {

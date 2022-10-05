@@ -39,7 +39,7 @@ func NewDefaultAsyncDelete[P interface {
 }
 
 // Run executes DefaultAsyncDelete operation
-func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {

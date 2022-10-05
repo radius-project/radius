@@ -31,7 +31,7 @@ func NewGetOperationStatus(opts ctrl.Options) (ctrl.Controller, error) {
 
 // Run returns the async operation status.
 // Spec: https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/async-api-reference.md#azure-asyncoperation-resource-format
-func (e *GetOperationStatus) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *GetOperationStatus) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// TODO: Add additional validation

@@ -36,7 +36,7 @@ func NewDeleteGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (dc *DeleteGateway) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := dc.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {

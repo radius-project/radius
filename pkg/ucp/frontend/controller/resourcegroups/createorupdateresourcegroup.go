@@ -11,6 +11,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -20,7 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateResourceGroup)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
 
 // CreateOrUpdateResourceGroup is the controller implementation to create/update a UCP resource group.
 type CreateOrUpdateResourceGroup struct {
@@ -28,7 +29,7 @@ type CreateOrUpdateResourceGroup struct {
 }
 
 // NewCreateOrUpdateResourceGroup creates a new CreateOrUpdateResourceGroup.
-func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 

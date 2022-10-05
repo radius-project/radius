@@ -30,7 +30,7 @@ func NewDeleteRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteRabbitMQMessageQueue{ctrl.NewBaseController(opts)}, nil
 }
 
-func (rabbitmq *DeleteRabbitMQMessageQueue) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (rabbitmq *DeleteRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	// Read resource metadata from the storage

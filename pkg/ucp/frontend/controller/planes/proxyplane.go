@@ -11,6 +11,7 @@ import (
 	http "net/http"
 	"net/url"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/proxy"
@@ -22,7 +23,7 @@ import (
 
 const PlanesPath = "/planes"
 
-var _ ctrl.Controller = (*ProxyPlane)(nil)
+var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 
 // ProxyPlane is the controller implementation to proxy requests to appropriate RP or URL.
 type ProxyPlane struct {
@@ -30,7 +31,7 @@ type ProxyPlane struct {
 }
 
 // NewProxyPlane creates a new ProxyPlane.
-func NewProxyPlane(opts ctrl.Options) (ctrl.Controller, error) {
+func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ProxyPlane{ctrl.NewBaseController(opts)}, nil
 }
 

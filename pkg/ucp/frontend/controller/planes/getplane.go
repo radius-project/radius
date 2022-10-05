@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -19,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*GetPlane)(nil)
+var _ armrpc_controller.Controller = (*GetPlane)(nil)
 
 // GetPlane is the controller implementation to get the details of a UCP Plane.
 type GetPlane struct {
@@ -27,7 +28,7 @@ type GetPlane struct {
 }
 
 // NewGetPlane creates a new GetPlane.
-func NewGetPlane(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetPlane{ctrl.NewBaseController(opts)}, nil
 }
 

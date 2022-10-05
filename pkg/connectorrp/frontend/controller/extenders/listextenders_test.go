@@ -62,7 +62,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewListExtenders(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
@@ -132,7 +132,7 @@ func TestListExtendersRun_20220315PrivatePreview(t *testing.T) {
 			ctl, err := NewListExtenders(opts)
 
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)

@@ -13,12 +13,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
 
-var _ ctrl.Controller = (*GetAWSOperationStatuses)(nil)
+var _ armrpc_controller.Controller = (*GetAWSOperationStatuses)(nil)
 
 // GetAWSOperationStatuses is the controller implementation to get AWS resource operation status.
 type GetAWSOperationStatuses struct {
@@ -26,7 +27,7 @@ type GetAWSOperationStatuses struct {
 }
 
 // NewGetAWSOperationStatuses creates a new GetAWSOperationStatuses.
-func NewGetAWSOperationStatuses(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationStatuses{ctrl.NewBaseController(opts)}, nil
 }
 

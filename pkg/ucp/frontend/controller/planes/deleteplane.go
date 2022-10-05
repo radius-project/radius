@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -19,7 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*DeletePlane)(nil)
+var _ armrpc_controller.Controller = (*DeletePlane)(nil)
 
 // DeletePlane is the controller implementation to delete a UCP Plane.
 type DeletePlane struct {
@@ -27,7 +28,7 @@ type DeletePlane struct {
 }
 
 // NewDeletePlane creates a new DeletePlane.
-func NewDeletePlane(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &DeletePlane{ctrl.NewBaseController(opts)}, nil
 }
 
