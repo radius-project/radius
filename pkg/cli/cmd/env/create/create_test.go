@@ -8,7 +8,6 @@ package create
 import (
 	"context"
 	"fmt"
-	"path"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -22,10 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -36,24 +31,62 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 
+	ctrl := gomock.NewController(t)
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	namespaceClient := namespace.NewMockInterface(ctrl)
+	testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
+
+	// Valid create command
+	createMocksWithValidCommand(namespaceClient, appManagementClient, testResourceGroup)
+	// Invalid resource group
+	createShowUCPError(appManagementClient, testResourceGroup)
+	// Invalid create command with invalid namespace
+	createMocksWithInvalidResourceGroup(namespaceClient, appManagementClient, testResourceGroup)
+
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid create command",
-			Input:         []string{},
+			Input:         []string{"testingenv"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
+		},
+		{
+			Name:          "Create command with invalid resource group",
+			Input:         []string{"testingenv", "-g", "invalidresourcegroup"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
+		},
+		{
+			Name:          "Create command with invalid namespace",
+			Input:         []string{"testingenv", "-n", "invalidnamespace"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
 		},
 		{
 			Name:          "Create command without workspace",
-			Input:         []string{},
+			Input:         []string{"testingenv"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithoutWorkspace,
 			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
 		},
 		{
 			Name:          "Create command with invalid environment",
@@ -63,33 +96,19 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-		},
-		{
-			Name:          "Create command with invalid namespace",
-			Input:         []string{"-n", "invalidnamespace"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
 		},
 		{
 			Name:          "Create command with invalid workspace",
-			Input:         []string{"-w", "invalidworkspace"},
+			Input:         []string{"testingenv", "-w", "invalidworkspace"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-		},
-		{
-			Name:          "Create command with invalid resource group",
-			Input:         []string{"-g", "invalidresourcegroup"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
+			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			NamespaceInterface: namespaceClient,
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -101,25 +120,7 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
-			k8sGoClient :=
-				fake.NewSimpleClientset(&v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "default",
-						Namespace:   "default",
-						Annotations: map[string]string{},
-					},
-				})
-
 			namespaceClient := namespace.NewMockInterface(ctrl)
-			namespaceClient.EXPECT().
-				ValidateNamespace(context.Background(), gomock.Any(), "default").
-				Return(nil).Times(1)
-
-			testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
-			appManagementClient.EXPECT().
-				ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "default").
-				Return(testResourceGroup, nil).Times(1)
-
 			appManagementClient.EXPECT().
 				CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
@@ -142,134 +143,48 @@ func Test_Run(t *testing.T) {
 				EnvironmentName:     "default",
 				UCPResourceGroup:    "default",
 				Namespace:           "default",
-				K8sGoClient:         k8sGoClient,
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
+				AppManagementClient: appManagementClient,
 			}
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
-		})
-
-		t.Run("Failure with non-existant resource group", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-			configPath := path.Join(t.TempDir(), "config.yaml")
-
-			yamlData, err := yaml.Marshal(map[string]interface{}{
-				"workspaces": cli.WorkspaceSection{
-					Default: "defaultWorkspace",
-					Items: map[string]workspaces.Workspace{
-
-						"b": {
-							Connection: map[string]interface{}{
-								"kind":    workspaces.KindKubernetes,
-								"context": "my-context",
-							},
-							Scope: "/planes/radius/local/resourceGroups/b",
-						},
-					},
-				},
-			})
-			config := radcli.LoadConfig(t, string(yamlData))
-			config.SetConfigFile(configPath)
-			require.NoError(t, err)
-
-			k8sGoClient :=
-				fake.NewSimpleClientset(&v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "default",
-						Namespace:   "default",
-						Annotations: map[string]string{},
-					},
-				})
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			namespaceClient.EXPECT().
-				ValidateNamespace(context.Background(), gomock.Any(), "default").
-				Return(nil).Times(1)
-
-			testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
-			appManagementClient.EXPECT().
-				ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "c").
-				Return(testResourceGroup, &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", "c")})
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Name: "defaultWorkspace",
-				Connection: map[string]interface{}{
-					"kind":    workspaces.KindKubernetes,
-					"context": "my-context",
-				},
-				Scope: "/planes/radius/local/resourceGroups/b",
-			}
-
-			runner := &Runner{
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder: &framework.ConfigHolder{
-					Config:         config,
-					ConfigFilePath: configPath,
-				}, Output: outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "c",
-				Namespace:           "default",
-				K8sGoClient:         k8sGoClient,
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-			}
-
-			expected := &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", runner.UCPResourceGroup)}
-			err = runner.Run(context.Background())
-			require.Equal(t, expected, err)
-
-		})
-
-		t.Run("Failure with invalid namespace", func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-			k8sGoClient :=
-				fake.NewSimpleClientset(&v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:        "default",
-						Namespace:   "default",
-						Annotations: map[string]string{},
-					},
-				})
-
-			namespaceClient := namespace.NewMockInterface(ctrl)
-			namespaceClient.EXPECT().
-				ValidateNamespace(context.Background(), gomock.Any(), gomock.Any()).
-				Return(fmt.Errorf("failed to create namespace %s", "notthedefault"))
-
-			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-			outputSink := &output.MockOutput{}
-			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
-					"kind":    "kubernetes",
-					"context": "kind-kind",
-				},
-				Name: "defaultWorkspace",
-			}
-
-			runner := &Runner{
-				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-				Output:              outputSink,
-				Workspace:           workspace,
-				EnvironmentName:     "default",
-				UCPResourceGroup:    "default",
-				Namespace:           "notthedefault",
-				K8sGoClient:         k8sGoClient,
-				NamespaceInterface:  namespaceClient,
-				ConfigFileInterface: configFileInterface,
-			}
-
-			expected := fmt.Errorf("failed to create namespace %s", "notthedefault")
-			err := runner.Run(context.Background())
-			require.Equal(t, expected, err)
 		})
 	})
+}
+
+func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+	createShowUCPSuccess(appManagementClient, testResourceGroup)
+	createValidateNamespaceSuccess(namespaceClient)
+}
+
+func createMocksWithInvalidResourceGroup(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+	createShowUCPSuccess(appManagementClient, testResourceGroup)
+	createValidateNamespaceError(namespaceClient)
+}
+
+func createValidateNamespaceSuccess(namespaceClient *namespace.MockInterface) {
+	namespaceClient.EXPECT().
+		ValidateNamespace(gomock.Any(), "testingenv").
+		Return(nil).Times(1)
+}
+
+func createValidateNamespaceError(namespaceClient *namespace.MockInterface) {
+	namespaceClient.EXPECT().
+		ValidateNamespace(gomock.Any(), gomock.Any()).
+		Return(fmt.Errorf("failed to create namespace")).Times(1)
+}
+
+func createShowUCPSuccess(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+	appManagementClient.EXPECT().
+		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "test-resource-group").
+		Return(testResourceGroup, nil).Times(1)
+}
+
+func createShowUCPError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+	appManagementClient.EXPECT().
+		ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "invalidresourcegroup").
+		Return(testResourceGroup, &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", "invalidresourcegroup")}).Times(1)
+
 }
