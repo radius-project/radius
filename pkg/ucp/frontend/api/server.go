@@ -22,6 +22,8 @@ import (
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/secrets"
+	"github.com/project-radius/radius/pkg/ucp/secretsprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -34,11 +36,13 @@ type ServiceOptions struct {
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
 	DBClient                store.StorageClient
+	SecretsInterface        secrets.Interface
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
 	BasePath                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
+	SecretsProviderOptions  secretsprovider.SecretsProviderOptions
 	InitialPlanes           []rest.Plane
 }
 

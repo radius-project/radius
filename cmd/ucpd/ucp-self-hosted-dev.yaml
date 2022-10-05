@@ -41,5 +41,8 @@ planes:
       resourceProviders:
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
+
+secretsProvider:
+  provider: "etcd"
       
 
