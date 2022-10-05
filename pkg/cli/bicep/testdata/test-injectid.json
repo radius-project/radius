@@ -18,7 +18,7 @@
                 "description": "Specifies the location for resources."
             }
         },
-        "radEnvironment": {
+        "environmentId": {
             "type": "string",
             "metadata": {
                 "description": "Specifies the environment for resources."

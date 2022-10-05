@@ -28,7 +28,7 @@ func Test_Env_InjectedIfParamAvailable(t *testing.T) {
 	err = InjectEnvironmentParam(template, params, context.TODO(), "/planes/radius/local/resourceGroups/my-rg/providers/Application.Core/environments/my")
 	require.NoError(t, err)
 
-	require.Equal(t, "/planes/radius/local/resourceGroups/my-rg/providers/Application.Core/environments/my", params["radEnvironment"]["value"])
+	require.Equal(t, "/planes/radius/local/resourceGroups/my-rg/providers/Application.Core/environments/my", params["environmentId"]["value"])
 }
 
 func Test_Env_NotInjectedIfNoParamAvailable(t *testing.T) {
@@ -44,7 +44,7 @@ func Test_Env_NotInjectedIfNoParamAvailable(t *testing.T) {
 	err = InjectEnvironmentParam(template, params, context.TODO(), "/planes/radius/local/resourceGroups/my-rg/providers/Application.Core/environments/my")
 	require.NoError(t, err)
 
-	require.Nil(t, params["radEnvironment"])
+	require.Nil(t, params["environmentId"])
 }
 
 func Test_Env_NotInjectedIfParamAlreadySet(t *testing.T) {
@@ -56,7 +56,7 @@ func Test_Env_NotInjectedIfParamAlreadySet(t *testing.T) {
 	require.NoError(t, err)
 
 	params := map[string]map[string]interface{}{
-		"radEnvironment": {
+		"environmentId": {
 			"value": "ANOTHERENV",
 		},
 	}
@@ -64,5 +64,5 @@ func Test_Env_NotInjectedIfParamAlreadySet(t *testing.T) {
 	err = InjectEnvironmentParam(template, params, context.TODO(), "/planes/radius/local/resourceGroups/my-rg/providers/Application.Core/environments/my")
 	require.NoError(t, err)
 
-	require.Equal(t, "ANOTHERENV", params["radEnvironment"]["value"])
+	require.Equal(t, "ANOTHERENV", params["environmentId"]["value"])
 }
