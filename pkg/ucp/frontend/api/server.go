@@ -74,6 +74,14 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.DBClient = dbClient
 	}
 
+	if s.options.SecretsInterface == nil {
+		secretsInterface, err := s.InitializeSecretsInterface(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.options.SecretsInterface = secretsInterface
+	}
+
 	ctrlOpts := ctrl.Options{
 		BasePath: s.options.BasePath,
 		DB:       s.options.DBClient,
@@ -122,6 +130,16 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 	}
 
 	return storageClient, nil
+}
+
+func (s *Service) InitializeSecretsInterface(ctx context.Context) (secrets.Interface, error) {
+	var secretsInterface secrets.Interface
+	if s.options.SecretsProviderOptions.Provider == secretsprovider.TypeETCDSecrets {
+		s.options.SecretsProviderOptions.ETCD.Client = s.options.ClientConfigSource
+		// secretsInterface = 
+		return secretsInterface, nil
+	}
+	return secretsInterface, nil
 }
 
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP

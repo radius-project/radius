@@ -5,6 +5,12 @@
 
 package secretsprovider
 
+import (
+	"context"
+
+	"github.com/project-radius/radius/pkg/ucp/secrets"
+)
+
 // SecretsProviderType represents types of secrets provider.
 type SecretsProviderType string
 
@@ -15,3 +21,11 @@ const (
 	// TypeCosmosDB represents CosmosDB provider.
 	TypeKubernetesSecrets SecretsProviderType = "kubernetes"
 )
+
+//go:generate mockgen -destination=./mock_secretsstorage_provider.go -package=secretsprovider -self_package github.com/project-radius/radius/pkg/ucp/secretsprovider github.com/project-radius/radius/pkg/ucp/secretsprovider SecretsStorageProvider
+
+// SecretsStorageProvider is an interfae to provide secrets storage interface.
+type SecretsStorageProvider interface {
+	// GetSecretsInterface creates or gets secrets interface.
+	GetSecretsInterface(context.Context, string) (secrets.Interface, error)
+}

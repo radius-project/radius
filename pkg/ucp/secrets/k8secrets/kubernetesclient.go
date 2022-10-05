@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package k8secret
+package k8secrets
 
 import "github.com/project-radius/radius/pkg/ucp/secrets"
 

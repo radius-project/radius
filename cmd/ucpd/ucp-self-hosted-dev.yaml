@@ -44,5 +44,7 @@ planes:
 
 secretsProvider:
   provider: "etcd"
+  etcd:
+   inmemory: true
       
 
