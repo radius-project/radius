@@ -55,7 +55,7 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
-		/*{
+		{
 			Name:          "Create Command with too many args",
 			Input:         []string{"kubernetes", "rg", "env", "ws"},
 			ExpectedValid: false,
@@ -63,40 +63,40 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-		},
-		{
-			Name:          "valid create command with correct options but non existing radius",
-			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+		}, /*
+			{
+				Name:          "valid create command with correct options but non existing radius",
+				Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+				ExpectedValid: false,
+				ConfigHolder: framework.ConfigHolder{
+					ConfigFilePath: "",
+					Config:         configWithWorkspace,
+				},
+				HelmInterface:     helmMock,
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			},
-			HelmInterface:     helmMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		},
-		{
-			Name:          "valid create command with correct options but non existing env",
-			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "filePath",
-				Config:         configWithWorkspace,
+			{
+				Name:          "valid create command with correct options but non existing env",
+				Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+				ExpectedValid: false,
+				ConfigHolder: framework.ConfigHolder{
+					ConfigFilePath: "filePath",
+					Config:         configWithWorkspace,
+				},
+				HelmInterface:     helmMock,
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 			},
-			HelmInterface:     helmMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		},
-		{
-			Name:          "valid create command with correct options but non existing env",
-			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			HelmInterface:     helmMock,
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		},*/
+			{
+				Name:          "valid create command with correct options but non existing env",
+				Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+				ExpectedValid: false,
+				ConfigHolder: framework.ConfigHolder{
+					ConfigFilePath: "",
+					Config:         configWithWorkspace,
+				},
+				HelmInterface:     helmMock,
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			},*/
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
