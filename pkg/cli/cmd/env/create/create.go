@@ -28,8 +28,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create",
-		Short: "Create a new environment",
+		Use:   "create [envName]",
+		Short: "Create a new Radius environment",
 		Long: `Create a new Radius environment
 Radius environments are prepared "landing zones" for Radius applications.
 Applications deployed to an environment will inherit the container runtime, configuration, and other settings from the environment.`,
@@ -93,22 +93,34 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Namespace = r.EnvironmentName
 	}
 
-	r.AppManagementClient, err = r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
-	if err != nil {
-		return err
-	}
-
 	r.UCPResourceGroup, err = cmd.Flags().GetString("group")
 	if err != nil {
 		return err
 	}
+
 	if r.UCPResourceGroup == "" {
+		// If no resource group specified and no default resource group
+		if r.Workspace.Scope == "" {
+			return &cli.FriendlyError{Message: "no resource group specified or set as default. Specify a resource group with '--group' and try again."}
+		}
+		// Use the default scope if no resource group provided
 		scopeId, err := resources.Parse(r.Workspace.Scope)
 		if err != nil {
 			return err
 		}
 		r.UCPResourceGroup = scopeId.FindScope(resources.ResourceGroupsSegment)
 	}
+
+	// If resource group specified but no scope set up in config.yaml
+	if r.Workspace.Scope == "" {
+		r.Workspace.Scope = "/planes/radius/local/resourcegroups/" + r.UCPResourceGroup
+	}
+
+	r.AppManagementClient, err = r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+	if err != nil {
+		return err
+	}
+
 	_, err = r.AppManagementClient.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
