@@ -45,7 +45,8 @@ func (err *CLIError) Error() string {
 	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
 }
 
-func (err *CLIError) DeepestErrorCode() string {
+// GetFirstErrorCode function goes down the error chain to find and return the code of the first error in the chain.
+func (err *CLIError) GetFirstErrorCode() string {
 	var errorCode = err.ErrorResponse.Error.Code
 
 	errorQueue := make([]v1.ErrorDetails, 0)
@@ -84,7 +85,6 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	}
 
 	out, cliErr := cli.RunCommand(ctx, args)
-	// if it contains "Error: {" then parse everything after into a json object
 	if cliErr != nil && strings.Contains(out, "Error: {") {
 		var errResponse v1.ErrorResponse
 		idx := strings.Index(out, "Error: {")

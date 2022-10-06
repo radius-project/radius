@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -53,15 +52,9 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
 	var cliErr *radcli.CLIError
-	switch {
-	case errors.As(err, &cliErr):
-		t.Logf("error is a Rad CLI error")
-		require.Equal(t, d.ExpectedErrorCode, cliErr.DeepestErrorCode())
-	default:
-		unwrappedError := errors.Unwrap(err)
-		t.Logf("error is not a Rad CLI error")
-		t.Logf("error type is %q", reflect.TypeOf(unwrappedError))
-	}
+	ok := errors.As(err, &cliErr)
+	require.True(t, ok)
+	require.Equal(t, d.ExpectedErrorCode, cliErr.GetFirstErrorCode())
 
 	t.Logf("finished deploying %s from file %s", d.Description, d.Template)
 }

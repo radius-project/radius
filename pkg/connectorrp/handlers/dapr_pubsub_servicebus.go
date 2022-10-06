@@ -20,9 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
-	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -39,15 +37,17 @@ type daprPubSubServiceBusBaseHandler struct {
 }
 type daprPubSubServiceBusHandler struct {
 	daprPubSubServiceBusBaseHandler
-	kubernetesHandler
+	daprComponentHandler
 	k8s client.Client
 }
 
 func NewDaprPubSubServiceBusHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprPubSubServiceBusHandler{
 		daprPubSubServiceBusBaseHandler: daprPubSubServiceBusBaseHandler{arm: arm},
-		kubernetesHandler:               kubernetesHandler{k8s: k8s},
-		k8s:                             k8s,
+		daprComponentHandler: daprComponentHandler{
+			k8s: k8s,
+		},
+		k8s: k8s,
 	}
 }
 
@@ -79,7 +79,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = handler.checkResourceNameUniqueness(ctx, properties[ApplicationName], properties[ResourceName], properties[KubernetesNamespaceKey])
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprPubSubBrokerResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -217,33 +217,4 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	}
 
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
-}
-
-func (handler *daprPubSubServiceBusHandler) checkResourceNameUniqueness(ctx context.Context, applicationName string, resourceName string, namespace string) error {
-	componentName := kubernetes.MakeResourceName(applicationName, resourceName)
-
-	u := &unstructured.Unstructured{}
-	u.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "",
-		Kind:    "Component",
-		Version: "dapr.io/v1alpha1",
-	})
-	err := handler.k8s.Get(ctx, client.ObjectKey{
-		Namespace: namespace,
-		Name:      componentName,
-	}, u)
-	// Object with the same name doesn't exist.
-	if k8serrors.IsNotFound(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-
-	// Object with the same name exists, checking the labels to see if they are the same objects.
-	if label, ok := u.GetLabels()[kubernetes.LabelRadiusResourceType]; ok && kubernetes.ConvertLabelToResourceType(label) != strings.ToLower(DaprPubSubBrokerResourceType) {
-		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component names must be unique regardless of the type of Dapr component in use (eg: state store, pub/sub, secret store). Please select a new name", resourceName)
-	}
-
-	return nil
 }

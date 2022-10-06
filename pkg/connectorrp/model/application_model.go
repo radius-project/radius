@@ -93,7 +93,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.DaprComponent,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewDaprComponentHandler(k8s),
 		},
 	}
 
