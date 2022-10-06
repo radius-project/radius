@@ -366,7 +366,7 @@
           },
           "providers": {
               "$ref": "#/definitions/ProviderProperties",
-              "description": "Specifies provider information."
+              "description": "Cloud provider configuration for the environment."
           },
           "recipes": {
             "additionalProperties": {
