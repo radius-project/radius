@@ -541,21 +541,15 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())
 	}
 
-	resourceData := ResourceData{
+	return ResourceData{
 		ID:              resourceID,
 		Resource:        resource,
 		OutputResources: outputResources,
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
 		AppID:           appID,
-	}
-
-	if recipeData.Name != "" {
-		// If recipe data is available (only possible for connectors currently), add to resource data
-		resourceData.RecipeData = recipeData
-	}
-
-	return resourceData, nil
+		RecipeData:      recipeData,
+	}, nil
 }
 
 func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, dependency ResourceData) (renderers.RendererDependency, error) {
