@@ -7,14 +7,19 @@ package create
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -33,21 +38,28 @@ func Test_Validate(t *testing.T) {
 
 	helmMock := helm.NewMockInterface(ctrl)
 	kubeMock := kubernetes.NewMockInterface(ctrl)
-
-	//appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	appManagementClientMock := clients.NewMockApplicationsManagementClient(ctrl)
 
 	//Setup a non existant radius scenario
 	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
 	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(false, nil).Times(1)
 
 	//Setup non existant group scenario
-	/*helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
-	appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("af")).Times(1)
+	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
 
 	//Setup existant group scenario and non existing env
+	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
 	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
-	appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
-	appManagementClient.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("af")).Times(1)*/
+	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+	appManagementClientMock.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
+
+	//Working scenario
+	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+	appManagementClientMock.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, nil).Times(1)
 
 	testcases := []radcli.ValidateInput{
 
@@ -79,30 +91,43 @@ func Test_Validate(t *testing.T) {
 			},
 			HelmInterface:       helmMock,
 			KubernetesInterface: kubeMock,
-			//ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-		}, /*
-			{
-				Name:          "valid create command with correct options but non existing env",
-				Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-				ExpectedValid: false,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "filePath",
-					Config:         configWithWorkspace,
-				},
-				HelmInterface:     helmMock,
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		},
+		{
+			Name:          "valid create command with correct options but non existing env",
+			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "filePath",
+				Config:         configWithWorkspace,
 			},
-			{
-				Name:          "valid create command with correct options but non existing env",
-				Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
-				ExpectedValid: false,
-				ConfigHolder: framework.ConfigHolder{
-					ConfigFilePath: "",
-					Config:         configWithWorkspace,
-				},
-				HelmInterface:     helmMock,
-				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			},*/
+			HelmInterface:       helmMock,
+			KubernetesInterface: kubeMock,
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+		},
+		{
+			Name:          "valid create command with correct options but non existing env",
+			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			KubernetesInterface: kubeMock,
+			HelmInterface:       helmMock,
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+		},
+		{
+			Name:          "valid working create command",
+			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			KubernetesInterface: kubeMock,
+			HelmInterface:       helmMock,
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
