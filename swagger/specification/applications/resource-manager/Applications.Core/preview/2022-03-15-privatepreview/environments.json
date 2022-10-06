@@ -378,7 +378,7 @@
         }
       },
       "ProviderProperties": {
-        "description": "Provider information",
+        "description": "Cloud provider configuration",
         "properties": {
           "azure": {
             "type":"object",
