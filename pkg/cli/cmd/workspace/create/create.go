@@ -26,7 +26,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create [workspaceType]",
+		Use:   "create [workspaceType] [workspaceName]",
 		Short: "Create a workspace",
 		Long: `Create a workspace.
 		Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file. 
