@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -54,6 +55,7 @@ type Runner struct {
 	ConfigFileInterface framework.ConfigFileInterface
 	Output              output.Interface
 	HelmInterface       helm.Interface
+	KubernetesInterface kubernetes.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -63,6 +65,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		Output:              factory.GetOutput(),
 		HelmInterface:       factory.GetHelmInterface(),
+		KubernetesInterface: factory.GetKubernetesInterface(),
 	}
 }
 
@@ -78,9 +81,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	context, err := cli.RequireKubeContext(cmd)
+	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
+	if err != nil {
+		return &cli.FriendlyError{Message: "Failed to read kube config"}
+	}
+	context, err := cli.RequireKubeContext(cmd, kubeContextList.CurrentContext)
 	if err != nil {
 		return err
+	}
+
+	_, ok := kubeContextList.Contexts[context]
+	if !ok {
+		return fmt.Errorf("the kubeconfig does not contain a context called %q", context)
 	}
 
 	if workspaceName == "" {

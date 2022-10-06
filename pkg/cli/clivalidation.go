@@ -14,7 +14,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -78,25 +77,17 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	return environmentName, err
 }
 
-// RequireKubeContext is used by commands that need a kubernetes context to be specified using -c flag or has a default kubecontext
-func RequireKubeContext(cmd *cobra.Command) (string, error) {
+// RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
+func RequireKubeContext(cmd *cobra.Command, currentContext string) (string, error) {
 	kubecontext, err := cmd.Flags().GetString("context")
 	if err != nil {
 		return "", err
 	}
-	kubeconfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return "", err
-	}
 
-	if kubecontext == "" && kubeconfig.CurrentContext == "" {
+	if kubecontext == "" && currentContext == "" {
 		return "", errors.New("the kubeconfig has no current context")
 	} else if kubecontext == "" {
-		kubecontext = kubeconfig.CurrentContext
-	}
-	_, ok := kubeconfig.Contexts[kubecontext]
-	if !ok {
-		return "", fmt.Errorf("the kubeconfig does not contain a context called %q", kubecontext)
+		kubecontext = currentContext
 	}
 
 	return kubecontext, nil

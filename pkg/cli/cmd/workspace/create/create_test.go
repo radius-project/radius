@@ -12,10 +12,12 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
+	"k8s.io/client-go/tools/clientcmd/api"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -30,10 +32,12 @@ func Test_Validate(t *testing.T) {
 	defer ctrl.Finish()
 
 	helmMock := helm.NewMockInterface(ctrl)
+	kubeMock := kubernetes.NewMockInterface(ctrl)
 
 	//appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 
 	//Setup a non existant radius scenario
+	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
 	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(false, nil).Times(1)
 
 	//Setup non existant group scenario
@@ -73,7 +77,8 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			HelmInterface: helmMock,
+			HelmInterface:       helmMock,
+			KubernetesInterface: kubeMock,
 			//ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 		}, /*
 			{
@@ -135,4 +140,16 @@ func Test_Run(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+}
+
+func getTestKubeConfig() *api.Config {
+	kubeContexts := map[string]*api.Context{
+		"docker-desktop": {Cluster: "docker-desktop"},
+		"k3d-radius-dev": {Cluster: "k3d-radius-dev"},
+		"kind-kind":      {Cluster: "kind-kind"},
+	}
+	return &api.Config{
+		CurrentContext: "kind-kind",
+		Contexts:       kubeContexts,
+	}
 }
