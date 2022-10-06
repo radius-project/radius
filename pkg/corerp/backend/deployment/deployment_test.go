@@ -1093,7 +1093,7 @@ func Test_fetchSecrets(t *testing.T) {
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildFetchSecretsInput()
 		var secrets string
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), "listConnectionStrings", "/connectionStrings/0/connectionString").Times(2).Return(secrets, nil)
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), "listConnectionStrings", "/connectionStrings/0/connectionString").Times(1).Return(secrets, nil)
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))
