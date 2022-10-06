@@ -210,6 +210,25 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) Recipelist(ctx context.Context) (string, error) {
+	args := []string{
+		"recipe",
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, connectorType string) (string, error) {
+	args := []string{
+		"recipe",
+		"create",
+		"--name", recipeName,
+		"--templatePath", templatePath,
+		"--connectorType", connectorType,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
 		"version",
