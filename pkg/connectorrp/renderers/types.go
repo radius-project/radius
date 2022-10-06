@@ -18,7 +18,6 @@ import (
 const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
-	DatabaseName          = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
@@ -70,6 +69,9 @@ type ComputedValueReference struct {
 	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string
 
-	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
+	// JSONPointer specifies a JSON Pointer that can be used to look up the value in the resource's body.
 	JSONPointer string
+
+	// Resource type of the resource to look up the property from
+	ProviderResourceType string
 }

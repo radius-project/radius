@@ -138,8 +138,8 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
+func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -153,7 +153,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	computedValues := make(map[string]interface{})
 
 	for _, outputResource := range orderedOutputResources {
-		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput)
+		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
@@ -173,9 +173,39 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			return DeploymentOutput{}, err
 		}
 		rendererOutput.RecipeData.Resources = deployedRecipeResources
+
+		// Populate expected computed values using deployed resource information
+		for _, id := range deployedRecipeResources {
+			parsed, err := resources.ParseResource(id)
+			if err != nil {
+				return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
+			}
+
+			for k, v := range rendererOutput.ComputedValues {
+				if v.ProviderResourceType == parsed.Type() && v.JSONPointer != "" {
+					// Get deployed resource information
+					resource, err := dp.appmodel.GetRecipeModel().RecipeHandler.GetResource(ctx, rendererOutput.RecipeData.Provider, id, rendererOutput.RecipeData.APIVersion)
+					if err != nil {
+						return DeploymentOutput{}, err
+					}
+
+					pointer, err := jsonpointer.New(v.JSONPointer)
+					if err != nil {
+						return DeploymentOutput{}, fmt.Errorf("failed to parse JSON pointer %q for computed value %q for connector %q: %w", v.JSONPointer, k, resourceID.String(), err)
+					}
+
+					value, _, err := pointer.Get(resource)
+					if err != nil {
+						return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer %q to fetch value %q for deployed resource %q for connector %q: %s", v.JSONPointer, k, id, resourceID.String(), err.Error()))
+					}
+
+					computedValues[k] = value
+				}
+			}
+		}
 	}
 
-	// Update static values for connections
+	// Update static values
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value

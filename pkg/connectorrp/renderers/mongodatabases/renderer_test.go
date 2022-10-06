@@ -284,6 +284,14 @@ func Test_Render_Recipe_Success(t *testing.T) {
 		},
 	}
 
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		renderers.DatabaseNameValue: {
+			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer:          "/name",
+			ProviderResourceType: "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+		},
+	}
+
 	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
 		RecipeProperties: datamodel.RecipeProperties{
 			ConnectorRecipe: datamodel.ConnectorRecipe{
@@ -298,6 +306,10 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
+	require.Equal(t, "Microsoft.DocumentDB/databaseAccounts", output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
+	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
+	require.Equal(t, 1, len(output.SecretValues))
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
 }
 
 func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
