@@ -382,7 +382,7 @@
         "properties": {
           "azure": {
             "type":"object",
-            "description": "Azure provider information",
+            "description": "Azure cloud provider configuration",
             "properties" : {
               "scope" : {
                 "type":"string",
