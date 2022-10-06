@@ -17,8 +17,10 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	connectorrp_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	connectorrp_r "github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -152,6 +154,57 @@ func getTestResourceID(id string) resources.ID {
 	}
 
 	return resourceID
+}
+
+func buildFetchSecretsInput() ResourceData {
+	var resourceID resources.ID
+	var testResource connectorrp_dm.MongoDatabase
+	var rendererOutput renderers.RendererOutput
+	testResource.Properties.Secrets = connectorrp_dm.MongoDatabaseSecrets{
+		Username:         "testUser",
+		Password:         "testPassword",
+		ConnectionString: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
+	}
+
+	testResource.ConnectorMetadata.RecipeData = connectorrp_dm.RecipeData{
+		RecipeProperties: connectorrp_dm.RecipeProperties{
+			ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
+				Name: "mongoDB",
+				Parameters: map[string]interface{}{
+					"ResourceGroup": "testRG",
+					"Subscription":  "Radius-Test",
+				},
+			},
+			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+		},
+		APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+	}
+
+	secretValues := map[string]rp.SecretValueReference{}
+	connectionStringValue := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
+	secretValues[connectionStringValue] = rp.SecretValueReference{
+		LocalID:              outputresource.LocalIDAzureCosmosAccount,
+		Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+		ValueSelector:        "/connectionStrings/0/connectionString",
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+	}
+
+	computedValues := map[string]interface{}{
+		connectorrp_r.DatabaseNameValue: "db",
+	}
+
+	testResource.ComputedValues = computedValues
+	testResource.SecretValues = secretValues
+
+	return ResourceData{
+		ID:              resourceID,
+		Resource:        testResource,
+		OutputResources: rendererOutput.Resources,
+		ComputedValues:  computedValues,
+		SecretValues:    secretValues,
+		RecipeData:      testResource.RecipeData}
 }
 
 func createContext(t *testing.T) context.Context {
@@ -802,131 +855,6 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "provider unknown is not configured. Cannot support resource type azure.roleassignment")
 	})
-
-	t.Run("verify render success with recipe based connector", func(t *testing.T) {
-		testResource := getTestResource()
-		testRendererOutput := getTestRendererOutput()
-		resourceID := getTestResourceID(testResource.ID)
-
-		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
-		requiredResources := []resources.ID{depId1, depId2}
-
-		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(5).Return(mocks.db, nil)
-
-		cr := store.Object{
-			Metadata: store.Metadata{
-				ID: testResource.ID,
-			},
-			Data: testResource,
-		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
-		application := datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
-			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-		}
-		ar := store.Object{
-			Metadata: store.Metadata{
-				ID: application.ID,
-			},
-			Data: application,
-		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
-		er := store.Object{
-			Metadata: store.Metadata{
-				ID: environment.ID,
-			},
-			Data: environment,
-		}
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
-		httprouteA := datamodel.HTTPRoute{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
-				},
-			},
-			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
-				},
-			},
-		}
-		nr := store.Object{
-			Metadata: store.Metadata{
-				ID: httprouteA.ID,
-			},
-			Data: httprouteA,
-		}
-
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
-
-		mongoResource := connectorrp_dm.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
-			},
-			Properties: connectorrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-					},
-				},
-			},
-			ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
-				RecipeData: connectorrp_dm.RecipeData{
-					RecipeProperties: connectorrp_dm.RecipeProperties{
-						ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
-							Name: "mongoDB",
-							Parameters: map[string]interface{}{
-								"ResourceGroup": "testRG",
-								"Subscription":  "Radius-Test",
-							},
-						},
-						TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					},
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-					Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-						"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
-				},
-			},
-		}
-		mr := store.Object{
-			Metadata: store.Metadata{
-				ID: mongoResource.ID,
-			},
-			Data: mongoResource,
-		}
-
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
-
-		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
-		require.NoError(t, err)
-		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
-	})
 }
 
 func Test_Deploy(t *testing.T) {
@@ -1102,5 +1030,72 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 		require.Error(t, err)
 		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		require.Equal(t, options, renderers.EnvironmentOptions{})
+	})
+}
+
+func Test_getResourceDataByID(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
+	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		mongoResource := connectorrp_dm.MongoDatabase{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+			},
+			Properties: connectorrp_dm.MongoDatabaseProperties{
+				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
+						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+					},
+				},
+			},
+			ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
+				RecipeData: connectorrp_dm.RecipeData{
+					RecipeProperties: connectorrp_dm.RecipeProperties{
+						ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
+							Name: "mongoDB",
+							Parameters: map[string]interface{}{
+								"ResourceGroup": "testRG",
+								"Subscription":  "Radius-Test",
+							},
+						},
+						TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+					},
+					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+						"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+				},
+			},
+		}
+		mr := store.Object{
+			Metadata: store.Metadata{
+				ID: mongoResource.ID,
+			},
+			Data: mongoResource,
+		}
+
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
+
+		resourceData, err := dp.getResourceDataByID(ctx, depId)
+		require.NoError(t, err)
+		require.Equal(t, resourceData.RecipeData, mongoResource.RecipeData)
+	})
+}
+
+func Test_fetchSecrets(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
+		mongoResource := buildFetchSecretsInput()
+		var secrets string
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), "listConnectionStrings", "/connectionStrings/0/connectionString").Times(2).Return(secrets, nil)
+		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(secretValues))
 	})
 }
