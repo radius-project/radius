@@ -59,7 +59,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	}
 	subscriptionID, resourceGroup, err := parseAzureProvider(&providers)
 	if err != nil {
-		conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch azure provider %s", err.Error()))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch azure provider %s", err.Error()))
 	}
 
 	logger := radlogger.GetLogger(ctx).WithValues(
