@@ -21,6 +21,7 @@ const (
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
+
 	// TODO: Are we removing this too?
 	LabelManagedByRadiusRP = "radius-rp"
 	LabelAADPodIdentity    = "aadpodidbinding"
@@ -59,7 +60,7 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 	}
 }
 
-// MakeSelectorLablels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
+// MakeSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
 // This function is used to generate the labels used by a Deployment to select its Pods. eg: the Deployment and Pods
