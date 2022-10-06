@@ -29,8 +29,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:   "create [workspaceType] [workspaceName]",
 		Short: "Create a workspace",
 		Long: `Create a workspace.
-		Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file. 
-		You can easily define and switch between workspaces to deploy and manage applications across local, test, and production environments.`,
+		
+Available workspaceTypes: kubernetes
+
+Workspaces allow you to manage multiple Radius platforms and environments using a local configuration file. 
+
+You can easily define and switch between workspaces to deploy and manage applications across local, test, and production environments.`,
 		Args: cobra.RangeArgs(1, 2),
 		Example: `
 		# Create a workspace with name 'myworkspace' and kuberentes context 'aks'
