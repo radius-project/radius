@@ -386,7 +386,7 @@
             "properties" : {
               "scope" : {
                 "type":"string",
-                "description": "scope for the resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+                "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
               }
             }
           }
