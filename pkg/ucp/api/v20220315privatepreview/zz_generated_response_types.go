@@ -9,6 +9,26 @@
 
 package v20220315privatepreview
 
+// CredentialClientCreateOrUpdateResponse contains the response from method CredentialClient.CreateOrUpdate.
+type CredentialClientCreateOrUpdateResponse struct {
+	CredentialResource
+}
+
+// CredentialsClientDeleteResponse contains the response from method CredentialsClient.Delete.
+type CredentialsClientDeleteResponse struct {
+	// placeholder for future response values
+}
+
+// CredentialsClientGetResponse contains the response from method CredentialsClient.Get.
+type CredentialsClientGetResponse struct {
+	CredentialResource
+}
+
+// CredentialsClientListResponse contains the response from method CredentialsClient.List.
+type CredentialsClientListResponse struct {
+	CredentialResourceList
+}
+
 // PlanesClientCreateOrUpdateResponse contains the response from method PlanesClient.CreateOrUpdate.
 type PlanesClientCreateOrUpdateResponse struct {
 	PlaneResource

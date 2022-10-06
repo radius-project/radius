@@ -18,6 +18,11 @@
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
                 "namespace": "default"
               },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
+              },
               "recipes": {
                 "cosmos-recipe": {
                   "connectorType": "Applications.Connector/mongoDatabases",
@@ -40,6 +45,11 @@
                 "kind": "Kubernetes",
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster1",
                 "namespace": "default"
+              },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
               },
               "recipes": {
                 "cosmos-recipe": {
