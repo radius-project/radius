@@ -678,7 +678,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {
 		deploymentName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
 
 		resourceID, _, testRendererOutput := buildTestMongoRecipe()
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)

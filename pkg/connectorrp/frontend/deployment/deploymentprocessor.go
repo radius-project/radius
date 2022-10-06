@@ -78,6 +78,7 @@ type EnvironmentMetadata struct {
 	Namespace           string
 	RecipeConnectorType string
 	RecipeTemplatePath  string
+	Providers           coreDatamodel.ProviderProperties
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -107,7 +108,9 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			ConnectorRecipe: recipe,
 			ConnectorType:   envMetadata.RecipeConnectorType,
 			TemplatePath:    envMetadata.RecipeTemplatePath,
-		}})
+		},
+		Providers: envMetadata.Providers,
+	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -168,7 +171,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}
 
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties)
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.Providers)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
@@ -485,11 +488,14 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	if ok {
 		envMetadata.RecipeConnectorType = recipe.ConnectorType
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
-		return envMetadata, nil
 	} else if recipeName != "" {
 		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
 
-	// no recipe is associated with resource
+	// ger the providers metadata to deploy the recipe
+	if env.Properties.Providers != (coreDatamodel.ProviderProperties{}) && env.Properties.Providers.Azure != (coreDatamodel.ProviderPropertiesAzure{}) {
+		envMetadata.Providers = env.Properties.Providers
+	}
+
 	return envMetadata, nil
 }

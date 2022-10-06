@@ -94,6 +94,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 		RecipeData:     recipeData,
+		Providers:      options.Providers,
 	}, nil
 }
 
