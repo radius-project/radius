@@ -224,7 +224,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **providers**: [ProviderProperties](#providerproperties): Provider information
+* **providers**: [ProviderProperties](#providerproperties): Cloud provider configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 
@@ -241,11 +241,11 @@
 
 ## ProviderProperties
 ### Properties
-* **azure**: [ProviderPropertiesAzure](#providerpropertiesazure): Azure provider information
+* **azure**: [ProviderPropertiesAzure](#providerpropertiesazure): Azure cloud provider configuration
 
 ## ProviderPropertiesAzure
 ### Properties
-* **scope**: string: scope for the resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+* **scope**: string: Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 
 ## EnvironmentPropertiesRecipes
 ### Properties
