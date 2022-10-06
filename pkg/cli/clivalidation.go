@@ -307,7 +307,7 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 		return "", err
 	}
 
-	if len(args) > 2 {
+	if len(args) > 0 {
 		if name != "" {
 			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
 		}
@@ -317,14 +317,21 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	return name, err
 }
 
-// ReadWorkspaceNameArgs is used to get the workspace name that is supplied using a -w flag
-func ReadWorkspaceName(cmd *cobra.Command) (string, error) {
+// ReadWorkspaceName is used to get the workspace name that is supplied using a -w flag or as second arg.
+func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {
 		return "", err
 	}
 
-	return name, nil
+	if len(args) > 1 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
+		}
+		name = args[1]
+	}
+
+	return name, err
 }
 
 func RequireRadYAML(cmd *cobra.Command) (string, error) {
