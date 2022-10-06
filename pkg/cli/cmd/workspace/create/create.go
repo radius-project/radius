@@ -37,8 +37,8 @@ Workspaces allow you to manage multiple Radius platforms and environments using 
 You can easily define and switch between workspaces to deploy and manage applications across local, test, and production environments.`,
 		Args: cobra.RangeArgs(1, 2),
 		Example: `
-		# Create a workspace with name 'myworkspace' and kuberentes context 'aks'
-		rad workspace create kubernetes myworkspace --context aks`,
+# Create a workspace with name 'myworkspace' and kuberentes context 'aks'
+rad workspace create kubernetes myworkspace --context aks`,
 		RunE: framework.RunCommand(runner),
 	}
 
