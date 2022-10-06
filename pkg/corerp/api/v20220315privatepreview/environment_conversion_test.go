@@ -47,6 +47,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Namespace:  "default",
 						},
 					},
+					Providers: datamodel.ProviderProperties{
+						Azure: datamodel.ProviderPropertiesAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
 							ConnectorType: "Applications.Connector/mongoDatabases",
@@ -109,6 +114,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, 1, len(r.Properties.Recipes))
 	require.Equal(t, "Applications.Connector/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].ConnectorType)
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 }
 
 type fakeResource struct{}

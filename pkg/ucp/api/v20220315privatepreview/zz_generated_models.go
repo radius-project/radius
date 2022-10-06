@@ -9,6 +9,89 @@
 
 package v20220315privatepreview
 
+type AzureServicePrincipalProperties struct {
+	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
+	ClientID *string `json:"clientId,omitempty"`
+
+	// REQUIRED; The kind of secret
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; secret when the CredentialKind is ServicePrincipal
+	Secret *string `json:"secret,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+
+	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
+	TenantID *string `json:"tenantId,omitempty"`
+}
+
+// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
+func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
+	return &CredentialResourceProperties{
+		Kind: a.Kind,
+		Storage: a.Storage,
+	}
+}
+
+// CredentialClientCreateOrUpdateOptions contains the optional parameters for the CredentialClient.CreateOrUpdate method.
+type CredentialClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// CredentialResource - Credential to a plane instance
+type CredentialResource struct {
+	// REQUIRED; Credential properties
+	Properties CredentialResourcePropertiesClassification `json:"properties,omitempty"`
+}
+
+// CredentialResourceList - The list of credentials.
+type CredentialResourceList struct {
+	// The list of credentials.
+	Value []*CredentialResource `json:"value,omitempty"`
+}
+
+// CredentialResourcePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetCredentialResourceProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureServicePrincipalProperties, *CredentialResourceProperties
+type CredentialResourcePropertiesClassification interface {
+	// GetCredentialResourceProperties returns the CredentialResourceProperties content of the underlying type.
+	GetCredentialResourceProperties() *CredentialResourceProperties
+}
+
+// CredentialResourceProperties - Credential properties
+type CredentialResourceProperties struct {
+	// REQUIRED; The kind of secret
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+}
+
+// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type CredentialResourceProperties.
+func (c *CredentialResourceProperties) GetCredentialResourceProperties() *CredentialResourceProperties { return c }
+
+type CredentialResourcePropertiesStorage struct {
+	// REQUIRED; credential store kinds supported.
+	Kind *CredentialStorageKind `json:"kind,omitempty"`
+}
+
+// CredentialsClientDeleteOptions contains the optional parameters for the CredentialsClient.Delete method.
+type CredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// CredentialsClientGetOptions contains the optional parameters for the CredentialsClient.Get method.
+type CredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// CredentialsClientListOptions contains the optional parameters for the CredentialsClient.List method.
+type CredentialsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
