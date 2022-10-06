@@ -171,7 +171,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, r := range radiusResources {
 		rendererRegistration[r.ResourceType]++
 		if rendererRegistration[r.ResourceType] > 1 {
-			return fmt.Errorf("Multiple resource renderers registered for resource type: %s", r.ResourceType)
+			return fmt.Errorf("multiple resource renderers registered for resource type: %s", r.ResourceType)
 		}
 	}
 
@@ -179,7 +179,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, o := range outputResources {
 		outputResourceHandlerRegistration[o.ResourceType]++
 		if outputResourceHandlerRegistration[o.ResourceType] > 1 {
-			return fmt.Errorf("Multiple output resource handlers registered for resource type: %s", o.ResourceType)
+			return fmt.Errorf("multiple output resource handlers registered for resource type: %s", o.ResourceType)
 		}
 	}
 	return nil

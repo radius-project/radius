@@ -22,7 +22,7 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployErrorExecutor(template, v1.CodeInvalid),
+			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

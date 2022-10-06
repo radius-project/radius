@@ -242,7 +242,7 @@ func (handler *daprPubSubServiceBusHandler) checkResourceNameUniqueness(ctx cont
 
 	// Object with the same name exists, checking the labels to see if they are the same objects.
 	if label, ok := u.GetLabels()[kubernetes.LabelRadiusResourceType]; ok && kubernetes.ConvertLabelToResourceType(label) != strings.ToLower(DaprPubSubBrokerResourceType) {
-		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component names must be unique regardless of the type of Dapr component in use (eg: state store, pub/sub, secret store). Please select a new name", componentName)
+		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component names must be unique regardless of the type of Dapr component in use (eg: state store, pub/sub, secret store). Please select a new name", resourceName)
 	}
 
 	return nil

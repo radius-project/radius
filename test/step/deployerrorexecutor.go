@@ -52,14 +52,12 @@ func (d *DeployErrorExecutor) Execute(ctx context.Context, t *testing.T, options
 	err = cli.Deploy(ctx, templateFilePath, d.Parameters...)
 	require.Error(t, err, "deployment %s succeeded when it should have failed", d.Description)
 
-	var cliErr *radcli.CliError
+	var cliErr *radcli.CLIError
 	switch {
 	case errors.As(err, &cliErr):
 		t.Logf("error is a Rad CLI error")
-		require.Equal(t, d.ExpectedErrorCode, cliErr.Code)
+		require.Equal(t, d.ExpectedErrorCode, cliErr.DeepestErrorCode())
 	default:
-		// t.Logf("error is not a Rad CLI error")
-		// t.Logf("error type is %q", reflect.TypeOf(err))
 		unwrappedError := errors.Unwrap(err)
 		t.Logf("error is not a Rad CLI error")
 		t.Logf("error type is %q", reflect.TypeOf(unwrappedError))
