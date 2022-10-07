@@ -122,7 +122,7 @@ func Test_Run(t *testing.T) {
 
 			namespaceClient := namespace.NewMockInterface(ctrl)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
@@ -133,6 +133,10 @@ func Test_Run(t *testing.T) {
 					"context": "kind-kind",
 				},
 				Name: "defaultWorkspace",
+				ProviderConfig: workspaces.ProviderConfig{&workspaces.AzureProvider{
+					SubscriptionID: "test-subscription",
+					ResourceGroup:  "test-rg",
+				}, &workspaces.AWSProvider{}},
 			}
 
 			runner := &Runner{
