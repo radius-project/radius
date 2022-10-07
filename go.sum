@@ -14,6 +14,8 @@ github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.2 h1:lneMk5qtUMulXa/eVxjVd+/bD
 github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.2/go.mod h1:uGG2W01BaETf0Ozp+QxxKJdMBNRWPdstHG0Fmdwn1/U=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0 h1:jp0dGvZ7ZK0mgqnTSClMxa5xuRL7NZgHameVYF6BurY=
 github.com/Azure/azure-sdk-for-go/sdk/internal v1.0.0/go.mod h1:eWRD7oawr1Mu1sLCawqVc0CUiF43ia3qQMxLscsKQ9w=
+github.com/Azure/azure-sdk-for-go/sdk/to v0.1.5 h1:kkt9E/xZARQITptiUe1ZwjvB3U1vdv4pIGzKnVLfa4E=
+github.com/Azure/azure-sdk-for-go/sdk/to v0.1.5/go.mod h1:QnvViu6oLUpHUZ5b0fwJdVxr3nXlMwvZGo2UdEqUd4g=
 github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-ansiterm v0.0.0-20210608223527-2377c96fe795/go.mod h1:LmzpDX56iTiv29bbRTIsUNlaFfuhWRQBWjQdVyAevI8=
 github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 h1:UQHMgLO+TxOElx5B5HZ4hJQsoJ/PvUvKRhJHDQXO8P8=
