@@ -91,10 +91,10 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	}
 
 	return renderers.RendererOutput{
-		ComputedValues: computedValues,
-		SecretValues:   secretValues,
-		RecipeData:     recipeData,
-		Providers:      options.Providers,
+		ComputedValues:       computedValues,
+		SecretValues:         secretValues,
+		RecipeData:           recipeData,
+		EnvironmentProviders: options.EnvironmentProviders,
 	}, nil
 }
 

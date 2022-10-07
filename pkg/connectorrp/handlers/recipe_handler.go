@@ -47,7 +47,7 @@ type azureRecipeHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath.
+// DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
 func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, providers coreDatamodel.ProviderProperties) (deployedResources []string, err error) {
@@ -59,7 +59,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	}
 	subscriptionID, resourceGroup, err := parseAzureProvider(&providers)
 	if err != nil {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch azure provider %s", err.Error()))
+		return nil, err
 	}
 
 	logger := radlogger.GetLogger(ctx).WithValues(
@@ -191,12 +191,12 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
 func parseAzureProvider(providers *coreDatamodel.ProviderProperties) (subscriptionID string, resourceGroup string, err error) {
 	if providers.Azure == (coreDatamodel.ProviderPropertiesAzure{}) {
-		return "", "", conv.NewClientErrInvalidRequest("azure provider is empty")
+		return "", "", conv.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
 	}
 	// valid scope: "/subscriptions/test-sub/resourceGroups/test-group"
 	scope := strings.Split(providers.Azure.Scope, "/")
 	if len(scope) != 5 {
-		return "", "", conv.NewClientErrInvalidRequest("invalid azure scope")
+		return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid azure scope. Valid scope eg: %q", "/subscriptions/<subscriptionID>/resourceGroups/<resourceGroup>"))
 	}
 	subscriptionID = scope[2]
 	resourceGroup = scope[4]

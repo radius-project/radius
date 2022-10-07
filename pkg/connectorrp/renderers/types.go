@@ -36,17 +36,17 @@ type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 type RenderOptions struct {
-	Namespace        string
-	RecipeProperties datamodel.RecipeProperties
-	Providers        coreDatamodel.ProviderProperties
+	Namespace            string
+	RecipeProperties     datamodel.RecipeProperties
+	EnvironmentProviders coreDatamodel.ProviderProperties
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]rp.SecretValueReference
-	RecipeData     datamodel.RecipeData
-	Providers      coreDatamodel.ProviderProperties // providers are mapped to environment needed to deploy the recipe
+	Resources            []outputresource.OutputResource
+	ComputedValues       map[string]ComputedValueReference
+	SecretValues         map[string]rp.SecretValueReference
+	RecipeData           datamodel.RecipeData
+	EnvironmentProviders coreDatamodel.ProviderProperties // represents providers mapped to the linked environment needed to deploy the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

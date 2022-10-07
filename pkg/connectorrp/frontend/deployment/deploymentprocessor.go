@@ -109,7 +109,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			ConnectorType:   envMetadata.RecipeConnectorType,
 			TemplatePath:    envMetadata.RecipeTemplatePath,
 		},
-		Providers: envMetadata.Providers,
+		EnvironmentProviders: envMetadata.Providers,
 	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -171,7 +171,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}
 
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.Providers)
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
