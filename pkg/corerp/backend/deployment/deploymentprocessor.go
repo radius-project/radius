@@ -33,6 +33,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -442,6 +443,12 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+	case strings.ToLower(volume.ResourceType):
+		obj := &datamodel.VolumeResource{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
@@ -559,6 +566,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	// Now build the renderer dependecy out of these collected dependencies
 	rendererDependency := renderers.RendererDependency{
 		ResourceID:      dependency.ID,
+		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
 		OutputResources: outputResourceIdentity,
 	}

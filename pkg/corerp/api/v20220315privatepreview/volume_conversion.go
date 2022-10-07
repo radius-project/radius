@@ -133,8 +133,8 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 
 func fromAzureIdentityKind(kind datamodel.AzureIdentityKind) *AzureIdentityKind {
 	switch kind {
-	case datamodel.AzureIdentityUserAssigned:
-		return azto.Ptr(AzureIdentityKindUserAssigned)
+	case datamodel.AzureIdentitySystemAssigned:
+		return azto.Ptr(AzureIdentityKindSystemAssigned)
 	case datamodel.AzureIdentityWorkload:
 		return azto.Ptr(AzureIdentityKindWorkload)
 	default:
@@ -148,8 +148,8 @@ func toAzureIdentityKind(kind *AzureIdentityKind) datamodel.AzureIdentityKind {
 	}
 
 	switch *kind {
-	case AzureIdentityKindUserAssigned:
-		return datamodel.AzureIdentityUserAssigned
+	case AzureIdentityKindSystemAssigned:
+		return datamodel.AzureIdentitySystemAssigned
 	case AzureIdentityKindWorkload:
 		return datamodel.AzureIdentityWorkload
 	default:

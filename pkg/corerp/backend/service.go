@@ -30,6 +30,7 @@ var (
 		"Applications.Core/containers",
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
+		"Applications.Core/volumes",
 	}
 )
 
