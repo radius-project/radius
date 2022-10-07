@@ -16,9 +16,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -29,9 +29,10 @@ import (
 const deploymentPrefix = "recipe"
 
 // RecipeHandler is an interface to deploy and delete recipe resources
+//
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, providers coreDatamodel.ProviderProperties) ([]string, error)
 	Delete(ctx context.Context, id string, apiVersion string) error
 	GetResource(ctx context.Context, provider, id, apiVersion string) (map[string]interface{}, error)
 }
@@ -46,24 +47,20 @@ type azureRecipeHandler struct {
 	arm *armauth.ArmConfig
 }
 
-// DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath.
+// DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties) (deployedResources []string, err error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, providers coreDatamodel.ProviderProperties) (deployedResources []string, err error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
-
-	if recipe.Parameters[azresources.SubscriptionIDKey] == "" {
-		return nil, conv.NewClientErrInvalidRequest("subscriptionID for recipe deployment must be provided in the recipe parameters")
+	if providers == (coreDatamodel.ProviderProperties{}) {
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to deploy recipe %q. Environment provider scope is required to deploy connector recipes.", recipe.Name))
 	}
-
-	if recipe.Parameters[azresources.ResourceGroupKey] == "" {
-		return nil, conv.NewClientErrInvalidRequest("resourceGroup for recipe deployment must be provided in the recipe parameters")
+	subscriptionID, resourceGroup, err := parseAzureProvider(&providers)
+	if err != nil {
+		return nil, err
 	}
-
-	subscriptionID := recipe.Parameters[azresources.SubscriptionIDKey].(string)
-	resourceGroup := recipe.Parameters[azresources.ResourceGroupKey].(string)
 
 	logger := radlogger.GetLogger(ctx).WithValues(
 		radlogger.LogFieldResourceGroup, resourceGroup,
@@ -189,6 +186,24 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 		return nil, err
 	}
 	return pulledBlob, nil
+}
+
+// parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
+func parseAzureProvider(providers *coreDatamodel.ProviderProperties) (subscriptionID string, resourceGroup string, err error) {
+	if providers.Azure == (coreDatamodel.ProviderPropertiesAzure{}) {
+		return "", "", conv.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
+	}
+	// valid scope: "/subscriptions/test-sub/resourceGroups/test-group"
+	scope := strings.Split(providers.Azure.Scope, "/")
+	if len(scope) != 5 {
+		return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid azure scope. Valid scope eg: %q", "/subscriptions/<subscriptionID>/resourceGroups/<resourceGroup>"))
+	}
+	subscriptionID = scope[2]
+	resourceGroup = scope[4]
+	if subscriptionID == "" || resourceGroup == "" {
+		return "", "", conv.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy connector recipes to Azure")
+	}
+	return
 }
 
 func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {

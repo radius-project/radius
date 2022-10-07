@@ -78,6 +78,7 @@ type EnvironmentMetadata struct {
 	Namespace           string
 	RecipeConnectorType string
 	RecipeTemplatePath  string
+	Providers           coreDatamodel.ProviderProperties
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -107,7 +108,9 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			ConnectorRecipe: recipe,
 			ConnectorType:   envMetadata.RecipeConnectorType,
 			TemplatePath:    envMetadata.RecipeTemplatePath,
-		}})
+		},
+		EnvironmentProviders: envMetadata.Providers,
+	})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -168,7 +171,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}
 
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties)
+		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}
@@ -188,6 +191,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 					if err != nil {
 						return DeploymentOutput{}, err
 					}
+					logger.Info(fmt.Sprintf("Parsing json pointer %q from deployed recipe resource %v for computed value %q", v.JSONPointer, resource, k))
 
 					pointer, err := jsonpointer.New(v.JSONPointer)
 					if err != nil {
@@ -484,11 +488,12 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	if ok {
 		envMetadata.RecipeConnectorType = recipe.ConnectorType
 		envMetadata.RecipeTemplatePath = recipe.TemplatePath
-		return envMetadata, nil
 	} else if recipeName != "" {
 		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
 
-	// no recipe is associated with resource
+	// get the providers metadata to deploy the recipe
+	envMetadata.Providers = env.Properties.Providers
+
 	return envMetadata, nil
 }

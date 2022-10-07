@@ -86,14 +86,15 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		renderers.DatabaseNameValue: {
 			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			JSONPointer:          "/name", // response of "az resource show" for cosmos mongodb resource contains database name in this property
+			JSONPointer:          "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
 		},
 	}
 
 	return renderers.RendererOutput{
-		ComputedValues: computedValues,
-		SecretValues:   secretValues,
-		RecipeData:     recipeData,
+		ComputedValues:       computedValues,
+		SecretValues:         secretValues,
+		RecipeData:           recipeData,
+		EnvironmentProviders: options.EnvironmentProviders,
 	}, nil
 }
 

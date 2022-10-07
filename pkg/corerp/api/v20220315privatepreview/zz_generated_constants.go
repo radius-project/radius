@@ -19,14 +19,14 @@ type AzureIdentityKind string
 
 const (
 	AzureIdentityKindWorkload AzureIdentityKind = "Workload"
-	AzureIdentityKindUserAssigned AzureIdentityKind = "UserAssigned"
+	AzureIdentityKindSystemAssigned AzureIdentityKind = "SystemAssigned"
 )
 
 // PossibleAzureIdentityKindValues returns the possible values for the AzureIdentityKind const type.
 func PossibleAzureIdentityKindValues() []AzureIdentityKind {
 	return []AzureIdentityKind{	
 		AzureIdentityKindWorkload,
-		AzureIdentityKindUserAssigned,
+		AzureIdentityKindSystemAssigned,
 	}
 }
 
