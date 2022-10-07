@@ -288,10 +288,14 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
 
-			properties := dependencies[volumeProperties.Persistent.Source]
+			properties, ok := dependencies[volumeProperties.Persistent.Source]
+			if !ok {
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("volume dependency resource not found")
+			}
+
 			vol, ok := properties.Resource.(*datamodel.VolumeResource)
 			if !ok {
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("invalid depedency resource")
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("invalid dependency resource")
 			}
 
 			switch vol.Properties.Kind {
