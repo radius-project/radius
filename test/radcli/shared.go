@@ -23,7 +23,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-	"gotest.tools/assert"
 )
 
 type ValidateInput struct {
@@ -34,7 +33,7 @@ type ValidateInput struct {
 	KubernetesInterface kubernetes.Interface
 	Prompter            prompt.Interface
 	HelmInterface       helm.Interface
-	ConnectionFactory   connections.Factory
+	ConnectionFactory   *connections.MockFactory
 	NamespaceInterface  namespace.Interface
 }
 
@@ -52,7 +51,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
 			framework := &framework.Impl{
-				ConnectionFactory:   nil,
+				ConnectionFactory:   testcase.ConnectionFactory,
 				ConfigHolder:        &testcase.ConfigHolder,
 				Output:              nil,
 				KubernetesInterface: testcase.KubernetesInterface,
@@ -72,13 +71,10 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			}
 
 			err = runner.Validate(cmd, cmd.Flags().Args())
-			if testcase.ExpectedValid {
-				if err != nil {
-					expectedErrorMsg := "kubernetes cluster unreachable"
-					assert.ErrorContains(t, err, "cluster unreachable", "Error should be: %v, got: %v", expectedErrorMsg, err)
+			if !testcase.ExpectedValid {
+				if err == nil {
+					require.Error(t, err, "validation should have failed but it passed")
 				}
-			} else {
-				require.Error(t, err, "validation should have failed but it passed")
 			}
 		})
 	}
