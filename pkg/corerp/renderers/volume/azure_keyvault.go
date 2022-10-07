@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -176,15 +177,15 @@ func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretOb
 	}
 
 	version := secretObject.Version
-	encoding := string(datamodel.SecretObjectPropertiesEncodingUTF8)
+	encoding := to.Ptr(datamodel.SecretObjectPropertiesEncodingUTF8)
 	if secretObject.Encoding != nil {
-		encoding = string(*secretObject.Encoding)
+		encoding = secretObject.Encoding
 	}
 
 	return objectValues{
 		alias:    alias,
 		version:  version,
-		encoding: encoding,
+		encoding: string(*encoding),
 	}
 }
 
@@ -230,6 +231,7 @@ func getValuesOrDefaultsForCertificates(name string, certificateObject *datamode
 }
 
 func getKeyVaultObjectsSpec(keyVaultObjects []azcsi.KeyVaultObject) (string, error) {
+	// Azure Keyvault CSI driver accepts only array property for keyvault objects.
 	yamlArray := azcsi.StringArray{Array: []string{}}
 
 	for _, object := range keyVaultObjects {
