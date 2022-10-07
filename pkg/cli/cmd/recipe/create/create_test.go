@@ -120,7 +120,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 		})
-		t.Run("Success", func(t *testing.T) {
+		t.Run("Fails to add recipe with existing name.", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
