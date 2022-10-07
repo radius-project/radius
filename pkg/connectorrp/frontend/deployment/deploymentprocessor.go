@@ -188,6 +188,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 					if err != nil {
 						return DeploymentOutput{}, err
 					}
+					logger.Info(fmt.Sprintf("Parsing json pointer %q from deployed recipe resource %v for computed value %q", v.JSONPointer, resource, k))
 
 					pointer, err := jsonpointer.New(v.JSONPointer)
 					if err != nil {
