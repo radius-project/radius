@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -36,15 +37,17 @@ type daprPubSubServiceBusBaseHandler struct {
 }
 type daprPubSubServiceBusHandler struct {
 	daprPubSubServiceBusBaseHandler
-	kubernetesHandler
+	daprComponentHandler
 	k8s client.Client
 }
 
 func NewDaprPubSubServiceBusHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprPubSubServiceBusHandler{
 		daprPubSubServiceBusBaseHandler: daprPubSubServiceBusBaseHandler{arm: arm},
-		kubernetesHandler:               kubernetesHandler{k8s: k8s},
-		k8s:                             k8s,
+		daprComponentHandler: daprComponentHandler{
+			k8s: k8s,
+		},
+		k8s: k8s,
 	}
 }
 
@@ -72,6 +75,11 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
+	}
+
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprPubSubBrokerResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}

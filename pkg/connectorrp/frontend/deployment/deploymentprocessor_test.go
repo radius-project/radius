@@ -145,7 +145,9 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 		},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
-				Value: "test-database",
+				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+				JSONPointer:          "/properties/resource/id",
 			},
 		},
 		RecipeData: datamodel.RecipeData{
@@ -157,6 +159,7 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
 			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+			Provider:   resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -442,6 +445,7 @@ func Test_Render(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
+
 	t.Run("verify render error: invalid environment id", func(t *testing.T) {
 		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 		resourceID := getResourceID(id)
@@ -650,13 +654,25 @@ func Test_Deploy(t *testing.T) {
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
 		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
+		resourceData := map[string]interface{}{
+			"id":   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			"name": "test-database",
+			"properties": map[string]interface{}{
+				"resource": map[string]string{
+					"id": "test-database",
+				},
+			},
+			"resourceGroup": "kachawla-test-cs",
+			"type":          "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+		}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resourceData, nil)
 
 		resourceID, _, testRendererOutput := buildTestMongoRecipe()
 		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: testRendererOutput.ComputedValues[renderers.DatabaseNameValue].Value}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: "test-database"}, deploymentOutput.ComputedValues)
 		require.Equal(t, resources, deploymentOutput.RecipeData.Resources)
 	})
 

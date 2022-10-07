@@ -23,10 +23,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-var cosmosAccountDependency outputresource.Dependency = outputresource.Dependency{
-	LocalID: outputresource.LocalIDAzureCosmosAccount,
-}
-
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {
@@ -79,15 +75,25 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 	}
 
 	recipeData := datamodel.RecipeData{
+		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
 		APIVersion:       clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 	}
 
 	secretValues := buildSecretValueReferenceForAzure(resource.Properties)
 
+	computedValues := map[string]renderers.ComputedValueReference{
+		renderers.DatabaseNameValue: {
+			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+			JSONPointer:          "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
+		},
+	}
+
 	return renderers.RendererOutput{
-		SecretValues: secretValues,
-		RecipeData:   recipeData,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+		RecipeData:     recipeData,
 	}, nil
 }
 
@@ -139,7 +145,11 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			handlers.CosmosDBAccountNameKey:  cosmosMongoDBID.TypeSegments()[0].Name,
 			handlers.CosmosDBDatabaseNameKey: cosmosMongoDBID.TypeSegments()[1].Name,
 		},
-		Dependencies: []outputresource.Dependency{cosmosAccountDependency},
+		Dependencies: []outputresource.Dependency{
+			{
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+			},
+		},
 	}
 
 	return renderers.RendererOutput{
@@ -173,7 +183,7 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
 		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:              cosmosAccountDependency.LocalID,
+			LocalID:              outputresource.LocalIDAzureCosmosAccount,
 			Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 			ValueSelector:        "/connectionStrings/0/connectionString",
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,

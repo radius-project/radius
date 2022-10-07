@@ -8,6 +8,7 @@ package radcli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,20 +37,35 @@ func NewCLI(t *testing.T, configFilePath string) *CLI {
 	}
 }
 
-type CliError struct {
-	Message string
-	Code    string
+type CLIError struct {
+	v1.ErrorResponse
 }
 
-func (err *CliError) Error() string {
-	return fmt.Sprintf("code %v: err %v", err.Code, err.Message)
+func (err *CLIError) Error() string {
+	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
 }
 
-func NewCliError(message string, code string) *CliError {
-	err := new(CliError)
-	err.Message = message
-	err.Code = code
-	return err
+// GetFirstErrorCode function goes down the error chain to find and return the code of the first error in the chain.
+func (err *CLIError) GetFirstErrorCode() string {
+	var errorCode = err.ErrorResponse.Error.Code
+
+	errorQueue := make([]v1.ErrorDetails, 0)
+	errorQueue = append(errorQueue, err.ErrorResponse.Error.Details...)
+
+	for len(errorQueue) > 0 {
+		currentErrorDetail := errorQueue[0]
+		errorQueue = errorQueue[1:]
+
+		if currentErrorDetail.Code != "OK" {
+			errorCode = currentErrorDetail.Code
+		}
+
+		if len(currentErrorDetail.Details) > 0 {
+			errorQueue = append(errorQueue, currentErrorDetail.Details...)
+		}
+	}
+
+	return errorCode
 }
 
 // Deploy runs the rad deploy command.
@@ -69,9 +85,18 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	}
 
 	out, cliErr := cli.RunCommand(ctx, args)
-	if cliErr != nil && strings.Contains(out, "BadRequest") {
-		return NewCliError(cliErr.Error(), v1.CodeInvalid)
+	if cliErr != nil && strings.Contains(out, "Error: {") {
+		var errResponse v1.ErrorResponse
+		idx := strings.Index(out, "Error: {")
+		actualErr := "{\"error\": " + out[idx+7:] + "}"
+
+		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
+			return err
+		}
+
+		return &CLIError{ErrorResponse: errResponse}
 	}
+
 	return cliErr
 }
 

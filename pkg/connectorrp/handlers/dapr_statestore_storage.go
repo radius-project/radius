@@ -31,14 +31,16 @@ const (
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprStateStoreAzureStorageHandler{
-		kubernetesHandler: kubernetesHandler{k8s: k8s},
-		arm:               arm,
-		k8s:               k8s,
+		daprComponentHandler: daprComponentHandler{
+			k8s: k8s,
+		},
+		arm: arm,
+		k8s: k8s,
 	}
 }
 
 type daprStateStoreAzureStorageHandler struct {
-	kubernetesHandler
+	daprComponentHandler
 	arm *armauth.ArmConfig
 	k8s client.Client
 }
@@ -71,6 +73,11 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
 	key, err := handler.findStorageKey(ctx, *account.ID)
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
+	}
+
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
