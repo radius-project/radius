@@ -665,7 +665,7 @@ func Test_Deploy(t *testing.T) {
 			"resourceGroup": "kachawla-test-cs",
 			"type":          "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
 		}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 		mocks.recipeHandler.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resourceData, nil)
 
 		resourceID, _, testRendererOutput := buildTestMongoRecipe()

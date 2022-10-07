@@ -46,7 +46,7 @@ type RendererOutput struct {
 	ComputedValues map[string]ComputedValueReference
 	SecretValues   map[string]rp.SecretValueReference
 	RecipeData     datamodel.RecipeData
-	Providers      coreDatamodel.ProviderProperties
+	Providers      coreDatamodel.ProviderProperties // providers are mapped to environment needed to deploy the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

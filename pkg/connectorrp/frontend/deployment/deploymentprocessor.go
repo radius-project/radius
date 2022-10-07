@@ -492,10 +492,8 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 		return envMetadata, fmt.Errorf("recipe with name %q does not exist in the environment %s", recipeName, environmentID)
 	}
 
-	// ger the providers metadata to deploy the recipe
-	if env.Properties.Providers != (coreDatamodel.ProviderProperties{}) && env.Properties.Providers.Azure != (coreDatamodel.ProviderPropertiesAzure{}) {
-		envMetadata.Providers = env.Properties.Providers
-	}
+	// get the providers metadata to deploy the recipe
+	envMetadata.Providers = env.Properties.Providers
 
 	return envMetadata, nil
 }

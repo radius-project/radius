@@ -55,7 +55,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
 	if providers == (coreDatamodel.ProviderProperties{}) {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch scope for recipe %q", recipe.Name))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to deploy recipe %q. Environment provider scope is required to deploy connector recipes.", recipe.Name))
 	}
 	subscriptionID, resourceGroup, err := parseAzureProvider(&providers)
 	if err != nil {
@@ -189,20 +189,21 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 }
 
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
-func parseAzureProvider(providers *coreDatamodel.ProviderProperties) (string, string, error) {
+func parseAzureProvider(providers *coreDatamodel.ProviderProperties) (subscriptionID string, resourceGroup string, err error) {
 	if providers.Azure == (coreDatamodel.ProviderPropertiesAzure{}) {
 		return "", "", conv.NewClientErrInvalidRequest("azure provider is empty")
 	}
+	// valid scope: "/subscriptions/test-sub/resourceGroups/test-group"
 	scope := strings.Split(providers.Azure.Scope, "/")
 	if len(scope) != 5 {
 		return "", "", conv.NewClientErrInvalidRequest("invalid azure scope")
 	}
-	subscriptionID := scope[2]
-	resourceGroup := scope[4]
+	subscriptionID = scope[2]
+	resourceGroup = scope[4]
 	if subscriptionID == "" || resourceGroup == "" {
-		return "", "", conv.NewClientErrInvalidRequest("subscriptionID or resourceGroup is invalid")
+		return "", "", conv.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy connector recipes to Azure")
 	}
-	return subscriptionID, resourceGroup, nil
+	return
 }
 
 func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
