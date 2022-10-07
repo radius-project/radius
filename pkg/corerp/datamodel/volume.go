@@ -63,7 +63,7 @@ const (
 	AzureIdentitySystemAssigned AzureIdentityKind = "SystemAssigned"
 )
 
-// AzureIdentity represents the azure indentity info to access azure resource, such as Key vault.
+// AzureIdentity represents the azure identity info to access azure resource, such as Key vault.
 type AzureIdentity struct {
 	// Kind represents the type of authentication.
 	Kind AzureIdentityKind `json:"kind"`
