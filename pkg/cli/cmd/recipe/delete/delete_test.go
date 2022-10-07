@@ -94,8 +94,6 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-				Format:            "table",
-				NameSpace:         "default",
 				RecipeName:        "cosmosDB",
 			}
 

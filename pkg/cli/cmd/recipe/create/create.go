@@ -11,7 +11,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
-	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -47,8 +46,6 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
-	NameSpace         string
-	Format            string
 	TemplatePath      string
 	ConnectorType     string
 	RecipeName        string
@@ -93,18 +90,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.RecipeName = recipeName
-
-	r.NameSpace, err = common.SelectNamespace(cmd, "default", false, nil)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Namespace not specified"}
-	}
-
-	format, err := cli.RequireOutput(cmd)
-	if err != nil {
-		return err
-	}
-	r.Format = format
-
 	return nil
 }
 
@@ -119,6 +104,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	recipeProperties := envResource.Properties.Recipes
+	if recipeProperties[r.RecipeName] != nil {
+		return fmt.Errorf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)
+	}
 	if recipeProperties != nil {
 		recipeProperties[r.RecipeName] = &coreRpApps.EnvironmentRecipeProperties{
 			ConnectorType: &r.ConnectorType,

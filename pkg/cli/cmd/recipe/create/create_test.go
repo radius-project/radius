@@ -112,15 +112,50 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-				Format:            "table",
-				NameSpace:         "default",
+				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				ConnectorType:     "Applications.Connector/mongoDatabases",
+				RecipeName:        "cosmosDB_new",
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+		})
+		t.Run("Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:       to.StringPtr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.StringPtr("kind-kind"),
+				Type:     to.StringPtr("applications.core/environments"),
+				Location: to.StringPtr("global"),
+				Properties: &v20220315privatepreview.EnvironmentProperties{
+					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						"cosmosDB": {
+							ConnectorType: to.StringPtr("Applications.Connector/mongoDatabases"),
+							TemplatePath:  to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
+					},
+				},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				ConnectorType:     "Applications.Connector/mongoDatabases",
 				RecipeName:        "cosmosDB",
 			}
 
 			err := runner.Run(context.Background())
-			require.NoError(t, err)
+			require.Error(t, err)
 		})
 	})
 }
