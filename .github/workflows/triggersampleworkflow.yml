@@ -32,7 +32,7 @@ jobs:
       - name: Invoke workflow in another repo with inputs
         uses: aurelien-baudet/workflow-dispatch@v2
         with:
-          workflow: Test Quickstarts
+          workflow: test.yaml
           repo: project-radius/samples
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           ref: ${{ env.REL_CHANNEL }}
