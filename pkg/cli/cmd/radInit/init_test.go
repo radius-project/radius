@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -125,7 +126,7 @@ func Test_Run(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().
@@ -150,6 +151,10 @@ func Test_Run(t *testing.T) {
 			EnvName:             "default",
 			NameSpace:           "defaultNameSpace",
 			Reinstall:           true,
+			AzureCloudProvider: &azure.Provider{
+				SubscriptionID: "test-subscription",
+				ResourceGroup:  "test-rg",
+			},
 		}
 
 		err := runner.Run(context.Background())
