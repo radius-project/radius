@@ -37,6 +37,26 @@ const (
 	retries = 10
 )
 
+func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
+	options := corerp.NewCoreRPTestOptions(t)
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+	recipeName := "recipeName"
+	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
+	connectorType := "Applications.Connector/connectorType"
+	t.Run("Validate rad recipe create", func(t *testing.T) {
+		output, err := cli.RecipeCreate(ctx, recipeName, recipeTemplate, connectorType)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully linked recipe")
+	})
+	t.Run("Validate rad recipe list", func(t *testing.T) {
+		output, err := cli.Recipelist(ctx)
+		require.NoError(t, err)
+		require.Regexp(t, recipeName, output)
+		require.Regexp(t, connectorType, output)
+		require.Regexp(t, recipeTemplate, output)
+
+	})
+}
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
@@ -89,7 +109,6 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		// We don't want to be too fragile so we're not validating the logs in depth
 		require.Contains(t, output, "Server running at http://localhost:3000")
 	})
-
 	t.Run("Validate rad resource expose Container", func(t *testing.T) {
 		t.Skip("https://github.com/project-radius/radius/issues/3232")
 		port, err := GetAvailablePort()
@@ -401,6 +420,32 @@ func Test_CLI_Only_version(t *testing.T) {
 	matcher := `([a-zA-Z0-9-\.]+)`
 	expected := regexp.MustCompile(matcher)
 	require.Regexp(t, expected, objectformats.TrimSpaceMulti(output))
+}
+
+func Test_RecipeCommands(t *testing.T) {
+	template := "testdata/corerp-resources-environment.bicep"
+	name := "corerp-resources-environment"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-env",
+						Type: validation.EnvironmentsResource,
+					},
+				},
+			},
+			// Environment should not render any K8s Objects directly
+			K8sObjects:     &validation.K8sObjectSet{},
+			PostStepVerify: verifyRecipeCLI,
+		},
+	}, requiredSecrets)
+
+	test.Test(t)
 }
 
 func GetAvailablePort() (int, error) {
