@@ -147,7 +147,7 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 			renderers.DatabaseNameValue: {
 				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
 				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-				JSONPointer:          "/name",
+				JSONPointer:          "/properties/resource/id",
 			},
 		},
 		RecipeData: datamodel.RecipeData{

@@ -287,7 +287,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
 			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-			JSONPointer:          "/name",
+			JSONPointer:          "/properties/resource/id",
 			ProviderResourceType: "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
 		},
 	}
