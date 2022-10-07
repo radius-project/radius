@@ -33,5 +33,6 @@ jobs:
         uses: aurelien-baudet/workflow-dispatch@v2
         with:
           workflow: Test Quickstarts
-          repo: samples/${{ env.REL_CHANNEL }}
+          repo: project-radius/samples
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          ref: ${{ env.REL_CHANNEL }}
