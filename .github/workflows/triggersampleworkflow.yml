@@ -30,7 +30,7 @@ jobs:
              python ./.github/scripts/get_release_version.py
              echo "this build version: ${{ env.REL_CHANNEL }}"
       - name: Invoke workflow in another repo with inputs
-        uses: aurelien-baudet/workflow-dispatch@v2
+        uses: jonas-schievink/workflow-proxy@v1
         with:
           workflow: test.yaml
           repo: project-radius/samples
