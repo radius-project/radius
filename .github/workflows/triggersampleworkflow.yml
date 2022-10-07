@@ -37,5 +37,6 @@ jobs:
               owner: 'project-radius',
               repo: 'samples',
               workflow_id: 'test.yaml',
-              ref: '${{ env.REL_CHANNEL }}'
+              ref: '${{ env.REL_CHANNEL }}',
+              wait-for-completion: true
             })
