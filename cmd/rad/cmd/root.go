@@ -16,6 +16,10 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 
+	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	workspace "github.com/project-radius/radius/pkg/cli/cmd/workspace"
@@ -29,7 +33,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
@@ -47,6 +50,7 @@ var RootCmd = &cobra.Command{
 
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
+var envCmd = NewEnvironmentCommand()
 
 var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
@@ -110,7 +114,9 @@ func initSubCommands() {
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
+		NamespaceInterface:  &namespace.Impl{},
 	}
+
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
 
@@ -137,6 +143,9 @@ func initSubCommands() {
 
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
+
+	envCreateCmd, _ := env_create.NewCommand(framework)
+	envCmd.AddCommand(envCreateCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

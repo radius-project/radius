@@ -13,6 +13,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -32,7 +33,8 @@ type ValidateInput struct {
 	KubernetesInterface kubernetes.Interface
 	Prompter            prompt.Interface
 	HelmInterface       helm.Interface
-	ConnectionFactory   *connections.MockFactory
+	ConnectionFactory   connections.Factory
+	NamespaceInterface  namespace.Interface
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -55,6 +57,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				KubernetesInterface: testcase.KubernetesInterface,
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,
+				NamespaceInterface:  testcase.NamespaceInterface,
 			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
