@@ -254,6 +254,15 @@ func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, conn
 	return cli.RunCommand(ctx, args)
 }
 
+func (cli *CLI) RecipeDelete(ctx context.Context, recipeName string) (string, error) {
+	args := []string{
+		"recipe",
+		"create",
+		"--name", recipeName,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
 func (cli *CLI) Version(ctx context.Context) (string, error) {
 	args := []string{
 		"version",

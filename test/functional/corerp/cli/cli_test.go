@@ -54,6 +54,11 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, recipeName, output)
 		require.Regexp(t, connectorType, output)
 		require.Regexp(t, recipeTemplate, output)
+	})
+	t.Run("Validate rad recipe list", func(t *testing.T) {
+		output, err := cli.RecipeDelete(ctx, recipeName)
+		require.NoError(t, err)
+		require.Contains(t, output, "Successfully deleted recipe")
 
 	})
 }
