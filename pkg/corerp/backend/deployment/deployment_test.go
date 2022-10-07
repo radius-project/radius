@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	connectorrp_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	connectorrp_r "github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -87,6 +88,14 @@ func setup(t *testing.T) SharedMocks {
 					Provider: resourcemodel.ProviderKubernetes,
 				},
 				ResourceHandler: resourceHandler,
+			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosDBMongo,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				ResourceHandler:        resourceHandler,
+				SecretValueTransformer: &mongodatabases.AzureTransformer{},
 			},
 		},
 		map[string]bool{
@@ -156,39 +165,52 @@ func getTestResourceID(id string) resources.ID {
 	return resourceID
 }
 
-func buildFetchSecretsInput() ResourceData {
-	var resourceID resources.ID
-	var testResource connectorrp_dm.MongoDatabase
-	var rendererOutput renderers.RendererOutput
-	testResource.Properties.Secrets = connectorrp_dm.MongoDatabaseSecrets{
-		Username:         "testUser",
-		Password:         "testPassword",
-		ConnectionString: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
-	}
-
-	testResource.ConnectorMetadata.RecipeData = connectorrp_dm.RecipeData{
-		RecipeProperties: connectorrp_dm.RecipeProperties{
-			ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
-				Name: "mongoDB",
-				Parameters: map[string]interface{}{
-					"ResourceGroup": "testRG",
-					"Subscription":  "Radius-Test",
+func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
+	return connectorrp_dm.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+		},
+		Properties: connectorrp_dm.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
-			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 		},
-		APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-		Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+		ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
+			RecipeData: connectorrp_dm.RecipeData{
+				RecipeProperties: connectorrp_dm.RecipeProperties{
+					ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
+						Name: "mongoDB",
+						Parameters: map[string]interface{}{
+							"ResourceGroup": "testRG",
+							"Subscription":  "Radius-Test",
+						},
+					},
+					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				},
+				APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+			},
+		},
 	}
+}
+
+func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
+	testResource := buildMongoDBConnectorWithRecipe()
 
 	secretValues := map[string]rp.SecretValueReference{}
-	connectionStringValue := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
-	secretValues[connectionStringValue] = rp.SecretValueReference{
+	secretValues[connectorrp_r.ConnectionStringValue] = rp.SecretValueReference{
 		LocalID:              outputresource.LocalIDAzureCosmosAccount,
 		Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 		ValueSelector:        "/connectionStrings/0/connectionString",
 		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		Transformer: resourcemodel.ResourceType{
+			Provider: resourcemodel.ProviderAzure,
+			Type:     resourcekinds.AzureCosmosDBMongo,
+		},
 	}
 
 	computedValues := map[string]interface{}{
@@ -199,12 +221,11 @@ func buildFetchSecretsInput() ResourceData {
 	testResource.SecretValues = secretValues
 
 	return ResourceData{
-		ID:              resourceID,
-		Resource:        testResource,
-		OutputResources: rendererOutput.Resources,
-		ComputedValues:  computedValues,
-		SecretValues:    secretValues,
-		RecipeData:      testResource.RecipeData}
+		ID:             getTestResourceID(testResource.ID),
+		Resource:       testResource,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+		RecipeData:     testResource.RecipeData}
 }
 
 func createContext(t *testing.T) context.Context {
@@ -1041,36 +1062,7 @@ func Test_getResourceDataByID(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
-		mongoResource := connectorrp_dm.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
-			},
-			Properties: connectorrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-					},
-				},
-			},
-			ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
-				RecipeData: connectorrp_dm.RecipeData{
-					RecipeProperties: connectorrp_dm.RecipeProperties{
-						ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
-							Name: "mongoDB",
-							Parameters: map[string]interface{}{
-								"ResourceGroup": "testRG",
-								"Subscription":  "Radius-Test",
-							},
-						},
-						TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-					},
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-					Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-						"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
-				},
-			},
-		}
+		mongoResource := buildMongoDBConnectorWithRecipe()
 		mr := store.Object{
 			Metadata: store.Metadata{
 				ID: mongoResource.ID,
@@ -1091,11 +1083,12 @@ func Test_fetchSecrets(t *testing.T) {
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
-		mongoResource := buildFetchSecretsInput()
-		var secrets string
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), "listConnectionStrings", "/connectionStrings/0/connectionString").Times(1).Return(secrets, nil)
+		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
+		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))
+		require.Equal(t, secret, secretValues[connectorrp_r.ConnectionStringValue])
 	})
 }
