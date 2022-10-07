@@ -52,6 +52,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
+
 	return renderers.RendererOutput{
 		Resources:      renderOutput.Resources,
 		ComputedValues: nil,
