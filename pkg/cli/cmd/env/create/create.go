@@ -143,7 +143,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if err != nil || !isEnvCreated {
 		return err
 	}
-	r.Output.LogInfo("Successfully created environment %q in workspace %q", r.EnvironmentName, r.Workspace.Name)
+	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.UCPResourceGroup)
 
 	return nil
 }
