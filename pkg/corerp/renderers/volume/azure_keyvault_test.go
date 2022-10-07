@@ -45,7 +45,7 @@ func TestGetValuesOrDefaultsForSecrets(t *testing.T) {
 				Version: "1",
 			},
 			out: objectValues{
-				alias:    "test",
+				alias:    "default",
 				version:  "1",
 				encoding: string(datamodel.SecretObjectPropertiesEncodingUTF8),
 			},
@@ -82,7 +82,7 @@ func TestGetValuesOrDefaultsForKeys(t *testing.T) {
 				Version: "1",
 			},
 			out: objectValues{
-				alias:   "test",
+				alias:   "default",
 				version: "1",
 			},
 		},
