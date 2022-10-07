@@ -77,22 +77,6 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	return environmentName, err
 }
 
-// RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
-func RequireKubeContext(cmd *cobra.Command, currentContext string) (string, error) {
-	kubecontext, err := cmd.Flags().GetString("context")
-	if err != nil {
-		return "", err
-	}
-
-	if kubecontext == "" && currentContext == "" {
-		return "", errors.New("the kubeconfig has no current context")
-	} else if kubecontext == "" {
-		kubecontext = currentContext
-	}
-
-	return kubecontext, nil
-}
-
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("environment")
 	if err != nil {
@@ -236,19 +220,6 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
-// RequireWorkspaceName is used by commands that require specifying a workspace name using flag or positional args
-func RequireWorkspaceName(cmd *cobra.Command, args []string) (string, error) {
-	workspace, err := ReadWorkspaceNameArgs(cmd, args)
-	if err != nil {
-		return "", err
-	}
-	if workspace == "" {
-		return "", fmt.Errorf("workspace name is not provided or is empty ")
-	}
-
-	return workspace, nil
-}
-
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
 func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
 	group, err := ReadResourceGroupNameArgs(cmd, args)
@@ -311,24 +282,7 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 		if name != "" {
 			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
 		}
-		name = args[1]
-	}
-
-	return name, err
-}
-
-// ReadWorkspaceName is used to get the workspace name that is supplied using a -w flag or as second arg.
-func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, error) {
-	name, err := cmd.Flags().GetString("workspace")
-	if err != nil {
-		return "", err
-	}
-
-	if len(args) > 1 {
-		if name != "" {
-			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
-		}
-		name = args[1]
+		name = args[0]
 	}
 
 	return name, err

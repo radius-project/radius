@@ -22,8 +22,6 @@ import (
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
-	workspace "github.com/project-radius/radius/pkg/cli/cmd/workspace"
-
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
@@ -137,9 +135,6 @@ func initSubCommands() {
 
 	groupCmd := group.NewCommand(framework)
 	RootCmd.AddCommand(groupCmd)
-
-	workspaceCmd := workspace.NewCommand(framework)
-	RootCmd.AddCommand(workspaceCmd)
 
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
