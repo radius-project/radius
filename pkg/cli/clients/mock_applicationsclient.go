@@ -38,18 +38,18 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 }
 
 // CreateEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 map[string]*v20220315privatepreview.EnvironmentRecipeProperties) (bool, error) {
+func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 map[string]*v20220315privatepreview.EnvironmentRecipeProperties, arg7 *v20220315privatepreview.ProviderProperties) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // CreateEnvironment indicates an expected call of CreateEnvironment.
-func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateEnvironment), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateEnvironment", reflect.TypeOf((*MockApplicationsManagementClient)(nil).CreateEnvironment), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // CreateUCPGroup mocks base method.

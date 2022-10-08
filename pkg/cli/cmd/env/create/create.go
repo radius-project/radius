@@ -14,6 +14,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -138,8 +139,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
-
-	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
+	providers := cmd.CreateEnvAzureProvider(r.Workspace.ProviderConfig.Azure.SubscriptionID, r.Workspace.ProviderConfig.Azure.ResourceGroup)
+	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
 	if err != nil || !isEnvCreated {
 		return err
 	}
