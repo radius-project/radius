@@ -9,12 +9,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -139,7 +139,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
-	providers := createEnvAzureProvider(r.Workspace)
+	providers := cmd.CreateEnvAzureProvider(r.Workspace.ProviderConfig.Azure.SubscriptionID, r.Workspace.ProviderConfig.Azure.ResourceGroup)
 	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
 	if err != nil || !isEnvCreated {
 		return err
@@ -147,14 +147,4 @@ func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Successfully created environment %q in resource group %q", r.EnvironmentName, r.UCPResourceGroup)
 
 	return nil
-}
-
-// createEnvAzureProvider forms the azure provider scope from the subscriptionID and resourceGroup
-func createEnvAzureProvider(workspace *workspaces.Workspace) corerp.ProviderProperties {
-	providers := corerp.ProviderProperties{
-		Azure: &corerp.ProviderPropertiesAzure{
-			Scope: to.Ptr("/subscriptions/" + workspace.ProviderConfig.Azure.SubscriptionID + "/resourceGroup/" + workspace.ProviderConfig.Azure.ResourceGroup),
-		},
-	}
-	return providers
 }

@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -231,7 +231,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// create the providers scope from the AzureCloudProvider properties for creating the environment
-	providers := createEnvAzureProvider(r.AzureCloudProvider)
+	providers := cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
@@ -308,14 +308,4 @@ func selectCloudProvider(output output.Interface, prompter prompt.Interface) (in
 		return -1, nil
 	}
 	return index, nil
-}
-
-// createEnvAzureProvider forms the azure provider scope from the subscriptionID and resourceGroup
-func createEnvAzureProvider(azureProvider *azure.Provider) corerp.ProviderProperties {
-	providers := corerp.ProviderProperties{
-		Azure: &corerp.ProviderPropertiesAzure{
-			Scope: to.StringPtr("/subscriptions/" + azureProvider.SubscriptionID + "/resourceGroup/" + azureProvider.ResourceGroup),
-		},
-	}
-	return providers
 }
