@@ -138,7 +138,7 @@ func Test_Run(t *testing.T) {
 					"context": "kind-kind",
 				},
 				Name:           "defaultWorkspace",
-				ProviderConfig: providerConfig,s
+				ProviderConfig: providerConfig,
 			}
 
 			runner := &Runner{
