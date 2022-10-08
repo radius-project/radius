@@ -336,7 +336,7 @@
 
 ## AzureIdentity
 ### Properties
-* **clientId**: string (Required): The client ID for workload and user assigned managed identity
+* **clientId**: string: The client ID for workload and user assigned managed identity
 * **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
 * **tenantId**: string: The tenant ID for workload identity.
 
