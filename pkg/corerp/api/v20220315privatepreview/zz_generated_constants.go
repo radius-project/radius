@@ -178,19 +178,19 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
-// PossibleVolumeRbacValues returns the possible values for the VolumeRbac const type.
-func PossibleVolumeRbacValues() []VolumeRbac {
-	return []VolumeRbac{	
-		VolumeRbacRead,
-		VolumeRbacWrite,
+// PossibleVolumePermissionValues returns the possible values for the VolumePermission const type.
+func PossibleVolumePermissionValues() []VolumePermission {
+	return []VolumePermission{	
+		VolumePermissionRead,
+		VolumePermissionWrite,
 	}
 }
 

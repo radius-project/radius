@@ -189,7 +189,7 @@
 ### PersistentVolume
 #### Properties
 * **kind**: 'persistent' (Required): The Volume kind
-* **rbac**: 'read' | 'write': Container read/write access to the volume
+* **permission**: 'read' | 'write': Container read/write access to the volume
 * **source**: string (Required): The source of the volume
 
 

@@ -550,7 +550,7 @@
           "source"
         ],
         "properties": {
-          "rbac": {
+          "permission": {
             "description": "Container read/write access to the volume",
             "type": "string",
             "enum": [
@@ -558,7 +558,7 @@
               "write"
             ],
             "x-ms-enum": {
-                "name": "VolumeRbac",
+                "name": "VolumePermission",
                 "modelAsString": true
             }
           },

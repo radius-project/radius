@@ -545,7 +545,7 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 	// Make volumeMount spec
 	volumeMountSpec := corev1.VolumeMount{}
 	volumeMountSpec.Name = volumeName
-	if persistentVolume != nil && persistentVolume.Rbac == datamodel.VolumeRbacRead {
+	if persistentVolume != nil && persistentVolume.Permission == datamodel.VolumePermissionRead {
 		volumeMountSpec.MountPath = persistentVolume.MountPath
 		volumeMountSpec.ReadOnly = true
 	}

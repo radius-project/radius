@@ -820,7 +820,7 @@ type PersistentVolume struct {
 	MountPath *string `json:"mountPath,omitempty"`
 
 	// Container read/write access to the volume
-	Rbac *VolumeRbac `json:"rbac,omitempty"`
+	Permission *VolumePermission `json:"permission,omitempty"`
 }
 
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.
