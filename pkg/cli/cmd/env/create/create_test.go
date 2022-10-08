@@ -127,16 +127,18 @@ func Test_Run(t *testing.T) {
 
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
+			azureProvider := &workspaces.AzureProvider{
+				SubscriptionID: "test-subscription",
+				ResourceGroup:  "test-rg"}
+			awsProvider := &workspaces.AWSProvider{}
+			providerConfig := workspaces.ProviderConfig{Azure: azureProvider, AWS: awsProvider}
 			workspace := &workspaces.Workspace{
 				Connection: map[string]interface{}{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},
-				Name: "defaultWorkspace",
-				ProviderConfig: workspaces.ProviderConfig{&workspaces.AzureProvider{
-					SubscriptionID: "test-subscription",
-					ResourceGroup:  "test-rg",
-				}, &workspaces.AWSProvider{}},
+				Name:           "defaultWorkspace",
+				ProviderConfig: providerConfig,s
 			}
 
 			runner := &Runner{
