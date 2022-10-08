@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 
@@ -153,7 +153,7 @@ func (r *Runner) Run(ctx context.Context) error {
 func createEnvAzureProvider(workspace *workspaces.Workspace) corerp.ProviderProperties {
 	providers := corerp.ProviderProperties{
 		Azure: &corerp.ProviderPropertiesAzure{
-			Scope: to.StringPtr("/subscriptions/" + workspace.ProviderConfig.Azure.SubscriptionID + "/resourceGroup/" + workspace.ProviderConfig.Azure.ResourceGroup),
+			Scope: to.Ptr("/subscriptions/" + workspace.ProviderConfig.Azure.SubscriptionID + "/resourceGroup/" + workspace.ProviderConfig.Azure.ResourceGroup),
 		},
 	}
 	return providers
