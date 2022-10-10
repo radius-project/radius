@@ -231,7 +231,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// create the providers scope from the AzureCloudProvider properties for creating the environment
-	providers := cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
+	var providers corerp.ProviderProperties
+	if r.AzureCloudProvider != nil {
+		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
+	}
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
