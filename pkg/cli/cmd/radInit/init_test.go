@@ -162,6 +162,54 @@ func Test_Run(t *testing.T) {
 	})
 }
 
+func Test_Run_WithoutAzureProvider(t *testing.T) {
+	t.Run("Init Radius", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+		configFileInterface.EXPECT().
+			ConfigFromContext(context.Background()).
+			Return(nil).Times(1)
+
+		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagementClient.EXPECT().
+			CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+			Return(true, nil).Times(1)
+		appManagementClient.EXPECT().
+			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
+			Return(true, nil).Times(1)
+		appManagementClient.EXPECT().
+			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(true, nil).Times(1)
+
+		configFileInterface.EXPECT().
+			EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+			Return(nil).Times(1)
+
+		outputSink := &output.MockOutput{}
+
+		helmInterface := helm.NewMockInterface(ctrl)
+		helmInterface.EXPECT().
+			InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+			Return(true, nil).Times(1)
+
+		runner := &Runner{
+			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigFileInterface: configFileInterface,
+			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+			HelmInterface:       helmInterface,
+			Output:              outputSink,
+			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
+			KubeContext:         "kind-kind",
+			EnvName:             "default",
+			NameSpace:           "defaultNameSpace",
+			Reinstall:           true,
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+	})
+}
+
 func initMocksWithoutCloudProvider(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
 	initGetKubeContextSuccess(kubernetesMock)
 	initKubeContextWithKind(prompterMock)

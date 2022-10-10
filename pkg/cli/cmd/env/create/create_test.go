@@ -160,6 +160,46 @@ func Test_Run(t *testing.T) {
 	})
 }
 
+func Test_Run_WithoutAzureProvider(t *testing.T) {
+	t.Run("Run env create tests", func(t *testing.T) {
+		t.Run("Success", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+
+			namespaceClient := namespace.NewMockInterface(ctrl)
+			appManagementClient.EXPECT().
+				CreateEnvironment(context.Background(), "default", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+				Return(true, nil).Times(1)
+
+			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+			outputSink := &output.MockOutput{}
+			workspace := &workspaces.Workspace{
+				Connection: map[string]interface{}{
+					"kind":    "kubernetes",
+					"context": "kind-kind",
+				},
+				Name: "defaultWorkspace",
+			}
+
+			runner := &Runner{
+				ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+				Output:              outputSink,
+				Workspace:           workspace,
+				EnvironmentName:     "default",
+				UCPResourceGroup:    "default",
+				Namespace:           "default",
+				NamespaceInterface:  namespaceClient,
+				ConfigFileInterface: configFileInterface,
+				AppManagementClient: appManagementClient,
+			}
+
+			err := runner.Run(context.Background())
+			require.NoError(t, err)
+		})
+	})
+}
+
 func createMocksWithValidCommand(namespaceClient *namespace.MockInterface, appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
 	createShowUCPSuccess(appManagementClient, testResourceGroup)
 	createValidateNamespaceSuccess(namespaceClient)
