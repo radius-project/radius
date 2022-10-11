@@ -456,9 +456,9 @@
           "type": "string",
           "enum": [
             "Workload",
-            "UserAssigned"
+            "SystemAssigned"
           ],
-          "default": "UserAssigned",
+          "default": "SystemAssigned",
           "x-ms-enum": {
             "name": "AzureIdentityKind",
             "modelAsString": false

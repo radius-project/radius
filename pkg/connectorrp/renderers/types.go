@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -35,15 +36,17 @@ type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 type RenderOptions struct {
-	Namespace        string
-	RecipeProperties datamodel.RecipeProperties
+	Namespace            string
+	RecipeProperties     datamodel.RecipeProperties
+	EnvironmentProviders coreDatamodel.ProviderProperties
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]rp.SecretValueReference
-	RecipeData     datamodel.RecipeData
+	Resources            []outputresource.OutputResource
+	ComputedValues       map[string]ComputedValueReference
+	SecretValues         map[string]rp.SecretValueReference
+	RecipeData           datamodel.RecipeData
+	EnvironmentProviders coreDatamodel.ProviderProperties // represents providers mapped to the linked environment needed to deploy the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

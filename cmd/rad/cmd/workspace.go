@@ -3,17 +3,20 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package workspace
+package cmd
 
 import (
-	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
-	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/spf13/cobra"
 )
 
-func NewCommand(factory framework.Factory) *cobra.Command {
+func init() {
+	RootCmd.AddCommand(workspaceCmd)
+	workspaceCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
+}
+
+func NewWorkspaceCommand() *cobra.Command {
 	// This command is not runnable, and thus has no runner.
-	cmd := &cobra.Command{
+	return &cobra.Command{
 		Use:   "workspace",
 		Short: "Manage workspaces",
 		Long: `Manage workspaces
@@ -23,15 +26,8 @@ func NewCommand(factory framework.Factory) *cobra.Command {
 		Example: `
 # Create workspace with no default resource group or environment set
 rad workspace create kubernetes myworkspace --context kind-kind
-
 # Create workspace with default resource group and environment set
 rad workspace create kubernetes myworkspace --context kind-kind --group myrg --environment myenv
 `,
 	}
-
-	create, _ := workspace_create.NewCommand(factory)
-	cmd.AddCommand(create)
-
-	return cmd
-
 }

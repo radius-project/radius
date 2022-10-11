@@ -410,6 +410,10 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 }
 
 func toRbacDataModel(rbac *VolumeRbac) datamodel.VolumeRbac {
+	if rbac == nil {
+		return datamodel.VolumeRbacRead
+	}
+
 	switch *rbac {
 	case VolumeRbacRead:
 		return datamodel.VolumeRbacRead

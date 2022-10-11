@@ -33,7 +33,7 @@ type ValidateInput struct {
 	KubernetesInterface kubernetes.Interface
 	Prompter            prompt.Interface
 	HelmInterface       helm.Interface
-	ConnectionFactory   connections.Factory
+	ConnectionFactory   *connections.MockFactory
 	NamespaceInterface  namespace.Interface
 }
 

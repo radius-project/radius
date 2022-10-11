@@ -20,6 +20,9 @@ const (
 type VolumeResource struct {
 	v1.BaseResource
 
+	// TODO: remove this from CoreRP
+	ConnectorMetadata
+
 	// Properties is the properties of the resource.
 	Properties VolumeResourceProperties `json:"properties"`
 }
@@ -55,12 +58,12 @@ type VolumeResourceProperties struct {
 type AzureIdentityKind string
 
 const (
-	AzureIdentityNone         AzureIdentityKind = "None"
-	AzureIdentityWorkload     AzureIdentityKind = "Workload"
-	AzureIdentityUserAssigned AzureIdentityKind = "UserAssigned"
+	AzureIdentityNone           AzureIdentityKind = "None"
+	AzureIdentityWorkload       AzureIdentityKind = "Workload"
+	AzureIdentitySystemAssigned AzureIdentityKind = "SystemAssigned"
 )
 
-// AzureIdentity represents the azure indentity info to access azure resource, such as Key vault.
+// AzureIdentity represents the azure identity info to access azure resource, such as Key vault.
 type AzureIdentity struct {
 	// Kind represents the type of authentication.
 	Kind AzureIdentityKind `json:"kind"`
