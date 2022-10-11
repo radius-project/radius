@@ -55,6 +55,7 @@ const (
 	OperationGetOperationStatuses OperationMethod = "GETOPERATIONSTATUSES"
 	OperationGetOperationResult   OperationMethod = "GETOPERATIONRESULT"
 	OperationPutSubscriptions     OperationMethod = "PUTSUBSCRIPTIONS"
+	OperationPost                 OperationMethod = "POST"
 
 	Seperator = "|"
 )

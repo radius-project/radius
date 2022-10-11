@@ -31,6 +31,7 @@ const (
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
 	awsResourcePath           = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
+	awsResourceIDPathAction   = "{OperationName}"
 )
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
@@ -86,6 +87,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsSingleResourceSubRouter := awsResourcesSubRouter.Path(awsResourcePath).Subrouter()
 	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
 	awsOperationResultsSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationResultsPath).Subrouter()
+	awsResourceIDSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s:%s", awsResourcePath, awsResourceIDPathAction)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -166,6 +168,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ParentRouter:   awsSingleResourceSubRouter,
 			Method:         v1.OperationGet,
 			HandlerFactory: awsproxy_ctrl.NewGetAWSResource,
+		},
+		{
+			ParentRouter:   awsResourceIDSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewComputeResourceID,
 		},
 
 		// Proxy request should take the least priority in routing and should therefore be last
