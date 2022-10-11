@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
