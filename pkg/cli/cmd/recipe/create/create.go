@@ -148,6 +148,9 @@ func requireConnectorType(cmd *cobra.Command) (string, error) {
 
 func requireRecipeName(cmd *cobra.Command) (string, error) {
 	recipeName, err := cmd.Flags().GetString("name")
+	if recipeName == "" {
+		return "", fmt.Errorf("recipe name cannot be empty")
+	}
 	if err != nil {
 		return recipeName, err
 	}

@@ -9,7 +9,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -66,15 +66,15 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:       to.StringPtr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:     to.StringPtr("kind-kind"),
-				Type:     to.StringPtr("applications.core/environments"),
-				Location: to.StringPtr("global"),
+				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.Ptr("kind-kind"),
+				Type:     to.Ptr("applications.core/environments"),
+				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.StringPtr("Applications.Connector/mongoDatabases"),
-							TemplatePath:  to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
+							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
