@@ -12,7 +12,6 @@ param port int = 3000
 @description('Specifies the environment for resources.')
 param environment string
 
-/*
 @description('Specifies the value of the secret that you want to create.')
 @secure()
 param mySecretValue string = newGuid()
@@ -25,7 +24,6 @@ param keyvaultAdminRoleDefinitionId string = '/providers/Microsoft.Authorization
 
 @description('Specifies the value of System assigned managed identity.')
 param systemIdentityId string = '2662fdc5-e7d9-4a4f-b79a-522122f282ba'
-*/
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-volume-azkv'
@@ -44,7 +42,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
     identity: {
       kind: 'SystemAssigned'
     }
-    resource: '/subscriptions/a23f9496-e79d-424a-9af7-e2258fb22809/resourceGroups/radius-youngp/providers/Microsoft.KeyVault/vaults/kv-volume'
+    resource: key_vault.id
     secrets: {
       mysecret: {
         name: 'mysecret'
@@ -76,7 +74,6 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
-/*
 resource key_vault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: 'kv-volume-1'
   location: location
@@ -114,5 +111,3 @@ resource my_secret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
     }
   }
 }
-
-*/
