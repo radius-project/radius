@@ -122,8 +122,8 @@ type EphemeralVolume struct {
 // PersistentVolume - Specifies a persistent volume for a container
 type PersistentVolume struct {
 	VolumeBase
-	Source string     `json:"source,omitempty"`
-	Rbac   VolumeRbac `json:"rbac,omitempty"`
+	Source     string           `json:"source,omitempty"`
+	Permission VolumePermission `json:"permission,omitempty"`
 }
 
 // ManagedStore - Backing store for the ephemeral volume
@@ -134,12 +134,12 @@ const (
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead  VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead  VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
 type HealthProbeKind string

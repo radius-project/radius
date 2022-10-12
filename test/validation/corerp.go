@@ -25,6 +25,7 @@ const (
 	HttpRoutesResource   = "applications.core/httpRoutes"
 	GatewaysResource     = "applications.core/gateways"
 	ContainersResource   = "applications.core/containers"
+	VolumesResource      = "applications.core/volumes"
 
 	MongoDatabasesResource        = "applications.connector/mongoDatabases"
 	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"

@@ -79,11 +79,11 @@ type ApplicationsClientUpdateOptions struct {
 }
 
 type AzureIdentity struct {
-	// REQUIRED; The client ID for workload and user assigned managed identity
-	ClientID *string `json:"clientId,omitempty"`
-
 	// REQUIRED; Identity Kind
 	Kind *AzureIdentityKind `json:"kind,omitempty"`
+
+	// The client ID for workload and user assigned managed identity
+	ClientID *string `json:"clientId,omitempty"`
 
 	// The tenant ID for workload identity.
 	TenantID *string `json:"tenantId,omitempty"`
@@ -820,7 +820,7 @@ type PersistentVolume struct {
 	MountPath *string `json:"mountPath,omitempty"`
 
 	// Container read/write access to the volume
-	Rbac *VolumeRbac `json:"rbac,omitempty"`
+	Permission *VolumePermission `json:"permission,omitempty"`
 }
 
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.

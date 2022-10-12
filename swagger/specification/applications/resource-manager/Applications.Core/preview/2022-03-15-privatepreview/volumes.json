@@ -474,8 +474,7 @@
         }
       },
       "required": [
-        "kind",
-        "clientId"
+        "kind"
       ],
       "type": "object"
     },

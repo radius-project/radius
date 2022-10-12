@@ -1538,7 +1538,7 @@ func (p PersistentVolume) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	objectMap["kind"] = "persistent"
 	populate(objectMap, "mountPath", p.MountPath)
-	populate(objectMap, "rbac", p.Rbac)
+	populate(objectMap, "permission", p.Permission)
 	populate(objectMap, "source", p.Source)
 	return json.Marshal(objectMap)
 }
@@ -1558,8 +1558,8 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 		case "mountPath":
 				err = unpopulate(val, "MountPath", &p.MountPath)
 				delete(rawMsg, key)
-		case "rbac":
-				err = unpopulate(val, "Rbac", &p.Rbac)
+		case "permission":
+				err = unpopulate(val, "Permission", &p.Permission)
 				delete(rawMsg, key)
 		case "source":
 				err = unpopulate(val, "Source", &p.Source)

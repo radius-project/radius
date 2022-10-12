@@ -189,7 +189,7 @@
 ### PersistentVolume
 #### Properties
 * **kind**: 'persistent' (Required): The Volume kind
-* **rbac**: 'read' | 'write': Container read/write access to the volume
+* **permission**: 'read' | 'write': Container read/write access to the volume
 * **source**: string (Required): The source of the volume
 
 
@@ -336,7 +336,7 @@
 
 ## AzureIdentity
 ### Properties
-* **clientId**: string (Required): The client ID for workload and user assigned managed identity
+* **clientId**: string: The client ID for workload and user assigned managed identity
 * **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
 * **tenantId**: string: The tenant ID for workload identity.
 

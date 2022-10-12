@@ -354,7 +354,7 @@ func toVolumePropertiesDataModel(h VolumeClassification) datamodel.VolumePropert
 			Persistent: &datamodel.PersistentVolume{
 				VolumeBase: toVolumeBaseDataModel(*c.GetVolume()),
 				Source:     to.String(c.Source),
-				Rbac:       toRbacDataModel(c.Rbac),
+				Permission: toPermissionDataModel(c.Permission),
 			},
 		}
 		return *converted
@@ -374,10 +374,10 @@ func fromVolumePropertiesDataModel(v datamodel.VolumeProperties) VolumeClassific
 		return converted.GetVolume()
 	case datamodel.Persistent:
 		converted := PersistentVolume{
-			Kind:      (*string)(&v.Kind),
-			MountPath: &v.Persistent.MountPath,
-			Source:    &v.Persistent.Source,
-			Rbac:      fromRbacDataModel(v.Persistent.Rbac),
+			Kind:       (*string)(&v.Kind),
+			MountPath:  &v.Persistent.MountPath,
+			Source:     &v.Persistent.Source,
+			Permission: fromPermissionDataModel(v.Persistent.Permission),
 		}
 		return converted.GetVolume()
 	}
@@ -409,30 +409,30 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 	return &m
 }
 
-func toRbacDataModel(rbac *VolumeRbac) datamodel.VolumeRbac {
+func toPermissionDataModel(rbac *VolumePermission) datamodel.VolumePermission {
 	if rbac == nil {
-		return datamodel.VolumeRbacRead
+		return datamodel.VolumePermissionRead
 	}
 
 	switch *rbac {
-	case VolumeRbacRead:
-		return datamodel.VolumeRbacRead
-	case VolumeRbacWrite:
-		return datamodel.VolumeRbacWrite
+	case VolumePermissionRead:
+		return datamodel.VolumePermissionRead
+	case VolumePermissionWrite:
+		return datamodel.VolumePermissionWrite
 	default:
-		return datamodel.VolumeRbacRead
+		return datamodel.VolumePermissionRead
 	}
 }
 
-func fromRbacDataModel(rbac datamodel.VolumeRbac) *VolumeRbac {
-	var r VolumeRbac
+func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission {
+	var r VolumePermission
 	switch rbac {
-	case datamodel.VolumeRbacRead:
-		r = VolumeRbacRead
-	case datamodel.VolumeRbacWrite:
-		r = VolumeRbacWrite
+	case datamodel.VolumePermissionRead:
+		r = VolumePermissionRead
+	case datamodel.VolumePermissionWrite:
+		r = VolumePermissionWrite
 	default:
-		r = VolumeRbacRead
+		r = VolumePermissionRead
 	}
 	return &r
 }
