@@ -4,7 +4,7 @@ import radius as radius
 param location string = 'global'
 
 @description('Specifies the image of the container resource.')
-param magpieimage string = 'radiusdev.azurecr.io/magpiego:latest'
+param magpieimage string
 
 @description('Specifies the port of the container resource.')
 param port int = 3000
@@ -23,7 +23,7 @@ param keyvaultTenantID string = subscription().tenantId
 param keyvaultAdminRoleDefinitionId string = '/providers/Microsoft.Authorization/roleDefinitions/00482a5a-887f-4fb3-b363-3b7fe8e74483'
 
 @description('Specifies the value of System assigned managed identity.')
-param systemIdentityId string = '2662fdc5-e7d9-4a4f-b79a-522122f282ba'
+param systemIdentityId string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-volume-azkv'
