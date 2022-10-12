@@ -341,7 +341,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace, azProviderConfig.SubscriptionID, azProviderConfig.ResourceGroup)
 	if err != nil {
 		return err
 	}
@@ -362,7 +362,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
 	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create environment client: %w", err)
@@ -380,6 +380,14 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 				Namespace:  to.Ptr(namespace),
 			},
 		},
+	}
+
+	if subscriptionID != "" && resourceGroup != "" {
+		toCreate.Properties.Providers = &coreRpApps.ProviderProperties{
+			Azure: &coreRpApps.ProviderPropertiesAzure{
+				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
+			},
+		}
 	}
 
 	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
