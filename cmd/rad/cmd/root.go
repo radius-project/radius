@@ -18,12 +18,11 @@ import (
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
+	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
-	workspace "github.com/project-radius/radius/pkg/cli/cmd/workspace"
-
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
 	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
@@ -51,6 +50,7 @@ var RootCmd = &cobra.Command{
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
 var envCmd = NewEnvironmentCommand()
+var workspaceCmd = NewWorkspaceCommand()
 
 var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
@@ -138,14 +138,14 @@ func initSubCommands() {
 	groupCmd := group.NewCommand(framework)
 	RootCmd.AddCommand(groupCmd)
 
-	workspaceCmd := workspace.NewCommand(framework)
-	RootCmd.AddCommand(workspaceCmd)
-
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	envCmd.AddCommand(envCreateCmd)
+
+	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceCreateCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)

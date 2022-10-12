@@ -13,6 +13,7 @@ import (
 	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -229,7 +230,12 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{})
+	// create the providers scope from the AzureCloudProvider properties for creating the environment
+	var providers corerp.ProviderProperties
+	if r.AzureCloudProvider != nil {
+		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
+	}
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}
