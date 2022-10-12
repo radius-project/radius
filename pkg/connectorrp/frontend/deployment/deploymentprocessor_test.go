@@ -263,7 +263,7 @@ func buildFetchSecretsInput(withRecipe bool) ResourceData {
 	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
-func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.ProviderProperties) store.Object {
+func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) store.Object {
 	environment := corerpDatamodel.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -399,7 +399,7 @@ func Test_Render(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoRecipe()
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource("mongoDB", &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource("mongoDB", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -1005,7 +1005,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("successfully get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource(recipeName, &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
@@ -1018,7 +1018,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 	t.Run("fail to get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
