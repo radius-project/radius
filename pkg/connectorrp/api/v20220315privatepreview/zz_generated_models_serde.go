@@ -46,6 +46,8 @@ func (b *BasicDaprResourceProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
 func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", b.Application)
+	populate(objectMap, "environment", b.Environment)
 	populate(objectMap, "status", b.Status)
 	return json.Marshal(objectMap)
 }
@@ -59,6 +61,12 @@ func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &b.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &b.Environment)
+				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &b.Status)
 				delete(rawMsg, key)

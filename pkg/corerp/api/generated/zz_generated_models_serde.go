@@ -7,7 +7,7 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package generated
 
 import (
 	"encoding/json"
@@ -169,7 +169,6 @@ func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", a.Application)
 	populate(objectMap, "certificates", a.Certificates)
-	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "identity", a.Identity)
 	populate(objectMap, "keys", a.Keys)
 	objectMap["kind"] = "azure.com.keyvault"
@@ -194,9 +193,6 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "certificates":
 				err = unpopulate(val, "Certificates", &a.Certificates)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &a.Environment)
 				delete(rawMsg, key)
 		case "identity":
 				err = unpopulate(val, "Identity", &a.Identity)
@@ -230,8 +226,6 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type BasicResourceProperties.
 func (b BasicResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", b.Application)
-	populate(objectMap, "environment", b.Environment)
 	populate(objectMap, "status", b.Status)
 	return json.Marshal(objectMap)
 }
@@ -245,12 +239,6 @@ func (b *BasicResourceProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &b.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &b.Environment)
-				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &b.Status)
 				delete(rawMsg, key)
@@ -432,7 +420,6 @@ func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", c.Application)
 	populate(objectMap, "connections", c.Connections)
 	populate(objectMap, "container", c.Container)
-	populate(objectMap, "environment", c.Environment)
 	populate(objectMap, "extensions", c.Extensions)
 	populate(objectMap, "provisioningState", c.ProvisioningState)
 	populate(objectMap, "status", c.Status)
@@ -456,9 +443,6 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "container":
 				err = unpopulate(val, "Container", &c.Container)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &c.Environment)
 				delete(rawMsg, key)
 		case "extensions":
 				c.Extensions, err = unmarshalExtensionClassificationArray(val)
@@ -999,7 +983,6 @@ func (e *Extension) UnmarshalJSON(data []byte) error {
 func (g GatewayProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", g.Application)
-	populate(objectMap, "environment", g.Environment)
 	populate(objectMap, "hostname", g.Hostname)
 	populate(objectMap, "internal", g.Internal)
 	populate(objectMap, "provisioningState", g.ProvisioningState)
@@ -1020,9 +1003,6 @@ func (g *GatewayProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 				err = unpopulate(val, "Application", &g.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &g.Environment)
 				delete(rawMsg, key)
 		case "hostname":
 				err = unpopulate(val, "Hostname", &g.Hostname)
@@ -1253,7 +1233,6 @@ func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
 func (h HTTPRouteProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", h.Application)
-	populate(objectMap, "environment", h.Environment)
 	populate(objectMap, "hostname", h.Hostname)
 	populate(objectMap, "port", h.Port)
 	populate(objectMap, "provisioningState", h.ProvisioningState)
@@ -1274,9 +1253,6 @@ func (h *HTTPRouteProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 				err = unpopulate(val, "Application", &h.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &h.Environment)
 				delete(rawMsg, key)
 		case "hostname":
 				err = unpopulate(val, "Hostname", &h.Hostname)
@@ -1919,7 +1895,6 @@ func (v *Volume) UnmarshalJSON(data []byte) error {
 func (v VolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", v.Application)
-	populate(objectMap, "environment", v.Environment)
 	objectMap["kind"] = v.Kind
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "status", v.Status)
@@ -1937,9 +1912,6 @@ func (v *VolumeProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "application":
 				err = unpopulate(val, "Application", &v.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &v.Environment)
 				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &v.Kind)
