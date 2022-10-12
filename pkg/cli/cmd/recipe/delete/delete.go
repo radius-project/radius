@@ -94,7 +94,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	delete(recipeProperties, r.RecipeName)
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers)
 	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to delete the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}
 
 	r.Output.LogInfo("Successfully deleted recipe %q from environment %q ", r.RecipeName, r.Workspace.Environment)

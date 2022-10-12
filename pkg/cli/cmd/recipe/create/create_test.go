@@ -9,7 +9,6 @@ import (
 	"context"
 	"testing"
 
-	//"github.com/Azure/go-autorest/autorest/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/cli/clients"

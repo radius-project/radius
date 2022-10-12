@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -99,6 +99,69 @@ func Test_Run(t *testing.T) {
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
+		})
+		t.Run("Delete recipe that doesn't exist in the environment", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.Ptr("kind-kind"),
+				Type:     to.Ptr("applications.core/environments"),
+				Location: to.Ptr("global"),
+				Properties: &v20220315privatepreview.EnvironmentProperties{
+					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
+						"cosmosDB": {
+							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
+							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+						},
+					},
+				},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "cosmosDB1",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+		})
+		t.Run("Delete recipe with no recipes added to the environment", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr("global"),
+				Properties: &v20220315privatepreview.EnvironmentProperties{},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
+				RecipeName:        "cosmosDB",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
 		})
 	})
 }

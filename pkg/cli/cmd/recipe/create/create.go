@@ -7,6 +7,7 @@ package create
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -150,7 +151,7 @@ func requireConnectorType(cmd *cobra.Command) (string, error) {
 func requireRecipeName(cmd *cobra.Command) (string, error) {
 	recipeName, err := cmd.Flags().GetString("name")
 	if recipeName == "" {
-		return "", fmt.Errorf("recipe name cannot be empty")
+		return "", errors.New("recipe name cannot be empty")
 	}
 	if err != nil {
 		return recipeName, err
