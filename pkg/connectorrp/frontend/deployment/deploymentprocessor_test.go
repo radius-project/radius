@@ -306,6 +306,11 @@ func buildEnvironmentResourceWithRecipe(recipeName string) store.Object {
 					Namespace: "radius-test",
 				},
 			},
+			Providers: corerpDatamodel.ProviderProperties{
+				Azure: corerpDatamodel.ProviderPropertiesAzure{
+					Scope: "/subscriptions/test-subscription/resourceGroups/test-resource-group",
+				},
+			},
 			Recipes: map[string]corerpDatamodel.EnvironmentRecipeProperties{
 				recipeName: {
 					ConnectorType: "Applications.Connector/MongoDatabases",
@@ -424,12 +429,13 @@ func Test_Render(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoRecipe()
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResourceWithRecipe("mongoDB")
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.RecipeData, rendererOutput.RecipeData)
+		require.Equal(t, testRendererOutput.EnvironmentProviders, rendererOutput.EnvironmentProviders)
 
 	})
 
