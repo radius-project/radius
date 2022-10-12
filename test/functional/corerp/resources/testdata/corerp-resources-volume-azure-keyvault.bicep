@@ -42,7 +42,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
     identity: {
       kind: 'SystemAssigned'
     }
-    resource: key_vault.id
+    resource: azTestKeyvault.id
     secrets: {
       mysecret: {
         name: 'mysecret'
@@ -74,7 +74,7 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
-resource key_vault 'Microsoft.KeyVault/vaults@2022-07-01' = {
+resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: 'kv-volume-1'
   location: location
   tags: {
@@ -92,8 +92,8 @@ resource key_vault 'Microsoft.KeyVault/vaults@2022-07-01' = {
 }
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  scope: key_vault
-  name: guid(key_vault.id, systemIdentityId, keyvaultAdminRoleDefinitionId)
+  scope: azTestKeyvault
+  name: guid(azTestKeyvault.id, systemIdentityId, keyvaultAdminRoleDefinitionId)
   properties: {
     roleDefinitionId: keyvaultAdminRoleDefinitionId
     principalId: systemIdentityId
@@ -101,8 +101,8 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-prev
   }
 }
 
-resource my_secret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  parent: key_vault
+resource mySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  parent: azTestKeyvault
   name: 'mysecret'
   properties: {
     value: mySecretValue
