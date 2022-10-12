@@ -7,10 +7,18 @@ package secretsprovider
 
 import (
 	"context"
+	"os"
 
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/secrets"
 	"github.com/project-radius/radius/pkg/ucp/secrets/etcdsecrets"
+	"github.com/project-radius/radius/pkg/ucp/secrets/kubernetessecrets"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+)
+
+const (
+	radiusNamespace = "radius-system"
 )
 
 type secretsFactoryFunc func(context.Context, SecretsProviderOptions) (secrets.Interface, error)
@@ -31,5 +39,15 @@ func initETCDSecretsInterface(ctx context.Context, opt SecretsProviderOptions) (
 }
 
 func initKubernetesSecretsInterface(ctx context.Context, opt SecretsProviderOptions) (secrets.Interface, error) {
-	return nil, nil
+	kubeconfig := os.Getenv("HOME") + "/.kube/config"
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	if err != nil {
+		panic(err.Error())
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(err.Error())
+	}
+	secretsClient := clientset.CoreV1().Secrets(radiusNamespace)
+	return &kubernetessecrets.Client{SecretsClient: secretsClient}, nil
 }

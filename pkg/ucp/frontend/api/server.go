@@ -16,6 +16,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/middleware"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -136,9 +137,36 @@ func (s *Service) InitializeSecretsInterface(ctx context.Context) (secrets.Inter
 	var secretsInterface secrets.Interface
 	if s.options.SecretsProviderOptions.Provider == secretsprovider.TypeETCDSecrets {
 		s.options.SecretsProviderOptions.ETCD.Client = s.options.ClientConfigSource
-		// secretsInterface = 
-		return secretsInterface, nil
 	}
+	secretsProvider := secretsprovider.NewSecretsProvider(s.options.SecretsProviderOptions)
+	secretsInterface, err := secretsProvider.GetSecretsInterface(ctx, string(s.options.SecretsProviderOptions.Provider))
+	if err != nil {
+		return nil, err
+	}
+	//TODO: remove below testing code
+	kind := "azure"
+	clientId := "clientId"
+	secret := "adfsf"
+	tenantId := "tenantId"
+	storageKind := "kubernetes"
+	secrets := ucp.AzureServicePrincipalProperties{
+		Kind:     &kind,
+		Storage:  &ucp.CredentialResourcePropertiesStorage{Kind: (*ucp.CredentialStorageKind)(&storageKind)},
+		ClientID: &clientId,
+		Secret:   &secret,
+		TenantID: &tenantId,
+	}
+	secretsInterface.CreateSecrets(ctx, "/planes/azure/azuresecrets/providers/System.Azure/credentials/default", secrets)
+	id, err :=secretsInterface.GetSecrets(ctx, "default")
+	fmt.Print(id)
+	secretsIDs,err := secretsInterface.ListSecrets(ctx,"azure", "azuresecrets", "/providers/System.Azure/credentials")
+	if err != nil {
+		return nil, err
+	}
+	for _, ID := range secretsIDs {
+		fmt.Println("Hello SecretId in server: "+ID)
+	}
+
 	return secretsInterface, nil
 }
 

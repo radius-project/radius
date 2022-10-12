@@ -5,9 +5,13 @@
 
 package secrets
 
+import (
+	"context"
+)
+
 type Interface interface {
-	CreateSecrets(name string)
-	DeleteSecrets(name string)
-	GetSecrets(name string)
-	ListSecrets()
+	CreateSecrets(ctx context.Context, id string, secrets interface{}) error
+	DeleteSecrets(ctx context.Context, id string) error
+	GetSecrets(ctx context.Context, id string) (string, error)
+	ListSecrets(ctx context.Context, planeType string, planeName string, scope string) ([]string, error)
 }

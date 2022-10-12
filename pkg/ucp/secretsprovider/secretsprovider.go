@@ -19,7 +19,7 @@ var (
 	ErrSecretsNotFound            = errors.New("secrets provider not found")
 )
 
-var _ SecretsStorageProvider = (*secretsProvider)(nil)
+var _ SecretsProvider = (*secretsProvider)(nil)
 
 type secretsProvider struct {
 	clients   map[string]secrets.Interface
@@ -28,7 +28,7 @@ type secretsProvider struct {
 }
 
 // NewSecretsProvider creates new SecretsStorageProvider instance.
-func NewSecretsProvider(opts SecretsProviderOptions) SecretsStorageProvider {
+func NewSecretsProvider(opts SecretsProviderOptions) SecretsProvider {
 	return &secretsProvider{
 		clients: map[string]secrets.Interface{},
 		options: opts,

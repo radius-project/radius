@@ -24,8 +24,8 @@ const (
 
 //go:generate mockgen -destination=./mock_secretsstorage_provider.go -package=secretsprovider -self_package github.com/project-radius/radius/pkg/ucp/secretsprovider github.com/project-radius/radius/pkg/ucp/secretsprovider SecretsStorageProvider
 
-// SecretsStorageProvider is an interfae to provide secrets storage interface.
-type SecretsStorageProvider interface {
+// SecretsProvider is an interfae to provide secrets storage interface.
+type SecretsProvider interface {
 	// GetSecretsInterface creates or gets secrets interface.
 	GetSecretsInterface(context.Context, string) (secrets.Interface, error)
 }
