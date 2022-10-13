@@ -32,7 +32,7 @@ type CreateOrUpdateGateway struct {
 // NewCreateOrUpdateGateway creates a new CreateOrUpdateGateway.
 func NewCreateOrUpdateGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateGateway{
-		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned, validation.ValidateGatewayRequest),
+		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned, validation.NewGatewayResourceValidators()),
 	}, nil
 }
 

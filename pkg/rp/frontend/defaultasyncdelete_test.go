@@ -16,6 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	store "github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -74,7 +75,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				StatusManager: msm,
 			}
 
-			ctl, err := NewDefaultAsyncDelete(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned)
+			ctl, err := NewDefaultAsyncDelete(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned, validation.NewHTTPRouteResourceValidators())
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, w, req)

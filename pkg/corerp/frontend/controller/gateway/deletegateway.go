@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 )
 
 var _ ctrl.Controller = (*DeleteGateway)(nil)
@@ -32,7 +33,7 @@ type DeleteGateway struct {
 // NewDeleteGateway creates a new DeleteGateway.
 func NewDeleteGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteGateway{
-		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned, nil),
+		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned, validation.NewGatewayResourceValidators()),
 	}, nil
 }
 

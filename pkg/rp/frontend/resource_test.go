@@ -16,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	validation "github.com/project-radius/radius/pkg/armrpc/api/validation"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp"
@@ -185,8 +186,15 @@ func testResourceDataModelFromVersioned(content []byte, version string) (*TestRe
 	}
 }
 
-func testValidateResourceRequest(*TestResourceDataModel) error {
+type TestResourceValidators struct {
+}
+
+func (v *TestResourceValidators) ValidateRequest(*TestResourceDataModel) error {
 	return nil
+}
+
+func NewTestResourceValidators() validation.Validators[TestResourceDataModel] {
+	return &TestResourceValidators{}
 }
 
 func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {

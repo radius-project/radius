@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 )
 
 var (
@@ -31,7 +32,7 @@ type DeleteHTTPRoute struct {
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
 func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteHTTPRoute{
-		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned, nil),
+		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned, validation.NewHTTPRouteResourceValidators()),
 	}, nil
 }
 

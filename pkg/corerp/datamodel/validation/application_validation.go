@@ -5,8 +5,18 @@
 
 package validation
 
-import "github.com/project-radius/radius/pkg/corerp/datamodel"
+import (
+	validation "github.com/project-radius/radius/pkg/armrpc/api/validation"
+	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+)
 
-func ValidateApplicationRequest(*datamodel.Application) error {
+type ApplicationResourceValidators struct {
+}
+
+func (v *ApplicationResourceValidators) ValidateRequest(*datamodel.Application) error {
 	return nil
+}
+
+func NewApplicationResourceValidators() validation.Validators[datamodel.Application] {
+	return &ApplicationResourceValidators{}
 }

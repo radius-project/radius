@@ -27,7 +27,7 @@ type CreateOrUpdateApplication struct {
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
 func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned, validation.ValidateApplicationRequest),
+		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned, validation.NewApplicationResourceValidators()),
 	}, nil
 }
 

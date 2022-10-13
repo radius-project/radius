@@ -29,7 +29,7 @@ type CreateOrUpdateEnvironment struct {
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
 func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateEnvironment{
-		ctrl.NewOperation(opts, converter.EnvironmentDataModelFromVersioned, converter.EnvironmentDataModelToVersioned, validation.ValidateEnvironmentRequest),
+		ctrl.NewOperation(opts, converter.EnvironmentDataModelFromVersioned, converter.EnvironmentDataModelToVersioned, validation.NewEnvironmentResourceValidators()),
 	}, nil
 }
 

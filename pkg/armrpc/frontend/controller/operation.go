@@ -14,6 +14,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	validation "github.com/project-radius/radius/pkg/armrpc/api/validation"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
@@ -37,16 +38,16 @@ type Operation[P interface {
 	// ConvertToAPIModel is the converter to convert from datamodel resource to the versioned API model.
 	ConvertToAPIModel conv.ConvertToAPIModel[T]
 
-	// ValidateResourceRequest is the function to validate the resource extracted from the request.
-	ValidateResourceRequest conv.ValidateResourceRequest[T]
+	// Validators is the collection of resource validation functions.
+	Validators validation.Validators[T]
 }
 
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T], reqval conv.ValidateResourceRequest[T]) Operation[P, T] {
-	return Operation[P, T]{options, reqconv, respconv, reqval}
+}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T], validators validation.Validators[T]) Operation[P, T] {
+	return Operation[P, T]{options, reqconv, respconv, validators}
 }
 
 // StorageClient gets storage client for this controller.

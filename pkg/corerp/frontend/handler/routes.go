@@ -274,7 +274,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.ValidateVolumeRequest)
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
 			},
 		},
 		{
@@ -282,7 +282,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.ValidateVolumeRequest)
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
 			},
 		},
 		{
@@ -290,7 +290,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncDelete(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+				return rp_frontend.NewDefaultAsyncDelete(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
 			},
 		},
 	}

@@ -34,7 +34,7 @@ type CreateOrUpdateContainer struct {
 // NewCreateOrUpdateContainer creates a new CreateOrUpdateContainer.
 func NewCreateOrUpdateContainer(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateContainer{
-		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned, validation.ValidateContainerRequest),
+		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned, validation.NewContainerResourceValidators()),
 	}, nil
 }
 

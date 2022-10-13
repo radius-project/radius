@@ -5,8 +5,18 @@
 
 package validation
 
-import "github.com/project-radius/radius/pkg/corerp/datamodel"
+import (
+	validation "github.com/project-radius/radius/pkg/armrpc/api/validation"
+	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+)
 
-func ValidateHTTPRouteRequest(*datamodel.HTTPRoute) error {
+type HTTPRouteResourceValidators struct {
+}
+
+func (v *HTTPRouteResourceValidators) ValidateRequest(*datamodel.HTTPRoute) error {
 	return nil
+}
+
+func NewHTTPRouteResourceValidators() validation.Validators[datamodel.HTTPRoute] {
+	return &HTTPRouteResourceValidators{}
 }
