@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -26,7 +27,7 @@ type CreateOrUpdateApplication struct {
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
 func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned, validation.ValidateApplicationRequest),
 	}, nil
 }
 

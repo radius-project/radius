@@ -35,7 +35,7 @@ func NewDefaultAsyncDelete[P interface {
 	*T
 	rp.RadiusResourceModel
 }, T any](opts ctrl.Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
-	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv)}, nil
+	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv, nil)}, nil
 }
 
 // Run executes DefaultAsyncDelete operation

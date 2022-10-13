@@ -30,7 +30,7 @@ func NewListResources[P interface {
 	conv.ResourceDataModel
 }, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
-		ctrl.NewOperation[P](opts, nil, modelConverter),
+		ctrl.NewOperation[P](opts, nil, modelConverter, nil),
 	}, nil
 }
 

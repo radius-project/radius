@@ -13,8 +13,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 )
 
@@ -33,7 +34,7 @@ type CreateOrUpdateContainer struct {
 // NewCreateOrUpdateContainer creates a new CreateOrUpdateContainer.
 func NewCreateOrUpdateContainer(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateContainer{
-		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned),
+		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned, validation.ValidateContainerRequest),
 	}, nil
 }
 

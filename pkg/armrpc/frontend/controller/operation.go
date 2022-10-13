@@ -36,14 +36,17 @@ type Operation[P interface {
 	ConvertToDataModel conv.ConvertToDataModel[T]
 	// ConvertToAPIModel is the converter to convert from datamodel resource to the versioned API model.
 	ConvertToAPIModel conv.ConvertToAPIModel[T]
+
+	// ValidateResourceRequest is the function to validate the resource extracted from the request.
+	ValidateResourceRequest conv.ValidateResourceRequest[T]
 }
 
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) Operation[P, T] {
-	return Operation[P, T]{options, reqconv, respconv}
+}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T], reqval conv.ValidateResourceRequest[T]) Operation[P, T] {
+	return Operation[P, T]{options, reqconv, respconv, reqval}
 }
 
 // StorageClient gets storage client for this controller.
@@ -89,6 +92,8 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 	}
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	// TODO: Should the validation be done here?
 
 	dm, err := c.ConvertToDataModel(content, serviceCtx.APIVersion)
 	if err != nil {

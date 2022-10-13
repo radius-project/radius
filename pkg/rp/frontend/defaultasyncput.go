@@ -34,8 +34,8 @@ type DefaultAsyncPut[P interface {
 func NewDefaultAsyncPut[P interface {
 	*T
 	rp.RadiusResourceModel
-}, T any](opts ctrl.Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
-	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv)}, nil
+}, T any](opts ctrl.Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T], reqval conv.ValidateResourceRequest[T]) (ctrl.Controller, error) {
+	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv, reqval)}, nil
 }
 
 // Run executes DefaultAsyncPut operation.
@@ -45,6 +45,12 @@ func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, 
 	if err != nil {
 		return nil, err
 	}
+
+	err = e.ValidateResourceRequest(newResource)
+	if err != nil {
+		return nil, err
+	}
+
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err

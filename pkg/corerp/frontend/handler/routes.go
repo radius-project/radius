@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/gorilla/mux"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
@@ -17,7 +18,9 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
 	env_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
@@ -271,7 +274,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.ValidateVolumeRequest)
 			},
 		},
 		{
@@ -279,7 +282,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned)
+				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.ValidateVolumeRequest)
 			},
 		},
 		{

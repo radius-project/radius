@@ -101,7 +101,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 				StatusManager: msm,
 			}
 
-			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned)
+			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned, testValidateResourceRequest)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, w, req)
@@ -259,7 +259,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 				StatusManager: msm,
 			}
 
-			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned)
+			ctl, err := NewDefaultAsyncPut(opts, testResourceDataModelFromVersioned, testResourceDataModelToVersioned, testValidateResourceRequest)
 			require.NoError(t, err)
 
 			resp, err := ctl.Run(ctx, w, req)

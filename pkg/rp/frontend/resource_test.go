@@ -185,6 +185,10 @@ func testResourceDataModelFromVersioned(content []byte, version string) (*TestRe
 	}
 }
 
+func testValidateResourceRequest(*TestResourceDataModel) error {
+	return nil
+}
+
 func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {
 	reqBody := radiustesting.ReadFixture("resource-request.json")
 	reqModel := &TestResource{}

@@ -15,9 +15,9 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	store "github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
 

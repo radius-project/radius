@@ -41,3 +41,6 @@ type ConvertToDataModel[T any] func(content []byte, version string) (*T, error)
 
 // ConvertToAPIModel is the function to convert data model to version model.
 type ConvertToAPIModel[T any] func(model *T, version string) (VersionedModelInterface, error)
+
+// ValidateResourceRequest is the function to validate the resource extracted from the request.
+type ValidateResourceRequest[T any] func(model *T) error
