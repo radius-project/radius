@@ -28,7 +28,7 @@ jobs:
       - name: Check out repo
         uses: actions/checkout@v2
       - name: Set up Go ${{ env.GOVER }}
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: ${{ env.GOVER }}
       - name: Setup npm
@@ -44,10 +44,9 @@ jobs:
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: Run linter
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
           version: 'latest'
-          skip-go-installation: true
           args: --timeout=10m
       - name: Run make generate
         run: make generate
