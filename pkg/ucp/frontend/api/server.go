@@ -16,15 +16,14 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/middleware"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/secrets"
-	"github.com/project-radius/radius/pkg/ucp/secretsprovider"
+	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -37,13 +36,13 @@ type ServiceOptions struct {
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
 	DBClient                store.StorageClient
-	SecretsInterface        secrets.Interface
+	SecretsInterface        secret.Client
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
 	BasePath                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
-	SecretsProviderOptions  secretsprovider.SecretsProviderOptions
+	SecretsProviderOptions  provider.SecretProviderOptions
 	InitialPlanes           []rest.Plane
 }
 
@@ -76,7 +75,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	if s.options.SecretsInterface == nil {
-		secretsInterface, err := s.InitializeSecretsInterface(ctx)
+		secretsInterface, err := s.InitializeSecretsClient(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -133,41 +132,18 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 	return storageClient, nil
 }
 
-func (s *Service) InitializeSecretsInterface(ctx context.Context) (secrets.Interface, error) {
-	var secretsInterface secrets.Interface
-	if s.options.SecretsProviderOptions.Provider == secretsprovider.TypeETCDSecrets {
+func (s *Service) InitializeSecretsClient(ctx context.Context) (secret.Client, error) {
+	var secretsClient secret.Client
+	if s.options.SecretsProviderOptions.Provider == provider.TypeETCDSecrets {
 		s.options.SecretsProviderOptions.ETCD.Client = s.options.ClientConfigSource
 	}
-	secretsProvider := secretsprovider.NewSecretsProvider(s.options.SecretsProviderOptions)
-	secretsInterface, err := secretsProvider.GetSecretsInterface(ctx, string(s.options.SecretsProviderOptions.Provider))
+	secretsProvider := provider.NewSecretProvider(s.options.SecretsProviderOptions)
+	secretsClient, err := secretsProvider.GetSecretClient(ctx, string(s.options.SecretsProviderOptions.Provider))
 	if err != nil {
 		return nil, err
-	}
-	//TODO: remove below testing code
-	kind := "azure"
-	clientId := "clientId"
-	secret := "adfsf"
-	tenantId := "tenantId"
-	storageKind := "kubernetes"
-	secrets := ucp.AzureServicePrincipalProperties{
-		Kind:     &kind,
-		Storage:  &ucp.CredentialResourcePropertiesStorage{Kind: (*ucp.CredentialStorageKind)(&storageKind)},
-		ClientID: &clientId,
-		Secret:   &secret,
-		TenantID: &tenantId,
-	}
-	secretsInterface.CreateSecrets(ctx, "/planes/azure/azuresecrets/providers/System.Azure/credentials/default", secrets)
-	id, err :=secretsInterface.GetSecrets(ctx, "default")
-	fmt.Print(id)
-	secretsIDs,err := secretsInterface.ListSecrets(ctx,"azure", "azuresecrets", "/providers/System.Azure/credentials")
-	if err != nil {
-		return nil, err
-	}
-	for _, ID := range secretsIDs {
-		fmt.Println("Hello SecretId in server: "+ID)
 	}
 
-	return secretsInterface, nil
+	return secretsClient, nil
 }
 
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP

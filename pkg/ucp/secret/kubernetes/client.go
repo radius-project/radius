@@ -3,29 +3,27 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package kubernetessecrets
+package kubernetes
 
 import (
 	"context"
-	"fmt"
 
 	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/secrets"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	coreV1Types "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-var _ secrets.Interface = (*Client)(nil)
+var _ secret.Client = (*Client)(nil)
 
 type Client struct {
-	SecretsClient coreV1Types.SecretInterface
+	KubernetesSecretClient coreV1Types.SecretInterface
 }
 
-func (c *Client) CreateSecrets(ctx context.Context, name string, secrets interface{}) error {
+func (c *Client) CreateOrUpdate(ctx context.Context, name string, secrets interface{}) error {
 	objMetadata := metav1.ObjectMeta{Name: name}
-	// c.SecretsClient.Create(ctx, secret, )
 	var secretObject v1.Secret
 	switch v := secrets.(type) {
 	case ucp.AzureServicePrincipalProperties:
@@ -40,29 +38,28 @@ func (c *Client) CreateSecrets(ctx context.Context, name string, secrets interfa
 			StringData: secretsData,
 		}
 	}
-	secretsRes, err := c.SecretsClient.Create(ctx, &secretObject, metav1.CreateOptions{})
-	fmt.Print(secretsRes)
+	// ignore the response value as we don't want to handle secrets
+	_, err := c.KubernetesSecretClient.Create(ctx, &secretObject, metav1.CreateOptions{})
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (c *Client) DeleteSecrets(ctx context.Context, id string) error {
-	c.SecretsClient.Delete(ctx, id, metav1.DeleteOptions{})
-	return nil
+func (c *Client) Delete(ctx context.Context, id string) error {
+	return c.KubernetesSecretClient.Delete(ctx, id, metav1.DeleteOptions{})
 }
 
-func (c *Client) GetSecrets(ctx context.Context, id string) (string, error) {
-	_, err := c.SecretsClient.Get(ctx, id, metav1.GetOptions{})
+func (c *Client) Get(ctx context.Context, id string) (string, error) {
+	_, err := c.KubernetesSecretClient.Get(ctx, id, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
 	return id, nil
 }
 
-func (c *Client) ListSecrets(ctx context.Context, planeType string, planeName string, scope string) ([]string, error) {
-	secretsList, err :=c.SecretsClient.List(ctx, metav1.ListOptions{})
+func (c *Client) List(ctx context.Context, planeType string, planeName string, scope string) ([]string, error) {
+	secretsList, err := c.KubernetesSecretClient.List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return nil, err
 	}
