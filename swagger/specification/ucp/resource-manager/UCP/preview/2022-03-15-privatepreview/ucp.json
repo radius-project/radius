@@ -709,6 +709,29 @@
         "type": "object",
         "x-ms-discriminator-value": "ServicePrincipal"
       },
+      "AWSCredentialProperties":{
+        "additionalProperties": false,
+        "allOf": [{
+            "$ref": "#/definitions/CredentialResourceProperties"
+        }],
+        "properties" : {
+          "accessKeyId": {
+            "description": "accessKeyId when the CredentialKind is AWSCredential",
+            "type": "string"
+          },
+          "secretAccessKey": {
+            "description": "secretAccessKey when the CredentialKind is AWSCredential",
+            "type": "string",
+            "x-ms-secret": true
+          }
+        },
+        "required": [
+           "accessKeyId",
+           "secretAccessKey"
+        ],
+        "type": "object",
+        "x-ms-discriminator-value": "AWSCredential"
+      },
       "CredentialStorageKind": {
         "type": "string",
         "description": "credential store kinds supported.",

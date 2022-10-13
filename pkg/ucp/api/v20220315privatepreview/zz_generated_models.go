@@ -9,6 +9,28 @@
 
 package v20220315privatepreview
 
+type AWSCredentialProperties struct {
+	// REQUIRED; accessKeyId when the CredentialKind is AWSCredential
+	AccessKeyID *string `json:"accessKeyId,omitempty"`
+
+	// REQUIRED; The kind of secret
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; secretAccessKey when the CredentialKind is AWSCredential
+	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+}
+
+// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AWSCredentialProperties.
+func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
+	return &CredentialResourceProperties{
+		Kind: a.Kind,
+		Storage: a.Storage,
+	}
+}
+
 type AzureServicePrincipalProperties struct {
 	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
@@ -54,7 +76,7 @@ type CredentialResourceList struct {
 // CredentialResourcePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetCredentialResourceProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *AzureServicePrincipalProperties, *CredentialResourceProperties
+// - *AWSCredentialProperties, *AzureServicePrincipalProperties, *CredentialResourceProperties
 type CredentialResourcePropertiesClassification interface {
 	// GetCredentialResourceProperties returns the CredentialResourceProperties content of the underlying type.
 	GetCredentialResourceProperties() *CredentialResourceProperties
