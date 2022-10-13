@@ -61,7 +61,7 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 
 	if src.Properties.Providers != nil {
 		if src.Properties.Providers.Azure != nil {
-			converted.Properties.Providers.Azure = datamodel.ProviderPropertiesAzure{
+			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
 				Scope: to.String(src.Properties.Providers.Azure.Scope),
 			}
 		}
@@ -104,7 +104,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	}
 
 	if env.Properties.Providers != (datamodel.Providers{}) {
-		if env.Properties.Providers.Azure != (datamodel.ProviderPropertiesAzure{}) {
+		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
 			dst.Properties.Providers = &Providers{
 				Azure: &ProvidersAzure{
 					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),

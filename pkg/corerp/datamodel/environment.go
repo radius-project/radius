@@ -56,12 +56,12 @@ type EnvironmentRecipeProperties struct {
 	TemplatePath  string `json:"templatePath,omitempty"`
 }
 
-// Providers represents the providers for the environment, eg azure
+// Providers represents configs for providers for the environment, eg azure
 type Providers struct {
-	Azure ProviderPropertiesAzure `json:"azure,omitempty"`
+	Azure ProvidersAzure `json:"azure,omitempty"`
 }
 
-// ProviderPropertiesAzure represents the azure provider properties
-type ProviderPropertiesAzure struct {
+// ProvidersAzure represents the azure provider configs
+type ProvidersAzure struct {
 	Scope string `json:"scope,omitempty"`
 }

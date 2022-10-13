@@ -190,7 +190,7 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
 func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID string, resourceGroup string, err error) {
-	if providers.Azure == (coreDatamodel.ProviderPropertiesAzure{}) {
+	if providers.Azure == (coreDatamodel.ProvidersAzure{}) {
 		return "", "", conv.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
 	}
 	// valid scope: "/subscriptions/test-sub/resourceGroups/test-group"
