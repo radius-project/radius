@@ -38,7 +38,7 @@ func (m *MockApplicationsManagementClient) EXPECT() *MockApplicationsManagementC
 }
 
 // CreateEnvironment mocks base method.
-func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 map[string]*v20220315privatepreview.EnvironmentRecipeProperties, arg7 *v20220315privatepreview.ProviderProperties) (bool, error) {
+func (m *MockApplicationsManagementClient) CreateEnvironment(arg0 context.Context, arg1, arg2, arg3, arg4, arg5 string, arg6 map[string]*v20220315privatepreview.EnvironmentRecipeProperties, arg7 *v20220315privatepreview.Providers) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateEnvironment", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 	ret0, _ := ret[0].(bool)

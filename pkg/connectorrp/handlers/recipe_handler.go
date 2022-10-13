@@ -32,7 +32,7 @@ const deploymentPrefix = "recipe"
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/connectorrp/handlers github.com/project-radius/radius/pkg/connectorrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, providers coreDatamodel.ProviderProperties) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) ([]string, error)
 	Delete(ctx context.Context, id string, apiVersion string) error
 	GetResource(ctx context.Context, provider, id, apiVersion string) (map[string]interface{}, error)
 }
@@ -50,14 +50,14 @@ type azureRecipeHandler struct {
 // DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, providers coreDatamodel.ProviderProperties) (deployedResources []string, err error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) (deployedResources []string, err error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
-	if providers == (coreDatamodel.ProviderProperties{}) {
+	if envProviders == (coreDatamodel.Providers{}) {
 		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to deploy recipe %q. Environment provider scope is required to deploy connector recipes.", recipe.Name))
 	}
-	subscriptionID, resourceGroup, err := parseAzureProvider(&providers)
+	subscriptionID, resourceGroup, err := parseAzureProvider(&envProviders)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +189,7 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 }
 
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
-func parseAzureProvider(providers *coreDatamodel.ProviderProperties) (subscriptionID string, resourceGroup string, err error) {
+func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID string, resourceGroup string, err error) {
 	if providers.Azure == (coreDatamodel.ProviderPropertiesAzure{}) {
 		return "", "", conv.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
 	}

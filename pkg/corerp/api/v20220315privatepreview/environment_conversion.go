@@ -103,10 +103,10 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 		dst.Properties.Recipes = recipes
 	}
 
-	if env.Properties.Providers != (datamodel.ProviderProperties{}) {
+	if env.Properties.Providers != (datamodel.Providers{}) {
 		if env.Properties.Providers.Azure != (datamodel.ProviderPropertiesAzure{}) {
-			dst.Properties.Providers = &ProviderProperties{
-				Azure: &ProviderPropertiesAzure{
+			dst.Properties.Providers = &Providers{
+				Azure: &ProvidersAzure{
 					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
 				},
 			}

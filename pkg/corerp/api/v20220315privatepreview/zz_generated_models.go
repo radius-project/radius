@@ -340,8 +340,8 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
-	// Cloud provider configuration for the environment.
-	Providers *ProviderProperties `json:"providers,omitempty"`
+	// Cloud providers configuration for the environment.
+	Providers *Providers `json:"providers,omitempty"`
 
 	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
@@ -850,14 +850,14 @@ func (p *PersistentVolume) GetVolume() *Volume {
 	}
 }
 
-// ProviderProperties - Cloud provider configuration
-type ProviderProperties struct {
+// Providers - Cloud providers configuration
+type Providers struct {
 	// Azure cloud provider configuration
-	Azure *ProviderPropertiesAzure `json:"azure,omitempty"`
+	Azure *ProvidersAzure `json:"azure,omitempty"`
 }
 
-// ProviderPropertiesAzure - Azure cloud provider configuration
-type ProviderPropertiesAzure struct {
+// ProvidersAzure - Azure cloud provider configuration
+type ProvidersAzure struct {
 	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 	Scope *string `json:"scope,omitempty"`
 }
