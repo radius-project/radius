@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package create
+package delete
 
 import (
 	"context"
@@ -30,8 +30,8 @@ func Test_Validate(t *testing.T) {
 	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Create Command",
-			Input:         []string{"--name", "test_recipe", "--templatePath", "test_template", "--connectorType", "Applications.Connector/mongoDatabases"},
+			Name:          "Valid Delete Command",
+			Input:         []string{"--name", "test_recipe"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -39,8 +39,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without name",
-			Input:         []string{"--templatePath", "test_template", "--connectorType", "Applications.Connector/mongoDatabases"},
+			Name:          "Delete Command without name",
+			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -48,26 +48,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without templatePath",
-			Input:         []string{"--name", "test_recipe", "--connectorType", "Applications.Connector/mongoDatabases"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
-			},
-		},
-		{
-			Name:          "Create Command without connectorType",
-			Input:         []string{"--name", "test_recipe", "--templatePath", "test_template"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
-			},
-		},
-		{
-			Name:          "List Command with too many args",
-			Input:         []string{"foo", "bar"},
+			Name:          "Delete Command with too many args",
+			Input:         []string{"foo", "bar", "foo1"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -79,7 +61,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Add recipe to the environment", func(t *testing.T) {
+	t.Run("Delete recipe from the environment", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -103,7 +85,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -112,15 +94,13 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				ConnectorType:     "Applications.Connector/mongoDatabases",
-				RecipeName:        "cosmosDB_new",
+				RecipeName:        "cosmosDB",
 			}
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 		})
-		t.Run("Fails to add recipe with existing name.", func(t *testing.T) {
+		t.Run("Delete recipe that doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
@@ -149,8 +129,34 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
-				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				ConnectorType:     "Applications.Connector/mongoDatabases",
+				RecipeName:        "cosmosDB1",
+			}
+
+			err := runner.Run(context.Background())
+			require.Error(t, err)
+		})
+		t.Run("Delete recipe with no recipes added to the environment", func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
+			envResource := v20220315privatepreview.EnvironmentResource{
+				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:       to.Ptr("kind-kind"),
+				Type:       to.Ptr("applications.core/environments"),
+				Location:   to.Ptr("global"),
+				Properties: &v20220315privatepreview.EnvironmentProperties{},
+			}
+
+			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+			appManagementClient.EXPECT().
+				GetEnvDetails(gomock.Any(), gomock.Any()).
+				Return(envResource, nil).Times(1)
+
+			outputSink := &output.MockOutput{}
+
+			runner := &Runner{
+				ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+				Output:            outputSink,
+				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				RecipeName:        "cosmosDB",
 			}
 

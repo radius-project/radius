@@ -3,11 +3,10 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package create
+package delete
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
@@ -16,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -24,10 +22,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "create",
-		Short:   "Add a connector recipe to an environment.",
-		Long:    `Add a connector recipe to an environment.`,
-		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --templatePath template_path --connectorType Applications.Connector/mongoDatabases`,
+		Use:     "delete",
+		Short:   "Delete a connector recipe from an environment",
+		Long:    `Delete a connector recipe from an environment`,
+		Example: `rad recipe delete --name cosmosdb`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
@@ -35,8 +33,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	cmd.Flags().String("templatePath", "", "specify the path to the template provided by the recipe.")
-	cmd.Flags().String("connectorType", "", "specify the type of the connector this recipe can be consumed by")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
 
 	return cmd, runner
@@ -47,8 +43,6 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
-	TemplatePath      string
-	ConnectorType     string
 	RecipeName        string
 }
 
@@ -74,18 +68,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace.Environment = environmentName
 
-	templatePath, err := requireTemplatePath(cmd)
-	if err != nil {
-		return err
-	}
-	r.TemplatePath = templatePath
-
-	connectorType, err := requireConnectorType(cmd)
-	if err != nil {
-		return err
-	}
-	r.ConnectorType = connectorType
-
 	recipeName, err := requireRecipeName(cmd)
 	if err != nil {
 		return err
@@ -105,54 +87,22 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	recipeProperties := envResource.Properties.Recipes
-	if recipeProperties[r.RecipeName] != nil {
-		return fmt.Errorf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)
-	}
-	if recipeProperties != nil {
-		recipeProperties[r.RecipeName] = &coreRpApps.EnvironmentRecipeProperties{
-			ConnectorType: &r.ConnectorType,
-			TemplatePath:  &r.TemplatePath,
-		}
-	} else {
-		recipeProperties = map[string]*coreRpApps.EnvironmentRecipeProperties{
-			r.RecipeName: {
-				ConnectorType: &r.ConnectorType,
-				TemplatePath:  &r.TemplatePath,
-			},
-		}
-	}
 
+	if recipeProperties[r.RecipeName] == nil {
+		return fmt.Errorf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)
+	}
+	delete(recipeProperties, r.RecipeName)
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers)
 	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to delete the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}
 
-	r.Output.LogInfo("Successfully linked recipe %q to environment %q ", r.RecipeName, r.Workspace.Environment)
+	r.Output.LogInfo("Successfully deleted recipe %q from environment %q ", r.RecipeName, r.Workspace.Environment)
 	return nil
-}
-
-func requireTemplatePath(cmd *cobra.Command) (string, error) {
-	templatePath, err := cmd.Flags().GetString("templatePath")
-	if err != nil {
-		return templatePath, err
-	}
-	return templatePath, nil
-
-}
-
-func requireConnectorType(cmd *cobra.Command) (string, error) {
-	connectorType, err := cmd.Flags().GetString("connectorType")
-	if err != nil {
-		return connectorType, err
-	}
-	return connectorType, nil
 }
 
 func requireRecipeName(cmd *cobra.Command) (string, error) {
 	recipeName, err := cmd.Flags().GetString("name")
-	if recipeName == "" {
-		return "", errors.New("recipe name cannot be empty")
-	}
 	if err != nil {
 		return recipeName, err
 	}
