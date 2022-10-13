@@ -166,7 +166,7 @@
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): The resource id of the environment linked to the daprPubSubBroker connector
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -330,7 +330,7 @@
 ### Properties
 * **application**: string: Fully qualified resource ID for the application that the connector is consumed by
 * **database**: string: The name of the SQL database.
-* **environment**: string (Required): The resource id of the environment linked to the sqlDatabase connector
+* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
 * **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
 * **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this connector

@@ -7,7 +7,7 @@
 // Changes may cause incorrect behavior and will be lost if the code is regenerated.
 // DO NOT EDIT.
 
-package v20220315privatepreview
+package generated
 
 import "time"
 
@@ -90,9 +90,6 @@ type AzureIdentity struct {
 }
 
 type AzureKeyVaultVolumeProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string `json:"application,omitempty"`
-
 	// REQUIRED; The Azure AD identity settings
 	Identity *AzureIdentity `json:"identity,omitempty"`
 
@@ -102,11 +99,11 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; The ID of the keyvault to use for this volume resource
 	Resource *string `json:"resource,omitempty"`
 
+	// Fully qualified resource ID for the application that the volume is connected to.
+	Application *string `json:"application,omitempty"`
+
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties `json:"certificates,omitempty"`
-
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
 
 	// The KeyVault keys that this volume exposes
 	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
@@ -126,20 +123,13 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	return &VolumeProperties{
 		Kind: a.Kind,
 		ProvisioningState: a.ProvisioningState,
-		Status: a.Status,
-		Environment: a.Environment,
 		Application: a.Application,
+		Status: a.Status,
 	}
 }
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string `json:"application,omitempty"`
-
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
-
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
@@ -206,7 +196,7 @@ type ContainerPort struct {
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; Specifies resource id of the application
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Definition of a container.
@@ -214,9 +204,6 @@ type ContainerProperties struct {
 
 	// Dictionary of
 	Connections map[string]*ConnectionProperties `json:"connections,omitempty"`
-
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
@@ -519,14 +506,11 @@ func (e *Extension) GetExtension() *Extension { return e }
 
 // GatewayProperties - Gateway properties
 type GatewayProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; The resource id of the application linked to Gateway resource.
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute `json:"routes,omitempty"`
-
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
@@ -662,11 +646,8 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
-	// REQUIRED; Specifies the resource id of the application
+	// REQUIRED; The resource id of the application linked to HTTP Route resource.
 	Application *string `json:"application,omitempty"`
-
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
 	Hostname *string `json:"hostname,omitempty"`
@@ -992,14 +973,11 @@ type VolumePropertiesClassification interface {
 }
 
 type VolumeProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string `json:"application,omitempty"`
-
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
 
-	// The resource id of the environment linked to the resource
-	Environment *string `json:"environment,omitempty"`
+	// Fully qualified resource ID for the application that the volume is connected to.
+	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

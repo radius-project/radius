@@ -15,7 +15,7 @@ npm install -g autorest
 1. Add api version tags and openapi file below in this README.md
 2. Run autorest.
 ```bash
-autorest README.md --tag=2022-03-15-privatepreview
+autorest README.md --tag=core-2022-03-15-privatepreview
 ```
 3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
 4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
@@ -28,11 +28,11 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: 2022-03-15-privatepreview
+#### Tag: core-2022-03-15-privatepreview
 
-These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=core-2022-03-15-privatepreview` is specified on the command line.
 
-```yaml $(tag) == '2022-03-15-privatepreview'
+```yaml $(tag) == 'core-2022-03-15-privatepreview'
 input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/environments.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/applications.json
@@ -59,10 +59,10 @@ azure-arm: true
 
 ### Output
 
-#### Tag: 2022-03-15-privatepreview
+#### Tag: core-2022-03-15-privatepreview
 
-These settings apply only when `--tag=2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=core-2022-03-15-privatepreview` is specified on the command line.
 
-```yaml $(tag) == '2022-03-15-privatepreview'
+```yaml $(tag) == 'core-2022-03-15-privatepreview'
 output-folder: ./v20220315privatepreview
 ```

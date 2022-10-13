@@ -20,6 +20,12 @@ type BasicDaprResourceProperties struct {
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// Fully qualified resource ID for the application that the connector is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
@@ -101,7 +107,7 @@ type DaprInvokeHTTPRoutesClientListByRootScopeOptions struct {
 }
 
 type DaprPubSubAzureServiceBusResourceProperties struct {
-	// REQUIRED; The resource id of the environment linked to the daprPubSubBroker connector
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
@@ -134,12 +140,12 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 func (d *DaprPubSubAzureServiceBusResourceProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
 		ProvisioningState: d.ProvisioningState,
-		Application: d.Application,
-		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		Environment: d.Environment,
+		Application: d.Application,
 		ComponentName: d.ComponentName,
 	}
 }
@@ -164,7 +170,7 @@ type DaprPubSubBrokerPropertiesClassification interface {
 
 // DaprPubSubBrokerProperties - DaprPubSubBroker connector properties
 type DaprPubSubBrokerProperties struct {
-	// REQUIRED; The resource id of the environment linked to the daprPubSubBroker connector
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
@@ -240,7 +246,7 @@ type DaprPubSubBrokersClientListByRootScopeOptions struct {
 }
 
 type DaprPubSubGenericResourceProperties struct {
-	// REQUIRED; The resource id of the environment linked to the daprPubSubBroker connector
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; The DaprPubSubProperties kind
@@ -279,12 +285,12 @@ type DaprPubSubGenericResourceProperties struct {
 func (d *DaprPubSubGenericResourceProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
 		ProvisioningState: d.ProvisioningState,
-		Application: d.Application,
-		Environment: d.Environment,
 		Kind: d.Kind,
 		Topic: d.Topic,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		Environment: d.Environment,
+		Application: d.Application,
 		ComponentName: d.ComponentName,
 	}
 }
@@ -409,11 +415,11 @@ type DaprStateStoreAzureTableStorageResourceProperties struct {
 func (d *DaprStateStoreAzureTableStorageResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
 		ProvisioningState: d.ProvisioningState,
-		Environment: d.Environment,
-		Application: d.Application,
 		Kind: d.Kind,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		Environment: d.Environment,
+		Application: d.Application,
 		ComponentName: d.ComponentName,
 	}
 }
@@ -455,11 +461,11 @@ type DaprStateStoreGenericResourceProperties struct {
 func (d *DaprStateStoreGenericResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
 		ProvisioningState: d.ProvisioningState,
-		Environment: d.Environment,
-		Application: d.Application,
 		Kind: d.Kind,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		Environment: d.Environment,
+		Application: d.Application,
 		ComponentName: d.ComponentName,
 	}
 }
@@ -566,11 +572,11 @@ type DaprStateStoreSQLServerResourceProperties struct {
 func (d *DaprStateStoreSQLServerResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
 		ProvisioningState: d.ProvisioningState,
-		Environment: d.Environment,
-		Application: d.Application,
 		Kind: d.Kind,
 		Recipe: d.Recipe,
 		Status: d.Status,
+		Environment: d.Environment,
+		Application: d.Application,
 		ComponentName: d.ComponentName,
 	}
 }
@@ -1238,10 +1244,10 @@ type SQLDatabaseList struct {
 
 // SQLDatabaseProperties - SQLDatabse connector properties
 type SQLDatabaseProperties struct {
-	// REQUIRED; The resource id of the environment linked to the sqlDatabase connector
+	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// Fully qualified resource ID for the environment that the connector is linked to
+	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The name of the SQL database.

@@ -40,7 +40,7 @@ generate-genericcliclient: generate-node-installed generate-autorest-installed
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
 
 .PHONY: generate-rad-connectorrp-client
 generate-rad-connectorrp-client: generate-node-installed generate-autorest-installed ## Generates the connectorrp client SDK (Autorest).

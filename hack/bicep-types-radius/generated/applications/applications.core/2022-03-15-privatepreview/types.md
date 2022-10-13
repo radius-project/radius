@@ -93,9 +93,10 @@
 
 ## ContainerProperties
 ### Properties
-* **application**: string (Required): Specifies resource id of the application
+* **application**: string (Required): Specifies the resource id of the application
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
+* **environment**: string: The resource id of the environment linked to the resource
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -264,7 +265,8 @@
 
 ## GatewayProperties
 ### Properties
-* **application**: string (Required): The resource id of the application linked to Gateway resource.
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
 * **hostname**: [GatewayPropertiesHostname](#gatewaypropertieshostname): Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
@@ -290,7 +292,8 @@
 
 ## HttpRouteProperties
 ### Properties
-* **application**: string (Required): The resource id of the application linked to HTTP Route resource.
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
 * **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
@@ -307,7 +310,8 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string: Fully qualified resource ID for the application that the volume is connected to.
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### AzureKeyVaultVolumeProperties

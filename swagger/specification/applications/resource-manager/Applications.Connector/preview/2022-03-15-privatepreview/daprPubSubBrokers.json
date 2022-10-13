@@ -325,14 +325,6 @@
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker connector at the time the operation was called"
         },
-        "application": {
-          "$ref": "global.json#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
-        "environment": {
-          "description": "The resource id of the environment linked to the daprPubSubBroker connector",
-          "type": "string"
-        },
         "kind": {
           "description": "The DaprPubSubProperties kind",
           "type": "string",
@@ -353,8 +345,8 @@
         }
       },
       "required": [
-        "kind",
-        "environment"
+        "environment",
+        "kind"
       ]
     }
   },
