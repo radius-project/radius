@@ -78,7 +78,7 @@ type EnvironmentMetadata struct {
 	Namespace           string
 	RecipeConnectorType string
 	RecipeTemplatePath  string
-	Providers           coreDatamodel.ProviderProperties
+	Providers           coreDatamodel.Providers
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {

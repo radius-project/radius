@@ -47,8 +47,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Namespace:  "default",
 						},
 					},
-					Providers: datamodel.ProviderProperties{
-						Azure: datamodel.ProviderPropertiesAzure{
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
 							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 						},
 					},

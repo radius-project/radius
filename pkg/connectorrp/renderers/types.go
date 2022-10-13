@@ -38,7 +38,7 @@ type Renderer interface {
 type RenderOptions struct {
 	Namespace            string
 	RecipeProperties     datamodel.RecipeProperties
-	EnvironmentProviders coreDatamodel.ProviderProperties
+	EnvironmentProviders coreDatamodel.Providers
 }
 
 type RendererOutput struct {
@@ -46,7 +46,7 @@ type RendererOutput struct {
 	ComputedValues       map[string]ComputedValueReference
 	SecretValues         map[string]rp.SecretValueReference
 	RecipeData           datamodel.RecipeData
-	EnvironmentProviders coreDatamodel.ProviderProperties // represents providers mapped to the linked environment needed to deploy the recipe
+	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

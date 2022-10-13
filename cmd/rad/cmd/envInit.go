@@ -383,8 +383,8 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 	}
 
 	if subscriptionID != "" && resourceGroup != "" {
-		toCreate.Properties.Providers = &coreRpApps.ProviderProperties{
-			Azure: &coreRpApps.ProviderPropertiesAzure{
+		toCreate.Properties.Providers = &coreRpApps.Providers{
+			Azure: &coreRpApps.ProvidersAzure{
 				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
 			},
 		}

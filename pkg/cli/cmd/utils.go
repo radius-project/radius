@@ -11,9 +11,9 @@ import (
 )
 
 // CreateEnvAzureProvider forms the azure provider scope from the subscriptionID and resourceGroup
-func CreateEnvAzureProvider(subscriptionID, resourceGroup string) corerp.ProviderProperties {
-	providers := corerp.ProviderProperties{
-		Azure: &corerp.ProviderPropertiesAzure{
+func CreateEnvAzureProvider(subscriptionID, resourceGroup string) corerp.Providers {
+	providers := corerp.Providers{
+		Azure: &corerp.ProvidersAzure{
 			Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
 		},
 	}

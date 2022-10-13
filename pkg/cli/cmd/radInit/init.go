@@ -231,7 +231,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	// create the providers scope from the AzureCloudProvider properties for creating the environment
-	var providers corerp.ProviderProperties
+	var providers corerp.Providers
 	if r.AzureCloudProvider != nil {
 		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
 	}
