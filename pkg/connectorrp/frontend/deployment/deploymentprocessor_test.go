@@ -276,12 +276,6 @@ func buildEnvironmentResource() store.Object {
 					Namespace: "radius-test",
 				},
 			},
-			Recipes: map[string]corerpDatamodel.EnvironmentRecipeProperties{
-				"mongoDB": {
-					ConnectorType: "Applications.Connector/mongoDatabases",
-					TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				},
-			},
 		},
 	}
 	er := store.Object{
