@@ -256,7 +256,7 @@
             }
           },
           "tags": [
-            "Planes"
+            "ResourceGroups"
           ],
           "parameters": [
             {
@@ -299,7 +299,7 @@
             }
           },
           "tags": [
-            "ResourceGroup"
+            "ResourceGroups"
           ],
           "parameters": [
             {
@@ -357,7 +357,7 @@
             }
           },
           "tags": [
-            "ResourceGroup"
+            "ResourceGroups"
           ],
           "parameters": [
             {
