@@ -263,7 +263,7 @@ func buildFetchSecretsInput(withRecipe bool) ResourceData {
 	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
-func buildEnvironmentResource() store.Object {
+func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.ProviderProperties) store.Object {
 	environment := corerpDatamodel.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -276,43 +276,18 @@ func buildEnvironmentResource() store.Object {
 					Namespace: "radius-test",
 				},
 			},
-			Recipes: map[string]corerpDatamodel.EnvironmentRecipeProperties{
-				"mongoDB": {
-					ConnectorType: "Applications.Connector/mongoDatabases",
-					TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				},
-			},
 		},
 	}
-	er := store.Object{
-		Metadata: store.Metadata{
-			ID: environment.ID,
-		},
-		Data: environment,
+	if recipeName != "" {
+		environment.Properties.Recipes = map[string]corerpDatamodel.EnvironmentRecipeProperties{
+			recipeName: {
+				ConnectorType: "Applications.Connector/MongoDatabases",
+				TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+			},
+		}
 	}
-	return er
-}
-
-func buildEnvironmentResourceWithRecipe(recipeName string) store.Object {
-	environment := corerpDatamodel.Environment{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-			},
-		},
-		Properties: corerpDatamodel.EnvironmentProperties{
-			Compute: corerpDatamodel.EnvironmentCompute{
-				KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
-					Namespace: "radius-test",
-				},
-			},
-			Recipes: map[string]corerpDatamodel.EnvironmentRecipeProperties{
-				recipeName: {
-					ConnectorType: "Applications.Connector/MongoDatabases",
-					TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
-				},
-			},
-		},
+	if providers != nil {
+		environment.Properties.Providers = *providers
 	}
 	er := store.Object{
 		Metadata: store.Metadata{
@@ -412,7 +387,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -424,12 +399,13 @@ func Test_Render(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoRecipe()
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("mongoDB", &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.RecipeData, rendererOutput.RecipeData)
+		require.Equal(t, testRendererOutput.EnvironmentProviders, rendererOutput.EnvironmentProviders)
 
 	})
 
@@ -438,7 +414,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -473,7 +449,7 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render error", func(t *testing.T) {
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		resourceID, testResource, _ := buildTestMongoResource()
@@ -550,7 +526,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
@@ -574,7 +550,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
@@ -606,7 +582,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := mockdp.Render(ctx, resourceID, &testResource)
@@ -1029,7 +1005,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("successfully get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResourceWithRecipe(recipeName)
+		er := buildEnvironmentResource(recipeName, &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
@@ -1042,7 +1018,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 	t.Run("fail to get recipe metadata", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResourceWithRecipe("cosmos-test")
+		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.ProviderProperties{Azure: corerpDatamodel.ProviderPropertiesAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
