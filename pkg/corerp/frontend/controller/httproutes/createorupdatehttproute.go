@@ -13,9 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 )
 
@@ -34,7 +33,12 @@ type CreateOrUpdateHTTPRoute struct {
 // NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
 func NewCreateOrUpdateHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateHTTPRoute{
-		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned, validation.NewHTTPRouteResourceValidators()),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.HTTPRoute]{
+				RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+				ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

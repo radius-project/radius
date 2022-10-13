@@ -13,9 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 )
 
@@ -32,7 +31,12 @@ type CreateOrUpdateGateway struct {
 // NewCreateOrUpdateGateway creates a new CreateOrUpdateGateway.
 func NewCreateOrUpdateGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateGateway{
-		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned, validation.NewGatewayResourceValidators()),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Gateway]{
+				RequestConverter:  converter.GatewayDataModelFromVersioned,
+				ResponseConverter: converter.GatewayDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

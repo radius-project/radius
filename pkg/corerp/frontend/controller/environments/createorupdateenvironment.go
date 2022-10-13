@@ -13,9 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -29,7 +28,12 @@ type CreateOrUpdateEnvironment struct {
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
 func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateEnvironment{
-		ctrl.NewOperation(opts, converter.EnvironmentDataModelFromVersioned, converter.EnvironmentDataModelToVersioned, validation.NewEnvironmentResourceValidators()),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Environment]{
+				RequestConverter:  converter.EnvironmentDataModelFromVersioned,
+				ResponseConverter: converter.EnvironmentDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

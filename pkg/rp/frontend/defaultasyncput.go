@@ -10,9 +10,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	validation "github.com/project-radius/radius/pkg/armrpc/api/validation"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/rp"
@@ -35,8 +33,8 @@ type DefaultAsyncPut[P interface {
 func NewDefaultAsyncPut[P interface {
 	*T
 	rp.RadiusResourceModel
-}, T any](opts ctrl.Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T], validators validation.Validators[T]) (ctrl.Controller, error) {
-	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv, validators)}, nil
+}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
+	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
 
 // Run executes DefaultAsyncPut operation.
@@ -47,15 +45,13 @@ func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, 
 		return nil, err
 	}
 
-	// TODO: We could move this into the GetResourceFromRequest method.
-	err = e.Validators.ValidateRequest(newResource)
+	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err
 	}
 
-	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
-	if err != nil {
-		return nil, err
+	if resp, err := e.RequestValidator()(ctx, newResource, old, e.Options()); resp != nil || err != nil {
+		return resp, err
 	}
 
 	if r, err := e.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {

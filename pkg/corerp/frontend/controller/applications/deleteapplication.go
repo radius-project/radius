@@ -13,9 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -29,7 +28,12 @@ type DeleteApplication struct {
 // NewDeleteApplication creates a new DeleteApplication.
 func NewDeleteApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned, validation.NewApplicationResourceValidators()),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Application]{
+				RequestConverter:  converter.ApplicationDataModelFromVersioned,
+				ResponseConverter: converter.ApplicationDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

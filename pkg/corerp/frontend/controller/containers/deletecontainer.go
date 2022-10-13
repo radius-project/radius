@@ -13,9 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	datamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
-	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 )
 
 var _ ctrl.Controller = (*DeleteContainer)(nil)
@@ -33,7 +32,12 @@ type DeleteContainer struct {
 // NewDeleteContainer creates a new DeleteContainer.
 func NewDeleteContainer(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteContainer{
-		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned, validation.NewContainerResourceValidators()),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.ContainerResource]{
+				RequestConverter:  converter.ContainerDataModelFromVersioned,
+				ResponseConverter: converter.ContainerDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

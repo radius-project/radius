@@ -55,6 +55,7 @@ type VolumeResourceProperties struct {
 	// AzureKeyVault represents Azure Keyvault volume properties
 	AzureKeyVault *AzureKeyVaultVolumeProperties `json:"azureKeyVault,omitempty"`
 }
+
 type AzureIdentityKind string
 
 const (

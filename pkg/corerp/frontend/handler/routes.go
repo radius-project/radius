@@ -18,8 +18,8 @@ import (
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	converter "github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	validation "github.com/project-radius/radius/pkg/corerp/datamodel/validation"
 
 	app_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
 	ctr_ctrl "github.com/project-radius/radius/pkg/corerp/frontend/controller/containers"
@@ -84,7 +84,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.EnvironmentDataModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Environment]{
+						ResponseConverter: converter.EnvironmentDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -92,7 +96,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: env_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.EnvironmentDataModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Environment]{
+						ResponseConverter: converter.EnvironmentDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -118,7 +126,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.HTTPRouteDataModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
+						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -126,7 +138,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: hrt_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.HTTPRouteDataModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.HTTPRoute]{
+						ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -153,7 +169,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.ContainerDataModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
+						ResponseConverter: converter.ContainerDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -161,7 +181,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: ctr_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.ContainerDataModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.ContainerResource]{
+						ResponseConverter: converter.ContainerDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -188,7 +212,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.ApplicationDataModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Application]{
+						ResponseConverter: converter.ApplicationDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -196,7 +224,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: app_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.ApplicationDataModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Application]{
+						ResponseConverter: converter.ApplicationDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -223,7 +255,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.GatewayDataModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
+						ResponseConverter: converter.GatewayDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -231,7 +267,11 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: gtwy_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.GatewayDataModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Gateway]{
+						ResponseConverter: converter.GatewayDataModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -258,7 +298,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewListResources(opt, converter.VolumeResourceModelToVersioned)
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
+						RequestConverter:  converter.VolumeResourceModelFromVersioned,
+						ResponseConverter: converter.VolumeResourceModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -266,7 +311,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return defaultoperation.NewGetResource(opt, converter.VolumeResourceModelToVersioned)
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
+						RequestConverter:  converter.VolumeResourceModelFromVersioned,
+						ResponseConverter: converter.VolumeResourceModelToVersioned,
+					},
+				)
 			},
 		},
 		{
@@ -274,7 +324,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
+				return rp_frontend.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
+						RequestConverter:  converter.VolumeResourceModelFromVersioned,
+						ResponseConverter: converter.VolumeResourceModelToVersioned,
+						RequestValidator:  vol_ctrl.ValidateRequest,
+					},
+				)
 			},
 		},
 		{
@@ -282,7 +338,13 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
+				return rp_frontend.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
+						RequestConverter:  converter.VolumeResourceModelFromVersioned,
+						ResponseConverter: converter.VolumeResourceModelToVersioned,
+						RequestValidator:  vol_ctrl.ValidateRequest,
+					},
+				)
 			},
 		},
 		{
@@ -290,7 +352,12 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncDelete(opt, converter.VolumeResourceModelFromVersioned, converter.VolumeResourceModelToVersioned, validation.NewVolumeResourceValidators())
+				return rp_frontend.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
+						RequestConverter:  converter.VolumeResourceModelFromVersioned,
+						ResponseConverter: converter.VolumeResourceModelToVersioned,
+					},
+				)
 			},
 		},
 	}
