@@ -29,7 +29,7 @@ const (
 type Options struct {
 	Port                   string
 	DBClient               store.StorageClient
-	SecretClient          secret.Client
+	SecretClient           secret.Client
 	StorageProviderOptions dataprovider.StorageProviderOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	TLSCertDir             string
@@ -76,7 +76,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 		api.NewService(api.ServiceOptions{
 			Address:                ":" + options.Port,
 			DBClient:               options.DBClient,
-			SecretsInterface:       options.SecretClient,
+			SecretClient:           options.SecretClient,
 			ClientConfigSource:     clientconfigSource,
 			TLSCertDir:             options.TLSCertDir,
 			BasePath:               options.BasePath,

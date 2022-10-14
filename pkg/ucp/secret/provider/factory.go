@@ -24,11 +24,11 @@ const (
 type secretFactoryFunc func(context.Context, SecretProviderOptions) (secret.Client, error)
 
 var secretClientFactory = map[SecretProviderType]secretFactoryFunc{
-	TypeETCDSecrets:       initETCDSecretsInterface,
-	TypeKubernetesSecrets: initKubernetesSecretsInterface,
+	TypeETCDSecrets:       initETCDSecretClient,
+	TypeKubernetesSecrets: initKubernetesSecretClient,
 }
 
-func initETCDSecretsInterface(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
+func initETCDSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	secretsStorageClient, err := dataprovider.InitETCDClient(ctx, dataprovider.StorageProviderOptions{
 		ETCD: opt.ETCD,
 	}, "")
@@ -38,7 +38,7 @@ func initETCDSecretsInterface(ctx context.Context, opt SecretProviderOptions) (s
 	return &etcd.Client{Storage: secretsStorageClient}, nil
 }
 
-func initKubernetesSecretsInterface(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
+func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	kubeconfig := os.Getenv("HOME") + "/.kube/config"
 	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {

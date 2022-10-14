@@ -36,7 +36,7 @@ type ServiceOptions struct {
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
 	DBClient                store.StorageClient
-	SecretsInterface        secret.Client
+	SecretClient            secret.Client
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
@@ -74,12 +74,12 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.DBClient = dbClient
 	}
 
-	if s.options.SecretsInterface == nil {
-		secretsInterface, err := s.InitializeSecretsClient(ctx)
+	if s.options.SecretClient == nil {
+		secretsInterface, err := s.InitializeSecretClient(ctx)
 		if err != nil {
 			return nil, err
 		}
-		s.options.SecretsInterface = secretsInterface
+		s.options.SecretClient = secretsInterface
 	}
 
 	ctrlOpts := ctrl.Options{
@@ -132,7 +132,7 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 	return storageClient, nil
 }
 
-func (s *Service) InitializeSecretsClient(ctx context.Context) (secret.Client, error) {
+func (s *Service) InitializeSecretClient(ctx context.Context) (secret.Client, error) {
 	var secretsClient secret.Client
 	if s.options.SecretsProviderOptions.Provider == provider.TypeETCDSecrets {
 		s.options.SecretsProviderOptions.ETCD.Client = s.options.ClientConfigSource
