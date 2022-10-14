@@ -148,6 +148,11 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
 		params["tenantID"] = "placeholder"
 
+	case datamodel.AzureIdentityWorkload:
+		params["useVMManagedIdentity"] = "true"
+		params["clientID"] = identity.ClientID
+		params["tenantID"] = "placeholder"
+
 	default:
 		return outputresource.OutputResource{}, errUnsupportedIdentityKind
 	}
