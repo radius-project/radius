@@ -367,7 +367,7 @@
     "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
-        "operationId": "Credentials_Get",
+        "operationId": "AzureCredentials_Get",
         "produces": [
           "application/json"
         ],
@@ -408,7 +408,7 @@
       },
       "put": {
         "description": "Create or update a Credential.",
-        "operationId": "Credential_CreateOrUpdate",
+        "operationId": "AzureCredential_CreateOrUpdate",
         "produces": [
           "application/json"
         ],
@@ -463,7 +463,7 @@
       },
       "delete": {
         "description": "Delete credential resource for this plane instance",
-        "operationId": "Credentials_Delete",
+        "operationId": "AzureCredentials_Delete",
         "produces": [
           "application/json"
         ],
@@ -508,7 +508,7 @@
     "/planes/{planeType}/{planeName}/providers/System.Azure/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
-        "operationId": "Credentials_List",
+        "operationId": "AzureCredentials_List",
         "produces": [
           "application/json"
         ],
@@ -548,7 +548,7 @@
     "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
-        "operationId": "Credentials_Get",
+        "operationId": "AWSCredentials_Get",
         "produces": [
           "application/json"
         ],
@@ -589,7 +589,7 @@
       },
       "put": {
         "description": "Create or update a Credential.",
-        "operationId": "Credential_CreateOrUpdate",
+        "operationId": "AWSCredential_CreateOrUpdate",
         "produces": [
           "application/json"
         ],
@@ -644,7 +644,7 @@
       },
       "delete": {
         "description": "Delete credential resource for this plane instance",
-        "operationId": "Credentials_Delete",
+        "operationId": "AWSCredentials_Delete",
         "produces": [
           "application/json"
         ],
@@ -689,7 +689,7 @@
     "/planes/{planeType}/{planeName}/providers/System.AWS/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
-        "operationId": "Credentials_List",
+        "operationId": "AWSCredentials_List",
         "produces": [
           "application/json"
         ],

@@ -9,14 +9,19 @@
 
 package v20220315privatepreview
 
+// AWSCredentialClientCreateOrUpdateOptions contains the optional parameters for the AWSCredentialClient.CreateOrUpdate method.
+type AWSCredentialClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
 type AWSCredentialProperties struct {
-	// REQUIRED; accessKeyId when the CredentialKind is AWSCredential
+	// REQUIRED; Access key ID for AWS identity
 	AccessKeyID *string `json:"accessKeyId,omitempty"`
 
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; secretAccessKey when the CredentialKind is AWSCredential
+	// REQUIRED; Secret Access Key for AWS identity
 	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
 
 	// REQUIRED
@@ -29,6 +34,42 @@ func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialR
 		Kind: a.Kind,
 		Storage: a.Storage,
 	}
+}
+
+// AWSCredentialsClientDeleteOptions contains the optional parameters for the AWSCredentialsClient.Delete method.
+type AWSCredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AWSCredentialsClientGetOptions contains the optional parameters for the AWSCredentialsClient.Get method.
+type AWSCredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AWSCredentialsClientListOptions contains the optional parameters for the AWSCredentialsClient.List method.
+type AWSCredentialsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
+// method.
+type AzureCredentialClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureCredentialsClientDeleteOptions contains the optional parameters for the AzureCredentialsClient.Delete method.
+type AzureCredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureCredentialsClientGetOptions contains the optional parameters for the AzureCredentialsClient.Get method.
+type AzureCredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.List method.
+type AzureCredentialsClientListOptions struct {
+	// placeholder for future optional parameters
 }
 
 type AzureServicePrincipalProperties struct {
@@ -54,11 +95,6 @@ func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *Cre
 		Kind: a.Kind,
 		Storage: a.Storage,
 	}
-}
-
-// CredentialClientCreateOrUpdateOptions contains the optional parameters for the CredentialClient.CreateOrUpdate method.
-type CredentialClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
 }
 
 // CredentialResource - Credential to a plane instance
@@ -97,21 +133,6 @@ func (c *CredentialResourceProperties) GetCredentialResourceProperties() *Creden
 type CredentialResourcePropertiesStorage struct {
 	// REQUIRED; credential store kinds supported.
 	Kind *CredentialStorageKind `json:"kind,omitempty"`
-}
-
-// CredentialsClientDeleteOptions contains the optional parameters for the CredentialsClient.Delete method.
-type CredentialsClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// CredentialsClientGetOptions contains the optional parameters for the CredentialsClient.Get method.
-type CredentialsClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// CredentialsClientListOptions contains the optional parameters for the CredentialsClient.List method.
-type CredentialsClientListOptions struct {
-	// placeholder for future optional parameters
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
