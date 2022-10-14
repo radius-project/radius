@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/secret/client github.com/project-radius/radius/pkg/ucp/secret/client Client
+//go:generate mockgen -destination=./mock_client.go -package=client -self_package github.com/project-radius/radius/pkg/ucp/secret github.com/project-radius/radius/pkg/ucp/secret Client
 
 // Client is an interface to implement secret operations.
 type Client interface {
