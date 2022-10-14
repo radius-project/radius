@@ -47,6 +47,8 @@ func Test_Validate(t *testing.T) {
 	initMocksWithErrorEnvNameRead(kubernetesMock, prompter, helmMock)
 	// Scenario with error name space read
 	initMocksWithErrorNamespaceRead(kubernetesMock, prompter, helmMock)
+	// Scenario with cloud provider configured
+	initMocksWithCloudProvider(kubernetesMock, prompter, helmMock)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Init Command",
@@ -105,7 +107,19 @@ func Test_Validate(t *testing.T) {
 			Prompter:            prompter,
 			HelmInterface:       helmMock,
 		},
-		//TODO: Add scenario for init with cloud provider when cloud provider operation is implemented
+		{
+			Name:          "Init Command With cloud provider Read",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			KubernetesInterface: kubernetesMock,
+			Prompter:            prompter,
+			HelmInterface:       helmMock,
+			Context:             context.Background(),
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -220,6 +234,26 @@ func initMocksWithoutCloudProvider(kubernetesMock *kubernetes.MockInterface, pro
 	initAddCloudProviderPromptNo(prompterMock)
 }
 
+func initMocksWithCloudProvider(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
+	initGetKubeContextSuccess(kubernetesMock)
+	initKubeContextWithKind(prompterMock)
+	initHelmMockRadiusInstalled(helmMock)
+	initRadiusReInstallYes(prompterMock)
+	initEnvNamePrompt(prompterMock)
+	initNameSpacePrompt(prompterMock)
+	initAddCloudProviderPromptYes(prompterMock)
+	initSelectCloudProvider(prompterMock)
+	initAddCloudProviderPromptYes(prompterMock) // Y add azure provider
+	initAddCloudProviderPromptYes(prompterMock) // Y use default subscription
+	initAddCloudProviderPromptNo(prompterMock)  // No dont create RG
+	initAddCloudProviderPromptNo(prompterMock)  // No dont use default RG
+	initSelectResourceGroup(prompterMock)       // Select resource group to use
+	initEnvNamePrompt(prompterMock)             // Mock appID for cloud provider
+	initEnvNamePrompt(prompterMock)             // Mock password for cloud provider
+	initEnvNamePrompt(prompterMock)             // Mock tenant for cloud provider
+	initAddCloudProviderPromptNo(prompterMock)  // N dont add another cloud provider?
+}
+
 func initMocksWithKubeContextReadError(kubernetesMock *kubernetes.MockInterface) {
 	initGetKubeContextError(kubernetesMock)
 }
@@ -282,10 +316,22 @@ func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 		Return(-1, "", errors.New("cannot read selection")).Times(1)
 }
 
+func initSelectResourceGroup(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunSelect(gomock.Any()).
+		Return(12, "", nil).Times(1)
+}
+
 func initRadiusReInstallNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
 		Return("N", nil).Times(1)
+}
+
+func initRadiusReInstallYes(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(gomock.Any()).
+		Return("Y", nil).Times(1)
 }
 
 func initEnvNamePrompt(prompter *prompt.MockInterface) {
@@ -316,6 +362,17 @@ func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
 		Return("N", nil).Times(1)
+}
+
+func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(gomock.Any()).
+		Return("y", nil).Times(1)
+}
+
+func initSelectCloudProvider(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunSelect(gomock.Any()).Return(0, "", nil).Times(1)
 }
 
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {

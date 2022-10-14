@@ -7,6 +7,7 @@ package radcli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -36,6 +37,7 @@ type ValidateInput struct {
 	HelmInterface       helm.Interface
 	ConnectionFactory   *connections.MockFactory
 	NamespaceInterface  namespace.Interface
+	Context             context.Context
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -59,9 +61,11 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,
 				NamespaceInterface:  testcase.NamespaceInterface,
+				Context:             testcase.Context,
 			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
+			cmd.SetContext(testcase.Context)
 
 			err := cmd.ParseFlags(testcase.Input)
 			require.NoError(t, err, "flag parsing failed")

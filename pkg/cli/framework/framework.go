@@ -29,6 +29,7 @@ type Factory interface {
 	GetHelmInterface() helm.Interface
 	GetNamespaceInterface() namespace.Interface
 	GetAppManagementClient() clients.ApplicationsManagementClient
+	GetContext() context.Context
 }
 
 type Impl struct {
@@ -41,6 +42,7 @@ type Impl struct {
 	HelmInterface       helm.Interface
 	NamespaceInterface  namespace.Interface
 	AppManagementClient clients.ApplicationsManagementClient
+	Context             context.Context
 }
 
 func (i *Impl) GetConnectionFactory() connections.Factory {
@@ -82,6 +84,10 @@ func (i *Impl) GetNamespaceInterface() namespace.Interface {
 
 func (i *Impl) GetAppManagementClient() clients.ApplicationsManagementClient {
 	return i.AppManagementClient
+}
+
+func (i *Impl) GetContext() context.Context {
+	return i.Context
 }
 
 type Runner interface {
