@@ -103,7 +103,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			ResourceHandler:        handlers.NewAzureCosmosDBMongoHandler(arm),
+			ResourceHandler:        handlers.NewARMHandler(arm),
 			SecretValueTransformer: &mongodatabases.AzureTransformer{},
 		},
 		{
@@ -111,7 +111,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
 			},
-			ResourceHandler: handlers.NewAzureCosmosAccountHandler(arm),
+			ResourceHandler: handlers.NewARMHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
