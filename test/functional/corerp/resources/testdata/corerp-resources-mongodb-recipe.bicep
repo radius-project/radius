@@ -64,5 +64,3 @@ resource recipedb 'Applications.Connector/mongoDatabases@2022-03-15-privateprevi
     }
   }
 }
-
-
