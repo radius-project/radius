@@ -18,25 +18,29 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	StorageAccountNameKey = "storageaccount"
-	ResourceIDKey         = "resourceid"
+	StorageAccountNameKey      = "storageaccount"
+	ResourceIDKey              = "resourceid"
+	DaprStateStoreResourceType = "Applications.Connector/daprStateStores"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprStateStoreAzureStorageHandler{
-		kubernetesHandler: kubernetesHandler{k8s: k8s},
-		arm:               arm,
-		k8s:               k8s,
+		daprComponentHandler: daprComponentHandler{
+			k8s: k8s,
+		},
+		arm: arm,
+		k8s: k8s,
 	}
 }
 
 type daprStateStoreAzureStorageHandler struct {
-	kubernetesHandler
+	daprComponentHandler
 	arm *armauth.ArmConfig
 	k8s client.Client
 }
@@ -47,12 +51,12 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
 	}
 
-	_, ok = properties[ResourceIDKey]
+	id, ok := properties[ResourceIDKey]
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required property %s for the resource", ResourceIDKey)
 	}
 
-	parsedID, err := resources.Parse(properties[ResourceIDKey])
+	parsedID, err := resources.ParseResource(id)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
@@ -68,7 +72,12 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
-	key, err := handler.findStorageKey(ctx, *account.Name)
+	key, err := handler.findStorageKey(ctx, *account.ID)
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
+	}
+
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -105,7 +114,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName]),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "state.azure.tablestorage",
@@ -136,13 +145,18 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 	return err
 }
 
-func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, accountName string) (*storage.AccountKey, error) {
-	sc := clients.NewAccountsClient(handler.arm.SubscriptionID, handler.arm.Auth)
+func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, id string) (*storage.AccountKey, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return nil, err
+	}
 
-	keys, err := sc.ListKeys(ctx, handler.arm.ResourceGroup, accountName, "")
+	sc := clients.NewAccountsClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+
+	keys, err := sc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), "")
 	if err != nil {
 		if clients.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", accountName))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", parsed.Name()))
 		}
 		return nil, fmt.Errorf("failed to access keys of storage account: %w", err)
 	}

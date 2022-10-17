@@ -11,6 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -18,7 +19,7 @@ import (
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
 func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 			Application: to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		},
@@ -26,6 +27,11 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
 	}
+
+	if src.Properties.GetDaprPubSubBrokerProperties().Recipe != nil {
+		daprPubSubproperties.Recipe = toRecipeDataModel(src.Properties.GetDaprPubSubBrokerProperties().Recipe)
+	}
+
 	trackedResource := v1.TrackedResource{
 		ID:       to.String(src.ID),
 		Name:     to.String(src.Name),
@@ -54,6 +60,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	default:
 		return nil, errors.New("Kind of DaprPubSubBroker is not specified.")
 	}
+
 	return converted, nil
 }
 
@@ -75,7 +82,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
 		dst.Properties = &DaprPubSubAzureServiceBusResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -83,11 +90,12 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.DaprPubSubAzureServiceBus.Resource),
+			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 		}
 	case datamodel.DaprPubSubBrokerKindGeneric:
 		dst.Properties = &DaprPubSubGenericResourceProperties{
 			Status: &ResourceStatus{
-				OutputResources: v1.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
+				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
@@ -97,9 +105,14 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Type:              to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.DaprPubSubGeneric.Version),
 			Metadata:          daprPubSub.Properties.DaprPubSubGeneric.Metadata,
+			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 		}
 	default:
 		return errors.New("Kind of DaprPubSubBroker is not specified.")
+	}
+
+	if daprPubSub.Properties.Recipe.Name != "" {
+		dst.Properties.GetDaprPubSubBrokerProperties().Recipe = fromRecipeDataModel(daprPubSub.Properties.Recipe)
 	}
 
 	return nil

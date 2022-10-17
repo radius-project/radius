@@ -78,10 +78,90 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-// BasicResourceProperties - Basic properties of a Radius resource.
-type BasicResourceProperties struct {
+type AzureIdentity struct {
+	// REQUIRED; Identity Kind
+	Kind *AzureIdentityKind `json:"kind,omitempty"`
+
+	// The client ID for workload and user assigned managed identity
+	ClientID *string `json:"clientId,omitempty"`
+
+	// The tenant ID for workload identity.
+	TenantID *string `json:"tenantId,omitempty"`
+}
+
+type AzureKeyVaultVolumeProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// REQUIRED; The Azure AD identity settings
+	Identity *AzureIdentity `json:"identity,omitempty"`
+
+	// REQUIRED; The volume kind
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The ID of the keyvault to use for this volume resource
+	Resource *string `json:"resource,omitempty"`
+
+	// The KeyVault certificates that this volume exposes
+	Certificates map[string]*CertificateObjectProperties `json:"certificates,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
+	// The KeyVault keys that this volume exposes
+	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
+
+	// The KeyVault secrets that this volume exposes
+	Secrets map[string]*SecretObjectProperties `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetVolumeProperties implements the VolumePropertiesClassification interface for type AzureKeyVaultVolumeProperties.
+func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties {
+	return &VolumeProperties{
+		Kind: a.Kind,
+		ProvisioningState: a.ProvisioningState,
+		Status: a.Status,
+		Environment: a.Environment,
+		Application: a.Application,
+	}
+}
+
+// BasicResourceProperties - Basic properties of a Radius resource.
+type BasicResourceProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+type CertificateObjectProperties struct {
+	// REQUIRED; The name of the certificate
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+	CertType *CertType `json:"certType,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *Encoding `json:"encoding,omitempty"`
+
+	// Certificate format. Default pem
+	Format *Format `json:"format,omitempty"`
+
+	// Certificate version
+	Version *string `json:"version,omitempty"`
 }
 
 type ConnectionProperties struct {
@@ -126,7 +206,7 @@ type ContainerPort struct {
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
-	// REQUIRED; Specifies resource id of the application
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Definition of a container.
@@ -134,6 +214,9 @@ type ContainerProperties struct {
 
 	// Dictionary of
 	Connections map[string]*ConnectionProperties `json:"connections,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
@@ -257,8 +340,23 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
+	// Cloud providers configuration for the environment.
+	Providers *Providers `json:"providers,omitempty"`
+
+	// Dictionary of
+	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+}
+
+// EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
+type EnvironmentRecipeProperties struct {
+	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+	ConnectorType *string `json:"connectorType,omitempty"`
+
+	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+	TemplatePath *string `json:"templatePath,omitempty"`
 }
 
 // EnvironmentResource - Application environment.
@@ -421,11 +519,14 @@ func (e *Extension) GetExtension() *Extension { return e }
 
 // GatewayProperties - Gateway properties
 type GatewayProperties struct {
-	// REQUIRED; The resource id of the application linked to Gateway resource.
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute `json:"routes,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
@@ -561,8 +662,11 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
-	// REQUIRED; The resource id of the application linked to HTTP Route resource.
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
 	Hostname *string `json:"hostname,omitempty"`
@@ -676,6 +780,17 @@ type IamProperties struct {
 	Roles []*string `json:"roles,omitempty"`
 }
 
+type KeyObjectProperties struct {
+	// REQUIRED; The name of the key
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Key version
+	Version *string `json:"version,omitempty"`
+}
+
 // KubernetesCompute - Specifies the properties for Kubernetes compute environment
 type KubernetesCompute struct {
 	// REQUIRED; Type of compute resource.
@@ -724,7 +839,7 @@ type PersistentVolume struct {
 	MountPath *string `json:"mountPath,omitempty"`
 
 	// Container read/write access to the volume
-	Rbac *VolumeRbac `json:"rbac,omitempty"`
+	Permission *VolumePermission `json:"permission,omitempty"`
 }
 
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.
@@ -733,6 +848,18 @@ func (p *PersistentVolume) GetVolume() *Volume {
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
+}
+
+// Providers - Cloud providers configuration
+type Providers struct {
+	// Azure cloud provider configuration
+	Azure *ProvidersAzure `json:"azure,omitempty"`
+}
+
+// ProvidersAzure - Azure cloud provider configuration
+type ProvidersAzure struct {
+	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+	Scope *string `json:"scope,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -750,6 +877,20 @@ type Resource struct {
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+}
+
+type SecretObjectProperties struct {
+	// REQUIRED; The name of the secret
+	Name *string `json:"name,omitempty"`
+
+	// File name when written to disk.
+	Alias *string `json:"alias,omitempty"`
+
+	// Encoding format. Default utf-8
+	Encoding *Encoding `json:"encoding,omitempty"`
+
+	// Secret version
+	Version *string `json:"version,omitempty"`
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
@@ -840,4 +981,91 @@ type Volume struct {
 
 // GetVolume implements the VolumeClassification interface for type Volume.
 func (v *Volume) GetVolume() *Volume { return v }
+
+// VolumePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetVolumeProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureKeyVaultVolumeProperties, *VolumeProperties
+type VolumePropertiesClassification interface {
+	// GetVolumeProperties returns the VolumeProperties content of the underlying type.
+	GetVolumeProperties() *VolumeProperties
+}
+
+type VolumeProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// REQUIRED; The volume kind
+	Kind *string `json:"kind,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetVolumeProperties implements the VolumePropertiesClassification interface for type VolumeProperties.
+func (v *VolumeProperties) GetVolumeProperties() *VolumeProperties { return v }
+
+// VolumeResource - Radius Volume Resource.
+type VolumeResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// REQUIRED
+	Properties VolumePropertiesClassification `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// VolumeResourceList - The list of Volumes.
+type VolumeResourceList struct {
+	// The link used to get the next page of Volumes list.
+	NextLink *string `json:"nextLink,omitempty"`
+
+	// The list of Volume.
+	Value []*VolumeResource `json:"value,omitempty"`
+}
+
+// VolumesClientCreateOrUpdateOptions contains the optional parameters for the VolumesClient.CreateOrUpdate method.
+type VolumesClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientDeleteOptions contains the optional parameters for the VolumesClient.Delete method.
+type VolumesClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientGetOptions contains the optional parameters for the VolumesClient.Get method.
+type VolumesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.ListByScope method.
+type VolumesClientListByScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// VolumesClientUpdateOptions contains the optional parameters for the VolumesClient.Update method.
+type VolumesClientUpdateOptions struct {
+	// placeholder for future optional parameters
+}
 

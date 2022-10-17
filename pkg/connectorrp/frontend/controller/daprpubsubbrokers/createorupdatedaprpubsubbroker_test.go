@@ -59,6 +59,9 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		daprpubsubbrokers.TopicNameKey: {
 			Value: "test-topic",
 		},
+		renderers.ComponentNameKey: {
+			Value: "test-app-test-pub-sub-topic",
+		},
 	}
 	rendererOutput := renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{output},
@@ -78,6 +81,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		},
 		ComputedValues: map[string]interface{}{
 			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
+			renderers.ComponentNameKey:     rendererOutput.ComputedValues[renderers.ComponentNameKey].Value,
 		},
 	}
 
@@ -149,7 +153,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateDaprPubSubBroker(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
@@ -206,7 +210,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mStorageClient.
 					EXPECT().
@@ -227,7 +231,7 @@ func TestCreateOrUpdateDaprPubSubBroker_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewCreateOrUpdateDaprPubSubBroker(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			_ = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)

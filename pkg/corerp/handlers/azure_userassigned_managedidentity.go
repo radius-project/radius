@@ -32,6 +32,13 @@ func NewAzureUserAssignedManagedIdentityHandler(arm *armauth.ArmConfig) Resource
 
 type azureUserAssignedManagedIdentityHandler struct {
 	arm *armauth.ArmConfig
+
+	// TODO: this code has been written to assume that we work with a single subscription/resourceGroup
+	// for a single instance of the Radius control plane. This code is also non-functional. If we bring
+	// back this functionality, we need to rework these semantics. Users should configure these details as
+	// part of the environment configuration, and not as a static "one-per-control-plane" setting.
+	SubscriptionID string
+	ResourceGroup  string
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
@@ -67,14 +74,14 @@ func (handler *azureUserAssignedManagedIdentityHandler) GetResourceNativeIdentit
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm)
+	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, handler.SubscriptionID, handler.ResourceGroup)
 	if err != nil {
 		return properties, err
 	}
 
 	identityName := properties[UserAssignedIdentityNameKey]
-	msiClient := clients.NewUserAssignedIdentitiesClient(handler.arm.SubscriptionID, handler.arm.Auth)
-	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.arm.ResourceGroup, identityName, msi.Identity{
+	msiClient := clients.NewUserAssignedIdentitiesClient(handler.SubscriptionID, handler.arm.Auth)
+	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.ResourceGroup, identityName, msi.Identity{
 		Location: to.Ptr(*rgLocation),
 	})
 	if err != nil {

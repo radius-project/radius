@@ -18,6 +18,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -68,7 +69,7 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 		},
 	}
 
-	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
+	resource, err := resources.ParseResource("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
 	require.NoError(t, err)
 
 	for _, tt := range errTests {
@@ -82,11 +83,11 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 					},
 				},
 			}
-			oldResourceProp := &v1.BasicResourceProperties{
+			oldResourceProp := &rp.BasicResourceProperties{
 				Application: tt.oldAppID,
 				Environment: tt.oldEnvID,
 			}
-			newResourceProp := &v1.BasicResourceProperties{
+			newResourceProp := &rp.BasicResourceProperties{
 				Application: tt.newAppID,
 				Environment: tt.newEnvID,
 			}
@@ -95,7 +96,29 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 			require.Equal(t, expctedResp, resp)
 		})
 	}
+}
 
+func Test_NewNoResourceMatchResponse(t *testing.T) {
+	response := NewNoResourceMatchResponse("/some/url")
+	payload := map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    v1.CodeNotFound,
+			"message": "the specified path \"/some/url\" did not match any resource",
+			"target":  "/some/url",
+		},
+	}
+	expected, err := json.MarshalIndent(payload, "", "  ")
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	err = response.Apply(context.TODO(), w, req)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Equal(t, []string{"application/json"}, w.Header()["Content-Type"])
+	require.Equal(t, string(expected), w.Body.String())
 }
 
 func Test_OKResponse_Empty(t *testing.T) {
@@ -166,15 +189,25 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
 		},
+		{
+			"ucp-test-headers",
+			"https://ucp.dev",
+			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			"global",
+			operationID,
+			"",
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
+			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+		},
 	}
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			resourceID, err := resources.Parse(tt.rID)
+			resourceID, err := resources.ParseResource(tt.rID)
 			require.NoError(t, err)
 
 			body := &datamodel.ContainerResource{}
-			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av)
+			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
 
 			req := httptest.NewRequest("GET", tt.base, nil)
 			w := httptest.NewRecorder()
@@ -182,10 +215,19 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			require.NoError(t, err)
 
 			require.NotNil(t, w.Header().Get("Location"))
-			require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+			if tt.av == "" {
+				require.Equal(t, tt.base+tt.or, w.Header().Get("Location"))
+			} else {
+				require.Equal(t, tt.base+tt.or+"?api-version="+tt.av, w.Header().Get("Location"))
+			}
 
 			require.NotNil(t, w.Header().Get("Azure-AsyncHeader"))
-			require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			if tt.av == "" {
+				require.Equal(t, tt.base+tt.os, w.Header().Get("Azure-AsyncOperation"))
+
+			} else {
+				require.Equal(t, tt.base+tt.os+"?api-version="+tt.av, w.Header().Get("Azure-AsyncOperation"))
+			}
 		})
 	}
 }

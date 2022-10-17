@@ -43,7 +43,7 @@ func (handler *azureRedisHandler) Put(ctx context.Context, resource *outputresou
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required properties for resource")
 	}
-	parsedID, err := resources.Parse(properties[RedisResourceIdKey])
+	parsedID, err := resources.ParseResource(properties[RedisResourceIdKey])
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Azure Redis Cache resource id: %w", err)
 	}

@@ -59,20 +59,20 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		applicationName = applicationID.Name()
 	}
 
-	resoures, err := stateStoreFunc(*resource, applicationName, options.Namespace)
+	resources, err := stateStoreFunc(*resource, applicationName, options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	values := map[string]renderers.ComputedValueReference{
-		"stateStoreName": {
+		renderers.ComponentNameKey: {
 			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
 		},
 	}
 	secrets := map[string]rp.SecretValueReference{}
 
 	return renderers.RendererOutput{
-		Resources:      resoures,
+		Resources:      resources,
 		ComputedValues: values,
 		SecretValues:   secrets,
 	}, nil

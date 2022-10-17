@@ -58,7 +58,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues map[string]rp.SecretValueReference, computedValues map[string]renderers.ComputedValueReference) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
-	redisCacheID, err := resources.Parse(properties.Resource)
+	redisCacheID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}

@@ -16,6 +16,7 @@
         "lastModifiedBy": "test@microsoft.com",
         "lastModifiedByType": "Test"
     },
+    "provisioningState": "Updating",
     "properties": {
         "application": "test-application",
         "connections": {
@@ -51,7 +52,6 @@
                 }
             }
         },
-        "provisioningState": "Updating",
         "status": {
             "outputResources": [
                 {

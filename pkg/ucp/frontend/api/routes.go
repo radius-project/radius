@@ -12,6 +12,7 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
+	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -22,9 +23,14 @@ import (
 
 // TODO: Use variables and construct the path as we add more APIs.
 const (
-	planeCollectionPath   = "/planes"
-	planeItemPath         = "/planes/{PlaneType}/{PlaneID}"
-	planeCollectionByType = "/planes/{PlaneType}"
+	planeCollectionPath       = "/planes"
+	awsPlaneType              = "/planes/aws"
+	planeItemPath             = "/planes/{PlaneType}/{PlaneID}"
+	planeCollectionByType     = "/planes/{PlaneType}"
+	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
+	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
+	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
+	awsResourcePath           = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
 )
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
@@ -62,9 +68,6 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		return err
 	}
 
-	subrouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
-	subrouter.Use(validator.APIValidatorUCP(specLoader))
-
 	rootScopeRouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
 	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
@@ -77,6 +80,12 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
 	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
+
+	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
+	awsResourceCollectionSubRouter := awsResourcesSubRouter.Path(awsResourceCollectionPath).Subrouter()
+	awsSingleResourceSubRouter := awsResourcesSubRouter.Path(awsResourcePath).Subrouter()
+	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
+	awsOperationResultsSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationResultsPath).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -125,6 +134,38 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			ParentRouter:   resourceGroupSubRouter,
 			Method:         v1.OperationDelete,
 			HandlerFactory: resourcegroups_ctrl.NewDeleteResourceGroup,
+		},
+
+		// AWS Plane handlers
+		{
+			ParentRouter:   awsOperationResultsSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationResults,
+		},
+		{
+			ParentRouter:   awsOperationStatusesSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSOperationStatuses,
+		},
+		{
+			ParentRouter:   awsResourceCollectionSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewListAWSResources,
+		},
+		{
+			ParentRouter:   awsSingleResourceSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResource,
+		},
+		{
+			ParentRouter:   awsSingleResourceSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResource,
+		},
+		{
+			ParentRouter:   awsSingleResourceSubRouter,
+			Method:         v1.OperationGet,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSResource,
 		},
 
 		// Proxy request should take the least priority in routing and should therefore be last

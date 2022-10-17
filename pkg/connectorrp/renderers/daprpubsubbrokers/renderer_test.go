@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -46,7 +47,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -68,6 +69,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := &unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -76,7 +78,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -102,7 +104,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -129,7 +131,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -158,7 +160,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -191,7 +193,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 		Version:  &properties.Version,
 		Metadata: properties.Metadata,
 	}
-	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test")
+	item, err := dapr.ConstructDaprGeneric(daprGeneric, applicationName, resourceName, "radius-test", ResourceType)
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
@@ -201,7 +203,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    pubsubType,
@@ -230,7 +232,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -250,6 +252,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
@@ -274,7 +277,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -293,6 +296,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDAzureServiceBusNamespace, output.LocalID)
 	require.Equal(t, resourcekinds.DaprPubSubTopicAzureServiceBus, output.ResourceType.Type)
+	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.ResourceName:               resourceName,
@@ -317,7 +321,7 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -343,7 +347,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
@@ -373,7 +377,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			Type: ResourceType,
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,

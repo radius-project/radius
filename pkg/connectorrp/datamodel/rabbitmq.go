@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // RabbitMQMessageQueue represents RabbitMQMessageQueue connector resource.
@@ -50,9 +51,10 @@ func (rabbitmq RabbitMQMessageQueueResponse) ResourceTypeName() string {
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
 type RabbitMQMessageQueueResponseProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Queue             string               `json:"queue"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.

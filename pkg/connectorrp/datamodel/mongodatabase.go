@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // MongoDatabase represents MongoDatabase connector resource.
@@ -50,12 +51,13 @@ func (mongo MongoDatabaseResponse) ResourceTypeName() string {
 
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseResponseProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`
 	Database          string               `json:"database,omitempty"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 }
 
 type MongoDatabaseProperties struct {

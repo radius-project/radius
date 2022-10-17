@@ -17,7 +17,7 @@ const radDEEnvVar = "RAD_DE"
 const binaryName = "arm-de"
 
 // Placeholders are for: channel, platform, filename
-const downloadURIFmt = "https://radiuspublic.blob.core.windows.net/tools/de/%s/%s/%s"
+const downloadURIFmt = "https://get.radapp.dev/tools/de/%s/%s/%s"
 
 // IsDEInstalled returns true if our local copy of arm-de is installed
 func IsDEInstalled() (bool, error) {

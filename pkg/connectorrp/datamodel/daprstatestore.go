@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 type DaprStateStoreKind string
@@ -40,13 +41,14 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.
 type DaprStateStoreProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
+	rp.BasicDaprResourceProperties
 	ProvisioningState               v1.ProvisioningState                              `json:"provisioningState,omitempty"`
-	StateStoreName                  string                                            `json:"stateStoreName"`
 	Kind                            DaprStateStoreKind                                `json:"kind"`
 	DaprStateStoreSQLServer         DaprStateStoreSQLServerResourceProperties         `json:"daprStateStoreSQLServer"`
 	DaprStateStoreAzureTableStorage DaprStateStoreAzureTableStorageResourceProperties `json:"daprStateStoreAzureTableStorage"`
 	DaprStateStoreGeneric           DaprStateStoreGenericResourceProperties           `json:"daprStateStoreGeneric"`
+	Recipe                          ConnectorRecipe                                   `json:"recipe,omitempty"`
 }
 
 type DaprStateStoreGenericResourceProperties struct {

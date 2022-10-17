@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -24,7 +25,7 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -38,19 +39,14 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			UpdatedAPIVersion: Version,
 		},
 	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
+	}
 	return converted, nil
 }
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
 func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.MongoDatabaseSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.MongoDatabaseSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-			Username:         to.String(src.Properties.Secrets.Username),
-			Password:         to.String(src.Properties.Secrets.Password),
-		}
-	}
 	converted := &datamodel.MongoDatabase{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -61,7 +57,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -71,11 +67,20 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Port:              to.Int32(src.Properties.Port),
 				Database:          to.String(src.Properties.Database),
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			Username:         to.String(src.Properties.Secrets.Username),
+			Password:         to.String(src.Properties.Secrets.Password),
+		}
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -95,7 +100,7 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -104,6 +109,9 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
+	}
+	if mongo.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	return nil
 }
@@ -123,7 +131,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 	dst.Properties = &MongoDatabaseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
@@ -132,6 +140,9 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
+	}
+	if mongo.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
 		dst.Properties.Secrets = &MongoDatabaseSecrets{

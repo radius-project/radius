@@ -49,7 +49,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteApplication(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -93,6 +93,10 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+					if tt.expectedStatusCode == 204 {
+						return nil, &store.ErrNotFound{}
+					}
+
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: tt.resourceETag},
 						Data:     appDataModel,
@@ -114,7 +118,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteApplication(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

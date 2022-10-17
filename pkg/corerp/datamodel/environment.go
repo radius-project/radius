@@ -21,25 +21,21 @@ const (
 
 // Environment represents Application environment resource.
 type Environment struct {
-	v1.TrackedResource
+	v1.BaseResource
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties EnvironmentProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
 }
 
-func (e Environment) ResourceTypeName() string {
+func (e *Environment) ResourceTypeName() string {
 	return "Applications.Core/environments"
 }
 
 // EnvironmentProperties represents the properties of Environment.
 type EnvironmentProperties struct {
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Compute           EnvironmentCompute   `json:"compute,omitempty"`
+	Compute   EnvironmentCompute                     `json:"compute,omitempty"`
+	Recipes   map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
+	Providers Providers                              `json:"providers,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -52,4 +48,20 @@ type EnvironmentCompute struct {
 type KubernetesComputeProperties struct {
 	ResourceID string `json:"resourceId,omitempty"`
 	Namespace  string `json:"namespace"`
+}
+
+// EnvironmentRecipeProperties represents the properties of environment's recipe.
+type EnvironmentRecipeProperties struct {
+	ConnectorType string `json:"connectorType,omitempty"`
+	TemplatePath  string `json:"templatePath,omitempty"`
+}
+
+// Providers represents configs for providers for the environment, eg azure
+type Providers struct {
+	Azure ProvidersAzure `json:"azure,omitempty"`
+}
+
+// ProvidersAzure represents the azure provider configs
+type ProvidersAzure struct {
+	Scope string `json:"scope,omitempty"`
 }

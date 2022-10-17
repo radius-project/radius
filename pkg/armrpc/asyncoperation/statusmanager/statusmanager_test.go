@@ -14,7 +14,6 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -45,7 +44,7 @@ func setup(tb testing.TB) (asyncOperationsManagerTest, *gomock.Controller) {
 	return asyncOperationsManagerTest{manager: aom, storeClient: sc, queue: enq}, ctrl
 }
 
-var reqCtx = &servicecontext.ARMRequestContext{
+var reqCtx = &v1.ARMRequestContext{
 	OperationID:    uuid.Must(uuid.NewRandom()),
 	HomeTenantID:   "home-tenant-id",
 	ClientObjectID: "client-object-id",
@@ -90,7 +89,7 @@ func TestOperationStatusResourceID(t *testing.T) {
 
 	for _, tc := range resourceIDTests {
 		t.Run(tc.resourceID, func(t *testing.T) {
-			rid, err := resources.Parse(tc.resourceID)
+			rid, err := resources.ParseResource(tc.resourceID)
 			require.NoError(t, err)
 			url := sm.operationStatusResourceID(rid, tc.operationID)
 			require.Equal(t, tc.operationResourceID, url)
@@ -190,7 +189,7 @@ func TestDeleteAsyncOperationStatus(t *testing.T) {
 			defer mctrl.Finish()
 
 			aomTest.storeClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(tt.DeleteErr)
-			rid, err := resources.Parse(azureEnvResourceID)
+			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
 			err = aomTest.manager.Delete(context.TODO(), rid, uuid.New())
 
@@ -234,7 +233,7 @@ func TestGetAsyncOperationStatus(t *testing.T) {
 				Get(gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(tt.Obj, tt.GetErr)
 
-			rid, err := resources.Parse(azureEnvResourceID)
+			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
 			aos, err := aomTest.manager.Get(context.TODO(), rid, uuid.New())
 
@@ -288,7 +287,7 @@ func TestUpdateAsyncOperationStatus(t *testing.T) {
 			}
 
 			testAos.Status = v1.ProvisioningStateSucceeded
-			rid, err := resources.Parse(azureEnvResourceID)
+			rid, err := resources.ParseResource(azureEnvResourceID)
 			require.NoError(t, err)
 			err = aomTest.manager.Update(context.TODO(), rid, opID, v1.ProvisioningStateAccepted, nil, nil)
 

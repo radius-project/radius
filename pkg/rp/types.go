@@ -6,6 +6,9 @@
 package rp
 
 import (
+	"context"
+	"strings"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -51,6 +54,9 @@ type SecretValueReference struct {
 	// no concept of 'action'. Will always be set for an ARM resource.
 	Action string
 
+	// Resource type this action can be performed on. Example for Azure a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
+	ProviderResourceType string
+
 	// ValueSelector is a JSONPointer used to resolve the secret value.
 	ValueSelector string
 
@@ -64,6 +70,22 @@ type SecretValueReference struct {
 
 	// Value is the secret value itself
 	Value string
+}
+
+// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
+// that wants to access it.
+//
+// This is surprisingly common. For example, it's common for access control/connection strings to apply
+// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
+// string that application code consumes will include a database name or queue name, etc. Or the different
+// libraries involved might support different connection string formats, and the user has to choose on.
+type SecretValueTransformer interface {
+	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
+}
+
+//go:generate mockgen -destination=./mock_secretvalueclient.go -package=rp -self_package github.com/project-radius/radius/pkg/rp github.com/project-radius/radius/pkg/rp SecretValueClient
+type SecretValueClient interface {
+	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
 }
 
 // DeploymentOutput is the output details of a deployment.
@@ -81,4 +103,60 @@ type DeploymentDataModel interface {
 	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
 
 	OutputResources() []outputresource.OutputResource
+}
+
+// BasicDaprResourceProperties is the basic resource properties for dapr resources.
+type BasicDaprResourceProperties struct {
+	// ComponentName represents the name of the component.
+	ComponentName string `json:"componentName,omitempty"`
+}
+
+// BasicResourceProperties is the basic resource model for radius resources.
+type BasicResourceProperties struct {
+	// Environment represents the id of environment resource.
+	Environment string `json:"environment,omitempty"`
+	// Application represents the id of application resource.
+	Application string `json:"application,omitempty"`
+
+	// Status represents the resource status.
+	Status ResourceStatus `json:"status,omitempty"`
+}
+
+// EqualLinkedResource returns true if the resource belongs to the same environment and application.
+func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourceProperties) bool {
+	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
+}
+
+type ResourceStatus struct {
+	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
+}
+
+func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
+	in.OutputResources = out.OutputResources
+}
+
+// OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
+func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
+	var externalOutputResources []map[string]interface{}
+	for _, or := range outputResources {
+		externalOutput := map[string]interface{}{
+			"LocalID":  or.LocalID,
+			"Provider": or.ResourceType.Provider,
+			"Identity": or.Identity.Data,
+		}
+		externalOutputResources = append(externalOutputResources, externalOutput)
+	}
+
+	return externalOutputResources
+}
+
+// RadiusResourceModel represents the interface of radius resource type.
+// TODO: Replace DeploymentDataModel with RadiusResourceModel later when connector rp leverages generic.
+type RadiusResourceModel interface {
+	conv.ResourceDataModel
+
+	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
+	OutputResources() []outputresource.OutputResource
+
+	ResourceMetadata() *BasicResourceProperties
 }

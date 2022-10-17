@@ -29,11 +29,6 @@ import (
 	"golang.org/x/sync/semaphore"
 )
 
-var (
-	errPropertiesNotFound        = errors.New("properties object not found")
-	errProvisioningStateNotFound = errors.New("provisioningState property not found")
-)
-
 const (
 	// defaultMaxOperationConcurrency is the default maximum concurrency to process async request operation.
 	defaultMaxOperationConcurrency = 3
@@ -313,7 +308,7 @@ func (w *AsyncRequestProcessWorker) completeOperation(ctx context.Context, messa
 func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context.Context, sc store.StorageClient, req *ctrl.Request, state v1.ProvisioningState, opErr *v1.ErrorDetails) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	rID, err := resources.Parse(req.ResourceID)
+	rID, err := resources.ParseResource(req.ResourceID)
 	if err != nil {
 		logger.Error(err, "failed to parse resource ID")
 		return err
@@ -339,7 +334,7 @@ func (w *AsyncRequestProcessWorker) updateResourceAndOperationStatus(ctx context
 }
 
 func (w *AsyncRequestProcessWorker) isDuplicated(ctx context.Context, sc store.StorageClient, resourceID string, operationID uuid.UUID) (bool, error) {
-	rID, err := resources.Parse(resourceID)
+	rID, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return false, err
 	}
@@ -372,14 +367,8 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 	}
 
 	objmap := obj.Data.(map[string]interface{})
-	objmap, ok := objmap["properties"].(map[string]interface{})
-	if !ok {
-		return errPropertiesNotFound
-	}
-
-	if pState, ok := objmap["provisioningState"].(string); !ok {
-		return errProvisioningStateNotFound
-	} else if strings.EqualFold(pState, string(state)) {
+	pState, ok := objmap["provisioningState"].(string)
+	if ok && strings.EqualFold(pState, string(state)) {
 		// Do not update it if provisioning state is already the target state.
 		// This happens when redeploying worker can stop completing message.
 		// So, provisioningState in Resource is updated but not in operationStatus record.

@@ -313,6 +313,9 @@
       "allOf": [
         {
           "$ref": "global.json#/definitions/BasicResourceProperties"
+        },
+        {
+          "$ref": "global.json#/definitions/BasicDaprResourceProperties"
         }
       ],
       "discriminator": "kind",
@@ -322,27 +325,28 @@
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker connector at the time the operation was called"
         },
-        "application": {
-          "$ref": "global.json#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
-        "environment": {
-          "description": "The resource id of the environment linked to the daprPubSubBroker connector",
-          "type": "string"
-        },
         "kind": {
           "description": "The DaprPubSubProperties kind",
           "type": "string",
-          "enum": ["pubsub.azure.servicebus","generic"]
+          "enum": [
+            "pubsub.azure.servicebus",
+            "generic"
+          ]
         },
         "topic": {
           "description": "Topic name of the Azure ServiceBus resource",
           "type": "string"
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
-        "kind",
-        "environment"
+        "environment",
+        "kind"
       ]
     }
   },

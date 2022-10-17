@@ -9,6 +9,8 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -16,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListPlanes)(nil)
+var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
@@ -24,11 +26,11 @@ type ListPlanes struct {
 }
 
 // NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{ctrl.NewBaseController(opts)}, nil
 }
 
-func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 
@@ -45,7 +47,7 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	var ok = rest.NewOKResponse(listOfPlanes)
+	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
 	return ok, nil
 }
 

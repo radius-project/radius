@@ -17,7 +17,7 @@ import (
 func ValidateApplicationID(application string) (resources.ID, error) {
 	app := &coreDatamodel.Application{}
 	if application != "" {
-		appId, err := resources.Parse(application)
+		appId, err := resources.ParseResource(application)
 		if err != nil {
 			return resources.ID{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse application from the property: %s", err.Error()))
 		}

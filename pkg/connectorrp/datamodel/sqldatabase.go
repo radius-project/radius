@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // SqlDatabase represents SqlDatabase connector resource.
@@ -31,8 +32,9 @@ func (sql SqlDatabase) ResourceTypeName() string {
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Recipe            ConnectorRecipe      `json:"recipe,omitempty"`
 	Resource          string               `json:"resource,omitempty"`
 	Database          string               `json:"database,omitempty"`
 	Server            string               `json:"server,omitempty"`

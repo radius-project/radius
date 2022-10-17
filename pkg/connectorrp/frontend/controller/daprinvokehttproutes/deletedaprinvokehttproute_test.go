@@ -54,7 +54,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteDaprInvokeHttpRoute(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -105,7 +105,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -123,7 +123,7 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteDaprInvokeHttpRoute(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

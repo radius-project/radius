@@ -7,6 +7,7 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -49,7 +50,7 @@ func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts ctrl.Opt
 	fn := func(w http.ResponseWriter, req *http.Request) {
 		hctx := req.Context()
 
-		response, err := ctrl.Run(hctx, req)
+		response, err := ctrl.Run(hctx, w, req)
 		if err != nil {
 			handleError(hctx, w, req, err)
 			return
@@ -150,7 +151,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if err.Error() == conv.ErrInvalidModelConversion.Error() {
+		if errors.Is(err, conv.ErrInvalidModelConversion) {
 			response = rest.NewBadRequestARMResponse(v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
@@ -166,6 +167,7 @@ func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			})
 		}
 	}
+
 	err = response.Apply(ctx, w, req)
 	if err != nil {
 		body := v1.ErrorResponse{

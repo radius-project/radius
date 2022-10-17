@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
@@ -28,8 +29,8 @@ func init() {
 	installCmd.AddCommand(installKubernetesCmd)
 	installKubernetesCmd.PersistentFlags().BoolP("interactive", "i", false, "Collect values for required command arguments through command line interface prompts")
 	installKubernetesCmd.Flags().String("kubecontext", "", "the Kubernetes context to use, will use the default if unset")
-	setup.RegisterPersistantChartArgs(installKubernetesCmd)
-	setup.RegistePersistantAzureProviderArgs(installKubernetesCmd)
+	setup.RegisterPersistentChartArgs(installKubernetesCmd)
+	setup.RegisterPersistentAzureProviderArgs(installKubernetesCmd)
 }
 
 func installKubernetes(cmd *cobra.Command, args []string) error {
@@ -50,7 +51,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive)
+	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -70,7 +71,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 
 	clusterOptions := helm.PopulateDefaultClusterOptions(cliOptions)
 
-	alreadyInstalled, err := setup.Install(cmd.Context(), clusterOptions, kubeContext)
+	alreadyInstalled, err := helm.Install(cmd.Context(), clusterOptions, kubeContext)
 	if err != nil {
 		return err
 	}
@@ -107,7 +108,7 @@ func updateWorkspaces(ctx context.Context, azProvider *azure.Provider) error {
 		workspaceProvider = workspaces.AzureProvider{ResourceGroup: azProvider.ResourceGroup, SubscriptionID: azProvider.SubscriptionID}
 	}
 	err = cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
-		UpdateAzProvider(section, workspaceProvider, currentKubeContext)
+		cli.UpdateAzProvider(section, workspaceProvider, currentKubeContext)
 		return nil
 	})
 	if err != nil {

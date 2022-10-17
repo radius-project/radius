@@ -53,8 +53,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	err := errors.New("invalid model conversion")
-	handleError(context.Background(), responseWriter, req, err)
+	handleError(context.Background(), responseWriter, req, conv.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)

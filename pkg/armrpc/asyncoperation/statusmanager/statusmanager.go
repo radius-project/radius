@@ -14,7 +14,6 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -35,7 +34,7 @@ type StatusManager interface {
 	// Get gets an async operation status object.
 	Get(ctx context.Context, id resources.ID, operationID uuid.UUID) (*Status, error)
 	// QueueAsyncOperation creates an async operation status object and queue async operation.
-	QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error
+	QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error
 	// Update updates an async operation status.
 	Update(ctx context.Context, id resources.ID, operationID uuid.UUID, state v1.ProvisioningState, endTime *time.Time, opError *v1.ErrorDetails) error
 	// Delete deletes an async operation status.
@@ -57,7 +56,7 @@ func (aom *statusManager) operationStatusResourceID(id resources.ID, operationID
 	return fmt.Sprintf("%s/providers/%s/locations/%s/operationstatuses/%s", id.PlaneScope(), aom.providerName, aom.location, operationID)
 }
 
-func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *servicecontext.ARMRequestContext, operationTimeout time.Duration) error {
+func (aom *statusManager) QueueAsyncOperation(ctx context.Context, sCtx *v1.ARMRequestContext, operationTimeout time.Duration) error {
 	if aom.queue == nil {
 		return errors.New("queue client is unset")
 	}
@@ -148,7 +147,7 @@ func (aom *statusManager) Delete(ctx context.Context, id resources.ID, operation
 }
 
 // queueRequestMessage function is to put the async operation message to the queue to be worked on.
-func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *servicecontext.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
+func (aom *statusManager) queueRequestMessage(ctx context.Context, sCtx *v1.ARMRequestContext, aos *Status, operationTimeout time.Duration) error {
 	msg := &ctrl.Request{
 		APIVersion:       sCtx.APIVersion,
 		OperationID:      sCtx.OperationID,

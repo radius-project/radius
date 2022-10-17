@@ -39,7 +39,7 @@ func (handler *azureCosmosDBMongoHandler) Put(ctx context.Context, resource *out
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("missing required properties for resource")
 	}
 
-	parsedID, err := resources.Parse(properties[CosmosDBDatabaseIDKey])
+	parsedID, err := resources.ParseResource(properties[CosmosDBDatabaseIDKey])
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse CosmosDB Mongo Database resource id: %w", err)
 	}

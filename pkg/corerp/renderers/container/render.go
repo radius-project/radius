@@ -7,6 +7,8 @@ package container
 
 import (
 	"context"
+	"crypto/sha1"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -28,6 +30,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 const (
@@ -40,16 +43,12 @@ const (
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
-
-	PersistentVolumeKindAzureFileShare = "azure.com.fileshare"
-	PersistentVolumeKindAzureKeyVault  = "azure.com.keyvault"
 )
 
 // GetSupportedKinds returns a list of supported volume kinds
 func GetSupportedKinds() []string {
 	keys := []string{}
-	keys = append(keys, PersistentVolumeKindAzureFileShare)
-	keys = append(keys, PersistentVolumeKindAzureKeyVault)
+	keys = append(keys, datamodel.AzureKeyVaultVolume)
 	return keys
 }
 
@@ -73,7 +72,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	//
 	// Anywhere we accept a resource ID in the model should have its value returned from here
 	for _, connection := range properties.Connections {
-		resourceID, err := resources.Parse(connection.Source)
+		resourceID, err := resources.ParseResource(connection.Source)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -96,7 +95,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 			continue
 		}
 
-		resourceID, err := resources.Parse(provides)
+		resourceID, err := resources.ParseResource(provides)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -110,7 +109,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	for _, volume := range properties.Container.Volumes {
 		switch volume.Kind {
 		case datamodel.Persistent:
-			resourceID, err := resources.Parse(volume.Persistent.Source)
+			resourceID, err := resources.ParseResource(volume.Persistent.Source)
 			if err != nil {
 				return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
@@ -132,7 +131,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	appId, err := resources.Parse(resource.Properties.Application)
+	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
@@ -198,7 +197,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.Parse(provides)
+			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
 				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
@@ -269,7 +268,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 	outputResources := []outputresource.OutputResource{}
 
-	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name)
+	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
 	// Add volumes
 	volumes := []corev1.Volume{}
@@ -288,46 +287,30 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		case datamodel.Persistent:
 			var volumeSpec corev1.Volume
 			var volumeMountSpec corev1.VolumeMount
-			properties := dependencies[volumeProperties.Persistent.Source]
 
-			switch properties.Definition["kind"] {
-			case PersistentVolumeKindAzureFileShare:
-				// Create spec for persistent volume
-				volumeSpec, volumeMountSpec, err = r.makeAzureFileSharePersistentVolume(volumeName, volumeProperties.Persistent, resource.Name, options)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("unable to create persistent volume spec for volume: %s - %s", volumeName, err.Error()))
-				}
-			case PersistentVolumeKindAzureKeyVault:
-				// Make Managed Identity
-				managedIdentity := r.makeManagedIdentity(ctx, resource, applicationName)
-				outputResources = append(outputResources, managedIdentity)
+			properties, ok := dependencies[volumeProperties.Persistent.Source]
+			if !ok {
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("volume dependency resource not found")
+			}
 
-				// Make Role assignments
-				roleNames := []string{}
-				if properties.Definition["secrets"] != nil {
-					roleNames = append(roleNames, AzureKeyVaultSecretsUserRole)
-				}
-				if properties.Definition["certificates"] != nil || properties.Definition["keys"] != nil {
-					roleNames = append(roleNames, AzureKeyVaultCryptoUserRole)
-				}
-				kvID := properties.Definition["resource"].(string)
-				roleAssignments, err := r.makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx, kvID, roleNames)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create role assignments for volume: %s - %w", volumeName, err)
-				}
-				outputResources = append(outputResources, roleAssignments...)
+			vol, ok := properties.Resource.(*datamodel.VolumeResource)
+			if !ok {
+				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("invalid dependency resource")
+			}
 
-				// Make Pod Identity
-				podIdentity := r.makePodIdentity(ctx, resource, applicationName, []outputresource.OutputResource{})
-				outputResources = append(outputResources, podIdentity)
-				// We need to add labels for pod identity created to the pod metadata
-				podIDLabel := kubernetes.MakeAADPodIdentityBindingLabels(podIdentity.Resource.(map[string]string)[handlers.PodIdentityNameKey])
-				podLabels = labels.Merge(podIDLabel, podLabels)
+			switch vol.Properties.Kind {
+			case datamodel.AzureKeyVaultVolume:
+				// TODO: Support Workload Identity
+				// Pod identity implementation: https://github.com/project-radius/radius/blob/ae2fcb230e40c64f7e85470e2986100fe49e288a/pkg/renderers/containerv1alpha3/render.go#L305-L331
 
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
-				secretProviderClassName := secretProviderClass.Data.(resourcemodel.KubernetesIdentity).Name
+				identity := &resourcemodel.KubernetesIdentity{}
+				if err := store.DecodeMap(secretProviderClass.Data, identity); err != nil {
+					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+				}
+
 				// Create spec for secret store
-				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, secretProviderClassName, options)
+				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, identity.Name, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -348,7 +331,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					// The storage account was not created when the computed value was rendered
 					// Lookup the actual storage account name from the local id
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
-					r, err := resources.Parse(id)
+					r, err := resources.ParseResource(id)
 					if err != nil {
 						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 					}
@@ -376,7 +359,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Selector: &metav1.LabelSelector{
@@ -384,7 +367,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					Labels: podLabels,
+					Labels:      podLabels,
+					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
 					Containers: []corev1.Container{container},
@@ -392,6 +376,20 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				},
 			},
 		},
+	}
+
+	// If we have a secret to reference we need to ensure that the deployment will trigger a new revision
+	// when the secret changes. Normally referencing an environment variable from a secret will **NOT** cause
+	// a new revision when the secret changes.
+	//
+	// see: https://stackoverflow.com/questions/56711894/does-k8-update-environment-variables-when-secrets-change
+	//
+	// The solution to this is to embed the hash of the secret as an annotation in the deployment. This way when the
+	// secret changes we also change the content of the deployment and thus trigger a new revision. This is a very
+	// common solution to this problem, and not a bizzare workaround that we invented.
+	if len(secretData) > 0 {
+		hash := r.hashSecretData(secretData)
+		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
 	}
 
 	deploymentOutput := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
@@ -532,13 +530,13 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	}
 }
 
-func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persistentVolume *datamodel.PersistentVolume, applicationName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
+func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persistentVolume *datamodel.PersistentVolume, applicationName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) { //nolint:all
 	// Make volume spec
 	volumeSpec := corev1.Volume{}
 	volumeSpec.Name = volumeName
 	volumeSpec.VolumeSource.AzureFile = &corev1.AzureFileVolumeSource{}
 	volumeSpec.AzureFile.SecretName = applicationName
-	resourceID, err := resources.Parse(persistentVolume.Source)
+	resourceID, err := resources.ParseResource(persistentVolume.Source)
 	if err != nil {
 		return corev1.Volume{}, corev1.VolumeMount{}, err
 	}
@@ -547,7 +545,7 @@ func (r Renderer) makeAzureFileSharePersistentVolume(volumeName string, persiste
 	// Make volumeMount spec
 	volumeMountSpec := corev1.VolumeMount{}
 	volumeMountSpec.Name = volumeName
-	if persistentVolume != nil && persistentVolume.Rbac == datamodel.VolumeRbacRead {
+	if persistentVolume != nil && persistentVolume.Permission == datamodel.VolumePermissionRead {
 		volumeMountSpec.MountPath = persistentVolume.MountPath
 		volumeMountSpec.ReadOnly = true
 	}
@@ -589,7 +587,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
 		Type: corev1.SecretTypeOpaque,
 		Data: secrets,
@@ -598,6 +596,26 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 	// Skip registration of the secret resource with the HealthService since health as a concept is not quite applicable to it
 	output := outputresource.NewKubernetesOutputResource(resourcekinds.Secret, outputresource.LocalIDSecret, &secret, secret.ObjectMeta)
 	return output
+}
+
+func (r Renderer) hashSecretData(secretData map[string][]byte) string {
+	// Sort keys so we can hash deterministically
+	keys := []string{}
+	for k := range secretData {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	hash := sha1.New()
+
+	for _, k := range keys {
+		// Using | as a delimiter
+		_, _ = hash.Write([]byte("|" + k + "|"))
+		_, _ = hash.Write(secretData[k])
+	}
+
+	sum := hash.Sum(nil)
+	return fmt.Sprintf("%x", sum)
 }
 
 func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
@@ -727,7 +745,7 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.
-func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Context, keyVaultID string, roleNames []string) ([]outputresource.OutputResource, error) {
+func (r Renderer) makeRoleAssignmentsForAzureKeyVaultCSIDriver(ctx context.Context, keyVaultID string, roleNames []string) ([]outputresource.OutputResource, error) { //nolint:all
 	roleAssignmentData := RoleAssignmentData{
 		RoleNames: roleNames,
 		LocalID:   outputresource.LocalIDKeyVault,

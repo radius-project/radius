@@ -26,11 +26,18 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
-				TrackedResource: v1.TrackedResource{
-					ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-					Name: "env0",
-					Type: "Applications.Core/environments",
-					Tags: map[string]string{},
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
 				},
 				Properties: datamodel.EnvironmentProperties{
 					Compute: datamodel.EnvironmentCompute{
@@ -40,11 +47,17 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Namespace:  "default",
 						},
 					},
-					ProvisioningState: v1.ProvisioningStateAccepted,
-				},
-				InternalMetadata: v1.InternalMetadata{
-					CreatedAPIVersion: "2022-03-15-privatepreview",
-					UpdatedAPIVersion: "2022-03-15-privatepreview",
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+					},
+					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
+						"cosmos-recipe": {
+							ConnectorType: "Applications.Connector/mongoDatabases",
+							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+						},
+					},
 				},
 			},
 			err: nil,
@@ -98,12 +111,30 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "Applications.Core/environments", r.Type)
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
+	require.Equal(t, 1, len(r.Properties.Recipes))
+	require.Equal(t, "Applications.Connector/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].ConnectorType)
+	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 }
 
 type fakeResource struct{}
 
 func (f *fakeResource) ResourceTypeName() string {
 	return "FakeResource"
+}
+
+func (f *fakeResource) GetSystemData() *v1.SystemData {
+	return nil
+}
+
+func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
+	return v1.ProvisioningStateAccepted
+}
+
+func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
+}
+
+func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext) {
 }
 
 func TestConvertFromValidation(t *testing.T) {

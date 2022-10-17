@@ -9,6 +9,8 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -17,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListResourceGroups)(nil)
+var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
@@ -25,11 +27,11 @@ type ListResourceGroups struct {
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
-func NewListResourceGroups(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	var query store.Query
@@ -51,7 +53,7 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 		return nil, err
 	}
 
-	var ok = rest.NewOKResponse(listOfResourceGroups)
+	var ok = armrpc_rest.NewOKResponse(listOfResourceGroups)
 	return ok, nil
 }
 

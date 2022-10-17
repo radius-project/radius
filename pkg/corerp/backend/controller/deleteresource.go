@@ -32,6 +32,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
 	}
 
+	// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
 	id, err := resources.Parse(request.ResourceID)
 	if err != nil {
 		return ctrl.Result{}, err

@@ -164,6 +164,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
+			// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
 			parsedID, err := resources.Parse(tt.rId)
 			require.NoError(t, err)
 
@@ -360,6 +361,7 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 			}
 
+			// This code is general and we might be processing an async job for a resource or a scope, so using the general Parse function.
 			parsedID, err := resources.Parse(tt.rId)
 			require.NoError(t, err)
 

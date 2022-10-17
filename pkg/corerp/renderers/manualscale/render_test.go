@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
@@ -86,7 +87,7 @@ func Test_Render_NoExtension(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{
@@ -109,10 +110,12 @@ func Test_Render_NoExtension(t *testing.T) {
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
-		TrackedResource: apiv1.TrackedResource{
-			ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
-			Name: "test-container",
-			Type: "Applications.Core/containers",
+		BaseResource: v1.BaseResource{
+			TrackedResource: apiv1.TrackedResource{
+				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+				Name: "test-container",
+				Type: "Applications.Core/containers",
+			},
 		},
 		Properties: properties,
 	}
@@ -121,7 +124,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 
 func makeProperties(t *testing.T, replicas *int32) datamodel.ContainerProperties {
 	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: v1.BasicResourceProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
 		},
 		Container: datamodel.Container{

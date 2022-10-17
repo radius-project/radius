@@ -9,19 +9,13 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
 func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.RedisCacheSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.RedisCacheSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-			Password:         to.String(src.Properties.Secrets.Password),
-		}
-	}
 	converted := &datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -32,7 +26,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
@@ -42,11 +36,19 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Port:              to.Int32(src.Properties.Port),
 				Username:          to.String(src.Properties.Username),
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.RedisCacheSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+			Password:         to.String(src.Properties.Secrets.Password),
+		}
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -62,7 +64,7 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RedisCacheResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -75,6 +77,9 @@ func (src *RedisCacheResponseResource) ConvertTo() (conv.DataModelInterface, err
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -94,7 +99,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
@@ -103,6 +108,9 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
+	}
+	if redis.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	if (redis.Properties.Secrets != datamodel.RedisCacheSecrets{}) {
 		dst.Properties.Secrets = &RedisCacheSecrets{
@@ -129,7 +137,7 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	dst.Properties = &RedisCacheResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
 		Environment:       to.StringPtr(redis.Properties.Environment),
@@ -138,6 +146,9 @@ func (dst *RedisCacheResponseResource) ConvertFrom(src conv.DataModelInterface) 
 		Host:              to.StringPtr(redis.Properties.Host),
 		Port:              to.Int32Ptr(redis.Properties.Port),
 		Username:          to.StringPtr(redis.Properties.Username),
+	}
+	if redis.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(redis.Properties.Recipe)
 	}
 	return nil
 }

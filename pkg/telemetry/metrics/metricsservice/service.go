@@ -15,11 +15,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
-	"go.opentelemetry.io/otel/exporters/metric/prometheus"
-)
-
-var (
-	latencyHistogramBoundaries []float64 = []float64{1, 2, 3, 4, 5, 6, 8, 10, 13, 16, 20, 25, 30, 40, 50, 65, 80, 100, 130, 160, 200, 250, 300, 400, 500, 650, 800, 1000, 2000, 5000, 10000, 20000, 50000, 100000}
+	"go.opentelemetry.io/otel/metric/global"
 )
 
 type Service struct {
@@ -42,19 +38,15 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	promConfig := prometheus.Config{
-		// buckets distribution used for histogram_quantile to calculate p50, p75, p95, p99 values
-		// TODO: Move the distribution configuration to metrics instrument level
-		DefaultHistogramBoundaries: latencyHistogramBoundaries,
-	}
-	exporter, err := provider.NewPrometheusMetricsExporter(promConfig)
+	provider, promHandler, err := provider.NewPrometheusMetricsExporter()
 	if err != nil {
 		logger.Error(err, "Failed to configure prometheus metrics client")
 		panic(err)
 	}
+	global.SetMeterProvider(provider)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Config.Prometheus.Endpoint, exporter.ServeHTTP)
+	mux.HandleFunc(s.Options.Config.Prometheus.Endpoint, promHandler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,

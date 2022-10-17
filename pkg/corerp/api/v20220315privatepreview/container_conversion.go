@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -81,16 +82,21 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.ContainerResource{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
 		Properties: datamodel.ContainerProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Connections: connections,
@@ -103,9 +109,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				Volumes:        volumes,
 			},
 			Extensions: extensions,
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 
@@ -187,9 +190,9 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(c.Tags)
 	dst.Properties = &ContainerProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(c.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(c.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(c.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(c.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(c.Properties.Application),
 		Connections:       connections,
 		Container: &Container{
@@ -351,7 +354,7 @@ func toVolumePropertiesDataModel(h VolumeClassification) datamodel.VolumePropert
 			Persistent: &datamodel.PersistentVolume{
 				VolumeBase: toVolumeBaseDataModel(*c.GetVolume()),
 				Source:     to.String(c.Source),
-				Rbac:       toRbacDataModel(c.Rbac),
+				Permission: toPermissionDataModel(c.Permission),
 			},
 		}
 		return *converted
@@ -371,10 +374,10 @@ func fromVolumePropertiesDataModel(v datamodel.VolumeProperties) VolumeClassific
 		return converted.GetVolume()
 	case datamodel.Persistent:
 		converted := PersistentVolume{
-			Kind:      (*string)(&v.Kind),
-			MountPath: &v.Persistent.MountPath,
-			Source:    &v.Persistent.Source,
-			Rbac:      fromRbacDataModel(v.Persistent.Rbac),
+			Kind:       (*string)(&v.Kind),
+			MountPath:  &v.Persistent.MountPath,
+			Source:     &v.Persistent.Source,
+			Permission: fromPermissionDataModel(v.Persistent.Permission),
 		}
 		return converted.GetVolume()
 	}
@@ -406,26 +409,30 @@ func fromManagedStoreDataModel(managedStore datamodel.ManagedStore) *ManagedStor
 	return &m
 }
 
-func toRbacDataModel(rbac *VolumeRbac) datamodel.VolumeRbac {
+func toPermissionDataModel(rbac *VolumePermission) datamodel.VolumePermission {
+	if rbac == nil {
+		return datamodel.VolumePermissionRead
+	}
+
 	switch *rbac {
-	case VolumeRbacRead:
-		return datamodel.VolumeRbacRead
-	case VolumeRbacWrite:
-		return datamodel.VolumeRbacWrite
+	case VolumePermissionRead:
+		return datamodel.VolumePermissionRead
+	case VolumePermissionWrite:
+		return datamodel.VolumePermissionWrite
 	default:
-		return datamodel.VolumeRbacRead
+		return datamodel.VolumePermissionRead
 	}
 }
 
-func fromRbacDataModel(rbac datamodel.VolumeRbac) *VolumeRbac {
-	var r VolumeRbac
+func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission {
+	var r VolumePermission
 	switch rbac {
-	case datamodel.VolumeRbacRead:
-		r = VolumeRbacRead
-	case datamodel.VolumeRbacWrite:
-		r = VolumeRbacWrite
+	case datamodel.VolumePermissionRead:
+		r = VolumePermissionRead
+	case datamodel.VolumePermissionWrite:
+		r = VolumePermissionWrite
 	default:
-		r = VolumeRbacRead
+		r = VolumePermissionRead
 	}
 	return &r
 }

@@ -20,10 +20,11 @@ import (
 	en_translations "github.com/go-playground/validator/v10/translations/en"
 	"github.com/gofrs/flock"
 	"github.com/mitchellh/go-homedir"
-	"github.com/project-radius/radius/pkg/cli/output"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/viper"
 	"golang.org/x/text/cases"
+
+	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 )
 
 // EnvironmentKey is the key used for the environment section
@@ -46,7 +47,7 @@ func (ws WorkspaceSection) HasWorkspace(name string) bool {
 // GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
 func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
 	if name == "" && ws.Default == "" {
-		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace.")
+		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace")
 	}
 
 	if name == "" {
@@ -55,7 +56,7 @@ func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, err
 
 	result, ok := ws.Items[cases.Fold().String(name)]
 	if !ok {
-		return nil, fmt.Errorf("the workspace '%v' could not be found in the list of workspace. use `rad workspace list` to list workspaces", name)
+		return nil, fmt.Errorf("the workspace '%v' does not exist. use `rad init` or `rad workspace create` and try again", name)
 	}
 
 	return &result, nil
@@ -73,15 +74,29 @@ type ApplicationSection struct {
 
 // ReadWorkspaceSection reads the WorkspaceSection from radius config.
 func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
-	s := v.Sub(WorkspacesKey)
-	if s == nil {
-		return WorkspaceSection{Items: map[string]workspaces.Workspace{}}, nil
-	}
 
 	section := WorkspaceSection{}
-	err := s.UnmarshalExact(&section)
-	if err != nil {
-		return WorkspaceSection{}, err
+	s := v.Sub(WorkspacesKey)
+	if s == nil {
+		// This may happen if the key was set directly to one of our structs, so let's try reading
+		// that.
+		obj := v.Get(WorkspacesKey)
+		if obj == nil {
+			// OK really nil, return a blank config.
+			return WorkspaceSection{Items: map[string]workspaces.Workspace{}}, nil
+		}
+
+		s, ok := obj.(WorkspaceSection)
+		if !ok {
+			return WorkspaceSection{}, fmt.Errorf("failed to read the config file: %s", v.ConfigFileUsed())
+		}
+
+		section = s
+	} else {
+		err := s.UnmarshalExact(&section)
+		if err != nil {
+			return WorkspaceSection{}, err
+		}
 	}
 
 	// if items is not present it will be nil
@@ -96,7 +111,7 @@ func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 		section.Items[name] = copy
 	}
 
-	err = validate(section)
+	err := validate(section)
 	if err != nil {
 		return WorkspaceSection{}, err
 	}
@@ -239,6 +254,32 @@ func GetConfigFilePath(v *viper.Viper) string {
 		configFilePath = path.Join(home, ".rad", "config.yaml")
 	}
 	return configFilePath
+}
+
+func UpdateAzProvider(section *WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
+	for _, workspaceItem := range section.Items {
+		if workspaceItem.IsSameKubernetesContext(contextName) {
+			workspaceName := workspaceItem.Name
+			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{
+				ResourceGroup:  provider.ResourceGroup,
+				SubscriptionID: provider.SubscriptionID,
+			}
+			section.Items[workspaceName] = workspaceItem
+		}
+	}
+}
+
+func UpdateAWSProvider(section *WorkspaceSection, provider workspaces.AWSProvider, contextName string) {
+	for _, workspaceItem := range section.Items {
+		if workspaceItem.IsSameKubernetesContext(contextName) {
+			workspaceName := workspaceItem.Name
+			workspaceItem.ProviderConfig.AWS = &workspaces.AWSProvider{
+				AccountId: provider.AccountId,
+				Region:    provider.Region,
+			}
+			section.Items[workspaceName] = workspaceItem
+		}
+	}
 }
 
 // Required to be called while holding the exclusive lock on config.yaml.lock file.

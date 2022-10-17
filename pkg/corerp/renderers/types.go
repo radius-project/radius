@@ -7,9 +7,6 @@ package renderers
 
 import (
 	"context"
-	"errors"
-	"fmt"
-	"net/url"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -37,6 +34,9 @@ type RendererDependency struct {
 	// Definition is the definition (`properties` node) of the dependency.
 	Definition map[string]interface{}
 
+	// Resource is the datamodel of depedency resource.
+	Resource conv.DataModelInterface
+
 	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]interface{}
 
@@ -60,50 +60,4 @@ type RendererOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]rp.ComputedValueReference
 	SecretValues   map[string]rp.SecretValueReference
-}
-
-// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
-// that wants to access it.
-//
-// This is surprisingly common. For example, it's common for access control/connection strings to apply
-// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
-// string that application code consumes will include a database name or queue name, etc. Or the different
-// libraries involved might support different connection string formats, and the user has to choose on.
-type SecretValueTransformer interface {
-	Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error)
-}
-
-//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/corerp/renderers github.com/project-radius/radius/pkg/corerp/renderers SecretValueClient
-type SecretValueClient interface {
-	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
-}
-
-// HACK remove this once we consolidate handlers between core and connector RP.
-var _ SecretValueTransformer = (*AzureTransformer)(nil)
-
-type AzureTransformer struct {
-}
-
-func (t *AzureTransformer) Transform(ctx context.Context, dependency RendererDependency, value interface{}) (interface{}, error) {
-	// Mongo uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
-	//
-	// The connection strings that come back from CosmosDB don't include the database name.
-	str, ok := value.(string)
-	if !ok {
-		return nil, errors.New("expected the connection string to be a string")
-	}
-
-	// These connection strings won't include the database
-	u, err := url.Parse(str)
-	if err != nil {
-		return "", fmt.Errorf("failed to parse connection string as a URL: %w", err)
-	}
-
-	databaseName, ok := dependency.ComputedValues["database"].(string)
-	if !ok {
-		return nil, errors.New("expected the databaseName to be a string")
-	}
-
-	u.Path = "/" + databaseName
-	return u.String(), nil
 }

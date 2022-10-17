@@ -33,6 +33,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -53,7 +54,7 @@ type DeploymentProcessor interface {
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
 }
 
-func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient renderers.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
+func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
 	return &deploymentProcessor{appmodel: appmodel, sp: sp, secretClient: secretClient, k8sClient: k8sClient, k8sClientSet: k8sClientSet}
 }
 
@@ -62,7 +63,7 @@ var _ DeploymentProcessor = (*deploymentProcessor)(nil)
 type deploymentProcessor struct {
 	appmodel     model.ApplicationModel
 	sp           dataprovider.DataStorageProvider
-	secretClient renderers.SecretValueClient
+	secretClient rp.SecretValueClient
 	// k8sClient is the Kubernetes controller runtime client.
 	k8sClient controller_runtime.Client
 	// k8sClientSet is the Kubernetes client.
@@ -75,7 +76,8 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	AppID           resources.ID // Application ID for which the resource is created
+	AppID           resources.ID            // Application ID for which the resource is created
+	RecipeData      connector_dm.RecipeData // Relevant only for connectors created with recipes to find relevant connections created by that recipe
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -306,16 +308,6 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 }
 
 func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]interface{}, error) {
-	computedValues := map[string]interface{}{}
-	for k, v := range dependency.ComputedValues {
-		computedValues[k] = v
-	}
-
-	rendererDependency := renderers.RendererDependency{
-		ResourceID:     dependency.ID,
-		ComputedValues: computedValues,
-	}
-
 	secretValues := map[string]interface{}{}
 	for k, secretReference := range dependency.SecretValues {
 		secret, err := dp.fetchSecret(ctx, dependency, secretReference)
@@ -331,7 +323,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency Reso
 				return nil, fmt.Errorf("could not find a secret transformer for %q", secretReference.Transformer)
 			}
 
-			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, rendererDependency, secret)
+			secret, err = outputResourceModel.SecretValueTransformer.Transform(ctx, dependency.ComputedValues, secret)
 			if err != nil {
 				return nil, fmt.Errorf("failed to transform secret %q of dependency resource %q: %W", k, dependency.ID.String(), err)
 			}
@@ -349,6 +341,24 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 		return reference.Value, nil
 	}
 
+	var recipeData = dependency.RecipeData
+
+	for _, id := range recipeData.Resources {
+		parsedID, err := resources.ParseResource(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
+		}
+		// Find resource that matches the expected Azure resource type
+		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
+			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
+			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	if recipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.Name)
+	}
+
 	var match *outputresource.OutputResource
 	for _, outputResource := range dependency.OutputResources {
 		if outputResource.LocalID == reference.LocalID {
@@ -364,7 +374,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 
 	if dp.secretClient == nil {
 		return nil, errors.New("no Azure credentials provided to fetch secret")
-
 	}
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
@@ -446,82 +455,88 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
 		obj := &datamodel.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+	case strings.ToLower(volume.ResourceType):
+		obj := &datamodel.VolumeResource{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := &connector_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := &connector_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := &connector_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := &connector_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(extenders.ResourceType):
 		obj := &connector_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := &connector_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := &connector_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := &connector_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := &connector_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	default:
 		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData connector_dm.RecipeData) (ResourceData, error) {
 	var appID resources.ID
 	if applicationID != "" {
-		parsedID, err := resources.Parse(applicationID)
+		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
@@ -540,6 +555,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
 		AppID:           appID,
+		RecipeData:      recipeData,
 	}, nil
 }
 
@@ -570,6 +586,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	// Now build the renderer dependecy out of these collected dependencies
 	rendererDependency := renderers.RendererDependency{
 		ResourceID:      dependency.ID,
+		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
 		OutputResources: outputResourceIdentity,
 	}
@@ -609,7 +626,7 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 
 // getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
 func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
-	envId, err := resources.Parse(environmentID)
+	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
 	}
@@ -636,7 +653,7 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 
-	if env.Properties != (datamodel.EnvironmentProperties{}) && env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
+	if env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
 		return env.Properties.Compute.KubernetesCompute.Namespace, nil
 	} else {
 		return "", fmt.Errorf("cannot find namespace in the environment resource")

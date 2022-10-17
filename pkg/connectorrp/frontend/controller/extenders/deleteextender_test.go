@@ -61,7 +61,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteExtender(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -114,7 +114,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mds.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -133,7 +133,7 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteExtender(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)

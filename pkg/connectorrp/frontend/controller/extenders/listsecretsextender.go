@@ -10,9 +10,9 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -31,8 +31,8 @@ func NewListSecretsExtender(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 // Run returns secrets values for the specified Extender resource
-func (ctrl *ListSecretsExtender) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	sCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	sCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource := &datamodel.Extender{}
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.

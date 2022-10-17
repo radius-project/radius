@@ -10,8 +10,8 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -40,7 +40,7 @@ func Test_DeletePlaneByID(t *testing.T) {
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 
-	expectedResponse := rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewNoContentResponse()
 
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)
@@ -70,7 +70,7 @@ func Test_DeletePlane_PlaneDoesNotExist(t *testing.T) {
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 
-	expectedResponse := rest.NewNoContentResponse()
+	expectedResponse := armrpc_rest.NewNoContentResponse()
 
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, response)

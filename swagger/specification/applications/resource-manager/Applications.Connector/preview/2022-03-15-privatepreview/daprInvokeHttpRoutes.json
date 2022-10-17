@@ -271,20 +271,21 @@
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called"
         },
-        "environment": {
-          "description": "Fully qualified resource ID for the environment that the connector is linked to",
-          "type": "string"
-        },
-        "application": {
-          "$ref": "global.json#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
         "appId": {
           "description": "The Dapr appId used for the route",
           "type": "string"
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
-      "required": ["environment", "appId"]
+      "required": [
+        "appId",
+        "environment"
+      ]
     }
   },
   "parameters": {

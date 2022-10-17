@@ -107,7 +107,7 @@ model PersistentVolume extends Volume {
   kind: "persistent";
 
   @doc("Container read/write access to the volume")
-  rbac?: VolumeRbac;
+  rbac?: VolumePermission;
 
   @doc("The source of the volume")
   source: string;
@@ -251,9 +251,9 @@ enum ManagedStoreKV {
   disk,
 }
 
-@knownValues(VolumeRbacKV)
-model VolumeRbac is string;
-enum VolumeRbacKV {
+@knownValues(VolumePermissionKV)
+model VolumePermission is string;
+enum VolumePermissionKV {
   read,
   write,
 }

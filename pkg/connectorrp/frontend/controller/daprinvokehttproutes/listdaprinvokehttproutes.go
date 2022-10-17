@@ -11,7 +11,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 
@@ -31,8 +30,8 @@ func NewListDaprInvokeHttpRoutes(opts ctrl.Options) (ctrl.Controller, error) {
 	return &ListDaprInvokeHttpRoutes{ctrl.NewBaseController(opts)}, nil
 }
 
-func (daprHttpRoute *ListDaprInvokeHttpRoutes) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (daprHttpRoute *ListDaprInvokeHttpRoutes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
 		RootScope:    serviceCtx.ResourceID.RootScope(),
@@ -50,7 +49,7 @@ func (daprHttpRoute *ListDaprInvokeHttpRoutes) Run(ctx context.Context, req *htt
 }
 
 func (daprHttpRoute *ListDaprInvokeHttpRoutes) createPaginatedList(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	items := []interface{}{}
 	for _, item := range result.Items {

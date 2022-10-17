@@ -55,7 +55,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		ctl, err := NewDeleteDaprSecretStore(opts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		err = resp.Apply(ctx, w, req)
 		require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !testcase.shouldFail {
-				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(nil)
+				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 				mStorageClient.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
@@ -124,7 +124,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 
 			ctl, err := NewDeleteDaprSecretStore(opts)
 			require.NoError(t, err)
-			resp, err := ctl.Run(ctx, req)
+			resp, err := ctl.Run(ctx, w, req)
 			require.NoError(t, err)
 			err = resp.Apply(ctx, w, req)
 			require.NoError(t, err)
@@ -153,6 +153,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 		_, daprSecretStoreDataModel, _ := getTestModels20220315privatepreview()
+		w := httptest.NewRecorder()
 
 		mStorageClient.
 			EXPECT().
@@ -163,7 +164,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 					Data:     daprSecretStoreDataModel,
 				}, nil
 			})
-		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
+		mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("deploymentprocessor: failed to delete the output resource"))
 
 		opts := ctrl.Options{
 			StorageClient: mStorageClient,
@@ -174,7 +175,7 @@ func TestDeleteDaprSecretStore_20220315PrivatePreview(t *testing.T) {
 
 		ctl, err := NewDeleteDaprSecretStore(opts)
 		require.NoError(t, err)
-		_, err = ctl.Run(ctx, req)
+		_, err = ctl.Run(ctx, w, req)
 		require.Error(t, err)
 	})
 }

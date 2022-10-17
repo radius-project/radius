@@ -11,6 +11,8 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -19,7 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateResourceGroup)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateResourceGroup)(nil)
 
 // CreateOrUpdateResourceGroup is the controller implementation to create/update a UCP resource group.
 type CreateOrUpdateResourceGroup struct {
@@ -27,11 +29,11 @@ type CreateOrUpdateResourceGroup struct {
 }
 
 // NewCreateOrUpdateResourceGroup creates a new CreateOrUpdateResourceGroup.
-func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateResourceGroup(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateResourceGroup{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	body, err := ctrl.ReadRequestBody(req)
 	if err != nil {
@@ -41,15 +43,15 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	var rg rest.ResourceGroup
 	err = json.Unmarshal(body, &rg)
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	rg.ID = path
 	rgExists := true
-	ID, err := resources.Parse(rg.ID)
+	ID, err := resources.ParseScope(rg.ID)
 	//cannot parse ID something wrong with request
 	if err != nil {
-		return rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, rg.ID)
@@ -72,7 +74,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
-	restResp := rest.NewOKResponse(rg)
+	restResp := armrpc_rest.NewOKResponse(rg)
 	if rgExists {
 		logger.Info(fmt.Sprintf("Updated resource group %s successfully", rg.Name))
 	} else {

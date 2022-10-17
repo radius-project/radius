@@ -72,7 +72,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this connector
-	databaseID, err := resources.Parse(properties.Resource)
+	databaseID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}

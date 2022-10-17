@@ -9,6 +9,13 @@ model BasicResourceProperties {
   status: ResourceStatus;
 }
 
+@doc("Basic properties of a Dapr component object.")
+model BasicResourceProperties {
+  @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
+  @visibility("read")
+  componentName: string;
+}
+
 @doc("Status of a resource.")
 model ResourceStatus {
   @doc("Properties of an output resource")

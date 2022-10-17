@@ -10,7 +10,8 @@ import (
 	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -18,14 +19,12 @@ import (
 const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
-	SecretStoreName       = "secretStoreName"
-	StateStoreName        = "stateStoreName"
-	DatabaseName          = "database"
 	ServerNameValue       = "server"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
 	Host                  = "host"
 	Port                  = "port"
+	ComponentNameKey      = "componentName"
 )
 
 var ErrorResourceOrServerNameMissingFromResource = errors.New("either the 'resource' or 'server'/'database' is required")
@@ -37,13 +36,17 @@ type Renderer interface {
 	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 type RenderOptions struct {
-	Namespace string
+	Namespace            string
+	RecipeProperties     datamodel.RecipeProperties
+	EnvironmentProviders coreDatamodel.Providers
 }
 
 type RendererOutput struct {
-	Resources      []outputresource.OutputResource
-	ComputedValues map[string]ComputedValueReference
-	SecretValues   map[string]rp.SecretValueReference
+	Resources            []outputresource.OutputResource
+	ComputedValues       map[string]ComputedValueReference
+	SecretValues         map[string]rp.SecretValueReference
+	RecipeData           datamodel.RecipeData
+	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
@@ -69,22 +72,9 @@ type ComputedValueReference struct {
 	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string
 
-	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
+	// JSONPointer specifies a JSON Pointer that can be used to look up the value in the resource's body.
 	JSONPointer string
-}
 
-// SecretValueTransformer allows transforming a secret value before passing it on to a Resource
-// that wants to access it.
-//
-// This is surprisingly common. For example, it's common for access control/connection strings to apply
-// to an 'account' primitive such as a ServiceBus namespace or CosmosDB account. The actual connection
-// string that application code consumes will include a database name or queue name, etc. Or the different
-// libraries involved might support different connection string formats, and the user has to choose on.
-type SecretValueTransformer interface {
-	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
-}
-
-//go:generate mockgen -destination=./mock_secretvalueclient.go -package=renderers -self_package github.com/project-radius/radius/pkg/connectorrp/renderers github.com/project-radius/radius/pkg/connectorrp/renderers SecretValueClient
-type SecretValueClient interface {
-	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
+	// Resource type of the resource to look up the property from
+	ProviderResourceType string
 }

@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 type DaprPubSubBrokerKind string
@@ -33,7 +34,7 @@ type DaprPubSubBroker struct {
 	ConnectorMetadata
 }
 
-func (daprPubSub DaprPubSubBroker) ResourceTypeName() string {
+func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 	return "Applications.Connector/daprPubSubBrokers"
 }
 
@@ -49,10 +50,12 @@ type DaprPubSubAzureServiceBusResourceProperties struct {
 
 // DaprPubSubBrokerProperties represents the properties of DaprPubSubBroker resource.
 type DaprPubSubBrokerProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
+	rp.BasicDaprResourceProperties
 	ProvisioningState         v1.ProvisioningState                        `json:"provisioningState,omitempty"`
 	Kind                      DaprPubSubBrokerKind                        `json:"kind"`
 	Topic                     string                                      `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	DaprPubSubGeneric         DaprPubSubGenericResourceProperties         `json:"daprPubSubGeneric"`
 	DaprPubSubAzureServiceBus DaprPubSubAzureServiceBusResourceProperties `json:"daprPubSubAzureServiceBus"`
+	Recipe                    ConnectorRecipe                             `json:"recipe,omitempty"`
 }

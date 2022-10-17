@@ -93,7 +93,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Type:     resourcekinds.DaprComponent,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8s),
+			ResourceHandler: handlers.NewDaprComponentHandler(k8s),
 		},
 	}
 
@@ -151,15 +151,18 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		},
 	}
 
+	recipeModel := RecipeModel{
+		RecipeHandler: handlers.NewRecipeHandler(arm),
+	}
+
 	err := checkForDuplicateRegistrations(radiusResourceModel, outputResourceModel)
 	if err != nil {
 		return ApplicationModel{}, err
 	}
-
 	if arm != nil {
 		outputResourceModel = append(outputResourceModel, azureOutputResourceModel...)
 	}
-	return NewModel(radiusResourceModel, outputResourceModel, supportedProviders), nil
+	return NewModel(recipeModel, radiusResourceModel, outputResourceModel, supportedProviders), nil
 }
 
 // checkForDuplicateRegistrations checks for duplicate registrations with the same resource type
@@ -168,7 +171,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, r := range radiusResources {
 		rendererRegistration[r.ResourceType]++
 		if rendererRegistration[r.ResourceType] > 1 {
-			return fmt.Errorf("Multiple resource renderers registered for resource type: %s", r.ResourceType)
+			return fmt.Errorf("multiple resource renderers registered for resource type: %s", r.ResourceType)
 		}
 	}
 
@@ -176,7 +179,7 @@ func checkForDuplicateRegistrations(radiusResources []RadiusResourceModel, outpu
 	for _, o := range outputResources {
 		outputResourceHandlerRegistration[o.ResourceType]++
 		if outputResourceHandlerRegistration[o.ResourceType] > 1 {
-			return fmt.Errorf("Multiple output resource handlers registered for resource type: %s", o.ResourceType)
+			return fmt.Errorf("multiple output resource handlers registered for resource type: %s", o.ResourceType)
 		}
 	}
 	return nil

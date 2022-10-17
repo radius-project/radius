@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -53,7 +54,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -78,7 +79,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -100,7 +101,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, outputresource.LocalIDDaprComponent, outputResource.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
-		"secretStoreName": {
+		renderers.ComponentNameKey: {
 			Value: "test-app-test-secret-store",
 		},
 	}
@@ -113,7 +114,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
 				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "Applications.Connector/daprSecretStores",
@@ -140,7 +141,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -165,7 +166,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -193,7 +194,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: applicationID,
 				Environment: environmentID,
 			},
@@ -222,7 +223,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
@@ -251,7 +252,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			Type: "Applications.Connector/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: environmentID,
 			},
 			Type:    ResourceType,
@@ -263,6 +264,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 		},
 	}
 
-	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	rendererOutput, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
+	require.Equal(t, kubernetes.MakeResourceName("", "test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
 }

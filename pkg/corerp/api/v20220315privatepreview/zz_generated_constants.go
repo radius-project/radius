@@ -14,6 +14,40 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// AzureIdentityKind - Identity Kind
+type AzureIdentityKind string
+
+const (
+	AzureIdentityKindWorkload AzureIdentityKind = "Workload"
+	AzureIdentityKindSystemAssigned AzureIdentityKind = "SystemAssigned"
+)
+
+// PossibleAzureIdentityKindValues returns the possible values for the AzureIdentityKind const type.
+func PossibleAzureIdentityKindValues() []AzureIdentityKind {
+	return []AzureIdentityKind{	
+		AzureIdentityKindWorkload,
+		AzureIdentityKindSystemAssigned,
+	}
+}
+
+// CertType - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+type CertType string
+
+const (
+	CertTypeCertificate CertType = "certificate"
+	CertTypePublickey CertType = "publickey"
+	CertTypePrivatekey CertType = "privatekey"
+)
+
+// PossibleCertTypeValues returns the possible values for the CertType const type.
+func PossibleCertTypeValues() []CertType {
+	return []CertType{	
+		CertTypeCertificate,
+		CertTypePublickey,
+		CertTypePrivatekey,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 
@@ -31,6 +65,40 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
 		CreatedByTypeUser,
+	}
+}
+
+// Encoding - Encoding format. Default utf-8
+type Encoding string
+
+const (
+	EncodingUTF8 Encoding = "utf-8"
+	EncodingHex Encoding = "hex"
+	EncodingBase64 Encoding = "base64"
+)
+
+// PossibleEncodingValues returns the possible values for the Encoding const type.
+func PossibleEncodingValues() []Encoding {
+	return []Encoding{	
+		EncodingUTF8,
+		EncodingHex,
+		EncodingBase64,
+	}
+}
+
+// Format - Certificate format. Default pem
+type Format string
+
+const (
+	FormatPem Format = "pem"
+	FormatPfx Format = "pfx"
+)
+
+// PossibleFormatValues returns the possible values for the Format const type.
+func PossibleFormatValues() []Format {
+	return []Format{	
+		FormatPem,
+		FormatPfx,
 	}
 }
 
@@ -110,19 +178,19 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
-// PossibleVolumeRbacValues returns the possible values for the VolumeRbac const type.
-func PossibleVolumeRbacValues() []VolumeRbac {
-	return []VolumeRbac{	
-		VolumeRbacRead,
-		VolumeRbacWrite,
+// PossibleVolumePermissionValues returns the possible values for the VolumePermission const type.
+func PossibleVolumePermissionValues() []VolumePermission {
+	return []VolumePermission{	
+		VolumePermissionRead,
+		VolumePermissionWrite,
 	}
 }
 

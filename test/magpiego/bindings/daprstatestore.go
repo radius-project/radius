@@ -10,10 +10,10 @@ import (
 
 func DaprStateStoreBinding(envParams map[string]string) BindingStatus {
 	// From https://docs.dapr.io/developing-applications/sdks/go/go-client/
-	stateStoreName := envParams["STATESTORENAME"]
+	stateStoreName := envParams["COMPONENTNAME"]
 	if stateStoreName == "" {
-		log.Println("STATESTORENAME is required")
-		return BindingStatus{false, "STATESTORENAME is required"}
+		log.Println("COMPONENTNAME is required")
+		return BindingStatus{false, "COMPONENTNAME is required"}
 	}
 	client, err := dapr.NewClientWithPort(os.Getenv("DAPR_GRPC_PORT"))
 	if err != nil {

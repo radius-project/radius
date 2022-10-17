@@ -8,8 +8,6 @@ package v1
 import (
 	"net/http"
 	"strings"
-
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 const (
@@ -106,7 +104,8 @@ const (
 
 // IsTerminal returns true if given Provisioning State is in a terminal state.
 func (state ProvisioningState) IsTerminal() bool {
-	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled
+	// If state is empty, it is the resource created by synchronous API and treated as a terminal state.
+	return state == ProvisioningStateSucceeded || state == ProvisioningStateFailed || state == ProvisioningStateCanceled || state == ""
 }
 
 // TrackedResource represents the common tracked resource.
@@ -131,43 +130,40 @@ type InternalMetadata struct {
 	CreatedAPIVersion string `json:"createdApiVersion"`
 	// UpdatedAPIVersion is an api-version used when updating this model.
 	UpdatedAPIVersion string `json:"updatedApiVersion,omitempty"`
+	// AsyncProvisioningState is the provisioning state for async operation.
+	AsyncProvisioningState ProvisioningState `json:"provisioningState,omitempty"`
 }
 
-// BasicResourceProperties is the basic resource model for radius resources.
-type BasicResourceProperties struct {
-	// Environment represents the id of environment resource.
-	Environment string `json:"environment,omitempty"`
-	// Application represents the id of application resource.
-	Application string `json:"application,omitempty"`
+// BaseResource represents common resource properties used for all resources.
+type BaseResource struct {
+	TrackedResource
+	InternalMetadata
 
-	// Status represents the resource status.
-	Status ResourceStatus `json:"status,omitempty"`
+	// SystemData is the systemdata which includes creation/modified dates.
+	SystemData SystemData `json:"systemData,omitempty"`
 }
 
-// EqualLinkedResource returns true if the resource belongs to the same environment and application.
-func (b BasicResourceProperties) EqualLinkedResource(prop BasicResourceProperties) bool {
-	return strings.EqualFold(b.Application, prop.Application) && strings.EqualFold(b.Environment, prop.Environment)
+// UpdateMetadata updates the default metadata with new request context and systemdata in old resource.
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext) {
+	b.ID = ctx.ResourceID.String()
+	b.Name = ctx.ResourceID.Name()
+	b.Type = ctx.ResourceID.Type()
+	b.Location = ctx.Location
+	b.TenantID = ctx.HomeTenantID
+	b.CreatedAPIVersion = b.UpdatedAPIVersion
 }
 
-type ResourceStatus struct {
-	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
+// GetSystemdata gets systemdata.
+func (b *BaseResource) GetSystemData() *SystemData {
+	return &b.SystemData
 }
 
-func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
-	in.OutputResources = out.OutputResources
+// ProvisioningState gets the provisioning state.
+func (b *BaseResource) ProvisioningState() ProvisioningState {
+	return b.InternalMetadata.AsyncProvisioningState
 }
 
-// OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
-func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
-	var externalOutputResources []map[string]interface{}
-	for _, or := range outputResources {
-		externalOutput := map[string]interface{}{
-			"LocalID":  or.LocalID,
-			"Provider": or.ResourceType.Provider,
-			"Identity": or.Identity.Data,
-		}
-		externalOutputResources = append(externalOutputResources, externalOutput)
-	}
-
-	return externalOutputResources
+// SetProvisioningState sets the privisioning state of the resource.
+func (b *BaseResource) SetProvisioningState(state ProvisioningState) {
+	b.InternalMetadata.AsyncProvisioningState = state
 }

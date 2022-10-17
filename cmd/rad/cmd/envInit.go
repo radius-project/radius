@@ -7,18 +7,17 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
+	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -44,8 +43,9 @@ func init() {
 	envInitCmd.PersistentFlags().StringP("namespace", "n", "default", "Specify the namespace to use for the environment into which application resources are deployed")
 	envInitCmd.PersistentFlags().BoolP("force", "f", false, "Overwrite existing workspace if present")
 
-	setup.RegisterPersistantChartArgs(envInitCmd)
-	setup.RegistePersistantAzureProviderArgs(envInitCmd)
+	setup.RegisterPersistentChartArgs(envInitCmd)
+	setup.RegisterPersistentAzureProviderArgs(envInitCmd)
+	setup.RegisterPersistentAWSProviderArgs(envInitCmd)
 }
 
 type EnvKind int
@@ -72,7 +72,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := selectNamespace(cmd, "default", interactive)
+	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,13 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive)
+	azProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
+	if err != nil {
+		return err
+	}
+
+	// Configure AWS provider for cloud resources if specified
+	awsProvider, err := setup.ParseAWSProviderFromArgs(cmd, interactive)
 	if err != nil {
 		return err
 	}
@@ -104,14 +110,16 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := selectEnvironmentName(cmd, defaultEnvName, interactive)
+	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
 
 	params := &EnvironmentParams{
-		Name:      environmentName,
-		Providers: &environments.Providers{AzureProvider: azureProvider},
+		Name: environmentName,
+		Providers: &environments.Providers{
+			AzureProvider: azProvider,
+			AWSProvider:   awsProvider},
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -123,7 +131,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			AppCoreImage:           chartArgs.AppCoreImage,
 			AppCoreTag:             chartArgs.AppCoreTag,
 			PublicEndpointOverride: chartArgs.PublicEndpointOverride,
-			AzureProvider:          azureProvider,
+			AzureProvider:          azProvider,
+			AWSProvider:            awsProvider,
 		},
 	}
 
@@ -141,7 +150,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 			return err
 		}
 		output.CompleteStep(step)
-		k8sGoClient, _, _, err = createKubernetesClients(cluster.ContextName)
+		k8sGoClient, _, _, err = kubernetes.CreateKubernetesClients(cluster.ContextName)
 		if err != nil {
 			return err
 		}
@@ -154,7 +163,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		}
 
 	case Kubernetes:
-		k8sGoClient, _, contextName, err = createKubernetesClients("")
+		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
 		if err != nil {
 			return err
 		}
@@ -233,12 +242,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	foundExistingRadius, err := setup.Install(cmd.Context(), clusterOptions, contextName)
+	foundExistingRadius, err := helm.Install(cmd.Context(), clusterOptions, contextName)
 	if err != nil {
 		return err
 	}
 
-	if (azureProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
+	if (azProvider != nil) && !chartArgs.Reinstall && foundExistingRadius {
 		return fmt.Errorf("error: adding a cloud provider requires a reinstall of the Radius services. Specify '--reinstall' for the new arguments to take effect")
 	}
 
@@ -247,9 +256,9 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	//If existing radius control plane, retrieve az provider subscription and resourcegroup, and use that unless a --reinstall is specified
-	var azProviderFromInstall *azure.Provider
+	var azProviderConfigFromInstall *azure.Provider
 	if foundExistingRadius {
-		azProviderFromInstall, err = helm.GetAzProvider(cliOptions.Radius, contextName)
+		azProviderConfigFromInstall, err = helm.GetAzProvider(cliOptions.Radius, contextName)
 		if err != nil {
 			return err
 		}
@@ -281,22 +290,35 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		Name:     workspaceName,
 	}
 
-	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no provider yet.
-	//if no reinstall, then make sure to preserve the provider from existing installation
-	provider := workspaces.AzureProvider{}
-	if azureProvider != nil {
-		provider.SubscriptionID = azureProvider.SubscriptionID
-		provider.ResourceGroup = azureProvider.ResourceGroup
+	//if reinstall is specified then use azprovider if provided, or if not, this is an install with no azProviderConfig yet.
+	//if no reinstall, then make sure to preserve the azProviderConfig from existing installation
+	var azProviderConfig workspaces.AzureProvider
+	if azProvider != nil {
+		azProviderConfig = workspaces.AzureProvider{
+			SubscriptionID: azProvider.SubscriptionID,
+			ResourceGroup:  azProvider.ResourceGroup,
+		}
 
-	} else if azProviderFromInstall != nil && !chartArgs.Reinstall {
-		provider.SubscriptionID = azProviderFromInstall.SubscriptionID
-		provider.ResourceGroup = azProviderFromInstall.ResourceGroup
+	} else if azProviderConfigFromInstall != nil && !chartArgs.Reinstall {
+		azProviderConfig = workspaces.AzureProvider{
+			SubscriptionID: azProviderConfigFromInstall.SubscriptionID,
+			ResourceGroup:  azProviderConfigFromInstall.ResourceGroup,
+		}
+	}
+
+	var awsProviderConfig workspaces.AWSProvider
+	if awsProvider != nil {
+		awsProviderConfig = workspaces.AWSProvider{
+			Region:    awsProvider.TargetRegion,
+			AccountId: awsProvider.AccountId,
+		}
 	}
 
 	err = cli.EditWorkspaces(cmd.Context(), config, func(section *cli.WorkspaceSection) error {
 		section.Default = workspaceName
 		section.Items[strings.ToLower(workspaceName)] = *workspace
-		UpdateAzProvider(section, provider, contextName)
+		cli.UpdateAzProvider(section, azProviderConfig, contextName)
+		cli.UpdateAWSProvider(section, awsProviderConfig, contextName)
 		return nil
 	})
 	if err != nil {
@@ -314,12 +336,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	step = output.BeginStep("Creating Environment...")
 
-	scopeId, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.ParseScope(workspace.Scope)
 	if err != nil {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace, azProviderConfig.SubscriptionID, azProviderConfig.ResourceGroup)
 	if err != nil {
 		return err
 	}
@@ -340,17 +362,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func UpdateAzProvider(section *cli.WorkspaceSection, provider workspaces.AzureProvider, contextName string) {
-	for _, workspaceItem := range section.Items {
-		if workspaceItem.IsSameKubernetesContext(contextName) {
-			workspaceName := workspaceItem.Name
-			workspaceItem.ProviderConfig.Azure = &workspaces.AzureProvider{ResourceGroup: provider.ResourceGroup, SubscriptionID: provider.SubscriptionID}
-			section.Items[workspaceName] = workspaceItem
-		}
-	}
-}
-
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
 	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create environment client: %w", err)
@@ -370,6 +382,14 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		},
 	}
 
+	if subscriptionID != "" && resourceGroup != "" {
+		toCreate.Properties.Providers = &coreRpApps.Providers{
+			Azure: &coreRpApps.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
+			},
+		}
+	}
+
 	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
 
 	envClient, err := coreRpApps.NewEnvironmentsClient(rootScope, &aztoken.AnonymousCredential{}, connections.GetClientOptions(baseURL, transporter))
@@ -383,85 +403,6 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 	}
 
 	return *resp.ID, nil
-}
-
-func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
-	}
-
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
-	}
-
-	client, _, err := kubernetes.CreateTypedClient(contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
-}
-
-func selectNamespace(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
-	var val string
-	var err error
-	if interactive {
-		promptMsg := fmt.Sprintf("Enter a namespace name to deploy apps into [%s]:", defaultVal)
-		val, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.EmptyValidator)
-		if err != nil {
-			return "", err
-		}
-		fmt.Printf("Using %s as namespace name\n", val)
-	} else {
-		val, _ = cmd.Flags().GetString("namespace")
-		if val == "" {
-			output.LogInfo("No namespace name provided, using: %v", defaultVal)
-			val = defaultVal
-		}
-	}
-	return val, nil
-}
-
-func selectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool) (string, error) {
-	var envStr string
-	var err error
-
-	envStr, err = cmd.Flags().GetString("environment")
-	if err != nil {
-		return "", err
-	}
-	if interactive && envStr == "" {
-		promptMsg := fmt.Sprintf("Enter an environment name [%s]:", defaultVal)
-		envStr, err = prompt.TextWithDefault(promptMsg, &defaultVal, prompt.ResourceName)
-		if err != nil {
-			return "", err
-		}
-		fmt.Printf("Using %s as environment name\n", envStr)
-	} else {
-		if envStr == "" {
-			output.LogInfo("No environment name provided, using: %v", defaultVal)
-			envStr = defaultVal
-		}
-		matched, msg, _ := prompt.ResourceName(envStr)
-		if !matched {
-			return "", fmt.Errorf("%s %s. Use --environment option to specify the valid name", envStr, msg)
-		}
-	}
-
-	return envStr, nil
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {

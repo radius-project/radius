@@ -20,37 +20,58 @@ const (
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
 func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
-	// TODO: Improve the validation.
+
 	converted := &datamodel.Environment{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				CreatedAPIVersion:      Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
-		Properties: datamodel.EnvironmentProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			CreatedAPIVersion: Version,
-			UpdatedAPIVersion: Version,
-		},
+		Properties: datamodel.EnvironmentProperties{},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
 	if err != nil {
 		return nil, err
 	}
-
 	converted.Properties.Compute = *envCompute
+
+	if src.Properties.Recipes != nil {
+		recipes := make(map[string]datamodel.EnvironmentRecipeProperties)
+		for key, val := range src.Properties.Recipes {
+			if val != nil {
+				recipes[key] = datamodel.EnvironmentRecipeProperties{
+					ConnectorType: to.String(val.ConnectorType),
+					TemplatePath:  to.String(val.TemplatePath),
+				}
+			}
+		}
+
+		converted.Properties.Recipes = recipes
+	}
+
+	if src.Properties.Providers != nil {
+		if src.Properties.Providers.Azure != nil {
+			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
+				Scope: to.String(src.Properties.Providers.Azure.Scope),
+			}
+		}
+	}
 
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
 func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
-	// TODO: Improve the validation.
 	env, ok := src.(*datamodel.Environment)
 	if !ok {
 		return conv.ErrInvalidModelConversion
@@ -63,12 +84,33 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
-		ProvisioningState: fromProvisioningStateDataModel(env.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
 	if dst.Properties.Compute == nil {
 		return conv.ErrInvalidModelConversion
+	}
+
+	if env.Properties.Recipes != nil {
+		recipes := make(map[string]*EnvironmentRecipeProperties)
+		for key, val := range env.Properties.Recipes {
+			recipes[key] = &EnvironmentRecipeProperties{
+				ConnectorType: to.StringPtr(val.ConnectorType),
+				TemplatePath:  to.StringPtr(val.TemplatePath),
+			}
+		}
+		dst.Properties.Recipes = recipes
+	}
+
+	if env.Properties.Providers != (datamodel.Providers{}) {
+		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
+			dst.Properties.Providers = &Providers{
+				Azure: &ProvidersAzure{
+					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
+				},
+			}
+		}
 	}
 
 	return nil
@@ -89,8 +131,8 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 		return &datamodel.EnvironmentCompute{
 			Kind: k,
 			KubernetesCompute: datamodel.KubernetesComputeProperties{
-				ResourceID: *v.ResourceID,
-				Namespace:  *v.Namespace,
+				ResourceID: to.String(v.ResourceID),
+				Namespace:  to.String(v.Namespace),
 			},
 		}, nil
 	default:

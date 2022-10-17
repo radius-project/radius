@@ -40,7 +40,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 	}
 
 	// TODO: for right now we assume the environment is in the default resource group.
-	scope, err := resources.Parse(workspace.Scope)
+	scope, err := resources.ParseScope(workspace.Scope)
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func switchEnv(cmd *cobra.Command, args []string) error {
 		output.LogInfo("Switching default environment to %v", environmentName)
 	} else {
 		// Parse the environment ID to get the name
-		existing, err := resources.Parse(workspace.Environment)
+		existing, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return err
 		}

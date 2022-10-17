@@ -9,18 +9,13 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
-	secrets := datamodel.RabbitMQSecrets{}
-	if src.Properties.Secrets != nil {
-		secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
-		}
-	}
 	converted := &datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
 			ID:       to.String(src.ID),
@@ -31,18 +26,25 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: to.String(src.Properties.Environment),
 					Application: to.String(src.Properties.Application),
 				},
 				ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 				Queue:             to.String(src.Properties.Queue),
 			},
-			Secrets: secrets,
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Secrets != nil {
+		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
+			ConnectionString: to.String(src.Properties.Secrets.ConnectionString),
+		}
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -58,7 +60,7 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 			Tags:     to.StringMap(src.Tags),
 		},
 		Properties: datamodel.RabbitMQMessageQueueResponseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
@@ -68,6 +70,9 @@ func (src *RabbitMQMessageQueueResponseResource) ConvertTo() (conv.DataModelInte
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
+	}
+	if src.Properties.Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
 	}
 	return converted, nil
 }
@@ -87,7 +92,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
@@ -98,6 +103,9 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 		dst.Properties.Secrets = &RabbitMQSecrets{
 			ConnectionString: to.StringPtr(rabbitmq.Properties.Secrets.ConnectionString),
 		}
+	}
+	if rabbitmq.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 
 	return nil
@@ -118,12 +126,15 @@ func (dst *RabbitMQMessageQueueResponseResource) ConvertFrom(src conv.DataModelI
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	dst.Properties = &RabbitMQMessageQueueResponseProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 		},
 		ProvisioningState: fromProvisioningStateDataModel(rabbitmq.Properties.ProvisioningState),
 		Environment:       to.StringPtr(rabbitmq.Properties.Environment),
 		Application:       to.StringPtr(rabbitmq.Properties.Application),
 		Queue:             to.StringPtr(rabbitmq.Properties.Queue),
+	}
+	if rabbitmq.Properties.Recipe.Name != "" {
+		dst.Properties.Recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 	}
 	return nil
 }

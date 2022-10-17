@@ -60,6 +60,18 @@
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Core/httpRoutes' (ReadOnly, DeployTimeConstant): The resource type
 
+## Resource Applications.Core/volumes@2022-03-15-privatepreview
+* **Valid Scope(s)**: Unknown
+### Properties
+* **apiVersion**: '2022-03-15-privatepreview' (ReadOnly, DeployTimeConstant): The resource api version
+* **id**: string (ReadOnly, DeployTimeConstant): The resource id
+* **location**: string (Required): The geo-location where the resource lives
+* **name**: string (Required, DeployTimeConstant): The resource name
+* **properties**: [VolumeProperties](#volumeproperties) (Required)
+* **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
+* **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
+* **type**: 'Applications.Core/volumes' (ReadOnly, DeployTimeConstant): The resource type
+
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
@@ -81,9 +93,10 @@
 
 ## ContainerProperties
 ### Properties
-* **application**: string (Required): Specifies resource id of the application
+* **application**: string (Required): Specifies the resource id of the application
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
+* **environment**: string: The resource id of the environment linked to the resource
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -177,7 +190,7 @@
 ### PersistentVolume
 #### Properties
 * **kind**: 'persistent' (Required): The Volume kind
-* **rbac**: 'read' | 'write': Container read/write access to the volume
+* **permission**: 'read' | 'write': Container read/write access to the volume
 * **source**: string (Required): The source of the volume
 
 
@@ -212,7 +225,9 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
+* **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 
 ## EnvironmentCompute
 * **Discriminator**: kind
@@ -225,6 +240,24 @@
 * **namespace**: string (Required): The namespace to use for the environment.
 
 
+## Providers
+### Properties
+* **azure**: [ProvidersAzure](#providersazure): Azure cloud provider configuration
+
+## ProvidersAzure
+### Properties
+* **scope**: string: Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+
+## EnvironmentPropertiesRecipes
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [EnvironmentRecipeProperties](#environmentrecipeproperties)
+
+## EnvironmentRecipeProperties
+### Properties
+* **connectorType**: string (Required): Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+* **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
+
 ## TrackedResourceTags
 ### Properties
 ### Additional Properties
@@ -232,7 +265,8 @@
 
 ## GatewayProperties
 ### Properties
-* **application**: string (Required): The resource id of the application linked to Gateway resource.
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
 * **hostname**: [GatewayPropertiesHostname](#gatewaypropertieshostname): Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 * **internal**: bool: Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
@@ -258,13 +292,80 @@
 
 ## HttpRouteProperties
 ### Properties
-* **application**: string (Required): The resource id of the application linked to HTTP Route resource.
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
 * **hostname**: string: The internal hostname accepting traffic for the HTTP Route. Readonly.
 * **port**: int: The port number for the HTTP Route. Defaults to 80. Readonly.
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **scheme**: string: The scheme used for traffic. Readonly.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **url**: string: A stable URL that that can be used to route traffic to a resource. Readonly.
+
+## TrackedResourceTags
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## VolumeProperties
+* **Discriminator**: kind
+
+### Base Properties
+* **application**: string (Required): Specifies the resource id of the application
+* **environment**: string: The resource id of the environment linked to the resource
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### AzureKeyVaultVolumeProperties
+#### Properties
+* **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
+* **identity**: [AzureIdentity](#azureidentity) (Required)
+* **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
+* **kind**: 'azure.com.keyvault' (Required): The volume kind
+* **resource**: string (Required): The ID of the keyvault to use for this volume resource
+* **secrets**: [AzureKeyVaultVolumePropertiesSecrets](#azurekeyvaultvolumepropertiessecrets): The KeyVault secrets that this volume exposes
+
+
+## AzureKeyVaultVolumePropertiesCertificates
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [CertificateObjectProperties](#certificateobjectproperties)
+
+## CertificateObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **certType**: 'certificate' | 'privatekey' | 'publickey': Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
+* **encoding**: 'base64' | 'hex' | 'utf-8': Encoding format. Default utf-8
+* **format**: 'pem' | 'pfx': Certificate format. Default pem
+* **name**: string (Required): The name of the certificate
+* **version**: string: Certificate version
+
+## AzureIdentity
+### Properties
+* **clientId**: string: The client ID for workload and user assigned managed identity
+* **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
+* **tenantId**: string: The tenant ID for workload identity.
+
+## AzureKeyVaultVolumePropertiesKeys
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [KeyObjectProperties](#keyobjectproperties)
+
+## KeyObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **name**: string (Required): The name of the key
+* **version**: string: Key version
+
+## AzureKeyVaultVolumePropertiesSecrets
+### Properties
+### Additional Properties
+* **Additional Properties Type**: [SecretObjectProperties](#secretobjectproperties)
+
+## SecretObjectProperties
+### Properties
+* **alias**: string: File name when written to disk.
+* **encoding**: 'base64' | 'hex' | 'utf-8': Encoding format. Default utf-8
+* **name**: string (Required): The name of the secret
+* **version**: string: Secret version
 
 ## TrackedResourceTags
 ### Properties

@@ -363,8 +363,189 @@
             }
           }
         }
+      },
+    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
+      "get": {
+        "description": "Get name of the secret that is holding credentials for the plane instance",
+        "operationId": "Credentials_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialsGet": {
+            "$ref": "./examples/CredentialsGet.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "#/parameters/CredentialNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credential resource. Secrets not displayed",
+            "schema": {
+              "$ref": "#/definitions/CredentialResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
+      },
+      "put": {
+        "description": "Create or update a Credential.",
+        "operationId": "Credential_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialPut": {
+            "$ref": "./examples/CredentialsPut.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "name": "Credential",
+            "description": "Credential details",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/CredentialResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The resource was updated successfully.",
+            "schema": {
+              "$ref": "#/definitions/CredentialResource"
+            }
+          },
+          "201": {
+            "description": "The resource was created successfully.",
+            "schema": {
+              "$ref": "#/definitions/CredentialResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Delete credential resource for this plane instance",
+        "operationId": "Credentials_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialsGet": {
+            "$ref": "./examples/CredentialsDelete.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "#/parameters/CredentialNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The credential was successfully deleted."
+          },
+          "204": {
+            "description": "The credential does not exist."
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
       }
+
     },
+
+    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials": {
+      "get": {
+        "description": "List the credentials for this plane instance",
+        "operationId": "Credentials_List",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "CredentialsGet": {
+            "$ref": "./examples/CredentialsList.json"
+          }
+        },
+        "tags": [
+          "Credentials"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/parameters/PlaneTypeParameter"
+          },
+          {
+            "$ref": "#/parameters/PlaneNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Credentials list.",
+            "schema": {
+              "$ref": "#/definitions/CredentialResourceList"
+            }
+          },
+          "default": {
+            "description": "Error response describing why the operation failed.",
+            "schema": {
+              "$ref": "#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false
+      }
+    }
+  },
     "definitions": {
       "PlaneResourceList": {
         "description": "The list of planes.",
@@ -444,31 +625,100 @@
       "ResourceGroupResource": {
         "description": "UCP ResourceGroup.",
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          }
+        ]
+      },
+      "CredentialResourceList": {
+        "description": "The list of credentials.",
+        "type": "object",
         "properties": {
-          "properties": {
-            "x-ms-client-flatten": true,
-            "$ref": "#/definitions/ResourceGroupResourceProperties"
+          "value": {
+            "description": "The list of credentials.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/CredentialResource"
+            }
           }
         }
       },
-      "ResourceGroupResourceProperties": {
-        "description": "UCP ResourceGroup properties",
-        "type": "object",
+      "CredentialResource": {
+        "description": "Credential to a plane instance",
+        "type": "object",        
         "required": [
-          "name"
+          "properties"
         ],
         "properties": {
-          "name": {
-            "$ref": "#/definitions/ResourceGroupName",
-            "readOnly": true
+          "properties": {
+            "$ref": "#/definitions/CredentialResourceProperties"
           }
         }
       },
-      "ResourceGroupName": {
+      "CredentialResourceProperties": {
+        "description": "Credential properties",
+        "type": "object",
+        "discriminator": "kind",
+        "required": [
+          "kind",
+          "storage"
+        ],
+        "properties": {
+          "kind": {
+            "description": "The kind of secret",
+            "type": "string"
+          },
+          "storage": {
+            "required": [
+              "kind"
+            ],
+            "properties": {
+              "kind": {
+                "$ref": "#/definitions/CredentialStorageKind"
+              }
+            }
+          }
+        }
+      },
+      "AzureServicePrincipalProperties":{
+        "additionalProperties": false,
+        "allOf": [{
+            "$ref": "#/definitions/CredentialResourceProperties"
+        }],
+        "properties" : {
+          "clientId": {
+            "description": "clientId when the CredentialKind is ServicePrincipal",
+            "type": "string"
+          },
+          "secret": {
+            "description": "secret when the CredentialKind is ServicePrincipal",
+            "type": "string",
+            "x-ms-secret": true
+          },
+          "tenantId": {
+            "description": "tenantId when the CredentialKind is ServicePrincipal",
+            "type": "string"
+          }
+        },
+        "required": [
+           "clientId",
+           "secret",
+           "tenantId"
+        ],
+        "type": "object",
+        "x-ms-discriminator-value": "ServicePrincipal"
+      },
+      "CredentialStorageKind": {
         "type": "string",
-        "description": "The name of the resource group",
-        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-        "maxLength": 63
+        "description": "credential store kinds supported.",
+        "enum": [
+          "Kubernetes"
+        ],
+        "x-ms-enum": {
+          "name": "CredentialStorageKind",
+          "modelAsString": true
+        }
       },
       "ErrorDetail": {
         "description": "The error detail.",
@@ -567,6 +817,16 @@
         "required": true,
         "type": "string",
         "description": "The name of the resource group",
+        "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "maxLength": 63,
+        "x-ms-parameter-location": "method"
+      },
+      "CredentialNameParameter": {
+        "name": "credentialName",
+        "in": "path",
+        "required": true,
+        "type": "string",
+        "description": "The name of the credential",
         "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
         "maxLength": 63,
         "x-ms-parameter-location": "method"

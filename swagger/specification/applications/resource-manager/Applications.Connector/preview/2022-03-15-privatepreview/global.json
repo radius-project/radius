@@ -66,6 +66,27 @@
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of the resource",
           "readOnly": true
+        },
+        "environment": {
+          "description": "Fully qualified resource ID for the environment that the connector is linked to",
+          "type": "string"
+        },
+        "application": {
+          "$ref": "#/definitions/Application"
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "BasicDaprResourceProperties": {
+      "description": "Basic properties of a Dapr component object.",
+      "type": "object",
+      "properties": {
+        "componentName": {
+          "type": "string",
+          "description": "The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.",
+          "readOnly": true
         }
       }
     },
@@ -85,6 +106,28 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "Recipe": {
+      "description": "The recipe used to automatically deploy underlying infrastructure for a connector",
+      "type": "object",
+      "properties": {
+        "name": {
+          "description": "The name of the recipe within the environment to use",
+          "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters to pass into the recipe at deployment",
+          "type": "object",
+          "example": [
+            {
+              "port": 6060
+            }
+          ]
+        }
+      },
+      "required": [
+        "name"
+      ]
     }
   },
   "parameters": {

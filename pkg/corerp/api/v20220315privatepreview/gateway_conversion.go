@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -37,24 +38,26 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 
 	converted := &datamodel.Gateway{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
+			},
 		},
 		Properties: datamodel.GatewayProperties{
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: to.String(src.Properties.Application),
 			},
 			Hostname: hostname,
 			Routes:   routes,
 			URL:      to.String(src.Properties.URL),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 
@@ -96,9 +99,9 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(g.Tags)
 	dst.Properties = &GatewayProperties{
 		Status: &ResourceStatus{
-			OutputResources: v1.BuildExternalOutputResources(g.Properties.Status.OutputResources),
+			OutputResources: rp.BuildExternalOutputResources(g.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(g.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(g.InternalMetadata.AsyncProvisioningState),
 		Application:       to.StringPtr(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,

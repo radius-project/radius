@@ -21,9 +21,9 @@ import (
 	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/cli/deployment"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -39,6 +39,7 @@ type Factory interface {
 	CreateDiagnosticsClient(ctx context.Context, workspace workspaces.Workspace) (clients.DiagnosticsClient, error)
 	CreateApplicationsManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.ApplicationsManagementClient, error)
 	CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error)
+	CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error)
 }
 
 var _ Factory = (*impl)(nil)
@@ -72,16 +73,17 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 		op.Sender = &sender{RoundTripper: roundTripper}
 
 		// This client wants a resource group name, but we store the ID instead, so compute that.
-		id, err := resources.Parse(workspace.Scope)
+		id, err := resources.ParseScope(workspace.Scope)
 		if err != nil {
 			return nil, err
 		}
 
-		return &azure.ResouceDeploymentClient{
+		return &deployment.ResourceDeploymentClient{
 			Client:              dc,
 			OperationsClient:    op,
 			RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
 			AzProvider:          workspace.ProviderConfig.Azure,
+			AWSProvider:         workspace.ProviderConfig.AWS,
 		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported connection type: %+v", connection)
@@ -142,7 +144,7 @@ func (*impl) CreateDiagnosticsClient(ctx context.Context, workspace workspaces.W
 			return nil, err
 		}
 
-		return &azure.ARMDiagnosticsClient{
+		return &deployment.ARMDiagnosticsClient{
 			K8sTypedClient:    k8sClient,
 			RestConfig:        config,
 			K8sRuntimeClient:  client,
@@ -191,6 +193,11 @@ func (*impl) CreateApplicationsManagementClient(ctx context.Context, workspace w
 
 //nolint:all
 func (*impl) CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error) {
+	return nil, errors.New("this feature is currently not supported")
+}
+
+//nolint:all
+func (*impl) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
 	return nil, errors.New("this feature is currently not supported")
 }
 
@@ -246,7 +253,26 @@ func GetClientOptions(baseURL string, transporter policy.Transporter) *arm.Clien
 					},
 				},
 			},
+			PerRetryPolicies: []policy.Policy{
+				// Autorest will inject an empty bearer token, which conflicts with bearer auth
+				// when its used by Kubernetes. We don't *ever() need Autorest to handle auth for us
+				// so we just remove it.
+				//
+				// We'll solve this problem permanently by writing our own client.
+				&RemoveAuthorizationHeaderPolicy{},
+			},
 			Transport: transporter,
 		},
+		DisableRPRegistration: true,
 	}
+}
+
+var _ policy.Policy = (*RemoveAuthorizationHeaderPolicy)(nil)
+
+type RemoveAuthorizationHeaderPolicy struct {
+}
+
+func (p *RemoveAuthorizationHeaderPolicy) Do(req *policy.Request) (*http.Response, error) {
+	delete(req.Raw().Header, "Authorization")
+	return req.Next()
 }

@@ -12,6 +12,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/ucp"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
@@ -36,7 +37,7 @@ func RequireEnvironmentNameArgs(cmd *cobra.Command, args []string, workspace wor
 
 	// We store the environment id in config, but most commands work with the environment name.
 	if environmentName == "" && workspace.Environment != "" {
-		id, err := resources.Parse(workspace.Environment)
+		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return "", err
 		}
@@ -60,7 +61,7 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 
 	// We store the environment id in config, but most commands work with the environment name.
 	if environmentName == "" && workspace.Environment != "" {
-		id, err := resources.Parse(workspace.Environment)
+		id, err := resources.ParseResource(workspace.Environment)
 		if err != nil {
 			return "", err
 		}
@@ -74,6 +75,22 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 	}
 
 	return environmentName, err
+}
+
+// RequireKubeContext is used by commands that need a kubernetes context name to be specified using -c flag or has a default kubecontext
+func RequireKubeContext(cmd *cobra.Command, currentContext string) (string, error) {
+	kubecontext, err := cmd.Flags().GetString("context")
+	if err != nil {
+		return "", err
+	}
+
+	if kubecontext == "" && currentContext == "" {
+		return "", errors.New("the kubeconfig has no current context")
+	} else if kubecontext == "" {
+		kubecontext = currentContext
+	}
+
+	return kubecontext, nil
 }
 
 func ReadEnvironmentNameArgs(cmd *cobra.Command, args []string) (string, error) {
@@ -100,12 +117,24 @@ func RequireApplicationArgs(cmd *cobra.Command, args []string, workspace workspa
 
 	if applicationName == "" {
 		applicationName = workspace.DefaultApplication
-
 	}
 
 	if applicationName == "" {
 		return "", fmt.Errorf("no application name provided and no default application set, " +
 			"either pass in an application name or set a default application by using `rad application switch`")
+	}
+
+	return applicationName, nil
+}
+
+func ReadApplicationName(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
+	applicationName, err := cmd.Flags().GetString("application")
+	if err != nil {
+		return "", err
+	}
+
+	if applicationName == "" {
+		applicationName = workspace.DefaultApplication
 	}
 
 	return applicationName, nil
@@ -141,7 +170,7 @@ func RequireResource(cmd *cobra.Command, args []string) (resourceType string, re
 
 func RequireResourceTypeAndName(args []string) (string, string, error) {
 	if len(args) < 2 {
-		return "", "", errors.New("No resource Type or Name provided")
+		return "", "", errors.New("No resource type or name provided")
 	}
 	resourceType, err := RequireResourceType(args)
 	if err != nil {
@@ -154,7 +183,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 // example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
-		return "", errors.New("no resource Type provided")
+		return "", errors.New("no resource type provided")
 	}
 	resourceTypeName := args[0]
 	supportedTypes := []string{}
@@ -165,7 +194,7 @@ func RequireResourceType(args []string) (string, error) {
 			return resourceType, nil
 		}
 	}
-	return "", fmt.Errorf("'%s' is not a valid resource Type. Available Types are: \n\n%s\n",
+	return "", fmt.Errorf("'%s' is not a valid resource type. Available Types are: \n\n%s\n",
 		resourceTypeName, strings.Join(supportedTypes, "\n"))
 }
 
@@ -207,6 +236,49 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 	return ws, nil
 }
 
+// RequireWorkspaceName is used by commands that require specifying a workspace name using flag or positional args
+func RequireWorkspaceName(cmd *cobra.Command, args []string) (string, error) {
+	workspace, err := ReadWorkspaceNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if workspace == "" {
+		return "", fmt.Errorf("workspace name is not provided or is empty ")
+	}
+
+	return workspace, nil
+}
+
+// RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
+func RequireUCPResourceGroup(cmd *cobra.Command, args []string) (string, error) {
+	group, err := ReadResourceGroupNameArgs(cmd, args)
+	if err != nil {
+		return "", err
+	}
+	if group == "" {
+		return "", fmt.Errorf("resource group name is not provided or is empty ")
+	}
+
+	return group, nil
+}
+
+// ReadResourceGroupNameArgs is used to get the resource group name that is supplied as either the first argument for group commands or using a -g flag
+func ReadResourceGroupNameArgs(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("group")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 0 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify resource group name via both arguments and `-g`")
+		}
+		name = args[0]
+	}
+
+	return name, err
+}
+
 // RequireWorkspaceArgs is used by commands that require an existing workspace either set as the default,
 // or specified as a positional arg, or specified using the 'workspace' flag.
 func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string) (*workspaces.Workspace, error) {
@@ -228,6 +300,7 @@ func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string
 	return ws, nil
 }
 
+// ReadWorkspaceNameArgs is used to get the workspace name that is supplied as either the first argument or using a -w flag
 func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 	name, err := cmd.Flags().GetString("workspace")
 	if err != nil {
@@ -239,6 +312,23 @@ func ReadWorkspaceNameArgs(cmd *cobra.Command, args []string) (string, error) {
 			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
 		}
 		name = args[0]
+	}
+
+	return name, err
+}
+
+// ReadWorkspaceName is used to get the workspace name that is supplied using a -w flag or as second arg.
+func ReadWorkspaceNameSecondArg(cmd *cobra.Command, args []string) (string, error) {
+	name, err := cmd.Flags().GetString("workspace")
+	if err != nil {
+		return "", err
+	}
+
+	if len(args) > 1 {
+		if name != "" {
+			return "", fmt.Errorf("cannot specify workspace name via both arguments and `-w`")
+		}
+		name = args[1]
 	}
 
 	return name, err
@@ -281,7 +371,20 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 
 // Is404Error returns true if the error is a 404 payload from an autorest operation.
 func Is404ErrorForAzureError(err error) bool {
-	var errorResponse v20220315privatepreview.ErrorResponse
+	if err == nil {
+		return false
+	}
+
+	// The error might already be an ResponseError
+	responseError := &azcore.ResponseError{}
+	if errors.As(err, &responseError) && responseError.ErrorCode == v1.CodeNotFound {
+		return true
+	} else if errors.As(err, &responseError) {
+		return false
+	}
+
+	// OK so it's not an ResponseError, can we turn it into an ErrorResponse?
+	errorResponse := v20220315privatepreview.ErrorResponse{}
 	marshallErr := json.Unmarshal([]byte(err.Error()), &errorResponse)
 	if marshallErr != nil {
 		return false

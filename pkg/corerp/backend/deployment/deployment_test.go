@@ -12,11 +12,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	connectorrp_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	connectorrp_r "github.com/project-radius/radius/pkg/connectorrp/renderers"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -40,7 +45,7 @@ type SharedMocks struct {
 	dbProvider         *dataprovider.MockDataStorageProvider
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *renderers.MockSecretValueClient
+	secretsValueClient *rp.MockSecretValueClient
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -84,6 +89,14 @@ func setup(t *testing.T) SharedMocks {
 				},
 				ResourceHandler: resourceHandler,
 			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.AzureCosmosDBMongo,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				ResourceHandler:        resourceHandler,
+				SecretValueTransformer: &mongodatabases.AzureTransformer{},
+			},
 		},
 		map[string]bool{
 			resourcemodel.ProviderKubernetes: true,
@@ -96,7 +109,7 @@ func setup(t *testing.T) SharedMocks {
 		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
 		resourceHandler:    resourceHandler,
 		renderer:           renderer,
-		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
+		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
 	}
 }
 
@@ -144,12 +157,75 @@ func getTestRendererOutput() renderers.RendererOutput {
 }
 
 func getTestResourceID(id string) resources.ID {
-	resourceID, err := resources.Parse(id)
+	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
 	}
 
 	return resourceID
+}
+
+func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
+	return connectorrp_dm.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+		},
+		Properties: connectorrp_dm.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
+			},
+		},
+		ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
+			RecipeData: connectorrp_dm.RecipeData{
+				RecipeProperties: connectorrp_dm.RecipeProperties{
+					ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
+						Name: "mongoDB",
+						Parameters: map[string]interface{}{
+							"ResourceGroup": "testRG",
+							"Subscription":  "Radius-Test",
+						},
+					},
+					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+				},
+				APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+			},
+		},
+	}
+}
+
+func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
+	testResource := buildMongoDBConnectorWithRecipe()
+
+	secretValues := map[string]rp.SecretValueReference{}
+	secretValues[connectorrp_r.ConnectionStringValue] = rp.SecretValueReference{
+		LocalID:              outputresource.LocalIDAzureCosmosAccount,
+		Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+		ValueSelector:        "/connectionStrings/0/connectionString",
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		Transformer: resourcemodel.ResourceType{
+			Provider: resourcemodel.ProviderAzure,
+			Type:     resourcekinds.AzureCosmosDBMongo,
+		},
+	}
+
+	computedValues := map[string]interface{}{
+		connectorrp_r.DatabaseNameValue: "db",
+	}
+
+	testResource.ComputedValues = computedValues
+	testResource.SecretValues = secretValues
+
+	return ResourceData{
+		ID:             getTestResourceID(testResource.ID),
+		Resource:       testResource,
+		ComputedValues: computedValues,
+		SecretValues:   secretValues,
+		RecipeData:     testResource.RecipeData}
 }
 
 func createContext(t *testing.T) context.Context {
@@ -166,13 +242,14 @@ func Test_Render(t *testing.T) {
 	mocks := setup(t)
 
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		depId2, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
 		requiredResources := []resources.ID{depId1, depId2}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -187,11 +264,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -204,8 +283,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -223,11 +304,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -247,7 +330,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: connectorrp_dm.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 					},
 				},
@@ -272,7 +355,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -287,11 +370,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -304,8 +389,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -323,11 +410,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -350,7 +439,7 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -365,11 +454,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -382,8 +473,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -401,11 +494,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -426,7 +521,7 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render error", func(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -441,11 +536,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -458,8 +555,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -477,11 +576,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -614,7 +715,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		testRendererOutput.Resources[0].ResourceType.Provider = ""
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -629,11 +730,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -646,8 +749,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -665,11 +770,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -692,7 +799,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		testRendererOutput.Resources[0].ResourceType.Provider = "unknown"
-		depId1, _ := resources.Parse("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
+		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
 		requiredResources := []resources.ID{depId1}
 
 		mocks.renderer.EXPECT().GetDependencyIDs(gomock.Any(), gomock.Any()).Times(1).Return(requiredResources, nil, nil)
@@ -706,11 +813,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&cr, nil)
 		application := datamodel.Application{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
+				},
 			},
 			Properties: datamodel.ApplicationProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
@@ -723,8 +832,10 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
 		environment := datamodel.Environment{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+				},
 			},
 			Properties: datamodel.EnvironmentProperties{
 				Compute: datamodel.EnvironmentCompute{
@@ -742,11 +853,13 @@ func Test_Render(t *testing.T) {
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A",
+				},
 			},
 			Properties: &datamodel.HTTPRouteProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/applications/test-application",
 				},
 			},
@@ -938,5 +1051,44 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 		require.Error(t, err)
 		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		require.Equal(t, options, renderers.EnvironmentOptions{})
+	})
+}
+
+func Test_getResourceDataByID(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
+	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+
+		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		mongoResource := buildMongoDBConnectorWithRecipe()
+		mr := store.Object{
+			Metadata: store.Metadata{
+				ID: mongoResource.ID,
+			},
+			Data: mongoResource,
+		}
+
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&mr, nil)
+
+		resourceData, err := dp.getResourceDataByID(ctx, depId)
+		require.NoError(t, err)
+		require.Equal(t, resourceData.RecipeData, mongoResource.RecipeData)
+	})
+}
+
+func Test_fetchSecrets(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
+		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
+		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(secretValues))
+		require.Equal(t, secret, secretValues[connectorrp_r.ConnectionStringValue])
 	})
 }

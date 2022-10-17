@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
@@ -39,7 +40,7 @@ func Test_Render_Success(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -98,7 +99,7 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -142,7 +143,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -166,7 +167,7 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 			Type: "Applications.Connector/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
-			BasicResourceProperties: v1.BasicResourceProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
@@ -191,11 +192,11 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+				Resource: "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
 	}
@@ -218,7 +219,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -245,7 +246,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "invalid-app-id",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -258,4 +259,91 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_Recipe_Success(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			Name: "mongo0",
+			Type: "Applications.Connector/mongoDatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "mongodb",
+				},
+			},
+		},
+	}
+
+	expectedComputedValues := map[string]renderers.ComputedValueReference{
+		renderers.DatabaseNameValue: {
+			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer:          "/properties/resource/id",
+			ProviderResourceType: "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+		},
+	}
+
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
+		RecipeProperties: datamodel.RecipeProperties{
+			ConnectorRecipe: datamodel.ConnectorRecipe{
+				Name: "mongodb",
+			},
+			TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			ConnectorType: ResourceType,
+		}})
+	require.NoError(t, err)
+	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
+	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
+	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
+	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
+	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
+	require.Equal(t, "Microsoft.DocumentDB/databaseAccounts", output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
+	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
+	require.Equal(t, 1, len(output.SecretValues))
+	require.Equal(t, expectedComputedValues, output.ComputedValues)
+}
+
+func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			Name: "mongo0",
+			Type: "Applications.Connector/mongoDatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "mongodb",
+				},
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
+		RecipeProperties: datamodel.RecipeProperties{
+			ConnectorRecipe: datamodel.ConnectorRecipe{
+				Name: "mongodb",
+			},
+			TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			ConnectorType: "Applications.Connector/redisCaches",
+		}})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "connector type \"Applications.Connector/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Connector/mongoDatabases\" resource type. Recipe connector type must match connector resource type.", err.(*conv.ErrClientRP).Message)
 }

@@ -128,23 +128,27 @@ Do not start the release until the following scenarios are validated:
    
    If this is a new minor release - check the stable version marker.
    
-   The file https://radiuspublic.blob.core.windows.net/version/stable.txt should contain (in plain text) the channel you just created.
+   The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
 
 5. Update the project-radius/docs repository
-
-   TODO confirm this process with PM team as of 0.12. Currently they use v0.X as their branch name, would like for these to be consistent.
    
-   1. Create a new branch named `v0.12` from `main`, using the release version number.
-   1. Update the branch information for the docs. Example: https://github.com/project-radius/radius/commit/f4b81b8881d590fbf077280db6a05482ed44188b
-   1. Within `docs/config.toml` update the `baseURL` parameter  to be `https://radapp.dev/` instead of `https://edge.radapp.dev/`.
-   1. Within `.github/workflows/website.yml` update the branch to be the new `v0.12` branch you created above.
-   1. Within `.github/workflows/website.yml` update `${{ secrets.EDGE_DOCS_SITE_PUBLISHPROFILE }}` to `${{ secrets.DOCS_SITE_PUBLISHPROFILE }}` and "edge-radius" to "radius".
-   1. In `docs/content/getting-started/install-cli.md` update the binary download links with the new version number, and delete commands for unstable/version commands, including all sub-headers.
+   1. Create a new branch named `v0.12` from `edge`, using the release version number.
+   1. Within `.github/workflows/website.yaml`:
+      - Change `branches` to the new branch (`v0.12`) instead of `edge`
+      - Change `app-name` to `radius` instead of `radius-edge`
+      - Change `publish-profile` to `secrets.DOCS_SITE_PUBLISHPROFILE` instead of `EDGE_...`
+      - Change `ALGOLIA_INDEX_NAME` to `radapp-dev` instead of `radapp-dev-edge`
+   1. Within `docs/config.toml`:
+      - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
+      - Change `version` to `v0.12` instead of `edge`
+      - Change `chart_version` (Helm chart) to `0.12.0`
+   1. Within `docs/layouts/partials/hooks/body-end.html`:
+      - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
+   1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
    1. Commit and push updates to be the new `v0.12` branch you created above.
    1. Verify https://radapp.dev now shows the new version.
-
 
 ### Post release verification
 
@@ -155,13 +159,13 @@ After creating a release, it's good to sanity check that the release works in so
 
    ```sh
    Windows:
-   $script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
+   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
 
    MacOS:
-   curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
+   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
 
    Direct binary downloads
-   https://radiuspublic.blob.core.windows.net/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
+   https://get.radapp.dev/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
    ```
 
    Note: if you download the direct binary, execute `rad bicep download` to also download the corresponding bicep compiler binary. The scripts above will download the bicep compiler by default.
@@ -226,7 +230,7 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    ```
 3. Cherry-pick the commit that is on `main` onto the branch.
    ```bash
-   git cherry-pick <COMMIT HASH>
+   git cherry-pick -x <COMMIT HASH>
    ```
 4. Push the commit to the remote and create a pull request targeting the release branch.
    ```bash

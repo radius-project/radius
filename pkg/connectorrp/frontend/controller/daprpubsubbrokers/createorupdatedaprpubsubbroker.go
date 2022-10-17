@@ -13,9 +13,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -34,8 +35,8 @@ func NewCreateOrUpdateDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, erro
 }
 
 // Run executes CreateOrUpdateDaprPubSubBroker operation.
-func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := daprPubSub.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -65,7 +66,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	if !isNewResource {
 		newResource.CreatedAPIVersion = old.CreatedAPIVersion
 		prop := newResource.Properties.BasicResourceProperties
-		if !old.Properties.BasicResourceProperties.EqualLinkedResource(prop) {
+		if !old.Properties.BasicResourceProperties.EqualLinkedResource(&prop) {
 			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, &old.Properties.BasicResourceProperties, &newResource.Properties.BasicResourceProperties), nil
 		}
 	}
@@ -82,13 +83,18 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
+
 	if topic, ok := deploymentOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].(string); ok {
 		newResource.Properties.Topic = topic
 	}
 
+	if componentName, ok := deploymentOutput.ComputedValues[renderers.ComponentNameKey].(string); ok {
+		newResource.Properties.ComponentName = componentName
+	}
+
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = daprPubSub.DeploymentProcessor().Delete(ctx, serviceCtx.ResourceID, diff)
+		err = daprPubSub.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +117,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, req *
 
 // Validate extracts versioned resource from request and validates the properties.
 func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.DaprPubSubBroker, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err

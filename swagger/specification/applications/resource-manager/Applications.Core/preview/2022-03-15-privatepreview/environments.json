@@ -363,8 +363,51 @@
           },
           "compute": {
             "$ref": "#/definitions/EnvironmentCompute"
+          },
+          "providers": {
+              "$ref": "#/definitions/Providers",
+              "description": "Cloud providers configuration for the environment."
+          },
+          "recipes": {
+            "additionalProperties": {
+              "$ref": "#/definitions/EnvironmentRecipeProperties",
+              "description": "Specifies Recipe linked to the Environment."
+            },
+            "type": "object"
           }
         }
+      },
+      "Providers": {
+        "description": "Cloud providers configuration",
+        "properties": {
+          "azure": {
+            "type":"object",
+            "description": "Azure cloud provider configuration",
+            "properties" : {
+              "scope" : {
+                "type":"string",
+                "description": "Target scope for Azure resources to be deployed into.  For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'"
+              }
+            }
+          }
+        }
+      },
+      "EnvironmentRecipeProperties": {
+        "description": "Properties of a Recipe linked to an Environment.",
+        "properties": {
+          "connectorType": {
+            "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
+            "type": "string"
+          },
+          "templatePath": {
+            "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "connectorType",
+          "templatePath"
+        ]
       }
     },
     "parameters": {

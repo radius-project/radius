@@ -355,14 +355,6 @@
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache connector at the time the operation was called"
         },
-        "environment": {
-          "description": "Fully qualified resource ID for the environment that the connector is linked to",
-          "type": "string"
-        },
-        "application": {
-          "$ref": "global.json#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the connector is consumed by"
-        },
         "resource": {
           "description": "Fully qualified resource ID of a supported resource with Redis API to use for this connector",
           "type": "string",
@@ -390,9 +382,17 @@
           "type": "string",
           "description": "The username for redis",
           "readOnly": true
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
-      "required": ["environment"]
+      "required": [
+        "environment"
+      ]
     },
     "RedisCacheProperties": {
       "description": "RedisCache connector properties",

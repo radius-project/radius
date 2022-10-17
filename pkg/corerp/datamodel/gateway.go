@@ -13,22 +13,16 @@ import (
 
 // Gateway represents Gateway resource.
 type Gateway struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// TODO: remove this from CoreRP
 	ConnectorMetadata
-
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties GatewayProperties `json:"properties"`
 }
 
 // ResourceTypeName returns the qualified name of the resource
-func (g Gateway) ResourceTypeName() string {
+func (g *Gateway) ResourceTypeName() string {
 	return "Applications.Core/gateways"
 }
 
@@ -47,14 +41,18 @@ func (g *Gateway) OutputResources() []outputresource.OutputResource {
 	return g.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *Gateway) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 // GatewayProperties represents the properties of Gateway.
 type GatewayProperties struct {
-	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState       `json:"provisioningState,omitempty"`
-	Internal          bool                       `json:"internal,omitempty"`
-	Hostname          *GatewayPropertiesHostname `json:"hostname,omitempty"`
-	Routes            []GatewayRoute             `json:"routes,omitempty"`
-	URL               string                     `json:"url,omitempty"`
+	rp.BasicResourceProperties
+	Internal bool                       `json:"internal,omitempty"`
+	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+	Routes   []GatewayRoute             `json:"routes,omitempty"`
+	URL      string                     `json:"url,omitempty"`
 }
 
 // GatewayRoute represents the route attached to Gateway.

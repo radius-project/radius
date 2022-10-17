@@ -35,7 +35,7 @@ func (daprGeneric DaprGeneric) Validate() error {
 	return nil
 }
 
-func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName string, namespace string) (unstructured.Unstructured, error) {
+func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName string, namespace string, resourceType string) (unstructured.Unstructured, error) {
 	// Convert the metadata map to a yaml list with keys name and value as per
 	// Dapr specs: https://docs.dapr.io/reference/components-reference/
 	yamlListItems := []map[string]interface{}{}
@@ -55,7 +55,7 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 			"metadata": map[string]interface{}{
 				"namespace": namespace,
 				"name":      kubernetes.MakeResourceName(appName, resourceName),
-				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName),
+				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName, resourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":     *daprGeneric.Type,

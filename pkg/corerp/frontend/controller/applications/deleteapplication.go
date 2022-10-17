@@ -10,10 +10,11 @@ import (
 	"errors"
 	"net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -21,35 +22,33 @@ var _ ctrl.Controller = (*DeleteApplication)(nil)
 
 // DeleteApplication is the controller implementation to delete application resource.
 type DeleteApplication struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.Application, datamodel.Application]
 }
 
 // NewDeleteApplication creates a new DeleteApplication.
 func NewDeleteApplication(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteApplication{ctrl.NewBaseController(opts)}, nil
+	return &DeleteApplication{
+		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+	}, nil
 }
 
-func (a *DeleteApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
-	serviceCtx := servicecontext.ARMRequestContextFromContext(ctx)
+func (a *DeleteApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	// Read resource metadata from the storage
-	existingResource := &datamodel.Application{}
-	etag, err := a.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
-	if err != nil && !errors.Is(&store.ErrNotFound{}, err) {
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
 		return nil, err
 	}
 
-	if etag == "" {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	if r, err := a.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = a.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
-	if err != nil {
+	if err := a.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}

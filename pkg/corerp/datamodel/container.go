@@ -13,16 +13,11 @@ import (
 
 // ContainerResource represents Container resource.
 type ContainerResource struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// TODO: remove this from CoreRP
 	ConnectorMetadata
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
 }
@@ -44,6 +39,11 @@ func (c *ContainerResource) OutputResources() []outputresource.OutputResource {
 	return c.Properties.Status.OutputResources
 }
 
+// ResourceMetadata returns the application resource metadata.
+func (h *ContainerResource) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
+}
+
 func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 	if conn.DisableDefaultEnvVars == nil {
 		return false
@@ -54,11 +54,10 @@ func (conn ConnectionProperties) GetDisableDefaultEnvVars() bool {
 
 // ContainerProperties represents the properties of Container.
 type ContainerProperties struct {
-	v1.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState            `json:"provisioningState,omitempty"`
-	Connections       map[string]ConnectionProperties `json:"connections,omitempty"`
-	Container         Container                       `json:"container,omitempty"`
-	Extensions        []Extension                     `json:"extensions,omitempty"`
+	rp.BasicResourceProperties
+	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
+	Container   Container                       `json:"container,omitempty"`
+	Extensions  []Extension                     `json:"extensions,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
@@ -123,8 +122,8 @@ type EphemeralVolume struct {
 // PersistentVolume - Specifies a persistent volume for a container
 type PersistentVolume struct {
 	VolumeBase
-	Source string     `json:"source,omitempty"`
-	Rbac   VolumeRbac `json:"rbac,omitempty"`
+	Source     string           `json:"source,omitempty"`
+	Permission VolumePermission `json:"permission,omitempty"`
 }
 
 // ManagedStore - Backing store for the ephemeral volume
@@ -135,12 +134,12 @@ const (
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead  VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead  VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
 type HealthProbeKind string
@@ -218,40 +217,6 @@ type DaprSidecarExtension struct {
 	Config   string   `json:"config,omitempty"`
 	Protocol Protocol `json:"protocol,omitempty"`
 	Provides string   `json:"provides,omitempty"`
-}
-
-type SecretObjectProperties struct {
-	// REQUIRED; The name of the secret
-	Name string `json:"name,omitempty"`
-
-	// File name when written to disk.
-	Alias string `json:"alias,omitempty"`
-
-	// Encoding format. Default utf-8
-	Encoding *SecretObjectPropertiesEncoding `json:"encoding,omitempty"`
-
-	// Secret version
-	Version string `json:"version,omitempty"`
-}
-
-// SecretObjectPropertiesEncoding - Encoding format. Default utf-8
-type SecretObjectPropertiesEncoding string
-
-const (
-	SecretObjectPropertiesEncodingBase64 SecretObjectPropertiesEncoding = "base64"
-	SecretObjectPropertiesEncodingHex    SecretObjectPropertiesEncoding = "hex"
-	SecretObjectPropertiesEncodingUTF8   SecretObjectPropertiesEncoding = "utf-8"
-)
-
-type KeyObjectProperties struct {
-	// REQUIRED; The name of the key
-	Name string `json:"name,omitempty"`
-
-	// File name when written to disk.
-	Alias string `json:"alias,omitempty"`
-
-	// Key version
-	Version string `json:"version,omitempty"`
 }
 
 // IAMProperties represents the properties of IAM provider.

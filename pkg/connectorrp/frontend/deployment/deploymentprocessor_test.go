@@ -8,12 +8,18 @@ package deployment
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strconv"
 	"testing"
+	"time"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
@@ -42,7 +48,7 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -91,6 +97,69 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 			renderers.DatabaseNameValue: {
 				Value: "test-database",
 			},
+		},
+	}
+
+	return
+}
+
+func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	resourceID = getResourceID(id)
+	testResource = datamodel.MongoDatabase{
+		TrackedResource: v1.TrackedResource{
+			ID:   id,
+			Name: "mongo0",
+			Type: "applications.connector/mongodatabases",
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				},
+				Recipe: datamodel.ConnectorRecipe{
+					Name: "mongoDB",
+					Parameters: map[string]interface{}{
+						"ResourceGroup": "testRG",
+						"Subscription":  "Radius-Test",
+					},
+				},
+			},
+		},
+	}
+
+	rendererOutput = renderers.RendererOutput{
+		SecretValues: map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:               "listConnectionStrings",
+				ValueSelector:        "/connectionStrings/0/connectionString",
+				ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+				Transformer: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
+			},
+		},
+		ComputedValues: map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+				JSONPointer:          "/properties/resource/id",
+			},
+		},
+		RecipeData: datamodel.RecipeData{
+			RecipeProperties: datamodel.RecipeProperties{
+				ConnectorRecipe: datamodel.ConnectorRecipe{
+					Name:       testResource.Properties.Recipe.Name,
+					Parameters: testResource.Properties.Recipe.Parameters,
+				},
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			},
+			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+			Provider:   resourcemodel.ProviderAzure,
 		},
 	}
 
@@ -108,7 +177,7 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: v1.BasicResourceProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
@@ -163,8 +232,15 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 	return
 }
 
-func buildFetchSecretsInput() ResourceData {
-	resourceID, testResource, rendererOutput := buildTestMongoResource()
+func buildFetchSecretsInput(withRecipe bool) ResourceData {
+	var resourceID resources.ID
+	var testResource datamodel.MongoDatabase
+	var rendererOutput renderers.RendererOutput
+	if withRecipe {
+		resourceID, testResource, rendererOutput = buildTestMongoRecipe()
+	} else {
+		resourceID, testResource, rendererOutput = buildTestMongoResource()
+	}
 	testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 		Username:         "testUser",
 		Password:         "testPassword",
@@ -184,13 +260,15 @@ func buildFetchSecretsInput() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
-	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues}
+	return ResourceData{resourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
-func buildEnvironmentResource() store.Object {
+func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) store.Object {
 	environment := corerpDatamodel.Environment{
-		TrackedResource: v1.TrackedResource{
-			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
 		},
 		Properties: corerpDatamodel.EnvironmentProperties{
 			Compute: corerpDatamodel.EnvironmentCompute{
@@ -199,6 +277,17 @@ func buildEnvironmentResource() store.Object {
 				},
 			},
 		},
+	}
+	if recipeName != "" {
+		environment.Properties.Recipes = map[string]corerpDatamodel.EnvironmentRecipeProperties{
+			recipeName: {
+				ConnectorType: "Applications.Connector/MongoDatabases",
+				TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+			},
+		}
+	}
+	if providers != nil {
+		environment.Properties.Providers = *providers
 	}
 	er := store.Object{
 		Metadata: store.Metadata{
@@ -213,9 +302,10 @@ type SharedMocks struct {
 	model              model.ApplicationModel
 	db                 *store.MockStorageClient
 	dbProvider         *dataprovider.MockDataStorageProvider
+	recipeHandler      *handlers.MockRecipeHandler
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
-	secretsValueClient *renderers.MockSecretValueClient
+	secretsValueClient *rp.MockSecretValueClient
 	storageProvider    *dataprovider.MockDataStorageProvider
 }
 
@@ -224,8 +314,12 @@ func setup(t *testing.T) SharedMocks {
 
 	mockRenderer := renderers.NewMockRenderer(ctrl)
 	mockResourceHandler := handlers.NewMockResourceHandler(ctrl)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 
 	model := model.NewModel(
+		model.RecipeModel{
+			RecipeHandler: mockRecipeHandler,
+		},
 		[]model.RadiusResourceModel{
 			{
 				ResourceType: mongodatabases.ResourceType,
@@ -257,14 +351,15 @@ func setup(t *testing.T) SharedMocks {
 		model:              model,
 		db:                 store.NewMockStorageClient(ctrl),
 		dbProvider:         dataprovider.NewMockDataStorageProvider(ctrl),
+		recipeHandler:      mockRecipeHandler,
 		resourceHandler:    mockResourceHandler,
 		renderer:           mockRenderer,
-		secretsValueClient: renderers.NewMockSecretValueClient(ctrl),
+		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
 	}
 }
 
 func getResourceID(id string) resources.ID {
-	resourceID, err := resources.Parse(id)
+	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
 	}
@@ -284,14 +379,15 @@ func createContext(t *testing.T) context.Context {
 func Test_Render(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-
+	ctrl := gomock.NewController(t)
+	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
 	t.Run("verify render success", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResource()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -299,12 +395,26 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 	})
 
+	t.Run("verify render success with recipe", func(t *testing.T) {
+		resourceID, testResource, testRendererOutput := buildTestMongoRecipe()
+		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource("mongoDB", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
+		require.NoError(t, err)
+		require.Equal(t, testRendererOutput.RecipeData, rendererOutput.RecipeData)
+		require.Equal(t, testRendererOutput.EnvironmentProviders, rendererOutput.EnvironmentProviders)
+
+	})
+
 	t.Run("verify render success with mixedcase resourcetype", func(t *testing.T) {
 		resourceID, testResource, testRendererOutput := buildTestMongoResourceMixedCaseResourceType()
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		rendererOutput, err := dp.Render(ctx, resourceID, &testResource)
@@ -323,7 +433,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "invalid-id",
 					},
 				},
@@ -339,7 +449,7 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render error", func(t *testing.T) {
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		resourceID, testResource, _ := buildTestMongoResource()
@@ -359,7 +469,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 					},
@@ -384,7 +494,7 @@ func Test_Render(t *testing.T) {
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: v1.BasicResourceProperties{
+					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 					},
 				},
@@ -416,7 +526,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
@@ -440,7 +550,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
@@ -451,6 +561,9 @@ func Test_Render(t *testing.T) {
 
 	t.Run("Azure provider unsupported", func(t *testing.T) {
 		testModel := model.NewModel(
+			model.RecipeModel{
+				RecipeHandler: mockRecipeHandler,
+			},
 			[]model.RadiusResourceModel{
 				{
 					ResourceType: mongodatabases.ResourceType,
@@ -469,7 +582,7 @@ func Test_Render(t *testing.T) {
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource()
+		er := buildEnvironmentResource("", nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 
 		_, err := mockdp.Render(ctx, resourceID, &testResource)
@@ -512,6 +625,41 @@ func Test_Deploy(t *testing.T) {
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[1].Identity)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
 		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: testRendererOutput.ComputedValues[renderers.DatabaseNameValue].Value}, deploymentOutput.ComputedValues)
+	})
+
+	t.Run("Verify deploy success with recipe", func(t *testing.T) {
+		resources := []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+			"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"}
+		resourceData := map[string]interface{}{
+			"id":   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			"name": "test-database",
+			"properties": map[string]interface{}{
+				"resource": map[string]string{
+					"id": "test-database",
+				},
+			},
+			"resourceGroup": "kachawla-test-cs",
+			"type":          "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+		}
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resourceData, nil)
+
+		resourceID, _, testRendererOutput := buildTestMongoRecipe()
+		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.NoError(t, err)
+		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
+		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: "test-database"}, deploymentOutput.ComputedValues)
+		require.Equal(t, resources, deploymentOutput.RecipeData.Resources)
+	})
+
+	t.Run("Verify deploy failure with recipe", func(t *testing.T) {
+		deploymentName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
+
+		resourceID, _, testRendererOutput := buildTestMongoRecipe()
+		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+		require.Error(t, err)
+		require.Equal(t, "failed to deploy recipe - "+deploymentName, err.Error())
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {
@@ -737,7 +885,27 @@ func Test_Delete(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
+		require.NoError(t, err)
+	})
+
+	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
+		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
+		resourceID, _, rendererOutput := buildTestMongoRecipe()
+		resourceData := ResourceData{
+			ID: resourceID,
+			RecipeData: datamodel.RecipeData{
+				RecipeProperties: rendererOutput.RecipeData.RecipeProperties,
+				APIVersion:       rendererOutput.RecipeData.APIVersion,
+				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
+			},
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})
 
@@ -745,7 +913,11 @@ func Test_Delete(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, testOutputResources)
+		resourceData := ResourceData{
+			ID:              resourceID,
+			OutputResources: testOutputResources,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 	})
 
@@ -772,7 +944,12 @@ func Test_Delete(t *testing.T) {
 				},
 			},
 		}
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "missing localID for outputresource", err.Error())
 	})
@@ -788,7 +965,11 @@ func Test_Delete(t *testing.T) {
 			},
 		}
 		resourceID, _, _ := buildTestMongoResource()
-		err := dp.Delete(ctx, resourceID, outputResources)
+		resourceData := ResourceData{
+			OutputResources: outputResources,
+			ID:              resourceID,
+		}
+		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
 	})
@@ -799,8 +980,50 @@ func Test_FetchSecrets(t *testing.T) {
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
-	input := buildFetchSecretsInput()
+	input := buildFetchSecretsInput(false)
 	secrets, err := dp.FetchSecrets(ctx, input)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(secrets))
+}
+
+func Test_FetchSecretsWithRecipe(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
+
+	input := buildFetchSecretsInput(true)
+	secrets, err := dp.FetchSecrets(ctx, input)
+	require.NoError(t, err)
+	require.Equal(t, 3, len(secrets))
+}
+
+func Test_GetEnvironmentMetadata(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	recipeName := "cosmos-recipe"
+
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+	t.Run("successfully get recipe metadata", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		env := er.Metadata.ID
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		require.NoError(t, err)
+		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.RecipeConnectorType)
+		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.RecipeTemplatePath)
+
+	})
+
+	t.Run("fail to get recipe metadata", func(t *testing.T) {
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
+		env := er.Metadata.ID
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+
+		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
+		require.Error(t, err)
+		require.Equal(t, fmt.Sprintf("recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
+	})
 }

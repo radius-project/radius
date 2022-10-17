@@ -8,6 +8,7 @@ package radcli
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -15,6 +16,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
 const (
@@ -34,6 +37,37 @@ func NewCLI(t *testing.T, configFilePath string) *CLI {
 	}
 }
 
+type CLIError struct {
+	v1.ErrorResponse
+}
+
+func (err *CLIError) Error() string {
+	return fmt.Sprintf("code %v: err %v", err.ErrorResponse.Error.Code, err.ErrorResponse.Error.Message)
+}
+
+// GetFirstErrorCode function goes down the error chain to find and return the code of the first error in the chain.
+func (err *CLIError) GetFirstErrorCode() string {
+	var errorCode = err.ErrorResponse.Error.Code
+
+	errorQueue := make([]v1.ErrorDetails, 0)
+	errorQueue = append(errorQueue, err.ErrorResponse.Error.Details...)
+
+	for len(errorQueue) > 0 {
+		currentErrorDetail := errorQueue[0]
+		errorQueue = errorQueue[1:]
+
+		if currentErrorDetail.Code != "OK" {
+			errorCode = currentErrorDetail.Code
+		}
+
+		if len(currentErrorDetail.Details) > 0 {
+			errorQueue = append(errorQueue, currentErrorDetail.Details...)
+		}
+	}
+
+	return errorCode
+}
+
 // Deploy runs the rad deploy command.
 func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters ...string) error {
 	// Check if the template file path exists
@@ -50,8 +84,20 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 		args = append(args, "--parameters", parameter)
 	}
 
-	_, err := cli.RunCommand(ctx, args)
-	return err
+	out, cliErr := cli.RunCommand(ctx, args)
+	if cliErr != nil && strings.Contains(out, "Error: {") {
+		var errResponse v1.ErrorResponse
+		idx := strings.Index(out, "Error: {")
+		actualErr := "{\"error\": " + out[idx+7:] + "}"
+
+		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
+			return err
+		}
+
+		return &CLIError{ErrorResponse: errResponse}
+	}
+
+	return cliErr
 }
 
 func (cli *CLI) ApplicationDeploy(ctx context.Context) error {
@@ -185,6 +231,34 @@ func (cli *CLI) ResourceExpose(ctx context.Context, applicationName string, reso
 		resourceName,
 		"--port", fmt.Sprintf("%d", localPort),
 		"--remote-port", fmt.Sprintf("%d", remotePort),
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) Recipelist(ctx context.Context) (string, error) {
+	args := []string{
+		"recipe",
+		"list",
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, connectorType string) (string, error) {
+	args := []string{
+		"recipe",
+		"create",
+		"--name", recipeName,
+		"--templatePath", templatePath,
+		"--connectorType", connectorType,
+	}
+	return cli.RunCommand(ctx, args)
+}
+
+func (cli *CLI) RecipeDelete(ctx context.Context, recipeName string) (string, error) {
+	args := []string{
+		"recipe",
+		"delete",
+		"--name", recipeName,
 	}
 	return cli.RunCommand(ctx, args)
 }

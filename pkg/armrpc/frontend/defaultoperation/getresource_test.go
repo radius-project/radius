@@ -34,6 +34,20 @@ func (e testDataModel) ResourceTypeName() string {
 	return "Applications.Test/resource"
 }
 
+func (e testDataModel) GetSystemData() *v1.SystemData {
+	return nil
+}
+
+func (e testDataModel) ProvisioningState() v1.ProvisioningState {
+	return v1.ProvisioningStateAccepted
+}
+
+func (e testDataModel) SetProvisioningState(state v1.ProvisioningState) {
+}
+
+func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext) {
+}
+
 type testVersionedModel struct {
 	Name string `json:"name"`
 }
@@ -95,7 +109,7 @@ func TestGetResourceRun(t *testing.T) {
 		ctl, err := NewGetResource(opts, resourceToVersioned)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 404, w.Result().StatusCode)
@@ -123,7 +137,7 @@ func TestGetResourceRun(t *testing.T) {
 		ctl, err := NewGetResource(opts, resourceToVersioned)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)

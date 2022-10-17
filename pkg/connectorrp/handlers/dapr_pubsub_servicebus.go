@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -18,15 +19,17 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
-	ServiceBusNamespaceIDKey   = "servicebusid"
-	RootManageSharedAccessKey  = "RootManageSharedAccessKey"
-	ServiceBusTopicNameKey     = "servicebustopic"
-	ServiceBusNamespaceNameKey = "servicebusnamespace"
+	ServiceBusNamespaceIDKey     = "servicebusid"
+	RootManageSharedAccessKey    = "RootManageSharedAccessKey"
+	ServiceBusTopicNameKey       = "servicebustopic"
+	ServiceBusNamespaceNameKey   = "servicebusnamespace"
+	DaprPubSubBrokerResourceType = "Applications.Connector/daprPubSubBrokers"
 )
 
 type daprPubSubServiceBusBaseHandler struct {
@@ -34,15 +37,17 @@ type daprPubSubServiceBusBaseHandler struct {
 }
 type daprPubSubServiceBusHandler struct {
 	daprPubSubServiceBusBaseHandler
-	kubernetesHandler
+	daprComponentHandler
 	k8s client.Client
 }
 
 func NewDaprPubSubServiceBusHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {
 	return &daprPubSubServiceBusHandler{
 		daprPubSubServiceBusBaseHandler: daprPubSubServiceBusBaseHandler{arm: arm},
-		kubernetesHandler:               kubernetesHandler{k8s: k8s},
-		k8s:                             k8s,
+		daprComponentHandler: daprComponentHandler{
+			k8s: k8s,
+		},
+		k8s: k8s,
 	}
 }
 
@@ -69,7 +74,12 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	// Use the identity of the namespace as the thing to monitor.
 	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
-	cs, err := handler.GetConnectionString(ctx, *namespace.Name)
+	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
+	if err != nil {
+		return resourcemodel.ResourceIdentity{}, nil, err
+	}
+
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprPubSubBrokerResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -106,7 +116,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
-				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName]),
+				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprPubSubBrokerResourceType),
 			},
 			"spec": map[string]interface{}{
 				"type":    "pubsub.azure.servicebus",
@@ -150,7 +160,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
-	parsed, err := resources.Parse(id)
+	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
@@ -169,13 +179,18 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	return &namespace, nil
 }
 
-func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, namespaceName string) (*string, error) {
-	sbc := clients.NewServiceBusNamespacesClient(handler.arm.SubscriptionID, handler.arm.Auth)
+func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, id string) (*string, error) {
+	parsed, err := resources.ParseResource(id)
+	if err != nil {
+		return nil, err
+	}
 
-	accessKeys, err := sbc.ListKeys(ctx, handler.arm.ResourceGroup, namespaceName, RootManageSharedAccessKey)
+	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+
+	accessKeys, err := sbc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey)
 	if err != nil {
 		if clients.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", namespaceName))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", parsed.Name()))
 		}
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
 	}

@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -220,10 +221,12 @@ type AsyncOperationResponse struct {
 	ResourceID  resources.ID
 	OperationID uuid.UUID
 	APIVersion  string
+	RootScope   string // Everything before providers namespace for constructing an Async operation header. Used for AWS planes
+	PathBase    string // Base Path. Used for AWS planes
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string) Response {
+func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,
@@ -231,6 +234,8 @@ func NewAsyncOperationResponse(body interface{}, location string, code int, reso
 		ResourceID:  resourceID,
 		OperationID: operationID,
 		APIVersion:  apiVersion,
+		RootScope:   rootScope,
+		PathBase:    pathBase,
 	}
 }
 
@@ -262,15 +267,21 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
 func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+	rootScope := r.RootScope
+	if rootScope == "" {
+		rootScope = r.ResourceID.PlaneScope()
+	}
 	dest := url.URL{
 		Host:   req.Host,
 		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", r.ResourceID.PlaneScope(),
-			r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", r.PathBase, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
 
 	query := url.Values{}
-	query.Add("api-version", r.APIVersion)
+	if r.APIVersion != "" {
+		query.Add("api-version", r.APIVersion)
+	}
+
 	dest.RawQuery = query.Encode()
 
 	// In production this is the header we get from app service for the 'real' protocol
@@ -279,7 +290,9 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		dest.Scheme = protocol
 	}
 
-	if dest.Scheme == "" {
+	if dest.Scheme == "" && req.TLS != nil {
+		dest.Scheme = "https"
+	} else if dest.Scheme == "" {
 		dest.Scheme = "http"
 	}
 
@@ -309,11 +322,11 @@ type BadRequestResponse struct {
 }
 
 // NewLinkedResourceUpdateErrorResponse represents a HTTP 400 with an error message when user updates environment id and application id.
-func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.BasicResourceProperties, newProp *v1.BasicResourceProperties) Response {
+func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *rp.BasicResourceProperties, newProp *rp.BasicResourceProperties) Response {
 	newAppEnv := ""
 	if newProp.Application != "" {
 		name := newProp.Application
-		if rid, err := resources.Parse(newProp.Application); err == nil {
+		if rid, err := resources.ParseResource(newProp.Application); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' application", name)
@@ -323,7 +336,7 @@ func NewLinkedResourceUpdateErrorResponse(resourceID resources.ID, oldProp *v1.B
 			newAppEnv += " and "
 		}
 		name := newProp.Environment
-		if rid, err := resources.Parse(newProp.Environment); err == nil {
+		if rid, err := resources.ParseResource(newProp.Environment); err == nil {
 			name = rid.Name()
 		}
 		newAppEnv += fmt.Sprintf("'%s' environment", name)
@@ -436,6 +449,18 @@ func NewNotFoundMessageResponse(message string) Response {
 			Error: v1.ErrorDetails{
 				Code:    v1.CodeNotFound,
 				Message: message,
+			},
+		},
+	}
+}
+
+func NewNoResourceMatchResponse(path string) Response {
+	return &NotFoundResponse{
+		Body: v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeNotFound,
+				Message: fmt.Sprintf("the specified path %q did not match any resource", path),
+				Target:  path,
 			},
 		},
 	}

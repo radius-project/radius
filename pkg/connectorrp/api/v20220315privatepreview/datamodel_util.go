@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	autorestTo "github.com/Azure/go-autorest/autorest/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -73,5 +75,23 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+	}
+}
+
+func toRecipeDataModel(r *Recipe) datamodel.ConnectorRecipe {
+	recipe := datamodel.ConnectorRecipe{
+		Name: autorestTo.String(r.Name),
+	}
+
+	if r.Parameters != nil {
+		recipe.Parameters = r.Parameters
+	}
+	return recipe
+}
+
+func fromRecipeDataModel(r datamodel.ConnectorRecipe) *Recipe {
+	return &Recipe{
+		Name:       autorestTo.StringPtr(r.Name),
+		Parameters: r.Parameters,
 	}
 }

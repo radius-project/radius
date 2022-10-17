@@ -91,13 +91,7 @@ func Test_RedisAzure(t *testing.T) {
 					},
 				},
 			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sPodForResource(name, "redis-azure-app-ctnr"),
-					},
-				},
-			},
+			SkipObjectValidation: true,
 		},
 	}, nil)
 

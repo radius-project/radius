@@ -8,6 +8,8 @@ package cmd
 import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/objectformats"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/spf13/cobra"
 )
 
@@ -41,4 +43,17 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	}
 
 	return printOutput(cmd, applicationList, false)
+}
+
+func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
+	format, err := cli.RequireOutput(cmd)
+	if err != nil {
+		return err
+	}
+
+	err = output.Write(format, obj, cmd.OutOrStdout(), objectformats.GetResourceTableFormat())
+	if err != nil {
+		return err
+	}
+	return nil
 }

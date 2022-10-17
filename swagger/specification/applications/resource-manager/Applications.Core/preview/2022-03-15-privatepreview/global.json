@@ -51,6 +51,13 @@
         "modelAsString": true
       }
     },
+    "Application": {
+      "description": "Specifies the resource id of the application",
+      "type": "string",
+      "example": [
+        "app.id"
+      ]
+    },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
       "type": "object",
@@ -59,8 +66,18 @@
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of the resource",
           "readOnly": true
+        },
+        "environment": {
+          "description": "The resource id of the environment linked to the resource",
+          "type": "string"
+        },
+        "application": {
+          "$ref": "#/definitions/Application"
         }
-      }
+      },
+      "required": [
+        "application"
+      ]
     },
     "ResourceStatus": {
       "description": "Status of a resource.",
@@ -111,7 +128,6 @@
           {
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
-         
         ],
         "responses": {
           "200": {

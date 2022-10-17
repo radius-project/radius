@@ -13,9 +13,8 @@ import (
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
@@ -31,7 +30,7 @@ type Options struct {
 	DataProvider dataprovider.DataStorageProvider
 
 	// SecretClient is the client to fetch secrets.
-	SecretClient renderers.SecretValueClient
+	SecretClient rp.SecretValueClient
 
 	// KubeClient is the Kubernetes controller runtime client.
 	KubeClient runtimeclient.Client
@@ -46,10 +45,11 @@ type Options struct {
 	StatusManager sm.StatusManager
 }
 
+// TODO: Remove Controller when all controller uses Operation
 // Controller is an interface of each operation controller.
 type Controller interface {
 	// Run executes the operation.
-	Run(ctx context.Context, req *http.Request) (rest.Response, error)
+	Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error)
 }
 
 // BaseController is the base operation controller.
@@ -75,7 +75,7 @@ func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
 }
 
 // SecretClient gets secret client for this controller.
-func (b *BaseController) SecretClient() renderers.SecretValueClient {
+func (b *BaseController) SecretClient() rp.SecretValueClient {
 	return b.options.SecretClient
 }
 
@@ -155,7 +155,7 @@ func UpdateSystemData(old v1.SystemData, new v1.SystemData) v1.SystemData {
 
 // BuildTrackedResource create TrackedResource instance from request context
 func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
-	requestCtx := servicecontext.ARMRequestContextFromContext(ctx)
+	requestCtx := v1.ARMRequestContextFromContext(ctx)
 	serviceOpt := hostoptions.FromContext(ctx)
 
 	trackedResource := v1.TrackedResource{

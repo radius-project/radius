@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // Extender represents Extender connector resource.
@@ -56,7 +57,7 @@ type ExtenderProperties struct {
 
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderResponseProperties struct {
-	v1.BasicResourceProperties
+	rp.BasicResourceProperties
 	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
 	ProvisioningState    v1.ProvisioningState   `json:"provisioningState,omitempty"`
 }

@@ -54,6 +54,21 @@ func GetResourceTableFormat() output.FormatterOptions {
 	}
 }
 
+func GetResourceGroupTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "ID",
+				JSONPath: "{ .id }",
+			},
+			{
+				Heading:  "Name",
+				JSONPath: "{ .name }",
+			},
+		},
+	}
+}
+
 func GetGenericEnvironmentTableFormat() output.FormatterOptions {
 	return output.FormatterOptions{
 		Columns: []output.Column{
@@ -98,6 +113,40 @@ func GetWorkspaceTableFormat() output.FormatterOptions {
 			{
 				Heading:  "ENVIRONMENT",
 				JSONPath: "{ .Environment }",
+			},
+		},
+	}
+}
+
+func GetCloudProviderTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "KIND",
+				JSONPath: "{ .Kind }",
+			},
+			{
+				Heading:  "Status",
+				JSONPath: "{ .Enabled }",
+			},
+		},
+	}
+}
+
+func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
+	return output.FormatterOptions{
+		Columns: []output.Column{
+			{
+				Heading:  "NAME",
+				JSONPath: "{ .Name }",
+			},
+			{
+				Heading:  "TYPE",
+				JSONPath: "{ .ConnectorType }",
+			},
+			{
+				Heading:  "TEMPLATE",
+				JSONPath: "{ .TemplatePath }",
 			},
 		},
 	}

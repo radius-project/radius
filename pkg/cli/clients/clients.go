@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/output"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	ucp_v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -127,13 +128,56 @@ type ApplicationsManagementClient interface {
 	ListAllResourcesOfTypeInEnvironment(ctx context.Context, environmentName string, resourceType string) ([]generated.GenericResource, error)
 	ListAllResourcesByEnvironment(ctx context.Context, environmentName string) ([]generated.GenericResource, error)
 	ShowResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResource, error)
-	DeleteResource(ctx context.Context, resourceType string, resourceName string) (generated.GenericResourcesClientDeleteResponse, error)
+	DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error)
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
-	DeleteApplication(ctx context.Context, applicationName string) (corerp.ApplicationsClientDeleteResponse, error)
+	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
+	CreateEnvironment(ctx context.Context, envName, location, namespace, envKind, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers) (bool, error)
 	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
-	DeleteEnv(ctx context.Context, envName string) (corerp.EnvironmentsClientDeleteResponse, error)
+	DeleteEnv(ctx context.Context, envName string) (bool, error)
+	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220315privatepreview.ResourceGroupResource) (bool, error)
+	DeleteUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (bool, error)
+	ShowUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string) (ucp_v20220315privatepreview.ResourceGroupResource, error)
+	ListUCPGroup(ctx context.Context, planeType string, planeName string) ([]ucp_v20220315privatepreview.ResourceGroupResource, error)
+}
+
+//go:generate mockgen -destination=./mock_cloudproviderclient.go -package=clients -self_package github.com/project-radius/radius/pkg/cli/clients github.com/project-radius/radius/pkg/cli/clients CloudProviderManagementClient
+
+// CloudProviderManagementClient is used to interface with cloud provider configuration and credentials.
+type CloudProviderManagementClient interface {
+	// TODO: this interface is being added as part of v0.13 before we've nailed down completely the interactions
+	// between cloud providers, UCP, and the CLI. We expect changes or possibily that this interface could be
+	// replaced in the future.
+	Get(ctx context.Context, name string) (CloudProviderResource, error)
+	List(ctx context.Context) ([]CloudProviderResource, error)
+	Put(ctx context.Context, provider AzureCloudProviderResource) error
+	Delete(ctx context.Context, name string) (bool, error)
+}
+
+// CloudProviderResource is the representation of a cloud provider configuration.
+type CloudProviderResource struct {
+	// TODO: this is not a real resource yet. See the notes on CloudProviderManagementClient. We expect this to change significantly
+	// in the future.
+
+	// Name is the name/kind of the provider. For right now this only supports Azure.
+	Name string
+
+	// Enabled is the enabled/disabled status of the provider.
+	Enabled bool
+}
+
+type AzureCloudProviderResource struct {
+	CloudProviderResource
+
+	// Credentials is used to set the credentials on Puts. It is NOT returned on Get/List.
+	Credentials *ServicePrincipalCredentials
+}
+
+type ServicePrincipalCredentials struct {
+	ClientID     string
+	ClientSecret string
+	TenantID     string
 }
 
 func ShallowCopy(params DeploymentParameters) DeploymentParameters {
