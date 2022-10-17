@@ -408,7 +408,7 @@
           "type": "number"
         },
         "timeoutSeconds": {
-          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 1 second",
+          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second",
           "type": "number"
         }
       },
