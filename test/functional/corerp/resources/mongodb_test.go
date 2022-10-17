@@ -118,6 +118,9 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	test.Test(t)
 }
 
+// Test_MongoDB_Recipe validates:
+// the creation of a mongoDB from recipe
+// container using the mongoDB connector to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
