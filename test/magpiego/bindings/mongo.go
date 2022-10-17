@@ -29,6 +29,5 @@ func MongoBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "mongodb connection failed"}
 	}
 
-	log.Println("Ping to mongo succeeded")
 	return BindingStatus{true, "connected"}
 }
