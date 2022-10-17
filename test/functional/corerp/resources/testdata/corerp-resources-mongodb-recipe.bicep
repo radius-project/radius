@@ -48,6 +48,9 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
       }
     }
     container: {
+      env: {
+        DBCONNECTION: recipedb.connectionString()
+      }
       image: magpieimage
     }
   }
