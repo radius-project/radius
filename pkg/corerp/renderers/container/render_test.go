@@ -1088,6 +1088,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 						InitialDelaySeconds: to.Ptr[float32](30),
 						FailureThreshold:    to.Ptr[float32](10),
 						PeriodSeconds:       to.Ptr[float32](2),
+						TimeoutSeconds:      to.Ptr[float32](5),
 					},
 					Path:          "/healthz",
 					ContainerPort: 8080,
@@ -1127,6 +1128,7 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
+			TimeoutSeconds:      5,
 			ProbeHandler: v1.ProbeHandler{
 				HTTPGet: &v1.HTTPGetAction{
 					Path: "/healthz",
@@ -1165,6 +1167,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 						InitialDelaySeconds: to.Ptr[float32](30),
 						FailureThreshold:    to.Ptr[float32](10),
 						PeriodSeconds:       to.Ptr[float32](2),
+						TimeoutSeconds:      to.Ptr[float32](5),
 					},
 					ContainerPort: 8080,
 				},
@@ -1202,6 +1205,7 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
+			TimeoutSeconds:      5,
 			ProbeHandler: v1.ProbeHandler{
 				HTTPGet: nil,
 				TCPSocket: &v1.TCPSocketAction{
@@ -1233,6 +1237,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 						InitialDelaySeconds: to.Ptr[float32](30),
 						FailureThreshold:    to.Ptr[float32](10),
 						PeriodSeconds:       to.Ptr[float32](2),
+						TimeoutSeconds:      to.Ptr[float32](5),
 					},
 					Command: "a b c",
 				},
@@ -1270,6 +1275,7 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 			InitialDelaySeconds: 30,
 			FailureThreshold:    10,
 			PeriodSeconds:       2,
+			TimeoutSeconds:      5,
 			ProbeHandler: v1.ProbeHandler{
 				HTTPGet:   nil,
 				TCPSocket: nil,
@@ -1330,6 +1336,7 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 			InitialDelaySeconds: DefaultInitialDelaySeconds,
 			FailureThreshold:    DefaultFailureThreshold,
 			PeriodSeconds:       DefaultPeriodSeconds,
+			TimeoutSeconds:      DefaultTimeoutSeconds,
 			ProbeHandler: v1.ProbeHandler{
 				HTTPGet:   nil,
 				TCPSocket: nil,

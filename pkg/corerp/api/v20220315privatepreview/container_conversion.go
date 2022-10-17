@@ -253,6 +253,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			FailureThreshold:    h.Exec.FailureThreshold,
 			InitialDelaySeconds: h.Exec.InitialDelaySeconds,
 			PeriodSeconds:       h.Exec.PeriodSeconds,
+			TimeoutSeconds:      h.Exec.TimeoutSeconds,
 			Command:             to.StringPtr(h.Exec.Command),
 		}
 		return &converted
@@ -262,6 +263,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			FailureThreshold:    h.HTTPGet.FailureThreshold,
 			InitialDelaySeconds: h.HTTPGet.InitialDelaySeconds,
 			PeriodSeconds:       h.HTTPGet.PeriodSeconds,
+			TimeoutSeconds:      h.HTTPGet.TimeoutSeconds,
 			ContainerPort:       to.Int32Ptr(h.HTTPGet.ContainerPort),
 			Path:                to.StringPtr(h.HTTPGet.Path),
 			Headers:             *to.StringMapPtr(h.HTTPGet.Headers),
@@ -273,6 +275,7 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			FailureThreshold:    h.TCP.FailureThreshold,
 			InitialDelaySeconds: h.TCP.InitialDelaySeconds,
 			PeriodSeconds:       h.TCP.PeriodSeconds,
+			TimeoutSeconds:      h.TCP.TimeoutSeconds,
 			ContainerPort:       to.Int32Ptr(h.TCP.ContainerPort),
 		}
 		return &converted
@@ -492,6 +495,7 @@ func toHealthProbeBase(h HealthProbeProperties) datamodel.HealthProbeBase {
 		FailureThreshold:    h.FailureThreshold,
 		InitialDelaySeconds: h.InitialDelaySeconds,
 		PeriodSeconds:       h.PeriodSeconds,
+		TimeoutSeconds:      h.TimeoutSeconds,
 	}
 }
 
