@@ -36,11 +36,6 @@ Enum values are compared *case-insensitively*.
 | AZURE_CLIENT_SECRET            | no                         | string  | Configures the client secret of a service principal for ARM authentication.                                                                  |
 | AZURE_TENANT_ID                | no                         | string  | Configures the AAD tenant of a service principal for ARM authentication.                                                                     |
 | MSI_ENDPOINT/IDENTITY_ENDPOINT | no                         | string  | Used to detect whether the RP should use managed identity for ARM authentication.                                                            |
-| K8S_LOCAL                      | *see Kubernetes section*   | boolean | Configures the Kubernetes connection to use the local Kubernetes context.                                                                    |
-| K8S_CLUSTER                    | *see Kubernetes section*   | boolean | Configures the Kubernetes connection to use the Kubernetes in-cluster config.                                                                |
-| K8S_CLUSTER_NAME               | *see Kubernetes section*   | string  | Configures the resource name of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM.   |
-| K8S_SUBSCRIPTION_ID            | *see Kubernetes section*   | string  | Configures the subscription id of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM. |
-| K8S_RESOURCE_GROUP             | *see Kubernetes section*   | string  | Configures the resource group of an AKS cluster. Used to identify and connect to the Kubernetes cluster by retrieving credentials from ARM.  |
 | RADIUS_LOG_PROFILE                 | no (`development`)   | string  | Configures the log profile for Radius |
 | RADIUS_LOG_LEVEL                   | *see Logging section*   | string  | Configures the log level for Radius |
 
@@ -60,13 +55,10 @@ Our detection logic mirrors what the newer Azure Go SDKs do. Since we require th
 
 Authentication with Kubernetes can be disabled totally by setting `SKIP_K8S=true`. This will disable Kubernetes features like creation and management of containers/pods and ingresses.
 
-The RP can connect to Kubernetes using three different strategies to find the identity and credentials in order or priority:
+The RP connects to Kubernetes using two different strategies to find the identity and credentials in order or priority:
 
-- Using local Kubeconfig (used in local development)
-- Using in-cluster credentials
-- Using ARM to fetch credentials based on `K8S_CLUSTER_NAME`/`K8S_SUBSCRIPTION_ID`/`K8S_RESOURCE_GROUP` (used when deployed)
-
-Our detection logic treats `K8S_LOCAL` and `K8S_CLUSTER` as overrides. We will attempt to find the cluster using ARM by default.
+- Using in-cluster credentials (if present)
+- Using local Kubeconfig
 
 ## Logging
 
