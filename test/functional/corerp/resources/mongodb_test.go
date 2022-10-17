@@ -24,7 +24,7 @@ import (
 // 172.18.0.2 10.244.0.51 [{10.244.0.51}] 2022-07-18 19:52:53 -0700 PDT [] [{webapp
 // {nil &ContainerStateRunning{StartedAt:2022-07-18 19:52:54 -0700 PDT,} nil} {nil nil nil} false 0
 // radiusdev.azurecr.io/magpiego:latest radiusdev.azurecr.io/magpiego@sha256:b11165040c3ca4b63d836fb68ae3511b6b19f9e826a86fb4be7de1afffaf8a5f
-//containerd://9eb0d205c4e34f9128c0a750f2854dc9ab09c6eab79679cbc924ccf75a09151d 0x14000b37d40}] BestEffort []}
+// containerd://9eb0d205c4e34f9128c0a750f2854dc9ab09c6eab79679cbc924ccf75a09151d 0x14000b37d40}] BestEffort []}
 func Test_MongoDB(t *testing.T) {
 	t.Skip()
 	template := "testdata/corerp-resources-mongodb.bicep"
@@ -109,6 +109,55 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr"),
 						validation.NewK8sPodForResource(name, "mdb-us-ctnr"),
 						validation.NewK8sServiceForResource(name, "mdb-us-rte"),
+					},
+				},
+			},
+		},
+	}, requiredSecrets)
+
+	test.Test(t)
+}
+
+// Test_MongoDB_Recipe validates:
+// the creation of a mongoDB from recipe
+// container using the mongoDB connector to connect to the mongoDB resource
+func Test_MongoDB_Recipe(t *testing.T) {
+
+	template := "testdata/corerp-resources-mongodb-recipe.bicep"
+	name := "corerp-resources-mongodb-recipe"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-recipes-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "corerp-resources-mongodb-recipe",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "mongodb-recipe-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mongo-recipe-db",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"corerp-resources-environment-recipes-env": {
+						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr"),
 					},
 				},
 			},
