@@ -138,6 +138,7 @@
 * **failureThreshold**: int: Threshold number of times the probe fails after which a failure would be reported
 * **initialDelaySeconds**: int: Initial delay in seconds before probing for readiness/liveness
 * **periodSeconds**: int: Interval for the readiness/liveness probe in seconds
+* **timeoutSeconds**: int: Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
 ### ExecHealthProbeProperties
 #### Properties
 * **command**: string (Required): Command to execute to probe readiness/liveness

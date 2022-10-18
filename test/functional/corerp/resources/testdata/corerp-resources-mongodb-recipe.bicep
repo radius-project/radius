@@ -48,10 +48,15 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
       }
     }
     container: {
+      image: magpieimage
       env: {
         DBCONNECTION: recipedb.connectionString()
       }
-      image: magpieimage
+      readinessProbe:{
+        kind:'httpGet'
+        containerPort:3000
+        path: '/healthz'
+      }
     }
   }
 }
