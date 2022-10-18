@@ -26,6 +26,16 @@ type MongoDatabase struct {
 	Properties MongoDatabaseProperties `json:"properties"`
 }
 
+// MongoDatabaseMode specifies the mode for deploying the mongo database connector
+type MongoDatabaseMode string
+
+const (
+	MongoDatabaseModeRecipe   MongoDatabaseMode = "recipe"
+	MongoDatabaseModeResource MongoDatabaseMode = "resource"
+	MongoDatabaseModeValues   MongoDatabaseMode = "values"
+	MongoDatabaseModeUnknown  MongoDatabaseMode = "unknown"
+)
+
 type MongoDatabaseResponse struct {
 	v1.TrackedResource
 
@@ -53,6 +63,7 @@ func (mongo MongoDatabaseResponse) ResourceTypeName() string {
 type MongoDatabaseResponseProperties struct {
 	rp.BasicResourceProperties
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Mode              MongoDatabaseMode    `json:"mode"`
 	Resource          string               `json:"resource,omitempty"`
 	Host              string               `json:"host,omitempty"`
 	Port              int32                `json:"port,omitempty"`

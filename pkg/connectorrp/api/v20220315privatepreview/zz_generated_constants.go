@@ -82,6 +82,25 @@ func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind
 	}
 }
 
+// MongoDatabaseResponsePropertiesMode - Mode of the mongo database connector deployment. It can be one of 'recipe', 'resource'
+// or 'values'
+type MongoDatabaseResponsePropertiesMode string
+
+const (
+	MongoDatabaseResponsePropertiesModeRecipe MongoDatabaseResponsePropertiesMode = "recipe"
+	MongoDatabaseResponsePropertiesModeResource MongoDatabaseResponsePropertiesMode = "resource"
+	MongoDatabaseResponsePropertiesModeValues MongoDatabaseResponsePropertiesMode = "values"
+)
+
+// PossibleMongoDatabaseResponsePropertiesModeValues returns the possible values for the MongoDatabaseResponsePropertiesMode const type.
+func PossibleMongoDatabaseResponsePropertiesModeValues() []MongoDatabaseResponsePropertiesMode {
+	return []MongoDatabaseResponsePropertiesMode{	
+		MongoDatabaseResponsePropertiesModeRecipe,
+		MongoDatabaseResponsePropertiesModeResource,
+		MongoDatabaseResponsePropertiesModeValues,
+	}
+}
+
 // ProvisioningState - Provisioning state of the connector at the time the operation was called
 type ProvisioningState string
 

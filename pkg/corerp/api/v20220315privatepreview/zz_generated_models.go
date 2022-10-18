@@ -488,7 +488,7 @@ type ExecHealthProbeProperties struct {
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 
-	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
 	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
@@ -653,7 +653,7 @@ type HTTPGetHealthProbeProperties struct {
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 
-	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
 	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
@@ -776,7 +776,7 @@ type HealthProbeProperties struct {
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 
-	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
 	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
@@ -942,7 +942,7 @@ type TCPHealthProbeProperties struct {
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
 
-	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
 	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 

@@ -1305,6 +1305,7 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", m.Database)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
+	objectMap["mode"] = "MongoDatabaseProperties"
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
 	populate(objectMap, "recipe", m.Recipe)
@@ -1334,6 +1335,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "host":
 				err = unpopulate(val, "Host", &m.Host)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &m.Mode)
 				delete(rawMsg, key)
 		case "port":
 				err = unpopulate(val, "Port", &m.Port)
@@ -1419,6 +1423,7 @@ func (m MongoDatabaseResponseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", m.Database)
 	populate(objectMap, "environment", m.Environment)
 	populate(objectMap, "host", m.Host)
+	objectMap["mode"] = m.Mode
 	populate(objectMap, "port", m.Port)
 	populate(objectMap, "provisioningState", m.ProvisioningState)
 	populate(objectMap, "recipe", m.Recipe)
@@ -1447,6 +1452,9 @@ func (m *MongoDatabaseResponseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "host":
 				err = unpopulate(val, "Host", &m.Host)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &m.Mode)
 				delete(rawMsg, key)
 		case "port":
 				err = unpopulate(val, "Port", &m.Port)
@@ -1503,7 +1511,7 @@ func (m *MongoDatabaseResponseResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &m.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &m.Properties)
+				m.Properties, err = unmarshalMongoDatabaseResponsePropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &m.SystemData)

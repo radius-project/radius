@@ -26,21 +26,22 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment: to.String(src.Properties.GetMongoDatabaseResponseProperties().Environment),
+				Application: to.String(src.Properties.GetMongoDatabaseResponseProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Resource:          to.String(src.Properties.Resource),
-			Host:              to.String(src.Properties.Host),
-			Port:              to.Int32(src.Properties.Port),
-			Database:          to.String(src.Properties.Database),
+			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseResponseProperties().ProvisioningState),
+			Resource:          to.String(src.Properties.GetMongoDatabaseResponseProperties().Resource),
+			Host:              to.String(src.Properties.GetMongoDatabaseResponseProperties().Host),
+			Port:              to.Int32(src.Properties.GetMongoDatabaseResponseProperties().Port),
+			Database:          to.String(src.Properties.GetMongoDatabaseResponseProperties().Database),
+			Mode:              toMongoDBModeDataModel(src.Properties.GetMongoDatabaseResponseProperties().Mode),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
-	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
+	if src.Properties.GetMongoDatabaseResponseProperties().Recipe != nil {
+		converted.Properties.Recipe = toRecipeDataModel(src.Properties.GetMongoDatabaseResponseProperties().Recipe)
 	}
 	return converted, nil
 }
@@ -66,6 +67,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Host:              to.String(src.Properties.Host),
 				Port:              to.Int32(src.Properties.Port),
 				Database:          to.String(src.Properties.Database),
+				Mode:              toMongoDBModeDataModel(src.Properties.GetMongoDatabaseResponseProperties().Mode),
 			},
 		},
 		InternalMetadata: v1.InternalMetadata{
@@ -105,13 +107,14 @@ func (dst *MongoDatabaseResponseResource) ConvertFrom(src conv.DataModelInterfac
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
 		Application:       to.StringPtr(mongo.Properties.Application),
+		Mode:              fromMongoDBModeDataModel(mongo.Properties.Mode),
 		Resource:          to.StringPtr(mongo.Properties.Resource),
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
 		Database:          to.StringPtr(mongo.Properties.Database),
 	}
 	if mongo.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
+		dst.Properties.GetMongoDatabaseResponseProperties().Recipe = fromRecipeDataModel(mongo.Properties.Recipe)
 	}
 	return nil
 }
@@ -136,6 +139,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 		Environment:       to.StringPtr(mongo.Properties.Environment),
 		Application:       to.StringPtr(mongo.Properties.Application),
+		Mode:              fromMongoDBModeDataModel(mongo.Properties.Mode),
 		Resource:          to.StringPtr(mongo.Properties.Resource),
 		Host:              to.StringPtr(mongo.Properties.Host),
 		Port:              to.Int32Ptr(mongo.Properties.Port),
@@ -177,4 +181,30 @@ func (src *MongoDatabaseSecrets) ConvertTo() (conv.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
+}
+
+func toMongoDBModeDataModel(mode *MongoDatabaseResponsePropertiesMode) datamodel.MongoDatabaseMode {
+	switch *mode {
+	case MongoDatabaseResponsePropertiesModeResource:
+		return datamodel.MongoDatabaseModeResource
+	case MongoDatabaseResponsePropertiesModeValues:
+		return datamodel.MongoDatabaseModeResource
+	case MongoDatabaseResponsePropertiesModeRecipe:
+		return datamodel.MongoDatabaseModeRecipe
+	default:
+		return datamodel.MongoDatabaseModeUnknown
+	}
+}
+
+func fromMongoDBModeDataModel(mode datamodel.MongoDatabaseMode) *MongoDatabaseResponsePropertiesMode {
+	var convertedMode MongoDatabaseResponsePropertiesMode
+	switch mode {
+	case datamodel.MongoDatabaseModeResource:
+		convertedMode = MongoDatabaseResponsePropertiesModeResource
+	case datamodel.MongoDatabaseModeValues:
+		convertedMode = MongoDatabaseResponsePropertiesModeValues
+	case datamodel.MongoDatabaseModeRecipe:
+		convertedMode = MongoDatabaseResponsePropertiesModeRecipe
+	}
+	return &convertedMode
 }

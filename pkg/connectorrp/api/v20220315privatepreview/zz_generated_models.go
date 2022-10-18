@@ -772,6 +772,9 @@ type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; Mode of the mongo database connector deployment. It can be one of 'recipe', 'resource' or 'values'
+	Mode *MongoDatabaseResponsePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -800,6 +803,22 @@ type MongoDatabaseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetMongoDatabaseResponseProperties implements the MongoDatabaseResponsePropertiesClassification interface for type MongoDatabaseProperties.
+func (m *MongoDatabaseProperties) GetMongoDatabaseResponseProperties() *MongoDatabaseResponseProperties {
+	return &MongoDatabaseResponseProperties{
+		ProvisioningState: m.ProvisioningState,
+		Mode: m.Mode,
+		Resource: m.Resource,
+		Host: m.Host,
+		Port: m.Port,
+		Database: m.Database,
+		Recipe: m.Recipe,
+		Status: m.Status,
+		Environment: m.Environment,
+		Application: m.Application,
+	}
+}
+
 // MongoDatabaseResource - MongoDatabase connector
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
@@ -824,10 +843,22 @@ type MongoDatabaseResource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+// MongoDatabaseResponsePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetMongoDatabaseResponseProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *MongoDatabaseProperties, *MongoDatabaseResponseProperties
+type MongoDatabaseResponsePropertiesClassification interface {
+	// GetMongoDatabaseResponseProperties returns the MongoDatabaseResponseProperties content of the underlying type.
+	GetMongoDatabaseResponseProperties() *MongoDatabaseResponseProperties
+}
+
 // MongoDatabaseResponseProperties - MongoDatabase connector properties
 type MongoDatabaseResponseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the connector is linked to
 	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Mode of the mongo database connector deployment. It can be one of 'recipe', 'resource' or 'values'
+	Mode *MongoDatabaseResponsePropertiesMode `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the connector is consumed by
 	Application *string `json:"application,omitempty"`
@@ -854,13 +885,16 @@ type MongoDatabaseResponseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetMongoDatabaseResponseProperties implements the MongoDatabaseResponsePropertiesClassification interface for type MongoDatabaseResponseProperties.
+func (m *MongoDatabaseResponseProperties) GetMongoDatabaseResponseProperties() *MongoDatabaseResponseProperties { return m }
+
 // MongoDatabaseResponseResource - MongoDatabase connector
 type MongoDatabaseResponseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// REQUIRED; MongoDatabase connector properties
-	Properties *MongoDatabaseResponseProperties `json:"properties,omitempty"`
+	Properties MongoDatabaseResponsePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`

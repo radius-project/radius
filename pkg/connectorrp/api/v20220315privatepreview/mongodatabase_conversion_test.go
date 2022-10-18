@@ -56,7 +56,9 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		if payload == "mongodatabaseresource_recipe.json" {
 			require.Equal(t, "cosmosdb", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+			require.Equal(t, "recipe", string(convertedResource.Properties.Mode))
 		} else {
+			require.Equal(t, "resource", string(convertedResource.Properties.Mode))
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", convertedResource.Properties.Resource)
 		}
 	}
@@ -88,6 +90,7 @@ func TestMongoDatabaseResponse_ConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "test-connection-string", convertedResource.Properties.Secrets.ConnectionString)
 	require.Equal(t, "testUser", convertedResource.Properties.Secrets.Username)
 	require.Equal(t, "testPassword", convertedResource.Properties.Secrets.Password)
+	require.Equal(t, "resource", string(convertedResource.Properties.Mode))
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
@@ -121,7 +124,9 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		} else if payload == "mongodatabaseresourcedatamodel_recipe.json" {
 			require.Equal(t, "cosmosdb", *versionedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", versionedResource.Properties.Recipe.Parameters["foo"])
+			require.Equal(t, "recipe", string(*versionedResource.Properties.Mode))
 		} else {
+			require.Equal(t, "resource", string(*versionedResource.Properties.Mode))
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *versionedResource.Properties.Resource)
 		}
 	}
@@ -145,6 +150,7 @@ func TestMongoDatabaseResponse_ConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "Applications.Connector/mongoDatabases", resource.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
+	require.Equal(t, "resource", string(*versionedResource.Properties.Mode))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *versionedResource.Properties.Resource)
 	require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *versionedResource.Properties.Host)
 	require.Equal(t, int32(10255), *versionedResource.Properties.Port)

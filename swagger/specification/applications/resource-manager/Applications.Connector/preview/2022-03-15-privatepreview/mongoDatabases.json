@@ -328,11 +328,21 @@
           "$ref": "global.json#/definitions/BasicResourceProperties"
         }
       ],
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the mongo database connector at the time the operation was called"
+        },
+        "mode" : {
+          "description": "Mode of the mongo database connector deployment. It can be one of 'recipe', 'resource' or 'values'",
+          "type": "string",
+          "enum": [
+            "resource",
+            "recipe",
+            "values"
+          ] 
         },
         "resource": {
           "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this connector",
@@ -364,7 +374,8 @@
         }
       },
       "required": [
-        "environment"
+        "environment",
+        "mode"
       ]
     },
     "MongoDatabaseProperties": {
