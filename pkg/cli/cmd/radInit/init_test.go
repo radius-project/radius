@@ -108,7 +108,7 @@ func Test_Validate(t *testing.T) {
 			HelmInterface:       helmMock,
 		},
 		{
-			Name:          "Init Command With cloud provider Read",
+			Name:          "Init Command With Cloud Provider Read",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -245,13 +245,12 @@ func initMocksWithCloudProvider(kubernetesMock *kubernetes.MockInterface, prompt
 	initSelectCloudProvider(prompterMock)
 	initAddCloudProviderPromptYes(prompterMock) // Y add azure provider
 	initAddCloudProviderPromptYes(prompterMock) // Y use default subscription
-	initAddCloudProviderPromptNo(prompterMock)  // No dont create RG
-	initAddCloudProviderPromptNo(prompterMock)  // No dont use default RG
-	initSelectResourceGroup(prompterMock)       // Select resource group to use
+	initAddCloudProviderPromptYes(prompterMock) // Y create RG
+	initSelectRGName(prompterMock)              // Use radius-rg as name
 	initEnvNamePrompt(prompterMock)             // Mock appID for cloud provider
 	initEnvNamePrompt(prompterMock)             // Mock password for cloud provider
 	initEnvNamePrompt(prompterMock)             // Mock tenant for cloud provider
-	initAddCloudProviderPromptNo(prompterMock)  // N dont add another cloud provider?
+	initAddCloudProviderPromptNo(prompterMock)  // N dont add another cloud provider
 }
 
 func initMocksWithKubeContextReadError(kubernetesMock *kubernetes.MockInterface) {
@@ -316,12 +315,6 @@ func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 		Return(-1, "", errors.New("cannot read selection")).Times(1)
 }
 
-func initSelectResourceGroup(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		RunSelect(gomock.Any()).
-		Return(12, "", nil).Times(1)
-}
-
 func initRadiusReInstallNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
@@ -368,6 +361,12 @@ func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
 		Return("y", nil).Times(1)
+}
+
+func initSelectRGName(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(gomock.Any()).
+		Return("radius-rg", nil).Times(1)
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface) {
