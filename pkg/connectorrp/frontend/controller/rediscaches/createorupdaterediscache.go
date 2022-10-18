@@ -88,14 +88,21 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseW
 		newResource.Properties.Host = host
 	}
 	if port, ok := deploymentOutput.ComputedValues[renderers.Port]; ok {
-		if _, ok := port.(string); ok {
-			p, err := strconv.Atoi(port.(string))
-			if err != nil {
-				return nil, err
+		if port != nil {
+			switch p := port.(type) {
+			case float64:
+				newResource.Properties.Port = int32(p)
+			case int32:
+				newResource.Properties.Port = p
+			case string:
+				converted, err := strconv.Atoi(p)
+				if err != nil {
+					return nil, err
+				}
+				newResource.Properties.Port = int32(converted)
+			default:
+				return nil, errors.New("unhandled type for the property port")
 			}
-			newResource.Properties.Port = int32(p)
-		} else {
-			newResource.Properties.Port = port.(int32)
 		}
 	}
 	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {

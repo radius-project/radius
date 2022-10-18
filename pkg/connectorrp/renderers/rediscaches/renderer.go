@@ -8,9 +8,10 @@ package rediscaches
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -70,15 +71,15 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 
 	if _, ok := computedValues[renderers.Host]; !ok {
 		computedValues[renderers.Host] = renderers.ComputedValueReference{
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisHostKey,
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName", // response of "az resource show" for redis cache resource contains hostname in this property
 		}
 	}
 
 	if _, ok := computedValues[renderers.Port]; !ok {
 		computedValues[renderers.Port] = renderers.ComputedValueReference{
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisPortKey,
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort", // response of "az resource show" for redis cache resource contains ssl port in this property
 		}
 	}
 
@@ -103,22 +104,17 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	}
 
 	// Build output resources
-	redisCacheOutputResource := []outputresource.OutputResource{
-		{
-			LocalID: outputresource.LocalIDAzureRedis,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureRedis,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Resource: map[string]string{
-				handlers.RedisResourceIdKey: redisCacheID.String(),
-				handlers.RedisNameKey:       redisCacheID.Name(),
-			},
+	redisCacheOutputResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
 		},
 	}
+	redisCacheOutputResource.Identity = resourcemodel.NewARMIdentity(&redisCacheOutputResource.ResourceType, redisCacheID.String(), clients.GetAPIVersionFromUserAgent(redis.UserAgent()))
 
 	return renderers.RendererOutput{
-		Resources:      redisCacheOutputResource,
+		Resources:      []outputresource.OutputResource{redisCacheOutputResource},
 		ComputedValues: computedValues,
 		SecretValues:   secretValues,
 	}, nil
