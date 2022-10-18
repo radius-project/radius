@@ -118,9 +118,3 @@ stringData:
   # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
   SKIP_ARM: 'true' 
 {{ end }}
-# Configuration for AKS integration
-{{ if .Values.global.rp.aks }}
-  K8S_SUBSCRIPTION_ID: {{ .Values.global.rp.aks.subscriptionId }}
-  K8S_RESOURCE_GROUP: {{ .Values.global.rp.aks.resourceGroup }}
-  K8S_CLUSTER_NAME: {{ .Values.global.rp.aks.clusterName }}
-{{ end }}
