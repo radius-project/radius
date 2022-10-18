@@ -8,6 +8,7 @@ package controller
 import (
 	"context"
 
+	connector_dp "github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -35,6 +36,8 @@ type Options struct {
 
 	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
+
+	GetConnectorRpDeploymentProcessor func() connector_dp.DeploymentProcessor
 }
 
 // Controller is an interface to implement async operation controller.
@@ -84,4 +87,8 @@ func (b *BaseController) ResourceType() string {
 // DeploymentProcessor gets the deployment processor for this controller.
 func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
+}
+
+func (b *BaseController) ConnectorRpDeploymentProcessor() connector_dp.DeploymentProcessor {
+	return b.options.GetConnectorRpDeploymentProcessor()
 }

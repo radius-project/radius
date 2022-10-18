@@ -7,63 +7,54 @@ package mongodatabases
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/connectorrp/datamodel/converter"
 )
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
 
+var (
+	// AsyncDeleteContainerOperationTimeout is the default timeout duration of async delete container operation.
+	AsyncDeleteContainerOperationTimeout = time.Duration(120) * time.Second
+)
+
 // DeleteMongoDatabase is the controller implementation to delete mongodatabase connector resource.
 type DeleteMongoDatabase struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
 func NewDeleteMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteMongoDatabase{ctrl.NewBaseController(opts)}, nil
+	return &DeleteMongoDatabase{
+		ctrl.NewOperation(opts, converter.MongoDatabaseDataModelFromVersioned, converter.MongoDatabaseDataModelToVersioned),
+	}, nil
 }
 
 func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	// Read resource metadata from the storage
-	existingResource := &datamodel.MongoDatabase{}
-	etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old, etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
 		return nil, err
 	}
 
-	if etag == "" {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	if r, err := mongo.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = mongo.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: existingResource, OutputResources: existingResource.Properties.Status.OutputResources, ComputedValues: existingResource.ComputedValues, SecretValues: existingResource.SecretValues, RecipeData: existingResource.RecipeData})
-	if err != nil {
-		return nil, err
+	if r, err := mongo.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteContainerOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = mongo.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
-		return nil, err
-	}
+	return mongo.ConstructAsyncResponse(ctx, req.Method, etag, old)
 
-	return rest.NewOKResponse(nil), nil
 }
