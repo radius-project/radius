@@ -14,20 +14,36 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_CreateAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
+func Test_CreateAWSResourceWithPost(t *testing.T) {
+	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
+
+	primaryIdentifiers := map[string]interface{}{
+		"primaryIdentifier": []interface{}{
+			"/properties/Name",
+		},
+	}
+	serialized, err := json.Marshal(primaryIdentifiers)
+	require.NoError(t, err)
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String("AWS::Kinesis::Stream"),
+		Schema:   to.Ptr(string(serialized)),
+	}
+
+	cloudformationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		notfound := types.ResourceNotFoundException{
-			Message: to.StringPtr("Resource not found"),
+			Message: to.Ptr("Resource not found"),
 		}
 		return nil, &notfound
 	})
@@ -36,7 +52,7 @@ func Test_CreateAWSResource(t *testing.T) {
 		output := cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.StringPtr(testAWSRequestToken),
+				RequestToken:    to.Ptr(testAWSRequestToken),
 			},
 		}
 		return &output, nil
@@ -44,13 +60,14 @@ func Test_CreateAWSResource(t *testing.T) {
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
+			"Name":                 "testStream",
 			"RetentionPeriodHours": 178,
 			"ShardCount":           3,
 		},
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(http.MethodPut, ucp.URL+basePath+testProxyRequestAWSPath, bytes.NewBuffer(body))
+	createRequest, err := http.NewRequest(http.MethodPost, ucp.URL+basePath+testProxyRequestAWSCollectionPath+"/:put", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResponse, err := ucpClient.httpClient.Do(createRequest)
 	require.NoError(t, err)

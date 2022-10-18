@@ -25,10 +25,11 @@ import (
 
 // Options represents controller options.
 type Options struct {
-	BasePath  string
-	DB        store.StorageClient
-	Address   string
-	AWSClient aws.AWSClient
+	BasePath                string
+	DB                      store.StorageClient
+	Address                 string
+	AWSClient               aws.AWSClient
+	AWSCloudFormationClient aws.AWSCloudFormationClient
 }
 
 type ControllerFunc func(Options) (armrpc_controller.Controller, error)

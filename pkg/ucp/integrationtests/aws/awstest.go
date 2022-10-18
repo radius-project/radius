@@ -34,29 +34,32 @@ func NewClient(httpClient *http.Client, baseURL string) Client {
 }
 
 const (
-	testProxyRequestAWSPath      = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1"
-	testAWSResourceName          = "stream-1"
-	testAWSResourceType          = "AWS.Kinesis/Stream"
-	testProxyRequestAWSAsyncPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global"
-	testAWSPlaneID               = "/planes/aws/aws"
-	testAWSRequestToken          = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
-	basePath                     = "/apis/api.ucp.dev/v1alpha3"
+	testProxyRequestAWSPath           = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream/stream-1"
+	testProxyRequestAWSCollectionPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream"
+	testAWSResourceName               = "stream-1"
+	testAWSResourceType               = "AWS.Kinesis/Stream"
+	testProxyRequestAWSAsyncPath      = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global"
+	testAWSPlaneID                    = "/planes/aws/aws"
+	testAWSRequestToken               = "79B9F0DA-4882-4DC8-A367-6FD3BC122DED" // Random UUID
+	basePath                          = "/apis/api.ucp.dev/v1alpha3"
 )
 
-func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSClient) {
+func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSClient, *aws.MockAWSCloudFormationClient) {
 	ctrl := gomock.NewController(t)
 	cloudcontrolClient := aws.NewMockAWSClient(ctrl)
+	cloudformationClient := aws.NewMockAWSCloudFormationClient(ctrl)
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
-		BasePath:  basePath,
-		AWSClient: cloudcontrolClient,
+		BasePath:                basePath,
+		AWSClient:               cloudcontrolClient,
+		AWSCloudFormationClient: cloudformationClient,
 	})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 
-	return ucp, ucpClient, cloudcontrolClient
+	return ucp, ucpClient, cloudcontrolClient, cloudformationClient
 }

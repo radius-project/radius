@@ -31,7 +31,9 @@ const (
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
 	awsResourcePath           = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
-	awsResourceIDPathAction   = "{OperationName}"
+	putPath                   = "put"
+	getPath                   = "get"
+	deletePath                = "delete"
 )
 
 var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
@@ -87,7 +89,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsSingleResourceSubRouter := awsResourcesSubRouter.Path(awsResourcePath).Subrouter()
 	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
 	awsOperationResultsSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationResultsPath).Subrouter()
-	awsResourceIDSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s:%s", awsResourcePath, awsResourceIDPathAction)).Subrouter()
+	awsPutResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, putPath)).Subrouter()
+	awsGetResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, getPath)).Subrouter()
+	awsDeleteResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, deletePath)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -170,9 +174,19 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			HandlerFactory: awsproxy_ctrl.NewGetAWSResource,
 		},
 		{
-			ParentRouter:   awsResourceIDSubRouter,
+			ParentRouter:   awsPutResourceSubRouter,
 			Method:         v1.OperationPost,
-			HandlerFactory: awsproxy_ctrl.NewComputeResourceID,
+			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
+		},
+		{
+			ParentRouter:   awsGetResourceSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSResourceWithPost,
+		},
+		{
+			ParentRouter:   awsDeleteResourceSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
 		},
 
 		// Proxy request should take the least priority in routing and should therefore be last
