@@ -52,6 +52,7 @@ func setupServeMux() *mux.Router {
 }
 
 func statusHandler(res http.ResponseWriter, req *http.Request) {
+	log.Println("Starting Status Check...")
 	if req.Method != "GET" {
 		log.Print("Method not supported")
 		writeResponse(res, http.StatusMethodNotAllowed, nil)
@@ -79,8 +80,10 @@ func statusHandler(res http.ResponseWriter, req *http.Request) {
 		}
 	}
 	if healthy {
+		log.Println("The readiness check passed")
 		writeResponse(res, 200, b)
 	} else {
+		log.Println("The readiness check failed")
 		writeResponse(res, 500, b)
 	}
 }

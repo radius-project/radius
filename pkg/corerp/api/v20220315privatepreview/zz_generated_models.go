@@ -487,6 +487,9 @@ type ExecHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type ExecHealthProbeProperties.
@@ -496,6 +499,7 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 		InitialDelaySeconds: e.InitialDelaySeconds,
 		FailureThreshold: e.FailureThreshold,
 		PeriodSeconds: e.PeriodSeconds,
+		TimeoutSeconds: e.TimeoutSeconds,
 	}
 }
 
@@ -648,6 +652,9 @@ type HTTPGetHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HTTPGetHealthProbeProperties.
@@ -657,6 +664,7 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 		InitialDelaySeconds: h.InitialDelaySeconds,
 		FailureThreshold: h.FailureThreshold,
 		PeriodSeconds: h.PeriodSeconds,
+		TimeoutSeconds: h.TimeoutSeconds,
 	}
 }
 
@@ -767,6 +775,9 @@ type HealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
@@ -930,6 +941,9 @@ type TCPHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type TCPHealthProbeProperties.
@@ -939,6 +953,7 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		InitialDelaySeconds: t.InitialDelaySeconds,
 		FailureThreshold: t.FailureThreshold,
 		PeriodSeconds: t.PeriodSeconds,
+		TimeoutSeconds: t.TimeoutSeconds,
 	}
 }
 
