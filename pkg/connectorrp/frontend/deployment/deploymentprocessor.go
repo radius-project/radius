@@ -248,6 +248,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 	// Values consumed by other Radius resource types through connections
 	computedValues = map[string]interface{}{}
+	logger.Info(fmt.Sprintf("Processing computed values %s", rendererOutput.ComputedValues))
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		// A computed value might be a reference to a 'property' returned in preserved properties
@@ -258,6 +259,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 		// A computed value might be a 'pointer' into the deployed resource
 		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+			logger.Info(fmt.Sprintf("Parsing json pointer %q for computed value %q from resource %s. Output resource local id: %v", v.JSONPointer, k, outputResource.Resource, outputResource.LocalID))
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
 				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)

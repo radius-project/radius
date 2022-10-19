@@ -72,14 +72,14 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	if _, ok := computedValues[renderers.Host]; !ok {
 		computedValues[renderers.Host] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
-			JSONPointer: "/properties/hostName", // response of "az resource show" for redis cache resource contains hostname in this property
+			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
 	if _, ok := computedValues[renderers.Port]; !ok {
 		computedValues[renderers.Port] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
-			JSONPointer: "/properties/sslPort", // response of "az resource show" for redis cache resource contains ssl port in this property
+			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
 		}
 	}
 
