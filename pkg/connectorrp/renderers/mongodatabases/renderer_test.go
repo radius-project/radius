@@ -33,10 +33,12 @@ func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -92,10 +94,12 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -136,10 +140,12 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -185,10 +191,12 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -212,10 +220,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -239,10 +249,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -266,10 +278,12 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -317,10 +331,12 @@ func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
 	renderer := Renderer{}
 
 	mongoDBResource := datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Connector/mongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
