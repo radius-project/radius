@@ -48,8 +48,8 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 		if p.Identity != nil {
 			dm.Identity = datamodel.AzureIdentity{
 				Kind:     toAzureIdentityKind(p.Identity.Kind),
-				ClientID: to.String(p.Identity.ClientID),
-				TenantID: to.String(p.Identity.TenantID),
+				Resource: to.String(p.Identity.Resource),
+				Issuer:   to.String(p.Identity.Issuer),
 			}
 		}
 
@@ -101,8 +101,8 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			Application: azto.Ptr(resource.Properties.Application),
 			Identity: &AzureIdentity{
 				Kind:     fromAzureIdentityKind(azProp.Identity.Kind),
-				ClientID: toStringPtr(azProp.Identity.ClientID),
-				TenantID: toStringPtr(azProp.Identity.TenantID),
+				Resource: toStringPtr(azProp.Identity.Resource),
+				Issuer:   toStringPtr(azProp.Identity.Issuer),
 			},
 			Resource:          azto.Ptr(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),

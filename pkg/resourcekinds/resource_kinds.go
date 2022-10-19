@@ -12,6 +12,7 @@ const (
 	Kubernetes                       = "kubernetes"
 	Deployment                       = "Deployment"
 	Service                          = "Service"
+	ServiceAccount                   = "ServiceAccount"
 	Secret                           = "Secret"
 	Gateway                          = "Gateway"
 	Volume                           = "Volume"

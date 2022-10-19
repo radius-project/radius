@@ -15,7 +15,7 @@ import (
 )
 
 func TestRender_NotSupported(t *testing.T) {
-	r := NewRenderer()
+	r := NewRenderer(nil)
 	vol := &datamodel.VolumeResource{
 		Properties: datamodel.VolumeResourceProperties{
 			Kind: "fakevol",

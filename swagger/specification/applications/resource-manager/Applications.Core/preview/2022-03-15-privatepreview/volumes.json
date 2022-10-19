@@ -472,12 +472,12 @@
             "modelAsString": false
           }
         },
-        "clientId": {
-          "description": "The client ID for workload and user assigned managed identity",
+        "resource": {
+          "description": "The managed identity resource ID",
           "type": "string"
         },
-        "tenantId": {
-          "description": "The tenant ID for workload identity.",
+        "issuer": {
+          "description": "The OIDC Issuer name",
           "type": "string"
         }
       },

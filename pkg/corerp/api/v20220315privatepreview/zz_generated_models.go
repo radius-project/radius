@@ -82,11 +82,11 @@ type AzureIdentity struct {
 	// REQUIRED; Identity Kind
 	Kind *AzureIdentityKind `json:"kind,omitempty"`
 
-	// The client ID for workload and user assigned managed identity
-	ClientID *string `json:"clientId,omitempty"`
+	// The OIDC Issuer name
+	Issuer *string `json:"issuer,omitempty"`
 
-	// The tenant ID for workload identity.
-	TenantID *string `json:"tenantId,omitempty"`
+	// The managed identity resource ID
+	Resource *string `json:"resource,omitempty"`
 }
 
 type AzureKeyVaultVolumeProperties struct {

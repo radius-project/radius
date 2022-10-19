@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -23,10 +24,10 @@ type Renderer struct {
 }
 
 // NewRenderer creates new renderer for volume resources.
-func NewRenderer() renderers.Renderer {
+func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 	return &Renderer{
 		VolumeRenderers: map[string]VolumeRenderer{
-			datamodel.AzureKeyVaultVolume: &AzureKeyvaultVolumeRenderer{},
+			datamodel.AzureKeyVaultVolume: &AzureKeyvaultVolumeRenderer{Arm: armConfig},
 		},
 	}
 }

@@ -84,7 +84,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: volume.ResourceType,
-			Renderer:     volume.NewRenderer(),
+			Renderer:     volume.NewRenderer(arm),
 		},
 	}
 

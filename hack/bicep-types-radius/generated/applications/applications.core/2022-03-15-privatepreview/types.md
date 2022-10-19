@@ -341,9 +341,9 @@
 
 ## AzureIdentity
 ### Properties
-* **clientId**: string: The client ID for workload and user assigned managed identity
+* **issuer**: string: The OIDC Issuer name
 * **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
-* **tenantId**: string: The tenant ID for workload identity.
+* **resource**: string: The managed identity resource ID
 
 ## AzureKeyVaultVolumePropertiesKeys
 ### Properties

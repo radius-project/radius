@@ -132,9 +132,9 @@ func (a *ApplicationResourceList) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type AzureIdentity.
 func (a AzureIdentity) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "clientId", a.ClientID)
+	populate(objectMap, "issuer", a.Issuer)
 	populate(objectMap, "kind", a.Kind)
-	populate(objectMap, "tenantId", a.TenantID)
+	populate(objectMap, "resource", a.Resource)
 	return json.Marshal(objectMap)
 }
 
@@ -147,14 +147,14 @@ func (a *AzureIdentity) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "clientId":
-				err = unpopulate(val, "ClientID", &a.ClientID)
+		case "issuer":
+				err = unpopulate(val, "Issuer", &a.Issuer)
 				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &a.Kind)
 				delete(rawMsg, key)
-		case "tenantId":
-				err = unpopulate(val, "TenantID", &a.TenantID)
+		case "resource":
+				err = unpopulate(val, "Resource", &a.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {

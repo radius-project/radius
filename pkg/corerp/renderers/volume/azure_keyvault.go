@@ -8,10 +8,13 @@ package volume
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	azclients "github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -20,6 +23,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"gopkg.in/yaml.v3"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -28,12 +32,14 @@ var (
 	errCreateSecretResource      = errors.New("unable to create secret provider class")
 	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
+	errInvalidManagedIdentityID  = errors.New("invalid managed identity resource id")
 )
 
 var _ VolumeRenderer = (*AzureKeyvaultVolumeRenderer)(nil)
 
 // AzureKeyvaultVolumeRenderer is the render to generate a SecretProviderClass resource.
 type AzureKeyvaultVolumeRenderer struct {
+	Arm *armauth.ArmConfig
 }
 
 // Render constructs a SecretProviderClass for Azure Key Vault CSI Driver volume
@@ -51,25 +57,89 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 		keys:         properties.Keys,
 	}
 
-	appId, err := resources.ParseResource(dm.Properties.Application)
+	// TODO: Move it to frontend.
+	_, err := resources.ParseResource(dm.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	secretProviderClassName := kubernetes.MakeResourceName(appId.Name(), dm.Name)
-	outputResource, err := makeSecretProviderClass(options.Environment.Namespace, secretProviderClassName, properties.Resource, secretObjects, &dm.Properties.AzureKeyVault.Identity)
+	outputResource, err := r.makeSecretProviderClass(ctx, options.Environment.Namespace, secretObjects, dm)
 	if err != nil {
 		return renderers.RendererOutput{}, err
+	}
+
+	resources := []outputresource.OutputResource{outputResource}
+	computedValues := map[string]rp.ComputedValueReference{}
+	if properties.Identity.Kind == datamodel.AzureIdentityWorkload {
+		provider, ok := outputResource.Resource.(*csiv1.SecretProviderClass)
+		if !ok {
+			return renderers.RendererOutput{}, errors.New("failed to get ServiceProviderClass")
+		}
+		serviceResource, saName, err := r.makeServiceAccount(options.Environment.Namespace, dm, provider)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		resources = append(resources, *serviceResource)
+		computedValues = map[string]rp.ComputedValueReference{
+			"identity": {
+				Value: dm.Properties.AzureKeyVault.Identity.Resource,
+			},
+			"identitySubject": {
+				Value: fmt.Sprintf("system:serviceaccount:%s:%s", options.Environment.Namespace, saName),
+			},
+			"identityIssuer": {
+				Value: dm.Properties.AzureKeyVault.Identity.Issuer,
+			},
+			"identityAudience": {
+				Value: "api://AzureADTokenExchange",
+			},
+		}
 	}
 
 	return renderers.RendererOutput{
-		Resources:      []outputresource.OutputResource{outputResource},
-		ComputedValues: map[string]rp.ComputedValueReference{},
+		Resources:      resources,
+		ComputedValues: computedValues,
 		SecretValues:   map[string]rp.SecretValueReference{},
 	}, nil
 }
 
-func makeSecretProviderClass(namespace string, secretProviderName string, keyVaultResourceID string, secretObjects *SecretObjects, identity *datamodel.AzureIdentity) (outputresource.OutputResource, error) {
+func (r *AzureKeyvaultVolumeRenderer) makeServiceAccount(namespace string, res *datamodel.VolumeResource, provider *csiv1.SecretProviderClass) (*outputresource.OutputResource, string, error) {
+	clientID, ok := provider.Spec.Parameters["clientID"]
+	if !ok {
+		return nil, "", errors.New("failed to get ClientID")
+	}
+
+	tenantID, ok := provider.Spec.Parameters["tenantID"]
+	if !ok {
+		return nil, "", errors.New("failed to get TenantID")
+	}
+
+	name := kubernetes.MakeResourceName(res.Properties.Application, res.Name)
+	labels := kubernetes.MakeDescriptiveLabels(res.Properties.Application, res.Name, res.Type)
+	labels["azure.workload.identity/use"] = "true"
+	sa := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.MakeResourceName(res.Properties.Application, res.Name),
+			Namespace: namespace,
+			Labels:    labels,
+			Annotations: map[string]string{
+				"azure.workload.identity/client-id": clientID,
+				"azure.workload.identity/tenant-id": tenantID,
+			},
+		},
+	}
+
+	outRes := outputresource.NewKubernetesOutputResource(resourcekinds.ServiceAccount, outputresource.LocalIDSecretProviderClass, sa, sa.ObjectMeta)
+
+	return &outRes, name, nil
+
+}
+
+func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Context, namespace string, secretObjects *SecretObjects, res *datamodel.VolumeResource) (outputresource.OutputResource, error) {
 	keyVaultObjects := []azcsi.KeyVaultObject{}
 	// Construct the spec for the secret objects
 	for name, secret := range secretObjects.secrets {
@@ -126,20 +196,20 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 		return outputresource.OutputResource{}, errCreateSecretResource
 	}
 
-	kvResourceID, err := resources.ParseResource(keyVaultResourceID)
+	prop := res.Properties.AzureKeyVault
+
+	kvResourceID, err := resources.ParseResource(prop.Resource)
 	if err != nil {
 		return outputresource.OutputResource{}, errInvalidKeyVaultResourceID
 	}
 
 	params := map[string]string{
 		"usePodIdentity": "false",
-		"clientID":       identity.ClientID,
-		"tenantID":       identity.TenantID,
 		"keyvaultName":   kvResourceID.Name(),
 		"objects":        keyVaultObjectsSpec,
 	}
 
-	switch identity.Kind {
+	switch prop.Identity.Kind {
 	case datamodel.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
@@ -149,22 +219,37 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 		params["tenantID"] = "placeholder"
 
 	case datamodel.AzureIdentityWorkload:
+		rID, err := resources.ParseResource(prop.Identity.Resource)
+		if err != nil {
+			return outputresource.OutputResource{}, errInvalidManagedIdentityID
+		}
+		subscription := rID.FindScope(resources.SubscriptionsSegment)
+		if subscription == "" {
+			return outputresource.OutputResource{}, errInvalidManagedIdentityID
+		}
+
+		miClient := azclients.NewUserAssignedIdentitiesClient(subscription, r.Arm.Auth)
+		mi, err := miClient.Get(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name())
+		if err != nil {
+			return outputresource.OutputResource{}, err
+		}
 		params["useVMManagedIdentity"] = "true"
-		params["clientID"] = identity.ClientID
-		params["tenantID"] = "placeholder"
+		params["clientID"] = mi.ClientID.String()
+		params["tenantID"] = mi.TenantID.String()
 
 	default:
 		return outputresource.OutputResource{}, errUnsupportedIdentityKind
 	}
 
-	secretProvider := csiv1.SecretProviderClass{
+	secretProvider := &csiv1.SecretProviderClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "SecretProviderClass",
 			APIVersion: "secrets-store.csi.x-k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretProviderName,
+			Name:      kubernetes.MakeResourceName(res.Properties.Application, res.Name),
 			Namespace: namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(res.Properties.Application, res.Name, res.Type),
 		},
 		Spec: csiv1.SecretProviderClassSpec{
 			Provider:   "azure",
@@ -172,7 +257,7 @@ func makeSecretProviderClass(namespace string, secretProviderName string, keyVau
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.SecretProviderClass, outputresource.LocalIDSecretProviderClass, &secretProvider, secretProvider.ObjectMeta), nil
+	return outputresource.NewKubernetesOutputResource(resourcekinds.SecretProviderClass, outputresource.LocalIDSecretProviderClass, secretProvider, secretProvider.ObjectMeta), nil
 }
 
 func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretObjectProperties) objectValues {

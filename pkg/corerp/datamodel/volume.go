@@ -67,10 +67,10 @@ const (
 type AzureIdentity struct {
 	// Kind represents the type of authentication.
 	Kind AzureIdentityKind `json:"kind"`
-	// ClientID represents the client id of workload identity or user assigned managed identity.
-	ClientID string `json:"clientId,omitempty"`
-	// TenantID represents the tenant id for the resource.
-	TenantID string `json:"tenantId,omitempty"`
+	// Resource represents the resource id of managed identity.
+	Resource string `json:"resource,omitempty"`
+	// Issuer represents the name of OIDC issuer.
+	Issuer string `json:"issuer,omitempty"`
 }
 
 // AzureKeyVaultVolumeProperties represents the volume for Azure Keyvault.
