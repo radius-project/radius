@@ -118,7 +118,6 @@ func Test_Validate(t *testing.T) {
 			KubernetesInterface: kubernetesMock,
 			Prompter:            prompter,
 			HelmInterface:       helmMock,
-			Context:             context.Background(),
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
