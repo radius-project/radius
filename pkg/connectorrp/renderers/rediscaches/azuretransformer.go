@@ -32,8 +32,8 @@ func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[str
 		return nil, errors.New("hostname is required to build Redis connection string")
 	}
 
-	port, ok := computedValues[renderers.Port].(string)
-	if !ok {
+	port, ok := computedValues[renderers.Port]
+	if !ok || port == nil {
 		return nil, errors.New("port is required to build Redis connection string")
 	}
 

@@ -81,7 +81,7 @@ func GetByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion strin
 		return nil, err
 	}
 
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id)
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
 	logger.Info("Fetching arm resource by id")
 	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
 	resource, err := rc.GetByID(ctx, id, apiVersion)
@@ -91,6 +91,5 @@ func GetByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion strin
 		}
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
-	logger.Info(fmt.Sprintf("Retrieved arm resource %v", resource))
 	return &resource, nil
 }
