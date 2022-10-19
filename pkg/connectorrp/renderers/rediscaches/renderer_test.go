@@ -9,10 +9,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -46,30 +47,32 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 	}
-
-	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 1)
-	redisCacheOutputResource := output.Resources[0]
-
-	require.Equal(t, outputresource.LocalIDAzureRedis, redisCacheOutputResource.LocalID)
-	require.Equal(t, resourcekinds.AzureRedis, redisCacheOutputResource.ResourceType.Type)
-
-	expectedOutputResource := map[string]string{
-		handlers.RedisResourceIdKey: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
-		handlers.RedisNameKey:       "testCache",
+	expectedOutputResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureRedis,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureRedis,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		Identity: resourcemodel.ResourceIdentity{
+			ResourceType: &resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureRedis,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Data: resourcemodel.ARMIdentity{
+				ID:         "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
+				APIVersion: clients.GetAPIVersionFromUserAgent(redis.UserAgent()),
+			},
+		},
 	}
-	require.Equal(t, expectedOutputResource, redisCacheOutputResource.Resource)
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.Host: {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisHostKey,
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/hostName",
 		},
 		renderers.Port: {
-			LocalID:           outputresource.LocalIDAzureRedis,
-			PropertyReference: handlers.RedisPortKey,
+			LocalID:     outputresource.LocalIDAzureRedis,
+			JSONPointer: "/properties/sslPort",
 		},
 	}
 	expectedSecretValues := map[string]rp.SecretValueReference{
@@ -89,6 +92,10 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
+	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+	require.Equal(t, expectedOutputResource, output.Resources[0])
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
