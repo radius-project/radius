@@ -28,7 +28,12 @@ type DeleteEnvironment struct {
 // NewDeleteEnvironment creates a new DeleteEnvironment.
 func NewDeleteEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteEnvironment{
-		ctrl.NewOperation(opts, converter.EnvironmentDataModelFromVersioned, converter.EnvironmentDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Environment]{
+				RequestConverter:  converter.EnvironmentDataModelFromVersioned,
+				ResponseConverter: converter.EnvironmentDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
