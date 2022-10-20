@@ -23,17 +23,17 @@ import (
 	"strings"
 )
 
-// CredentialClient contains the methods for the Credential group.
-// Don't use this type directly, use NewCredentialClient() instead.
-type CredentialClient struct {
+// AWSCredentialClient contains the methods for the AWSCredential group.
+// Don't use this type directly, use NewAWSCredentialClient() instead.
+type AWSCredentialClient struct {
 	host string
 	pl runtime.Pipeline
 }
 
-// NewCredentialClient creates a new instance of CredentialClient with the specified values.
+// NewAWSCredentialClient creates a new instance of AWSCredentialClient with the specified values.
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewCredentialClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*CredentialClient, error) {
+func NewAWSCredentialClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*AWSCredentialClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -45,7 +45,7 @@ func NewCredentialClient(credential azcore.TokenCredential, options *arm.ClientO
 	if err != nil {
 		return nil, err
 	}
-	client := &CredentialClient{
+	client := &AWSCredentialClient{
 		host: ep,
 pl: pl,
 	}
@@ -59,26 +59,26 @@ pl: pl,
 // planeName - The name of the plane
 // credentialName - The name of the credential
 // credential - Credential details
-// options - CredentialClientCreateOrUpdateOptions contains the optional parameters for the CredentialClient.CreateOrUpdate
+// options - AWSCredentialClientCreateOrUpdateOptions contains the optional parameters for the AWSCredentialClient.CreateOrUpdate
 // method.
-func (client *CredentialClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, credentialName string, credential CredentialResource, options *CredentialClientCreateOrUpdateOptions) (CredentialClientCreateOrUpdateResponse, error) {
+func (client *AWSCredentialClient) CreateOrUpdate(ctx context.Context, planeType string, planeName string, credentialName string, credential CredentialResource, options *AWSCredentialClientCreateOrUpdateOptions) (AWSCredentialClientCreateOrUpdateResponse, error) {
 	req, err := client.createOrUpdateCreateRequest(ctx, planeType, planeName, credentialName, credential, options)
 	if err != nil {
-		return CredentialClientCreateOrUpdateResponse{}, err
+		return AWSCredentialClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return CredentialClientCreateOrUpdateResponse{}, err
+		return AWSCredentialClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return CredentialClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return AWSCredentialClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *CredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, credential CredentialResource, options *CredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}"
+func (client *AWSCredentialClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, credential CredentialResource, options *AWSCredentialClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
@@ -100,10 +100,10 @@ func (client *CredentialClient) createOrUpdateCreateRequest(ctx context.Context,
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *CredentialClient) createOrUpdateHandleResponse(resp *http.Response) (CredentialClientCreateOrUpdateResponse, error) {
-	result := CredentialClientCreateOrUpdateResponse{}
+func (client *AWSCredentialClient) createOrUpdateHandleResponse(resp *http.Response) (AWSCredentialClientCreateOrUpdateResponse, error) {
+	result := AWSCredentialClientCreateOrUpdateResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.CredentialResource); err != nil {
-		return CredentialClientCreateOrUpdateResponse{}, err
+		return AWSCredentialClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }

@@ -27,7 +27,6 @@ Add the following to `configurations` in `.vscode/launch.json` in your Radius so
     "env": {
         "RADIUS_ENV": "self-hosted", // uses config from cmd/appcore-rp/radius-self-hosted.yaml
         "SKIP_AUTH": "true",
-        "K8S_LOCAL": "true",
         "SKIP_ARM": "false",
         "ARM_AUTH_METHOD": "ServicePrincipal",
         "ARM_SUBSCRIPTION_ID": "<your-subscription-id>",

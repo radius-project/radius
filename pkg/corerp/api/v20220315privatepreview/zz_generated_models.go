@@ -340,8 +340,8 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
-	// Cloud provider configuration for the environment.
-	Providers *ProviderProperties `json:"providers,omitempty"`
+	// Cloud providers configuration for the environment.
+	Providers *Providers `json:"providers,omitempty"`
 
 	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
@@ -487,6 +487,9 @@ type ExecHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type ExecHealthProbeProperties.
@@ -496,6 +499,7 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 		InitialDelaySeconds: e.InitialDelaySeconds,
 		FailureThreshold: e.FailureThreshold,
 		PeriodSeconds: e.PeriodSeconds,
+		TimeoutSeconds: e.TimeoutSeconds,
 	}
 }
 
@@ -648,6 +652,9 @@ type HTTPGetHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HTTPGetHealthProbeProperties.
@@ -657,6 +664,7 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 		InitialDelaySeconds: h.InitialDelaySeconds,
 		FailureThreshold: h.FailureThreshold,
 		PeriodSeconds: h.PeriodSeconds,
+		TimeoutSeconds: h.TimeoutSeconds,
 	}
 }
 
@@ -767,6 +775,9 @@ type HealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
@@ -850,14 +861,14 @@ func (p *PersistentVolume) GetVolume() *Volume {
 	}
 }
 
-// ProviderProperties - Cloud provider configuration
-type ProviderProperties struct {
+// Providers - Cloud providers configuration
+type Providers struct {
 	// Azure cloud provider configuration
-	Azure *ProviderPropertiesAzure `json:"azure,omitempty"`
+	Azure *ProvidersAzure `json:"azure,omitempty"`
 }
 
-// ProviderPropertiesAzure - Azure cloud provider configuration
-type ProviderPropertiesAzure struct {
+// ProvidersAzure - Azure cloud provider configuration
+type ProvidersAzure struct {
 	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
 	Scope *string `json:"scope,omitempty"`
 }
@@ -930,6 +941,9 @@ type TCPHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type TCPHealthProbeProperties.
@@ -939,6 +953,7 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		InitialDelaySeconds: t.InitialDelaySeconds,
 		FailureThreshold: t.FailureThreshold,
 		PeriodSeconds: t.PeriodSeconds,
+		TimeoutSeconds: t.TimeoutSeconds,
 	}
 }
 

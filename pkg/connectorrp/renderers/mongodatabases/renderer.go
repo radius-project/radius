@@ -14,7 +14,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -127,12 +126,8 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosAccount,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		Resource: map[string]string{
-			handlers.CosmosDBAccountIDKey:   cosmosMongoAccountID.String(),
-			handlers.CosmosDBAccountNameKey: cosmosMongoDBID.TypeSegments()[0].Name,
-			handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindMongoDB),
-		},
 	}
+	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	databaseResource := outputresource.OutputResource{
 		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
@@ -140,18 +135,13 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosDBMongo,
 			Provider: resourcemodel.ProviderAzure,
 		},
-		Resource: map[string]string{
-			handlers.CosmosDBAccountIDKey:    cosmosMongoAccountID.String(),
-			handlers.CosmosDBDatabaseIDKey:   cosmosMongoDBID.String(),
-			handlers.CosmosDBAccountNameKey:  cosmosMongoDBID.TypeSegments()[0].Name,
-			handlers.CosmosDBDatabaseNameKey: cosmosMongoDBID.TypeSegments()[1].Name,
-		},
 		Dependencies: []outputresource.Dependency{
 			{
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
 			},
 		},
 	}
+	databaseResource.Identity = resourcemodel.NewARMIdentity(&databaseResource.ResourceType, cosmosMongoDBID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
 	return renderers.RendererOutput{
 		Resources:      []outputresource.OutputResource{cosmosAccountResource, databaseResource},

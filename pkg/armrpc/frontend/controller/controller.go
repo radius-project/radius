@@ -9,6 +9,7 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
@@ -43,6 +44,18 @@ type Options struct {
 
 	// StatusManager
 	StatusManager sm.StatusManager
+}
+
+// ResourceOptions represents the options and filters for resource.
+type ResourceOptions[T any] struct {
+	// RequestConverter is the request converter.
+	RequestConverter conv.ConvertToDataModel[T]
+
+	// ResponseConverter is the response converter.
+	ResponseConverter conv.ConvertToAPIModel[T]
+
+	// RequestValidator is the request validator.
+	RequestValidator ValidateRequest[T]
 }
 
 // TODO: Remove Controller when all controller uses Operation
@@ -167,3 +180,6 @@ func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 
 	return trackedResource
 }
+
+// ValidateRequest function is used to validate the request.
+type ValidateRequest[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)

@@ -78,7 +78,7 @@ type EnvironmentMetadata struct {
 	Namespace           string
 	RecipeConnectorType string
 	RecipeTemplatePath  string
-	Providers           coreDatamodel.ProviderProperties
+	Providers           coreDatamodel.Providers
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -250,6 +250,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	computedValues = map[string]interface{}{}
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
+		logger.Info(fmt.Sprintf("Processing computed value for %s", k))
 		// A computed value might be a reference to a 'property' returned in preserved properties
 		if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
 			computedValues[k] = properties[v.PropertyReference]
@@ -258,6 +259,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 		// A computed value might be a 'pointer' into the deployed resource
 		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+			logger.Info(fmt.Sprintf("Parsing json pointer %q, output resource local id: %v", v.JSONPointer, outputResource.LocalID))
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
 				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)

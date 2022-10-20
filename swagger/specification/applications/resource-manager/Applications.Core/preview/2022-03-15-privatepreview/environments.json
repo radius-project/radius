@@ -365,8 +365,8 @@
             "$ref": "#/definitions/EnvironmentCompute"
           },
           "providers": {
-              "$ref": "#/definitions/ProviderProperties",
-              "description": "Cloud provider configuration for the environment."
+              "$ref": "#/definitions/Providers",
+              "description": "Cloud providers configuration for the environment."
           },
           "recipes": {
             "additionalProperties": {
@@ -377,8 +377,8 @@
           }
         }
       },
-      "ProviderProperties": {
-        "description": "Cloud provider configuration",
+      "Providers": {
+        "description": "Cloud providers configuration",
         "properties": {
           "azure": {
             "type":"object",

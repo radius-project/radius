@@ -28,7 +28,12 @@ type DeleteApplication struct {
 // NewDeleteApplication creates a new DeleteApplication.
 func NewDeleteApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Application]{
+				RequestConverter:  converter.ApplicationDataModelFromVersioned,
+				ResponseConverter: converter.ApplicationDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

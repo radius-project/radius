@@ -168,6 +168,7 @@ type HealthProbeBase struct {
 	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
 	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
 	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
+	TimeoutSeconds      *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable

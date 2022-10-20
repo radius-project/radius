@@ -35,7 +35,7 @@ func (e *Environment) ResourceTypeName() string {
 type EnvironmentProperties struct {
 	Compute   EnvironmentCompute                     `json:"compute,omitempty"`
 	Recipes   map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
-	Providers ProviderProperties                     `json:"providers,omitempty"`
+	Providers Providers                              `json:"providers,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -56,12 +56,12 @@ type EnvironmentRecipeProperties struct {
 	TemplatePath  string `json:"templatePath,omitempty"`
 }
 
-// ProviderProperties represents the provider, eg azure
-type ProviderProperties struct {
-	Azure ProviderPropertiesAzure `json:"azure,omitempty"`
+// Providers represents configs for providers for the environment, eg azure
+type Providers struct {
+	Azure ProvidersAzure `json:"azure,omitempty"`
 }
 
-// ProviderPropertiesAzure represents the azure provider properties
-type ProviderPropertiesAzure struct {
+// ProvidersAzure represents the azure provider configs
+type ProvidersAzure struct {
 	Scope string `json:"scope,omitempty"`
 }

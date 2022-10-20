@@ -35,6 +35,7 @@
         "failureThreshold": 5,
         "initialDelaySeconds": 5,
         "periodSeconds": 5,
+        "timeoutSeconds":5,
         "containerPort": 8080
       }
     },

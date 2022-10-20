@@ -933,6 +933,7 @@ func (e ExecHealthProbeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "initialDelaySeconds", e.InitialDelaySeconds)
 	objectMap["kind"] = "exec"
 	populate(objectMap, "periodSeconds", e.PeriodSeconds)
+	populate(objectMap, "timeoutSeconds", e.TimeoutSeconds)
 	return json.Marshal(objectMap)
 }
 
@@ -959,6 +960,9 @@ func (e *ExecHealthProbeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "periodSeconds":
 				err = unpopulate(val, "PeriodSeconds", &e.PeriodSeconds)
+				delete(rawMsg, key)
+		case "timeoutSeconds":
+				err = unpopulate(val, "TimeoutSeconds", &e.TimeoutSeconds)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1208,6 +1212,7 @@ func (h HTTPGetHealthProbeProperties) MarshalJSON() ([]byte, error) {
 	objectMap["kind"] = "httpGet"
 	populate(objectMap, "path", h.Path)
 	populate(objectMap, "periodSeconds", h.PeriodSeconds)
+	populate(objectMap, "timeoutSeconds", h.TimeoutSeconds)
 	return json.Marshal(objectMap)
 }
 
@@ -1240,6 +1245,9 @@ func (h *HTTPGetHealthProbeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "periodSeconds":
 				err = unpopulate(val, "PeriodSeconds", &h.PeriodSeconds)
+				delete(rawMsg, key)
+		case "timeoutSeconds":
+				err = unpopulate(val, "TimeoutSeconds", &h.TimeoutSeconds)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1393,6 +1401,7 @@ func (h HealthProbeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "initialDelaySeconds", h.InitialDelaySeconds)
 	objectMap["kind"] = h.Kind
 	populate(objectMap, "periodSeconds", h.PeriodSeconds)
+	populate(objectMap, "timeoutSeconds", h.TimeoutSeconds)
 	return json.Marshal(objectMap)
 }
 
@@ -1416,6 +1425,9 @@ func (h *HealthProbeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "periodSeconds":
 				err = unpopulate(val, "PeriodSeconds", &h.PeriodSeconds)
+				delete(rawMsg, key)
+		case "timeoutSeconds":
+				err = unpopulate(val, "TimeoutSeconds", &h.TimeoutSeconds)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1596,15 +1608,15 @@ func (p *PersistentVolume) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ProviderProperties.
-func (p ProviderProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type Providers.
+func (p Providers) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "azure", p.Azure)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ProviderProperties.
-func (p *ProviderProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type Providers.
+func (p *Providers) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", p, err)
@@ -1623,15 +1635,15 @@ func (p *ProviderProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ProviderPropertiesAzure.
-func (p ProviderPropertiesAzure) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ProvidersAzure.
+func (p ProvidersAzure) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "scope", p.Scope)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ProviderPropertiesAzure.
-func (p *ProviderPropertiesAzure) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ProvidersAzure.
+func (p *ProvidersAzure) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", p, err)
@@ -1806,6 +1818,7 @@ func (t TCPHealthProbeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "initialDelaySeconds", t.InitialDelaySeconds)
 	objectMap["kind"] = "tcp"
 	populate(objectMap, "periodSeconds", t.PeriodSeconds)
+	populate(objectMap, "timeoutSeconds", t.TimeoutSeconds)
 	return json.Marshal(objectMap)
 }
 
@@ -1832,6 +1845,9 @@ func (t *TCPHealthProbeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "periodSeconds":
 				err = unpopulate(val, "PeriodSeconds", &t.PeriodSeconds)
+				delete(rawMsg, key)
+		case "timeoutSeconds":
+				err = unpopulate(val, "TimeoutSeconds", &t.TimeoutSeconds)
 				delete(rawMsg, key)
 		}
 		if err != nil {

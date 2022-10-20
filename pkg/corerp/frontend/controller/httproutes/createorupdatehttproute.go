@@ -33,7 +33,12 @@ type CreateOrUpdateHTTPRoute struct {
 // NewCreateOrUpdateTTPRoute creates a new CreateOrUpdateHTTPRoute.
 func NewCreateOrUpdateHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateHTTPRoute{
-		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.HTTPRoute]{
+				RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+				ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

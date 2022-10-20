@@ -28,7 +28,12 @@ type CreateOrUpdateEnvironment struct {
 // NewCreateOrUpdateEnvironment creates a new CreateOrUpdateEnvironment.
 func NewCreateOrUpdateEnvironment(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateEnvironment{
-		ctrl.NewOperation(opts, converter.EnvironmentDataModelFromVersioned, converter.EnvironmentDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Environment]{
+				RequestConverter:  converter.EnvironmentDataModelFromVersioned,
+				ResponseConverter: converter.EnvironmentDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

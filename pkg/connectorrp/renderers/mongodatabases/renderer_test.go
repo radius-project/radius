@@ -14,9 +14,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -51,39 +51,52 @@ func Test_Render_Success(t *testing.T) {
 		},
 	}
 
-	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
-	require.NoError(t, err)
-
-	require.Len(t, output.Resources, 2)
-	accountResource := output.Resources[0]
-	databaseResource := output.Resources[1]
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, accountResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosAccount, accountResource.ResourceType.Type)
-
-	require.Equal(t, outputresource.LocalIDAzureCosmosDBMongo, databaseResource.LocalID)
-	require.Equal(t, resourcekinds.AzureCosmosDBMongo, databaseResource.ResourceType.Type)
-
-	expectedAccount := map[string]string{
-		handlers.CosmosDBAccountIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey: "test-account",
-		handlers.CosmosDBAccountKindKey: string(documentdb.DatabaseAccountKindMongoDB),
+	accountResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureCosmosAccount,
+		Provider: resourcemodel.ProviderAzure,
 	}
-	require.Equal(t, expectedAccount, accountResource.Resource)
-
-	expectedDatabase := map[string]string{
-		handlers.CosmosDBAccountIDKey:    "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-		handlers.CosmosDBAccountNameKey:  "test-account",
-		handlers.CosmosDBDatabaseIDKey:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-		handlers.CosmosDBDatabaseNameKey: "test-database",
+	dbResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureCosmosDBMongo,
+		Provider: resourcemodel.ProviderAzure,
 	}
-	require.Equal(t, expectedDatabase, databaseResource.Resource)
-
+	expectedOutputResources := []outputresource.OutputResource{
+		{
+			LocalID:      outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: accountResourceType,
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &accountResourceType,
+				Data: resourcemodel.ARMIdentity{
+					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				},
+			},
+		},
+		{
+			LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: dbResourceType,
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &dbResourceType,
+				Data: resourcemodel.ARMIdentity{
+					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				},
+			},
+			Dependencies: []outputresource.Dependency{
+				{
+					LocalID: outputresource.LocalIDAzureCosmosAccount,
+				},
+			},
+		},
+	}
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
 			Value: "test-database",
 		},
 	}
+
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.NoError(t, err)
+	require.Equal(t, expectedOutputResources, output.Resources)
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
