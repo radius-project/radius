@@ -32,7 +32,10 @@ type DeleteMongoDatabase struct {
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
 func NewDeleteMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteMongoDatabase{
-		ctrl.NewOperation(opts, converter.MongoDatabaseDataModelFromVersioned, converter.MongoDatabaseDataModelToVersioned),
+		ctrl.NewOperation(opts, ctrl.ResourceOptions[datamodel.MongoDatabase]{
+			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+		}),
 	}, nil
 }
 
