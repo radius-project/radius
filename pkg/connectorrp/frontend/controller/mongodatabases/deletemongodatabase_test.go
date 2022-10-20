@@ -45,8 +45,8 @@ func TestDeleteMongoDatabase_20220315PrivatePreview(t *testing.T) {
 		code     int
 	}{
 		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &store.ErrNotFound{}, nil, nil, http.StatusNoContent},
-		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, http.StatusConflict},
-		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, http.StatusAccepted},
+		{"async-delete-existing-resource-not-in-terminal-state", "random-etag", v1.ProvisioningStateUpdating, nil, nil, nil, http.StatusConflict},
+		{"async-delete-existing-resource-success", "random-etag", v1.ProvisioningStateSucceeded, nil, nil, nil, http.StatusAccepted},
 	}
 
 	for _, tt := range deleteCases {
@@ -67,7 +67,7 @@ func TestDeleteMongoDatabase_20220315PrivatePreview(t *testing.T) {
 			mds.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{
-					Metadata: store.Metadata{ID: appDataModel.ID},
+					Metadata: store.Metadata{ID: appDataModel.ID, ETag: tt.etag},
 					Data:     appDataModel,
 				}, tt.getErr).
 				Times(1)

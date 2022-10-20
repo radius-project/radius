@@ -59,7 +59,7 @@ func (s *Service) Run(ctx context.Context) error {
 		DataProvider: s.StorageProvider,
 		SecretClient: s.SecretClient,
 		KubeClient:   s.KubeClient,
-		GetConnectorRpDeploymentProcessor: func() deployment.DeploymentProcessor {
+		GetConnectorRPDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewDeploymentProcessor(connectorAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
 		},
 	}

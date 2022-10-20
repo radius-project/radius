@@ -300,7 +300,9 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	}
 
 	// Delete resources deployed as part of recipe deployment
-	for _, id := range resourceData.RecipeData.Resources {
+	resourceIds := resourceData.RecipeData.Resources
+	for i := len(resourceIds) - 1; i >= 0; i-- {
+		id := resourceIds[i]
 		logger.Info(fmt.Sprintf("Deleting recipe resource: %s", id))
 		err = dp.appmodel.GetRecipeModel().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
 		if err != nil {

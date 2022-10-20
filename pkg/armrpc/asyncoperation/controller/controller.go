@@ -37,7 +37,7 @@ type Options struct {
 	// GetDeploymentProcessor is the factory function to create DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
 
-	GetConnectorRpDeploymentProcessor func() connector_dp.DeploymentProcessor
+	GetConnectorRPDeploymentProcessor func() connector_dp.DeploymentProcessor
 }
 
 // Controller is an interface to implement async operation controller.
@@ -89,6 +89,6 @@ func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
 	return b.options.GetDeploymentProcessor()
 }
 
-func (b *BaseController) ConnectorRpDeploymentProcessor() connector_dp.DeploymentProcessor {
-	return b.options.GetConnectorRpDeploymentProcessor()
+func (b *BaseController) ConnectorRPDeploymentProcessor() connector_dp.DeploymentProcessor {
+	return b.options.GetConnectorRPDeploymentProcessor()
 }

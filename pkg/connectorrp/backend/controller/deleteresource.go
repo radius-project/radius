@@ -48,7 +48,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	err = c.ConnectorRpDeploymentProcessor().Delete(ctx, resourceData)
+	err = c.ConnectorRPDeploymentProcessor().Delete(ctx, resourceData)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
