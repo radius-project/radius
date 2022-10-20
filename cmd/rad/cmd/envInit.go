@@ -357,7 +357,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	output.LogInfo("Set %q as current environment for workspace %q", environmentName, workspaceName)
-
 	output.CompleteStep(step)
 
 	return nil
