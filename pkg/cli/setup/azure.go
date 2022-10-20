@@ -48,6 +48,8 @@ func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter promp
 func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*azure.Provider, error) {
 	addAzureSPN, err := prompt.YesOrNoPrompter("Add Azure provider for cloud resources [y/N]?", "N", prompter)
 	if err != nil {
+		fmt.Println("add azure provider run prompt error")
+		fmt.Errorf(err.Error())
 		return nil, err
 	}
 	if strings.ToLower(addAzureSPN) == "n" {
@@ -60,6 +62,8 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	// At this point we've already asked the user so we should be ok.
 	authorizer, err := auth.NewAuthorizerFromCLI()
 	if err != nil {
+		fmt.Println("auth from cli error")
+		fmt.Errorf(err.Error())
 		return nil, err
 	}
 
