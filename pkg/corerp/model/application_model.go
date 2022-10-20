@@ -173,6 +173,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFederatedIdentity,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzFederatedIdentity(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},

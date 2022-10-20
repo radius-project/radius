@@ -32,6 +32,7 @@ const (
 	AzureSqlServerDatabase           = "azure.sql.database"
 	AzurePodIdentity                 = "azure.aadpodidentity"
 	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
+	AzureFederatedIdentity           = "azure.federatedidentity"
 	AzureRoleAssignment              = "azure.roleassignment"
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"

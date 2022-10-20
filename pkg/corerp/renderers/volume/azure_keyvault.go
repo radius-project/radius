@@ -8,7 +8,6 @@ package volume
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
@@ -23,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"gopkg.in/yaml.v3"
-	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -75,23 +73,32 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("failed to get ServiceProviderClass")
 		}
-		serviceResource, saName, err := r.makeServiceAccount(options.Environment.Namespace, dm, provider)
-		if err != nil {
-			return renderers.RendererOutput{}, err
+
+		clientID, ok := provider.Spec.Parameters["clientID"]
+		if !ok {
+			return renderers.RendererOutput{}, errors.New("failed to get ClientID")
 		}
-		resources = append(resources, *serviceResource)
+
+		tenantID, ok := provider.Spec.Parameters["tenantID"]
+		if !ok {
+			return renderers.RendererOutput{}, errors.New("failed to get TenantID")
+		}
+
 		computedValues = map[string]rp.ComputedValueReference{
+			"identityType": {
+				Value: string(datamodel.AzureIdentityWorkload),
+			},
 			"identity": {
 				Value: dm.Properties.AzureKeyVault.Identity.Resource,
 			},
-			"identitySubject": {
-				Value: fmt.Sprintf("system:serviceaccount:%s:%s", options.Environment.Namespace, saName),
+			"clientID": {
+				Value: clientID,
 			},
-			"identityIssuer": {
+			"tenantID": {
+				Value: tenantID,
+			},
+			"issuer": {
 				Value: dm.Properties.AzureKeyVault.Identity.Issuer,
-			},
-			"identityAudience": {
-				Value: "api://AzureADTokenExchange",
 			},
 		}
 	}
@@ -101,42 +108,6 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 		ComputedValues: computedValues,
 		SecretValues:   map[string]rp.SecretValueReference{},
 	}, nil
-}
-
-func (r *AzureKeyvaultVolumeRenderer) makeServiceAccount(namespace string, res *datamodel.VolumeResource, provider *csiv1.SecretProviderClass) (*outputresource.OutputResource, string, error) {
-	clientID, ok := provider.Spec.Parameters["clientID"]
-	if !ok {
-		return nil, "", errors.New("failed to get ClientID")
-	}
-
-	tenantID, ok := provider.Spec.Parameters["tenantID"]
-	if !ok {
-		return nil, "", errors.New("failed to get TenantID")
-	}
-
-	name := kubernetes.MakeResourceName(res.Properties.Application, res.Name)
-	labels := kubernetes.MakeDescriptiveLabels(res.Properties.Application, res.Name, res.Type)
-	labels["azure.workload.identity/use"] = "true"
-	sa := &corev1.ServiceAccount{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "ServiceAccount",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(res.Properties.Application, res.Name),
-			Namespace: namespace,
-			Labels:    labels,
-			Annotations: map[string]string{
-				"azure.workload.identity/client-id": clientID,
-				"azure.workload.identity/tenant-id": tenantID,
-			},
-		},
-	}
-
-	outRes := outputresource.NewKubernetesOutputResource(resourcekinds.ServiceAccount, outputresource.LocalIDSecretProviderClass, sa, sa.ObjectMeta)
-
-	return &outRes, name, nil
-
 }
 
 func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Context, namespace string, secretObjects *SecretObjects, res *datamodel.VolumeResource) (outputresource.OutputResource, error) {

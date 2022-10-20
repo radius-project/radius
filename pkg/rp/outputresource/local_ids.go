@@ -63,9 +63,11 @@ const (
 	LocalIDScrapedSecret                = "KubernetesScrapedSecret"
 	LocalIDSecret                       = "Secret"
 	LocalIDSecretProviderClass          = "SecretProviderClass"
+	LocalIDServiceAccount               = "ServiceAccount"
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
+	LocalIDFederatedIdentity            = "FederatedIdentity"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys         = "RoleAssignment-KVKeys"

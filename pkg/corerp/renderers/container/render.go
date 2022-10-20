@@ -303,6 +303,41 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			case datamodel.AzureKeyVaultVolume:
 				// TODO: Support Workload Identity
 				// Pod identity implementation: https://github.com/project-radius/radius/blob/ae2fcb230e40c64f7e85470e2986100fe49e288a/pkg/renderers/containerv1alpha3/render.go#L305-L331
+				identityType, ok := properties.ComputedValues["identityType"].(string)
+				if !ok {
+					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("identityType is undefined")
+				}
+
+				if identityType == string(datamodel.AzureIdentityWorkload) {
+					// Prepare the service account resource.
+					identityID, ok := properties.ComputedValues["identity"].(string)
+					if !ok {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("identity is undefined")
+					}
+					clientID, ok := properties.ComputedValues["clientID"].(string)
+					if !ok {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("clientID is undefined")
+					}
+					tenantID, ok := properties.ComputedValues["tenantID"].(string)
+					if !ok {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("tenantID is undefined")
+					}
+					saName := kubernetes.MakeResourceName(resource.Properties.Application, resource.Name)
+					outResource, err := r.makeServiceAccountForVolume(saName, options.Environment.Namespace, clientID, tenantID, &resource)
+					if err != nil {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+					}
+					outputResources = append(outputResources, outResource)
+
+					// Prepare the federated identity (aka Workload identity) for managed identity.
+					issuer, ok := properties.ComputedValues["issuer"].(string)
+					if !ok {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("issuer is undefined")
+					}
+					subs := fmt.Sprintf("system:serviceccount:%s:%s", options.Environment.Namespace, saName)
+
+					outputResources = append(outputResources, r.makeFederatedIdentity(identityID, resource.Name, subs, issuer))
+				}
 
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
 				identity := &resourcemodel.KubernetesIdentity{}
@@ -436,6 +471,47 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationNa
 	}
 
 	return env, secretData
+}
+
+func (r Renderer) makeFederatedIdentity(identityID, name, subject, issuer string) outputresource.OutputResource {
+	return outputresource.OutputResource{
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		LocalID:  outputresource.LocalIDFederatedIdentity,
+		Deployed: false,
+		Resource: map[string]string{
+			handlers.UserAssignedIdentityNameKey: identityID,
+			handlers.FederatedIdentityNameKey:    name,
+			handlers.FederatedIdentitySubjectKey: subject,
+			handlers.FederatedIdentityIssuerKey:  issuer,
+		},
+	}
+}
+
+func (r Renderer) makeServiceAccountForVolume(name, namespace, clientID, tenantID string, resource *datamodel.ContainerResource) (outputresource.OutputResource, error) {
+	appID := resource.Properties.Application
+	labels := kubernetes.MakeDescriptiveLabels(appID, resource.Name, resource.Type)
+	labels["azure.workload.identity/use"] = "true"
+
+	sa := &corev1.ServiceAccount{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "ServiceAccount",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    labels,
+			Annotations: map[string]string{
+				"azure.workload.identity/client-id": clientID,
+				"azure.workload.identity/tenant-id": tenantID,
+			},
+		},
+	}
+	outRes := outputresource.NewKubernetesOutputResource(resourcekinds.ServiceAccount, outputresource.LocalIDServiceAccount, sa, sa.ObjectMeta)
+	return outRes, nil
 }
 
 func (r Renderer) makeEphemeralVolume(volumeName string, volume *datamodel.EphemeralVolume) (corev1.Volume, corev1.VolumeMount, error) {
