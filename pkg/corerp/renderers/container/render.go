@@ -229,7 +229,7 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, properties
 
 		// TODO: Need to support the other federated identities.
 		subs := handlers.GetKubeAzureSubject(namespace, name)
-		resources = append(resources, r.makeAzureFederatedIdentity(identityID, resource.Name, subs, issuer))
+		resources = append(resources, r.makeAzureFederatedIdentity(identityID, name, subs, issuer))
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDFederatedIdentity})
 	}
 

@@ -158,17 +158,16 @@ func (handler *azureFederatedIdentityHandler) GetResourceNativeIdentityKeyProper
 }
 
 func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	ri, err := handler.GetResourceIdentity(ctx, resource)
+	identityID, err := GetStringProperty(resource.Identity.Data, "resource")
+	if err != nil {
+		return err
+	}
+	name, err := GetStringProperty(resource.Identity.Data, "name")
 	if err != nil {
 		return err
 	}
 
-	identity, ok := ri.Data.(resourcemodel.AzureFederatedIdentity)
-	if !ok {
-		return ErrInvalidIdentity
-	}
-
-	rID, err := resources.ParseResource(identity.Resource)
+	rID, err := resources.ParseResource(identityID)
 	if err != nil {
 		return err
 	}
@@ -178,6 +177,6 @@ func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, resour
 		return err
 	}
 
-	_, err = client.Delete(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), identity.Name, nil)
+	_, err = client.Delete(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), name, nil)
 	return err
 }
