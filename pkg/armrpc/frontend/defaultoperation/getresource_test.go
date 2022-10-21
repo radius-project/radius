@@ -106,7 +106,11 @@ func TestGetResourceRun(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetResource(opts, resourceToVersioned)
+		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+			ResponseConverter: resourceToVersioned,
+		}
+
+		ctl, err := NewGetResource(opts, ctrlOpts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
@@ -134,7 +138,11 @@ func TestGetResourceRun(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetResource(opts, resourceToVersioned)
+		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+			ResponseConverter: resourceToVersioned,
+		}
+
+		ctl, err := NewGetResource(opts, ctrlOpts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)

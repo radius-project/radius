@@ -31,7 +31,12 @@ type DeleteHTTPRoute struct {
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
 func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteHTTPRoute{
-		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.HTTPRoute]{
+				RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+				ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

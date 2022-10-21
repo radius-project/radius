@@ -16,7 +16,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/connectorrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -33,18 +32,18 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 	if buildComputedValueReferences {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.Host: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisHostKey,
+				LocalID:     outputresource.LocalIDAzureRedis,
+				JSONPointer: "/properties/hostName",
 			},
 			renderers.Port: {
-				LocalID:           outputresource.LocalIDAzureRedis,
-				PropertyReference: handlers.RedisPortKey,
+				LocalID:     outputresource.LocalIDAzureRedis,
+				JSONPointer: "/properties/sslPort",
 			},
 		}
 
 		portValue = "10255"
 	} else {
-		portValue = int32(10255)
+		portValue = float64(10255)
 
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.Host: {

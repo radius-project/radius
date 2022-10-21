@@ -40,6 +40,7 @@ const (
 	DefaultInitialDelaySeconds = 0
 	DefaultFailureThreshold    = 3
 	DefaultPeriodSeconds       = 10
+	DefaultTimeoutSeconds      = 5
 
 	AzureKeyVaultSecretsUserRole = "Key Vault Secrets User"
 	AzureKeyVaultCryptoUserRole  = "Key Vault Crypto User"
@@ -477,6 +478,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 			initialDelaySeconds: p.HTTPGet.InitialDelaySeconds,
 			failureThreshold:    p.HTTPGet.FailureThreshold,
 			periodSeconds:       p.HTTPGet.PeriodSeconds,
+			timeoutSeconds:      p.HTTPGet.TimeoutSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case datamodel.TCPHealthProbe:
@@ -487,6 +489,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 			initialDelaySeconds: p.TCP.InitialDelaySeconds,
 			failureThreshold:    p.TCP.FailureThreshold,
 			periodSeconds:       p.TCP.PeriodSeconds,
+			timeoutSeconds:      p.TCP.TimeoutSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	case datamodel.ExecHealthProbe:
@@ -497,6 +500,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 			initialDelaySeconds: p.Exec.InitialDelaySeconds,
 			failureThreshold:    p.Exec.FailureThreshold,
 			periodSeconds:       p.Exec.PeriodSeconds,
+			timeoutSeconds:      p.Exec.TimeoutSeconds,
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
@@ -509,6 +513,7 @@ type containerHealthProbeConfig struct {
 	initialDelaySeconds *float32
 	failureThreshold    *float32
 	periodSeconds       *float32
+	timeoutSeconds      *float32
 }
 
 func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config containerHealthProbeConfig) {
@@ -516,6 +521,7 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 	probeSpec.InitialDelaySeconds = DefaultInitialDelaySeconds
 	probeSpec.FailureThreshold = DefaultFailureThreshold
 	probeSpec.PeriodSeconds = DefaultPeriodSeconds
+	probeSpec.TimeoutSeconds = DefaultTimeoutSeconds
 
 	if config.initialDelaySeconds != nil {
 		probeSpec.InitialDelaySeconds = int32(*config.initialDelaySeconds)
@@ -527,6 +533,10 @@ func (r Renderer) setContainerHealthProbeConfig(probeSpec *corev1.Probe, config 
 
 	if config.periodSeconds != nil {
 		probeSpec.PeriodSeconds = int32(*config.periodSeconds)
+	}
+
+	if config.timeoutSeconds != nil {
+		probeSpec.TimeoutSeconds = int32(*config.timeoutSeconds)
 	}
 }
 

@@ -27,9 +27,9 @@ type GetResource[P interface {
 func NewGetResource[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &GetResource[P, T]{
-		ctrl.NewOperation[P](opts, nil, modelConverter),
+		ctrl.NewOperation[P](opts, resourceOpts),
 	}, nil
 }
 

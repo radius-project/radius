@@ -58,7 +58,11 @@ func TestListResourcesRun(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewListResources(opts, resourceToVersioned)
+		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+			ResponseConverter: resourceToVersioned,
+		}
+
+		ctl, err := NewListResources(opts, ctrlOpts)
 
 		require.NoError(t, err)
 		resp, err := ctl.Run(ctx, w, req)
@@ -125,7 +129,11 @@ func TestListResourcesRun(t *testing.T) {
 				StorageClient: mStorageClient,
 			}
 
-			ctl, err := NewListResources(opts, resourceToVersioned)
+			ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+				ResponseConverter: resourceToVersioned,
+			}
+
+			ctl, err := NewListResources(opts, ctrlOpts)
 
 			require.NoError(t, err)
 			resp, err := ctl.Run(ctx, w, req)

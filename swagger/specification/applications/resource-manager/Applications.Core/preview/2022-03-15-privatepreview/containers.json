@@ -406,6 +406,10 @@
         "periodSeconds": {
           "description": "Interval for the readiness/liveness probe in seconds",
           "type": "number"
+        },
+        "timeoutSeconds": {
+          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second",
+          "type": "number"
         }
       },
       "required": [

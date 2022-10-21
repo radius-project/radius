@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -34,8 +33,8 @@ type DefaultAsyncDelete[P interface {
 func NewDefaultAsyncDelete[P interface {
 	*T
 	rp.RadiusResourceModel
-}, T any](opts ctrl.Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
-	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, reqconv, respconv)}, nil
+}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
+	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
 
 // Run executes DefaultAsyncDelete operation
