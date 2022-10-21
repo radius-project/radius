@@ -23,11 +23,12 @@ import (
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 	cmd := &cobra.Command{
-		Use:   "switch",
-		Short: "Switch the default RAD application",
-		Long:  "Switches the default RAD application",
-		Args:  cobra.ExactArgs(1),
-		RunE:  framework.RunCommand(runner),
+		Use:     "switch",
+		Short:   "Switch the default RAD application",
+		Long:    "Switches the default RAD application",
+		Args:    cobra.ExactArgs(1),
+		Example: `rad app switch newApplication`,
+		RunE:    framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)

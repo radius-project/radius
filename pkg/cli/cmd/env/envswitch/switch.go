@@ -26,10 +26,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "switch [environment]",
-		Short: "Switch the current environment",
-		Long:  "Switch the current environment",
-		RunE:  framework.RunCommand(runner),
+		Use:     "switch [environment]",
+		Short:   "Switch the current environment",
+		Long:    "Switch the current environment",
+		Example: `rad env switch newEnvironment`,
+		RunE:    framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
