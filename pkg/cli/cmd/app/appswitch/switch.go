@@ -41,7 +41,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	Output              output.Interface
-	Format              string
 	Workspace           *workspaces.Workspace
 	ApplicationName     string
 	ConnectionFactory   connections.Factory
@@ -73,7 +72,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// HEY YOU: Keep the logic below here in sync with `rad env switch``
 	if strings.EqualFold(r.Workspace.DefaultApplication, r.ApplicationName) {
-		output.LogInfo("Default application is already set to %v", r.ApplicationName)
+		r.Output.LogInfo("Default application is already set to %v", r.ApplicationName)
 		return nil
 	}
 
@@ -89,9 +88,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if workspace.DefaultApplication == "" {
-		output.LogInfo("Switching default application to %v", r.ApplicationName)
+		r.Output.LogInfo("Switching default application to %v", r.ApplicationName)
 	} else {
-		output.LogInfo("Switching default application from %v to %v", workspace.DefaultApplication, r.ApplicationName)
+		r.Output.LogInfo("Switching default application from %v to %v", workspace.DefaultApplication, r.ApplicationName)
 	}
 
 	return nil

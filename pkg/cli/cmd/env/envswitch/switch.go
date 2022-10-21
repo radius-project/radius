@@ -42,7 +42,6 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	Output              output.Interface
-	Format              string
 	Workspace           *workspaces.Workspace
 	ApplicationName     string
 	EnvironmentId       resources.ID
@@ -85,7 +84,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// HEY YOU: Keep the logic below here in sync with `rad app switch`
 	if strings.EqualFold(r.Workspace.Environment, r.EnvironmentId.String()) {
-		output.LogInfo("Default environment is already set to %v", r.EnvironmentName)
+		r.Output.LogInfo("Default environment is already set to %v", r.EnvironmentName)
 		return nil
 	}
 
@@ -102,7 +101,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	if r.Workspace.Environment == "" {
-		output.LogInfo("Switching default environment to %v", r.EnvironmentName)
+		r.Output.LogInfo("Switching default environment to %v", r.EnvironmentName)
 	} else {
 		// Parse the environment ID to get the name
 		existing, err := resources.ParseResource(r.Workspace.Environment)
@@ -110,7 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		output.LogInfo("Switching default environment from %v to %v", existing.Name(), r.EnvironmentName)
+		r.Output.LogInfo("Switching default environment from %v to %v", existing.Name(), r.EnvironmentName)
 	}
 
 	return nil
