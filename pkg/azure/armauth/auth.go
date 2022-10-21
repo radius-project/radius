@@ -26,6 +26,7 @@ const (
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
 	// Auth is the old azure client authenticator.
+	// TODO: Migrate authenticator and clients to new azure sdk - https://github.com/project-radius/radius/issues/4268
 	Auth autorest.Authorizer
 
 	// ClientOption is the client v2 option including new client credentials.
