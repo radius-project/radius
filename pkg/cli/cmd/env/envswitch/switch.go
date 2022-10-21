@@ -29,6 +29,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:     "switch [environment]",
 		Short:   "Switch the current environment",
 		Long:    "Switch the current environment",
+		Args:    cobra.MinimumNArgs(1),
 		Example: `rad env switch newEnvironment`,
 		RunE:    framework.RunCommand(runner),
 	}
