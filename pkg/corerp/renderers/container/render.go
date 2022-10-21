@@ -518,8 +518,11 @@ func (r Renderer) makeServiceAccountForVolume(appName, name, namespace, clientID
 			},
 		},
 	}
-	outRes := outputresource.NewKubernetesOutputResource(resourcekinds.ServiceAccount, outputresource.LocalIDServiceAccount, sa, sa.ObjectMeta)
-	return outRes, nil
+	return outputresource.NewKubernetesOutputResource(
+		resourcekinds.ServiceAccount,
+		outputresource.LocalIDServiceAccount,
+		sa,
+		sa.ObjectMeta), nil
 }
 
 func (r Renderer) makeEphemeralVolume(volumeName string, volume *datamodel.EphemeralVolume) (corev1.Volume, corev1.VolumeMount, error) {

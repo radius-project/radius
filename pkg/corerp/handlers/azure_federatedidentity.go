@@ -82,6 +82,12 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 		return err
 	}
 
+	// WORKAROUND: Ensure that federal identity credential is populated. (Why not they provide async api?)
+	_, err = client.Get(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), identity.Name, nil)
+	if err != nil {
+		return err
+	}
+
 	resource.Identity = ri
 	logger.WithValues(
 		radlogger.LogFieldResourceID, identity,
