@@ -32,7 +32,6 @@ func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.Result, error) {
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	obj, err := c.StorageClient().Get(ctx, request.ResourceID)
 	if err != nil {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: err.Error()}), err
@@ -44,11 +43,11 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 		return ctrl.Result{}, err
 	}
 
-	resourceData, err := getResourceData(id, obj, serviceCtx)
+	resourceData, err := getResourceData(id, obj)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	err = c.ConnectorRPDeploymentProcessor().Delete(ctx, resourceData)
+	err = c.ConnectorDeploymentProcessor().Delete(ctx, resourceData)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -61,7 +60,7 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	return ctrl.Result{}, err
 }
 
-func getResourceData(id resources.ID, obj *store.Object, serviceCtx *v1.ARMRequestContext) (deployment.ResourceData, error) {
+func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceData, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceTypeName):
@@ -69,7 +68,7 @@ func getResourceData(id resources.ID, obj *store.Object, serviceCtx *v1.ARMReque
 		if err := obj.As(d); err != nil {
 			return deployment.ResourceData{}, err
 		}
-		return deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
 	default:
 		return deployment.ResourceData{}, fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, id.String())
 	}

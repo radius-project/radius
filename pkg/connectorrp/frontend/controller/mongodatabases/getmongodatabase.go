@@ -42,6 +42,6 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, r
 		return nil, err
 	}
 
-	versioned, _ := converter.MongoDatabaseDataModelNoSecretsToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.MongoDatabaseResponseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

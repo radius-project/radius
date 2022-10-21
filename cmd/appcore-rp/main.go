@@ -26,18 +26,20 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 
+	connector_backend "github.com/project-radius/radius/pkg/connectorrp/backend"
 	connector_frontend "github.com/project-radius/radius/pkg/connectorrp/frontend"
 )
 
-func newConnectorHosts(configFile string) ([]hosting.Service, *hostoptions.HostOptions) {
+func newConnectorHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
 	hostings = append(hostings, connector_frontend.NewService(options))
-
-	// TODO: add backend hostings
+	if enableAsyncWorker {
+		hostings = append(hostings, connector_backend.NewService(options))
+	}
 
 	return hostings, &options
 }
@@ -87,7 +89,7 @@ func main() {
 	if runConnector && connectorConfigFile != "" {
 		logger.Info("Run Applications.Connector.")
 		var connSvcs []hosting.Service
-		connSvcs, connOpts = newConnectorHosts(connectorConfigFile)
+		connSvcs, connOpts = newConnectorHosts(connectorConfigFile, enableAsyncWorker)
 		hostingSvc = append(hostingSvc, connSvcs...)
 	}
 

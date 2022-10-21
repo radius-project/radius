@@ -26,8 +26,8 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 	}
 }
 
-// MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
-func MongoDatabaseDataModelNoSecretsToVersioned(model *datamodel.MongoDatabaseResponse, version string) (conv.VersionedModelInterface, error) {
+// MongoDatabaseResponseDataModelToVersioned converts version agnostic MongoDatabaseResponse datamodel to versioned model.
+func MongoDatabaseResponseDataModelToVersioned(model *datamodel.MongoDatabaseResponse, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.MongoDatabaseResponseResource{}

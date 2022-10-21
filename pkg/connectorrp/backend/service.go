@@ -42,7 +42,7 @@ func NewService(options hostoptions.HostOptions) *Service {
 }
 
 func (s *Service) Name() string {
-	return handler.ProviderNamespaceName
+	return fmt.Sprintf("%s async worker", handler.ProviderNamespaceName)
 }
 
 func (s *Service) Run(ctx context.Context) error {
@@ -59,7 +59,7 @@ func (s *Service) Run(ctx context.Context) error {
 		DataProvider: s.StorageProvider,
 		SecretClient: s.SecretClient,
 		KubeClient:   s.KubeClient,
-		GetConnectorRPDeploymentProcessor: func() deployment.DeploymentProcessor {
+		GetConnectorDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewDeploymentProcessor(connectorAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
 		},
 	}

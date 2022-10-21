@@ -21,7 +21,7 @@ var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
 
 var (
 	// AsyncDeleteMongoDatabaseOperationTimeout is the default timeout duration of async delete container operation.
-	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(120) * time.Second
+	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(300) * time.Second
 )
 
 // DeleteMongoDatabase is the controller implementation to delete mongodatabase connector resource.
@@ -53,10 +53,7 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter
 	if etag == "" {
 		return rest.NewNoContentResponse(), nil
 	}
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
-	}
+
 	if r, err := mongo.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
 		return r, err
 	}

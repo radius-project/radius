@@ -58,7 +58,7 @@ func (mongo *ListMongoDatabases) createPaginatedList(ctx context.Context, req *h
 			return nil, err
 		}
 
-		versioned, err := converter.MongoDatabaseDataModelNoSecretsToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.MongoDatabaseResponseDataModelToVersioned(dm, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

@@ -126,7 +126,7 @@ func TestMongoDatabaseResponseDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.MongoDatabaseResponse{}
 			_ = json.Unmarshal(c, dm)
-			am, err := MongoDatabaseDataModelNoSecretsToVersioned(dm, tc.apiVersion)
+			am, err := MongoDatabaseResponseDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
