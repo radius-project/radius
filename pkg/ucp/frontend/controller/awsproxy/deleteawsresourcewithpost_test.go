@@ -52,7 +52,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String(testAWSResourceName),
@@ -60,7 +60,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	testOptions.AWSClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -69,7 +69,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -122,13 +122,13 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
 	awsController, err := NewDeleteAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})

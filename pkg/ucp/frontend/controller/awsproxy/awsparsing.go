@@ -23,18 +23,18 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSClient, string, resources.ID, error) {
+func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, string, resources.ID, error) {
 	// Common parsing in AWS plane requests
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
 		return nil, "", resources.ID{}, err
 	}
 
-	var client awsclient.AWSClient
-	if opts.AWSClient == nil {
+	var client awsclient.AWSCloudControlClient
+	if opts.AWSCloudControlClient == nil {
 		client = cloudcontrol.NewFromConfig(cfg)
 	} else {
-		client = opts.AWSClient
+		client = opts.AWSCloudControlClient
 	}
 	path := middleware.GetRelativePath(opts.BasePath, r.URL.Path)
 	id, err := resources.ParseByMethod(path, r.Method)

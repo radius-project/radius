@@ -28,7 +28,7 @@ type Options struct {
 	BasePath                string
 	DB                      store.StorageClient
 	Address                 string
-	AWSClient               aws.AWSClient
+	AWSCloudControlClient   aws.AWSCloudControlClient
 	AWSCloudFormationClient aws.AWSCloudFormationClient
 }
 

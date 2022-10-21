@@ -29,7 +29,7 @@ const (
 )
 
 type TestOptions struct {
-	AWSClient               *awsclient.MockAWSClient
+	AWSCloudControlClient   *awsclient.MockAWSCloudControlClient
 	AWSCloudFormationClient *awsclient.MockAWSCloudFormationClient
 	StorageClient           *store.MockStorageClient
 }
@@ -37,11 +37,11 @@ type TestOptions struct {
 // setupTest returns a TestOptions struct with mocked AWS and Storage clients
 func setupTest(t *testing.T) TestOptions {
 	mockCtrl := gomock.NewController(t)
-	mockClient := awsclient.NewMockAWSClient(mockCtrl)
+	mockClient := awsclient.NewMockAWSCloudControlClient(mockCtrl)
 	mockCloudFormationClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 	return TestOptions{
-		AWSClient:               mockClient,
+		AWSCloudControlClient:   mockClient,
 		AWSCloudFormationClient: mockCloudFormationClient,
 		StorageClient:           mockStorageClient,
 	}

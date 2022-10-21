@@ -57,7 +57,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String(testAWSResourceName),
@@ -66,7 +66,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -120,13 +120,13 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -170,10 +170,10 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -217,7 +217,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{
 				Code:    "NotFound",
@@ -227,7 +227,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewGetAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})

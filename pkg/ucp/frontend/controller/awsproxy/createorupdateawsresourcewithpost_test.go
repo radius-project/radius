@@ -44,12 +44,12 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
-	testOptions.AWSClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -68,7 +68,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -136,14 +136,14 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.Ptr(string(getResponseBodyBytes)),
 			},
 		}, nil)
 
-	testOptions.AWSClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -162,7 +162,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -230,7 +230,7 @@ func Test_UpdateNoChangesDoesNotCallUpdateWithPost(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.Ptr(string(getResponseBodyBytes)),
@@ -248,7 +248,7 @@ func Test_UpdateNoChangesDoesNotCallUpdateWithPost(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -310,12 +310,12 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
-	testOptions.AWSClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -333,7 +333,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
@@ -404,14 +404,14 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.Ptr(string(getResponseBodyBytes)),
 			},
 		}, nil)
 
-	testOptions.AWSClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -430,7 +430,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
-		AWSClient:               testOptions.AWSClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
 		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
 		DB:                      testOptions.StorageClient,
 	})
