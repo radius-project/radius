@@ -6,6 +6,7 @@
 package handlers
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 )
@@ -25,4 +26,27 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	}
 
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
+}
+
+// GetStringProperty gets value for key in collection.
+func GetStringProperty(collection interface{}, key string) (string, error) {
+	switch c := collection.(type) {
+	case map[string]string:
+		val, ok := c[key]
+		if !ok {
+			return "", fmt.Errorf("%s not found", key)
+		}
+		return val, nil
+	case map[string]interface{}:
+		val, ok := c[key]
+		if !ok {
+			return "", fmt.Errorf("%s not found", key)
+		}
+		s, ok := val.(string)
+		if !ok {
+			return "", errors.New("value is not string type")
+		}
+		return s, nil
+	}
+	return "", errors.New("unsupported type")
 }

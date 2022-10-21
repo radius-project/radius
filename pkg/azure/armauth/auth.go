@@ -76,6 +76,7 @@ func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID s
 func NewARMCredential() (azcore.TokenCredential, error) {
 	authMethod := GetAuthMethod()
 
+	// TODO: Support the other methods - https://github.com/project-radius/radius/issues/4268
 	if authMethod == ServicePrincipalAuth {
 		return azidentity.NewClientSecretCredential(
 			os.Getenv("AZURE_CLIENT_ID"),

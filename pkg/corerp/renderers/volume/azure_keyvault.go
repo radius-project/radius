@@ -9,11 +9,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -21,6 +19,9 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
@@ -175,15 +176,15 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 	}
 
 	params := map[string]string{
-		"usePodIdentity": "false",
-		"keyvaultName":   kvResourceID.Name(),
-		"objects":        keyVaultObjectsSpec,
+		"useVMManagedIdentity": "true",
+		"usePodIdentity":       "false",
+		"keyvaultName":         kvResourceID.Name(),
+		"objects":              keyVaultObjectsSpec,
 	}
 
 	switch prop.Identity.Kind {
 	case datamodel.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
-		params["useVMManagedIdentity"] = "true"
 		// clientID must be empty for system assigned managed identity
 		params["clientID"] = ""
 		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
@@ -199,14 +200,21 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 			return outputresource.OutputResource{}, errInvalidManagedIdentityID
 		}
 
-		miClient := azclients.NewUserAssignedIdentitiesClient(subscription, r.Arm.Auth)
-		mi, err := miClient.Get(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name())
+		rg := rID.FindScope(resources.ResourceGroupsSegment)
+		if rg == "" {
+			return outputresource.OutputResource{}, errInvalidManagedIdentityID
+		}
+
+		miClient, err := clientv2.NewUserAssignedIdentityClient(subscription, &r.Arm.ClientOption)
 		if err != nil {
 			return outputresource.OutputResource{}, err
 		}
-		params["useVMManagedIdentity"] = "true"
-		params["clientID"] = mi.ClientID.String()
-		params["tenantID"] = mi.TenantID.String()
+		mi, err := miClient.Get(ctx, rg, rID.Name(), nil)
+		if err != nil {
+			return outputresource.OutputResource{}, err
+		}
+		params["clientID"] = *mi.Properties.ClientID
+		params["tenantID"] = *mi.Properties.TenantID
 
 	default:
 		return outputresource.OutputResource{}, errUnsupportedIdentityKind
@@ -228,7 +236,11 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 		},
 	}
 
-	return outputresource.NewKubernetesOutputResource(resourcekinds.SecretProviderClass, outputresource.LocalIDSecretProviderClass, secretProvider, secretProvider.ObjectMeta), nil
+	return outputresource.NewKubernetesOutputResource(
+		resourcekinds.SecretProviderClass,
+		outputresource.LocalIDSecretProviderClass,
+		secretProvider,
+		secretProvider.ObjectMeta), nil
 }
 
 func getValuesOrDefaultsForSecrets(name string, secretObject *datamodel.SecretObjectProperties) objectValues {
