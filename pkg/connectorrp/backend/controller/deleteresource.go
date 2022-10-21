@@ -70,6 +70,6 @@ func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceDat
 		}
 		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
 	default:
-		return deployment.ResourceData{}, fmt.Errorf("invalid resource type: %q for dependent resource ID: %q", resourceType, id.String())
+		return deployment.ResourceData{}, fmt.Errorf("async delete operation unsupported on resource type: %q. Resource ID: %q", resourceType, id.String())
 	}
 }

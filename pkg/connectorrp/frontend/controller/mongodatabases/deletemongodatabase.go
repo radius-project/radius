@@ -41,6 +41,8 @@ func NewDeleteMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 
 func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	// Read resource metadata from the storage
 	old, etag, err := mongo.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
 		return nil, err

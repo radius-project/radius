@@ -26,7 +26,7 @@ func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version s
 	}
 }
 
-// MongoDatabaseResponseDataModelToVersioned converts version agnostic MongoDatabaseResponse datamodel to versioned model.
+// MongoDatabaseResponseDataModelToVersioned converts version agnostic MongoDatabaseResponse datamodel to versioned model and the model doesnt include secrets.
 func MongoDatabaseResponseDataModelToVersioned(model *datamodel.MongoDatabaseResponse, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
