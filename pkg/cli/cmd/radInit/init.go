@@ -56,7 +56,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-
+	cmd.Flags().Bool("useRadiusOwnedRecipes", true, "Use this flag to not use radius built in recipes")
 	return cmd, runner
 }
 
@@ -78,6 +78,7 @@ type Runner struct {
 	ConfigFileInterface    framework.ConfigFileInterface
 	KubernetesInterface    kubernetes.Interface
 	HelmInterface          helm.Interface
+	UseRadiusOwnedRecipes  bool
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -108,6 +109,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, true, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
+	}
+
+	r.UseRadiusOwnedRecipes, err = cmd.Flags().GetBool("useRadiusOwnedRecipes")
+	if err != nil {
+		return err
 	}
 
 	r.RadiusInstalled, err = r.HelmInterface.CheckRadiusInstall(r.KubeContext)
@@ -235,7 +241,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.AzureCloudProvider != nil {
 		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
 	}
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, r.UseRadiusOwnedRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}

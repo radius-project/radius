@@ -36,7 +36,9 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.EnvironmentProperties{},
+		Properties: datamodel.EnvironmentProperties{
+			UseRadiusOwnedRecipes: to.Bool(src.Properties.UseRadiusOwnedRecipes),
+		},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
@@ -66,7 +68,6 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 	}
-
 	return converted, nil
 }
 
@@ -84,7 +85,8 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
-		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
+		ProvisioningState:     fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
+		UseRadiusOwnedRecipes: to.BoolPtr(env.Properties.UseRadiusOwnedRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)

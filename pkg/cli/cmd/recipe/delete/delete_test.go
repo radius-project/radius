@@ -71,6 +71,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseRadiusOwnedRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
@@ -85,7 +86,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), map[string]*v20220315privatepreview.EnvironmentRecipeProperties{}, gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -109,6 +110,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseRadiusOwnedRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
@@ -139,11 +141,13 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
-				ID:         to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
-				Name:       to.Ptr("kind-kind"),
-				Type:       to.Ptr("applications.core/environments"),
-				Location:   to.Ptr("global"),
-				Properties: &v20220315privatepreview.EnvironmentProperties{},
+				ID:       to.Ptr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
+				Name:     to.Ptr("kind-kind"),
+				Type:     to.Ptr("applications.core/environments"),
+				Location: to.Ptr("global"),
+				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseRadiusOwnedRecipes: to.Ptr(true),
+				},
 			}
 
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)

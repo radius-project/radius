@@ -644,6 +644,7 @@ func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipes", e.Recipes)
+	populate(objectMap, "useRadiusOwnedRecipes", e.UseRadiusOwnedRecipes)
 	return json.Marshal(objectMap)
 }
 
@@ -667,6 +668,9 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "recipes":
 				err = unpopulate(val, "Recipes", &e.Recipes)
+				delete(rawMsg, key)
+		case "useRadiusOwnedRecipes":
+				err = unpopulate(val, "UseRadiusOwnedRecipes", &e.UseRadiusOwnedRecipes)
 				delete(rawMsg, key)
 		}
 		if err != nil {

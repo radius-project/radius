@@ -368,6 +368,10 @@
               "$ref": "#/definitions/Providers",
               "description": "Cloud providers configuration for the environment."
           },
+          "useRadiusOwnedRecipes":{
+            "type": "boolean",
+            "description": "Flag to use radius owned recipes."
+          },
           "recipes": {
             "additionalProperties": {
               "$ref": "#/definitions/EnvironmentRecipeProperties",
