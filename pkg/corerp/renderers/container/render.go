@@ -212,7 +212,7 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, properties
 			return "", nil, nil, err
 		}
 
-		name := kubernetes.MakeResourceName(appName, resource.Name)
+		name = kubernetes.MakeResourceName(appName, resource.Name)
 
 		outResource, err := r.makeServiceAccountForVolume(appName, name, namespace, clientID, tenantID, resource)
 		if err != nil {
