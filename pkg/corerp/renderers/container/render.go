@@ -55,7 +55,6 @@ func GetSupportedKinds() []string {
 
 // Renderer is the WorkloadRenderer implementation for containerized workload.
 type Renderer struct {
-
 	// RoleAssignmentMap is an optional map of connection kind -> []Role Assignment. Used to configure managed
 	// identity permissions for cloud resources. This will be nil in environments that don't support role assignments.
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
@@ -271,6 +270,10 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 	podLabels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
 
+	// This is the default service account name. If a volume is associated with federated identity, new service account
+	// will be created and set for container pods.
+	podSAName := "default"
+
 	// Add volumes
 	volumes := []corev1.Volume{}
 	for volumeName, volumeProperties := range cc.Container.Volumes {
@@ -301,42 +304,39 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 			switch vol.Properties.Kind {
 			case datamodel.AzureKeyVaultVolume:
-				// TODO: Support Workload Identity
-				// Pod identity implementation: https://github.com/project-radius/radius/blob/ae2fcb230e40c64f7e85470e2986100fe49e288a/pkg/renderers/containerv1alpha3/render.go#L305-L331
-				identityType, ok := properties.ComputedValues["identityType"].(string)
-				if !ok {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("identityType is undefined")
+				identityType, err := handlers.GetStringProperty(properties.ComputedValues, "identityType")
+				if err != nil {
+					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
 
-				if identityType == string(datamodel.AzureIdentityWorkload) {
+				if strings.EqualFold(identityType, string(datamodel.AzureIdentityWorkload)) {
 					// Prepare the service account resource.
-					identityID, ok := properties.ComputedValues["identity"].(string)
-					if !ok {
-						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("identity is undefined")
+					identityID, err := handlers.GetStringProperty(properties.ComputedValues, "identity")
+					if err != nil {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
-					clientID, ok := properties.ComputedValues["clientID"].(string)
-					if !ok {
-						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("clientID is undefined")
+					clientID, err := handlers.GetStringProperty(properties.ComputedValues, "clientID")
+					if err != nil {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
-					tenantID, ok := properties.ComputedValues["tenantID"].(string)
-					if !ok {
-						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("tenantID is undefined")
+					tenantID, err := handlers.GetStringProperty(properties.ComputedValues, "tenantID")
+					if err != nil {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
-					saName := kubernetes.MakeResourceName(resource.Properties.Application, resource.Name)
-					outResource, err := r.makeServiceAccountForVolume(saName, options.Environment.Namespace, clientID, tenantID, &resource)
+					podSAName := kubernetes.MakeResourceName(resource.Properties.Application, resource.Name)
+					outResource, err := r.makeServiceAccountForVolume(podSAName, options.Environment.Namespace, clientID, tenantID, &resource)
 					if err != nil {
 						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
 					outputResources = append(outputResources, outResource)
 
 					// Prepare the federated identity (aka Workload identity) for managed identity.
-					issuer, ok := properties.ComputedValues["issuer"].(string)
-					if !ok {
-						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("issuer is undefined")
+					issuer, err := handlers.GetStringProperty(properties.ComputedValues, "issuer")
+					if err != nil {
+						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
-					subs := fmt.Sprintf("system:serviceccount:%s:%s", options.Environment.Namespace, saName)
-
-					outputResources = append(outputResources, r.makeFederatedIdentity(identityID, resource.Name, subs, issuer))
+					subs := handlers.GetKubeAzureSubject(options.Environment.Namespace, podSAName)
+					outputResources = append(outputResources, r.makeAzureFederatedIdentity(identityID, resource.Name, subs, issuer))
 				}
 
 				secretProviderClass := properties.OutputResources[outputresource.LocalIDSecretProviderClass]
@@ -407,8 +407,9 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
-					Containers: []corev1.Container{container},
-					Volumes:    volumes,
+					ServiceAccountName: podSAName,
+					Containers:         []corev1.Container{container},
+					Volumes:            volumes,
 				},
 			},
 		},
@@ -473,7 +474,7 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationNa
 	return env, secretData
 }
 
-func (r Renderer) makeFederatedIdentity(identityID, name, subject, issuer string) outputresource.OutputResource {
+func (r Renderer) makeAzureFederatedIdentity(identityID, name, subject, issuer string) outputresource.OutputResource {
 	return outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureFederatedIdentity,
@@ -491,8 +492,7 @@ func (r Renderer) makeFederatedIdentity(identityID, name, subject, issuer string
 }
 
 func (r Renderer) makeServiceAccountForVolume(name, namespace, clientID, tenantID string, resource *datamodel.ContainerResource) (outputresource.OutputResource, error) {
-	appID := resource.Properties.Application
-	labels := kubernetes.MakeDescriptiveLabels(appID, resource.Name, resource.Type)
+	labels := kubernetes.MakeDescriptiveLabels(resource.Properties.Application, resource.Name, resource.Type)
 	labels["azure.workload.identity/use"] = "true"
 
 	sa := &corev1.ServiceAccount{

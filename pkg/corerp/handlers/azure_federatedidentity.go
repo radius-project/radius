@@ -8,6 +8,7 @@ package handlers
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
@@ -30,6 +31,11 @@ const (
 var (
 	ErrInvalidIdentity = errors.New("invalid identity property")
 )
+
+// GetKubeAzureSubject constructs the federated identity subject with Kuberenetes namespace and service account name.
+func GetKubeAzureSubject(namespace, saName string) string {
+	return fmt.Sprintf("system:serviceccount:%s:%s", namespace, saName)
+}
 
 // NewAzureFederatedIdentity initializes a new handler for federated identity resource.
 func NewAzureFederatedIdentity(arm *armauth.ArmConfig) ResourceHandler {
@@ -79,7 +85,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 	resource.Identity = ri
 	logger.WithValues(
 		radlogger.LogFieldResourceID, identity,
-		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created federated identity for Azure AD identity.")
+		radlogger.LogFieldLocalID, outputresource.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
 
 	return nil
 }
