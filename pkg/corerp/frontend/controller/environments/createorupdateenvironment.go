@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -53,6 +54,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
+	// Update Recipes mapping with radius owned recipes.
+	getRadiusOwnedRecipes(ctx, newResource.Properties.Recipes)
+
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
 	namespaceQuery := store.Query{
@@ -92,4 +96,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+}
+
+func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) {
+	// hard-coding the generation of name and path for now as we identify the best way to support this long-term.
+	radiusOwnedRecipes["mongo-azure"] = datamodel.EnvironmentRecipeProperties{
+		ConnectorType: mongodatabases.ResourceTypeName,
+		TemplatePath:  RadiusOwnedRecipesACRPath + "/" + AzureMongoDatabaseRecipePath,
+	}
 }
