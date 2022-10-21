@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
@@ -53,7 +54,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			framework := &framework.Impl{
 				ConnectionFactory:   testcase.ConnectionFactory,
 				ConfigHolder:        &testcase.ConfigHolder,
-				Output:              nil,
+				Output:              &output.MockOutput{},
 				KubernetesInterface: testcase.KubernetesInterface,
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,

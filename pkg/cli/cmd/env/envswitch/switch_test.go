@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 )
 
@@ -28,15 +27,25 @@ func Test_Validate(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
 
+	createGetEnvDetailsSuccess(appManagementClient)
 	// Non-existing environment
-	createGetEnvDetailsError(appManagementClient, testResourceGroup)
+	createGetEnvDetailsError(appManagementClient)
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Switch Command with non-existing env",
-			Input:         []string{"envToSwitchTo"},
+			Name:          "Switch Command with valid command",
+			Input:         []string{"validEnvToSwitchTo"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		},
+		{
+			Name:          "Switch Command with non-existent env",
+			Input:         []string{"nonExistentEnv"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -48,12 +57,18 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func createGetEnvDetailsError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+func createGetEnvDetailsSuccess(appManagementClient *clients.MockApplicationsManagementClient) {
+	appManagementClient.EXPECT().
+		GetEnvDetails(gomock.Any(), "validEnvToSwitchTo").
+		Return(corerp.EnvironmentResource{}, nil).Times(1)
+}
+
+func createGetEnvDetailsError(appManagementClient *clients.MockApplicationsManagementClient) {
 	responseError := &azcore.ResponseError{}
 	responseError.ErrorCode = v1.CodeNotFound
 	err := error(responseError)
 
 	appManagementClient.EXPECT().
-		GetEnvDetails(gomock.Any(), "envToSwitchTo").
+		GetEnvDetails(gomock.Any(), "nonExistentEnv").
 		Return(corerp.EnvironmentResource{}, err).Times(1)
 }

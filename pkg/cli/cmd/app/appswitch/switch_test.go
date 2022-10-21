@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 )
 
@@ -28,15 +27,25 @@ func Test_Validate(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
 
+	createShowApplicationSuccess(appManagementClient)
 	// Non-existing application
-	createShowApplicationError(appManagementClient, testResourceGroup)
+	createShowApplicationError(appManagementClient)
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Switch Command with non-existing app",
-			Input:         []string{"appToSwitchTo"},
+			Name:          "Switch Command with valid command",
+			Input:         []string{"validAppToSwitchTo"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		},
+		{
+			Name:          "Switch Command with non-existent app",
+			Input:         []string{"nonExistentApp"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -48,12 +57,18 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func createShowApplicationError(appManagementClient *clients.MockApplicationsManagementClient, testResourceGroup v20220315privatepreview.ResourceGroupResource) {
+func createShowApplicationSuccess(appManagementClient *clients.MockApplicationsManagementClient) {
+	appManagementClient.EXPECT().
+		ShowApplication(gomock.Any(), "validAppToSwitchTo").
+		Return(corerp.ApplicationResource{}, nil).Times(1)
+}
+
+func createShowApplicationError(appManagementClient *clients.MockApplicationsManagementClient) {
 	responseError := &azcore.ResponseError{}
 	responseError.ErrorCode = v1.CodeNotFound
 	err := error(responseError)
 
 	appManagementClient.EXPECT().
-		ShowApplication(gomock.Any(), "appToSwitchTo").
+		ShowApplication(gomock.Any(), "nonExistentApp").
 		Return(corerp.ApplicationResource{}, err).Times(1)
 }
