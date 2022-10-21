@@ -148,6 +148,14 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	outputResources = append(outputResources, otherOutputResources...)
 
+	for _, rs := range outputResources {
+		if rs.LocalID == outputresource.LocalIDServiceAccount || rs.LocalID == outputresource.LocalIDSecretProviderClass || rs.LocalID == outputresource.LocalIDFederatedIdentity {
+			deploymentOutput.Dependencies = append(deploymentOutput.Dependencies, outputresource.Dependency{
+				LocalID: rs.LocalID,
+			})
+		}
+	}
+
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
@@ -323,8 +331,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					if err != nil {
 						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
-					podSAName := kubernetes.MakeResourceName(resource.Properties.Application, resource.Name)
-					outResource, err := r.makeServiceAccountForVolume(podSAName, options.Environment.Namespace, clientID, tenantID, &resource)
+					podSAName = kubernetes.MakeResourceName(applicationName, resource.Name)
+					outResource, err := r.makeServiceAccountForVolume(applicationName, podSAName, options.Environment.Namespace, clientID, tenantID, &resource)
 					if err != nil {
 						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 					}
@@ -491,8 +499,8 @@ func (r Renderer) makeAzureFederatedIdentity(identityID, name, subject, issuer s
 	}
 }
 
-func (r Renderer) makeServiceAccountForVolume(name, namespace, clientID, tenantID string, resource *datamodel.ContainerResource) (outputresource.OutputResource, error) {
-	labels := kubernetes.MakeDescriptiveLabels(resource.Properties.Application, resource.Name, resource.Type)
+func (r Renderer) makeServiceAccountForVolume(appName, name, namespace, clientID, tenantID string, resource *datamodel.ContainerResource) (outputresource.OutputResource, error) {
+	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 	labels["azure.workload.identity/use"] = "true"
 
 	sa := &corev1.ServiceAccount{

@@ -54,9 +54,5 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, err
 	}
 
-	return renderers.RendererOutput{
-		Resources:      renderOutput.Resources,
-		ComputedValues: nil,
-		SecretValues:   nil,
-	}, nil
+	return renderOutput, nil
 }

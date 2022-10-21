@@ -79,9 +79,9 @@ func NewARMCredential() (azcore.TokenCredential, error) {
 	// TODO: Support the other methods - https://github.com/project-radius/radius/issues/4268
 	if authMethod == ServicePrincipalAuth {
 		return azidentity.NewClientSecretCredential(
+			os.Getenv("AZURE_TENANT_ID"),
 			os.Getenv("AZURE_CLIENT_ID"),
-			os.Getenv("AZURE_CLIENT_SECRET"),
-			os.Getenv("AZURE_TENANT_ID"), nil)
+			os.Getenv("AZURE_CLIENT_SECRET"), nil)
 	}
 
 	return nil, nil

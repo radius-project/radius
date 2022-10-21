@@ -182,6 +182,11 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 		"objects":              keyVaultObjectsSpec,
 	}
 
+	appID, err := resources.ParseResource(res.Properties.Application)
+	if err != nil {
+		return outputresource.OutputResource{}, err
+	}
+
 	switch prop.Identity.Kind {
 	case datamodel.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
@@ -226,9 +231,9 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 			APIVersion: "secrets-store.csi.x-k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(res.Properties.Application, res.Name),
+			Name:      kubernetes.MakeResourceName(appID.Name(), res.Name),
 			Namespace: namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(res.Properties.Application, res.Name, res.Type),
+			Labels:    kubernetes.MakeDescriptiveLabels(appID.Name(), res.Name, res.Type),
 		},
 		Spec: csiv1.SecretProviderClassSpec{
 			Provider:   "azure",

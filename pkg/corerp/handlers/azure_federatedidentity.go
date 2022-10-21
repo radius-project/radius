@@ -34,7 +34,7 @@ var (
 
 // GetKubeAzureSubject constructs the federated identity subject with Kuberenetes namespace and service account name.
 func GetKubeAzureSubject(namespace, saName string) string {
-	return fmt.Sprintf("system:serviceccount:%s:%s", namespace, saName)
+	return fmt.Sprintf("system:serviceaccount:%s:%s", namespace, saName)
 }
 
 // NewAzureFederatedIdentity initializes a new handler for federated identity resource.
@@ -55,7 +55,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 	}
 
 	identity, ok := ri.Data.(resourcemodel.AzureFederatedIdentity)
-	if ok {
+	if !ok {
 		return ErrInvalidIdentity
 	}
 
@@ -107,10 +107,6 @@ func (handler *azureFederatedIdentityHandler) GetResourceIdentity(ctx context.Co
 	if err != nil {
 		return identity, err
 	}
-	audience, err := GetStringProperty(props, FederatedIdentityAudience)
-	if err != nil {
-		return identity, err
-	}
 	issuer, err := GetStringProperty(props, FederatedIdentityIssuerKey)
 	if err != nil {
 		return identity, err
@@ -129,7 +125,7 @@ func (handler *azureFederatedIdentityHandler) GetResourceIdentity(ctx context.Co
 			Resource:   identityID,
 			OIDCIssuer: issuer,
 			Subject:    subject,
-			Audience:   audience,
+			Audience:   FederatedIdentityAudience,
 			Name:       federatedName,
 		},
 	}
@@ -162,7 +158,7 @@ func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, resour
 	}
 
 	identity, ok := ri.Data.(resourcemodel.AzureFederatedIdentity)
-	if ok {
+	if !ok {
 		return ErrInvalidIdentity
 	}
 

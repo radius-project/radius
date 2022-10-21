@@ -35,6 +35,8 @@ func (h *VolumeResource) ResourceTypeName() string {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (h *VolumeResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
+	h.ComputedValues = do.ComputedValues
+	h.SecretValues = do.SecretValues
 }
 
 // OutputResources returns the output resources array.
