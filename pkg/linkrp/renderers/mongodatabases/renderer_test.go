@@ -41,11 +41,11 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -115,16 +115,18 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			Secrets: datamodel.MongoDatabaseSecrets{
-				Username:         userName,
-				Password:         password,
-				ConnectionString: connectionString,
+			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
+				ValuesMongoDatabaseProperties: datamodel.ValuesMongoDatabaseProperties{
+					Secrets: datamodel.MongoDatabaseSecrets{
+						Username:         userName,
+						Password:         password,
+						ConnectionString: connectionString,
+					},
+				},
 			},
 		},
 	}
@@ -161,11 +163,9 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
 		},
 	}
@@ -212,11 +212,11 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
 				Resource: "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -241,11 +241,11 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -270,11 +270,11 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "invalid-app-id",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -299,11 +299,11 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			RecipeMongoDatabaseProperties: datamodel.RecipeMongoDatabaseProperties{
 				Recipe: datamodel.LinkRecipe{
 					Name: "mongodb",
 				},
@@ -352,11 +352,11 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			RecipeMongoDatabaseProperties: datamodel.RecipeMongoDatabaseProperties{
 				Recipe: datamodel.LinkRecipe{
 					Name: "mongodb",
 				},

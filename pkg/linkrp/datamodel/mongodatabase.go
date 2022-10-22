@@ -10,7 +10,14 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-// MongoDatabase represents MongoDatabase link resource.
+type MongoDatabaseMode string
+
+const (
+	MongoDatabaseModeRecipe   MongoDatabaseMode = "recipe"
+	MongoDatabaseModeResource MongoDatabaseMode = "resource"
+	MongoDatabaseModeValues   MongoDatabaseMode = "values"
+)
+
 type MongoDatabase struct {
 	v1.BaseResource
 
@@ -31,14 +38,6 @@ type MongoDatabaseResponse struct {
 	LinkMetadata
 }
 
-func (mongo MongoDatabase) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
-}
-
-func (mongo MongoDatabaseResponse) ResourceTypeName() string {
-	return "Applications.Link/mongoDatabases"
-}
-
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseResponseProperties struct {
 	rp.BasicResourceProperties
@@ -50,9 +49,13 @@ type MongoDatabaseResponseProperties struct {
 	Recipe            LinkRecipe           `json:"recipe,omitempty"`
 }
 
+// MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
-	MongoDatabaseResponseProperties
-	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
+	rp.BasicResourceProperties
+	ResourceMongoDatabaseProperties
+	RecipeMongoDatabaseProperties
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Mode              MongoDatabaseMode    `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource
@@ -68,4 +71,28 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 
 func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
 	return "Applications.Link/mongoDatabases"
+}
+
+func (mongo MongoDatabase) ResourceTypeName() string {
+	return "Applications.Connector/mongoDatabases"
+}
+
+func (mongo MongoDatabaseResponse) ResourceTypeName() string {
+	return "Applications.Connector/mongoDatabases"
+}
+
+type ValuesMongoDatabaseProperties struct {
+	Secrets  MongoDatabaseSecrets `json:"secrets,omitempty"`
+	Host     string               `json:"host,omitempty"`
+	Port     int32                `json:"port,omitempty"`
+	Database string               `json:"database,omitempty"`
+}
+
+type ResourceMongoDatabaseProperties struct {
+	ValuesMongoDatabaseProperties
+	Resource string `json:"resource,omitempty"`
+}
+
+type RecipeMongoDatabaseProperties struct {
+	Recipe LinkRecipe `json:"recipe,omitempty"`
 }

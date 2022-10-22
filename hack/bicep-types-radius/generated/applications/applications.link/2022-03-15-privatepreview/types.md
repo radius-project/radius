@@ -282,7 +282,19 @@
 #### Properties
 * **mode**: 'resource' (Required): Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource' or 'values'
 * **resource**: string (Required, WriteOnly): Fully qualified resource ID of a supported resource with Mongo API to use for this link
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given Mongo database resource
 
+### ValuesMongoDatabaseRequestProperties
+#### Properties
+* **mode**: 'values' (Required): Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource' or 'values'
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given Mongo database resource
+
+
+## MongoDatabaseSecrets
+### Properties
+* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
+* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
+* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
 
 ## TrackedResourceTags
 ### Properties
@@ -367,9 +379,9 @@
 
 ## MongoDatabaseSecrets
 ### Properties
-* **connectionString**: string (ReadOnly): Connection string used to connect to the target Mongo database
-* **password**: string (ReadOnly): Password to use when connecting to the target Mongo database
-* **username**: string (ReadOnly): Username to use when connecting to the target Mongo database
+* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
+* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
+* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
 
 ## RedisCacheSecrets
 ### Properties

@@ -176,11 +176,9 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			},
 		},
 		Properties: linkrp_dm.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
@@ -338,10 +336,8 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: linkrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
 		}

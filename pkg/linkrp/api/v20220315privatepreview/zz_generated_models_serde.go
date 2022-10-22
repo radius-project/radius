@@ -1541,6 +1541,41 @@ func (m *MongoDatabaseSecrets) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type MongoDatabaseValues.
+func (m MongoDatabaseValues) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "database", m.Database)
+	populate(objectMap, "host", m.Host)
+	populate(objectMap, "port", m.Port)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type MongoDatabaseValues.
+func (m *MongoDatabaseValues) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", m, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "database":
+				err = unpopulate(val, "Database", &m.Database)
+				delete(rawMsg, key)
+		case "host":
+				err = unpopulate(val, "Host", &m.Host)
+				delete(rawMsg, key)
+		case "port":
+				err = unpopulate(val, "Port", &m.Port)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", m, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueList.
 func (r RabbitMQMessageQueueList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -2608,41 +2643,6 @@ func (t *TrackedResource) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", t, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ValuesMongoDatabaseProperties.
-func (v ValuesMongoDatabaseProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "database", v.Database)
-	populate(objectMap, "host", v.Host)
-	populate(objectMap, "port", v.Port)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesMongoDatabaseProperties.
-func (v *ValuesMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", v, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "database":
-				err = unpopulate(val, "Database", &v.Database)
-				delete(rawMsg, key)
-		case "host":
-				err = unpopulate(val, "Host", &v.Host)
-				delete(rawMsg, key)
-		case "port":
-				err = unpopulate(val, "Port", &v.Port)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", v, err)
 		}
 	}
 	return nil
