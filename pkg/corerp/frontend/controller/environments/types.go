@@ -6,7 +6,6 @@
 package environments
 
 const (
-	ResourceTypeName             = "Applications.Core/environments"
-	RadiusOwnedRecipesACRPath    = "radiusdev.azurecr.io"
-	AzureMongoDatabaseRecipePath = "/recipes/mongodatabases/azure:1.0"
+	ResourceTypeName          = "Applications.Core/environments"
+	RadiusOwnedRecipesACRPath = "radiusdev.azurecr.io"
 )

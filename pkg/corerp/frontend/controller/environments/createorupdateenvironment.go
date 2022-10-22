@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -17,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"oras.land/oras-go/v2/registry/remote"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateEnvironment)(nil)
@@ -98,10 +100,37 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) {
+func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
 	// hard-coding the generation of name and path for now as we identify the best way to support this long-term.
-	radiusOwnedRecipes["mongo-azure"] = datamodel.EnvironmentRecipeProperties{
-		ConnectorType: mongodatabases.ResourceTypeName,
-		TemplatePath:  RadiusOwnedRecipesACRPath + "/" + AzureMongoDatabaseRecipePath,
+	reg, err := remote.NewRegistry(RadiusOwnedRecipesACRPath)
+	if err != nil {
+		return fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
+	err = reg.Repositories(ctx, "", func(repos []string) error {
+		for _, repo := range repos {
+			if strings.HasPrefix(repo, "recipes/") {
+				connector, provider := strings.Split(repo, "/")[1], strings.Split(repo, "/")[1]
+				name := provider
+				var connectorType string
+				switch connector {
+				case "mongodatabases":
+					name = name + "-" + "mongo"
+					connectorType = mongodatabases.ResourceTypeName
+				default:
+					return err
+				}
+				radiusOwnedRecipes[name] = datamodel.EnvironmentRecipeProperties{
+					ConnectorType: connectorType,
+					TemplatePath:  RadiusOwnedRecipesACRPath + "/" + repo,
+				}
+			}
+		}
+		return nil
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to list recipes available in registry %s", err.Error())
+	}
+
+	return nil
 }
