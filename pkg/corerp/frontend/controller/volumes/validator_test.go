@@ -15,50 +15,22 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	corerptesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
-	scheme "k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
-	secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+
+	rptesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 
 var (
-	initObjects = []client.Object{
-		&secretsstorev1.SecretProviderClass{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "simple_provider",
-				Namespace: "default",
-			},
-			Spec: secretsstorev1.SecretProviderClassSpec{
-				Provider:   "simple_provider",
-				Parameters: map[string]string{"parameter1": "value1"},
-			},
-		},
-	}
 	resourceID     = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
 	testIdentityID = "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
 )
 
-func getKubeClientWithScheme(initObjs ...client.Object) client.WithWatch {
-	s := scheme.Scheme
-	s.AddKnownTypes(schema.GroupVersion{Group: secretsstorev1.GroupVersion.Group, Version: secretsstorev1.GroupVersion.Version},
-		&secretsstorev1.SecretProviderClass{},
-		&secretsstorev1.SecretProviderClassList{},
-		&secretsstorev1.SecretProviderClassPodStatus{},
-	)
-
-	return fakeclient.NewClientBuilder().
-		WithScheme(s).
-		WithObjects(initObjs...).
-		Build()
-}
-
-func getResourceID(id string) resources.ID {
+func mustParseResourceID(id string) resources.ID {
 	resourceID, err := resources.ParseResource(id)
 	if err != nil {
 		panic(err)
@@ -68,12 +40,31 @@ func getResourceID(id string) resources.ID {
 }
 
 func TestValidateRequest(t *testing.T) {
+	// Create SecretProviderClass CRD object fake client.
+	crdScheme := runtime.NewScheme()
+	err := apiextv1.AddToScheme(crdScheme)
+	require.NoError(t, err)
+
+	crdFakeClient := rptesting.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "apiextensions.k8s.io/v1",
+			Kind:       "CustomResourceDefinition",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: secretProviderClassesCRD,
+		},
+	})
+
+	// Create default Kubernetes fake client.
+	defaultFakeClient := rptesting.NewFakeKubeClient(nil)
+
 	type args struct {
 		ctx         context.Context
 		newResource *datamodel.VolumeResource
 		oldResource *datamodel.VolumeResource
 		options     *controller.Options
 	}
+
 	tests := []struct {
 		name    string
 		args    args
@@ -85,14 +76,14 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodDelete,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodDelete,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
+							Identity: datamodel.IdentitySettings{
 								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
@@ -100,10 +91,10 @@ func TestValidateRequest(t *testing.T) {
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+					KubeClient: defaultFakeClient,
 				},
 			},
-			want:    rest.NewMethodNotAllowedResponse(resourceID, "only PUT and PATCH are supported for the validation of this resource."),
+			want:    nil,
 			wantErr: nil,
 		},
 		{
@@ -111,14 +102,14 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: "unsupported-kind",
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
+							Identity: datamodel.IdentitySettings{
 								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
@@ -126,7 +117,7 @@ func TestValidateRequest(t *testing.T) {
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+					KubeClient: defaultFakeClient,
 				},
 			},
 			want:    rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", "unsupported-kind")),
@@ -137,26 +128,26 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
-								Kind:   datamodel.AzureIdentityWorkload,
-								Issuer: "",
+							Identity: datamodel.IdentitySettings{
+								Kind:       datamodel.AzureIdentityWorkload,
+								OIDCIssuer: "",
 							},
 						},
 					},
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+					KubeClient: defaultFakeClient,
 				},
 			},
-			want:    rest.NewBadRequestResponse("issuer is required for workload identity."),
+			want:    rest.NewBadRequestResponse("oidcIssuer is required for workload identity."),
 			wantErr: nil,
 		},
 		{
@@ -164,24 +155,24 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentityWorkload,
-								Issuer:   "https://issuerurl",
-								Resource: "invalid-id",
+							Identity: datamodel.IdentitySettings{
+								Kind:       datamodel.AzureIdentityWorkload,
+								OIDCIssuer: "https://issuerurl",
+								Resource:   "invalid-id",
 							},
 						},
 					},
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+					KubeClient: defaultFakeClient,
 				},
 			},
 			want:    rest.NewBadRequestResponse("'invalid-id' is invalid resource for workload identity"),
@@ -192,24 +183,24 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentityWorkload,
-								Issuer:   "https://issuerurl",
-								Resource: testIdentityID,
+							Identity: datamodel.IdentitySettings{
+								Kind:       datamodel.AzureIdentityWorkload,
+								OIDCIssuer: "https://issuerurl",
+								Resource:   testIdentityID,
 							},
 						},
 					},
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: getKubeClientWithScheme(initObjects...),
+					KubeClient: crdFakeClient,
 				},
 			},
 			want:    nil,
@@ -220,14 +211,14 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
+							Identity: datamodel.IdentitySettings{
 								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
@@ -235,10 +226,10 @@ func TestValidateRequest(t *testing.T) {
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: getKubeClientWithScheme(),
+					KubeClient: defaultFakeClient,
 				},
 			},
-			want:    rest.NewPreconditionFailedResponse(resourceID, "csi driver is not installed"),
+			want:    rest.NewBadRequestResponse("Your volume requires secret store CSI driver. Please install it by following https://secrets-store-csi-driver.sigs.k8s.io/."),
 			wantErr: nil,
 		},
 		{
@@ -246,14 +237,14 @@ func TestValidateRequest(t *testing.T) {
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
-						ResourceID:    getResourceID(resourceID),
-						OperationType: http.MethodPut,
+						ResourceID: mustParseResourceID(resourceID),
+						HTTPMethod: http.MethodPut,
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.AzureIdentity{
+							Identity: datamodel.IdentitySettings{
 								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
@@ -261,7 +252,7 @@ func TestValidateRequest(t *testing.T) {
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: getKubeClientWithScheme(initObjects...),
+					KubeClient: crdFakeClient,
 				},
 			},
 			want:    nil,
