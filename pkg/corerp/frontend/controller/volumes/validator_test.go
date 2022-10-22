@@ -7,7 +7,6 @@ package volumes
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -210,7 +209,7 @@ func TestValidateRequest(t *testing.T) {
 				},
 				oldResource: &datamodel.VolumeResource{},
 				options: &controller.Options{
-					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+					KubeClient: getKubeClientWithScheme(initObjects...),
 				},
 			},
 			want:    nil,
@@ -239,7 +238,7 @@ func TestValidateRequest(t *testing.T) {
 					KubeClient: getKubeClientWithScheme(),
 				},
 			},
-			want:    rest.NewPreconditionFailedResponse(resourceID, errors.New("csi driver is not installed").Error()),
+			want:    rest.NewPreconditionFailedResponse(resourceID, "csi driver is not installed"),
 			wantErr: nil,
 		},
 		{
@@ -273,7 +272,7 @@ func TestValidateRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			resp, err := ValidateRequest(tt.args.ctx, tt.args.newResource, tt.args.oldResource, tt.args.options)
 			require.ErrorIs(t, tt.wantErr, err)
-			require.Equal(t, tt.want, resp)
+			require.EqualValues(t, tt.want, resp)
 		})
 	}
 }
