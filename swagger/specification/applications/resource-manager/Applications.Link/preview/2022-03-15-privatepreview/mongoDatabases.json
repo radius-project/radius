@@ -424,6 +424,9 @@
         }
       },
       "required": [
+        "host",
+        "port",
+        "database",
         "mode"
       ],
       "type": "object",
@@ -446,7 +449,7 @@
        "database": {
           "description": "Database name of the target Mongo database",
           "type": "string",
-          "readOnly": false
+          "readOnly": true
         }
       },
       "type": "object"

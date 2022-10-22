@@ -829,9 +829,6 @@ type MongoDatabaseResponseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -847,6 +844,9 @@ type MongoDatabaseResponseProperties struct {
 
 	// Fully qualified resource ID of a supported resource with Mongo API to use for this link
 	Resource *string `json:"resource,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -892,14 +892,14 @@ type MongoDatabaseSecrets struct {
 }
 
 type MongoDatabaseValues struct {
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 }
 
 // MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
@@ -1322,9 +1322,6 @@ type ResourceMongoDatabaseRequestProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -1333,6 +1330,9 @@ type ResourceMongoDatabaseRequestProperties struct {
 
 	// Secrets values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1529,9 +1529,6 @@ type ValuesMongoDatabaseRequestProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -1540,6 +1537,9 @@ type ValuesMongoDatabaseRequestProperties struct {
 
 	// Secrets values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
