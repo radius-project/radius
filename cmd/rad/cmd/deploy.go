@@ -13,6 +13,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/version"
@@ -149,6 +150,15 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	environment := workspace.Scope + "/providers/applications.core/environments/" + environmentName
+	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)
+	if err != nil {
+		return err
+	}
+	_, err = client.GetEnvDetails(cmd.Context(), environmentName)
+	if err != nil {
+		return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist in scope %q. Run `rad env create` try again \n", environment, workspace.Scope)}
+	}
+
 	err = bicep.InjectEnvironmentParam(template, parameters, cmd.Context(), environment)
 	if err != nil {
 		return err

@@ -32,7 +32,12 @@ type DeleteContainer struct {
 // NewDeleteContainer creates a new DeleteContainer.
 func NewDeleteContainer(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteContainer{
-		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.ContainerResource]{
+				RequestConverter:  converter.ContainerDataModelFromVersioned,
+				ResponseConverter: converter.ContainerDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 

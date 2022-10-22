@@ -33,7 +33,7 @@ func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
-	var awsClient aws.AWSClient = cloudcontrol.NewFromConfig(cfg)
+	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 
 	return CoreRPTestOptions{
 		TestOptions:      test.NewTestOptions(t),
@@ -45,5 +45,5 @@ func NewCoreRPTestOptions(t *testing.T) CoreRPTestOptions {
 type CoreRPTestOptions struct {
 	test.TestOptions
 	ManagementClient clients.ApplicationsManagementClient
-	AWSClient        aws.AWSClient
+	AWSClient        aws.AWSCloudControlClient
 }
