@@ -22,10 +22,23 @@ import (
 )
 
 const (
-	FederatedIdentityNameKey    = "federatedidentityname"
-	FederatedIdentityIssuerKey  = "federatedidentityissuer"
+	// AzureIdentityTypeKey is the key to represent azure identity type.
+	AzureIdentityTypeKey = "AzureIdentityType"
+	// AzureIdentityIDKey is the key to represent azure identity resource id.
+	AzureIdentityIDKey = "AzureIdentityID"
+	// AzureIdentityClientIDKey is the key to represent the client id of identity.
+	AzureIdentityClientIDKey = "clientID"
+	// AzureIdentityTenantIDKey is the key to represent the tenant id of identity.
+	AzureIdentityTenantIDKey = "tenantID"
+	// AzureFederatedIdentityAudience represents the Azure AD OIDC target audience.
+	AzureFederatedIdentityAudience = "api://AzureADTokenExchange"
+
+	// FederatedIdentityNameKey is the key to represent the federated identity credential name (aka workload identity).
+	FederatedIdentityNameKey = "federatedidentityname"
+	// FederatedIdentityIssuerKey is the key to represent the oidc issuer.
+	FederatedIdentityIssuerKey = "federatedidentityissuer"
+	// FederatedIdentitySubjectKey is the key to represent the identity subject.
 	FederatedIdentitySubjectKey = "federatedidentitysubject"
-	FederatedIdentityAudience   = "api://AzureADTokenExchange"
 )
 
 var (
@@ -61,7 +74,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 
 	params := armmsi.FederatedIdentityCredential{
 		Properties: &armmsi.FederatedIdentityCredentialProperties{
-			Audiences: []*string{to.Ptr(FederatedIdentityAudience)},
+			Audiences: []*string{to.Ptr(AzureFederatedIdentityAudience)},
 			Issuer:    to.Ptr(identity.OIDCIssuer),
 			Subject:   to.Ptr(identity.Subject),
 		},
@@ -77,6 +90,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 		return err
 	}
 
+	// Populating the federated identity credendial changes takes some time. Therefore, POD will take some time to start.
 	_, err = client.CreateOrUpdate(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), identity.Name, params, nil)
 	if err != nil {
 		return err
@@ -131,7 +145,7 @@ func (handler *azureFederatedIdentityHandler) GetResourceIdentity(ctx context.Co
 			Resource:   identityID,
 			OIDCIssuer: issuer,
 			Subject:    subject,
-			Audience:   FederatedIdentityAudience,
+			Audience:   AzureFederatedIdentityAudience,
 			Name:       federatedName,
 		},
 	}

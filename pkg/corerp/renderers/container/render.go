@@ -187,11 +187,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 // prepareFederatedIdentity prepare the output resource and dependencies for ServiceAccount and Azure federated identity.
-func (r Renderer) prepareFederatedIdentity(appName, namespace string, properties *renderers.RendererDependency, resource *datamodel.ContainerResource) (string, []outputresource.OutputResource, []outputresource.Dependency, error) {
-	identityType, err := handlers.GetStringProperty(properties.ComputedValues, "identityType")
-	if err != nil {
-		return "", nil, nil, err
-	}
+func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedValues map[string]interface{}, resource *datamodel.ContainerResource) (string, []outputresource.OutputResource, []outputresource.Dependency, error) {
+	// Ignore this error when identityType is not given.
+	identityType, _ := handlers.GetStringProperty(computedValues, handlers.AzureIdentityTypeKey)
 
 	resources := []outputresource.OutputResource{}
 	deps := []outputresource.Dependency{}
@@ -199,15 +197,20 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, properties
 
 	if strings.EqualFold(identityType, string(datamodel.AzureIdentityWorkload)) {
 		// Prepare the service account resource.
-		identityID, err := handlers.GetStringProperty(properties.ComputedValues, "identity")
+		identityID, err := handlers.GetStringProperty(computedValues, handlers.AzureIdentityIDKey)
 		if err != nil {
 			return "", nil, nil, err
 		}
-		clientID, err := handlers.GetStringProperty(properties.ComputedValues, "clientID")
+		clientID, err := handlers.GetStringProperty(computedValues, handlers.AzureIdentityClientIDKey)
 		if err != nil {
 			return "", nil, nil, err
 		}
-		tenantID, err := handlers.GetStringProperty(properties.ComputedValues, "tenantID")
+		tenantID, err := handlers.GetStringProperty(computedValues, handlers.AzureIdentityTenantIDKey)
+		if err != nil {
+			return "", nil, nil, err
+		}
+		// Prepare the federated identity (aka Workload identity) for managed identity.
+		issuer, err := handlers.GetStringProperty(computedValues, handlers.FederatedIdentityIssuerKey)
 		if err != nil {
 			return "", nil, nil, err
 		}
@@ -220,12 +223,6 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, properties
 		}
 		resources = append(resources, outResource)
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
-
-		// Prepare the federated identity (aka Workload identity) for managed identity.
-		issuer, err := handlers.GetStringProperty(properties.ComputedValues, "issuer")
-		if err != nil {
-			return "", nil, nil, err
-		}
 
 		// TODO: Need to support the other federated identities.
 		subs := handlers.GetKubeAzureSubject(namespace, name)
@@ -358,7 +355,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 			switch vol.Properties.Kind {
 			case datamodel.AzureKeyVaultVolume:
-				sa, outResources, deps, err := r.prepareFederatedIdentity(applicationName, options.Environment.Namespace, &properties, &resource)
+				sa, outResources, deps, err := r.prepareFederatedIdentity(applicationName, options.Environment.Namespace, properties.ComputedValues, &resource)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}

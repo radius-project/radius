@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
@@ -75,30 +76,30 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 			return renderers.RendererOutput{}, errors.New("failed to get ServiceProviderClass")
 		}
 
-		clientID, ok := provider.Spec.Parameters["clientID"]
-		if !ok {
-			return renderers.RendererOutput{}, errors.New("failed to get ClientID")
+		clientID, err := handlers.GetStringProperty(provider.Spec.Parameters, handlers.AzureIdentityClientIDKey)
+		if err != nil {
+			return renderers.RendererOutput{}, err
 		}
 
-		tenantID, ok := provider.Spec.Parameters["tenantID"]
-		if !ok {
-			return renderers.RendererOutput{}, errors.New("failed to get TenantID")
+		tenantID, err := handlers.GetStringProperty(provider.Spec.Parameters, handlers.AzureIdentityTenantIDKey)
+		if err != nil {
+			return renderers.RendererOutput{}, err
 		}
 
 		computedValues = map[string]rp.ComputedValueReference{
-			"identityType": {
+			handlers.AzureIdentityTypeKey: {
 				Value: string(datamodel.AzureIdentityWorkload),
 			},
-			"identity": {
+			handlers.AzureIdentityIDKey: {
 				Value: dm.Properties.AzureKeyVault.Identity.Resource,
 			},
-			"clientID": {
+			handlers.AzureIdentityClientIDKey: {
 				Value: clientID,
 			},
-			"tenantID": {
+			handlers.AzureIdentityTenantIDKey: {
 				Value: tenantID,
 			},
-			"issuer": {
+			handlers.FederatedIdentityIssuerKey: {
 				Value: dm.Properties.AzureKeyVault.Identity.Issuer,
 			},
 		}

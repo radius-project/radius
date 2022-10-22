@@ -29,7 +29,7 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 }
 
 // GetStringProperty gets value for key in collection.
-func GetStringProperty(collection interface{}, key string) (string, error) {
+func GetStringProperty(collection any, key string) (string, error) {
 	switch c := collection.(type) {
 	case map[string]string:
 		val, ok := c[key]
@@ -37,7 +37,7 @@ func GetStringProperty(collection interface{}, key string) (string, error) {
 			return "", fmt.Errorf("%s not found", key)
 		}
 		return val, nil
-	case map[string]interface{}:
+	case map[string]any:
 		val, ok := c[key]
 		if !ok {
 			return "", fmt.Errorf("%s not found", key)
