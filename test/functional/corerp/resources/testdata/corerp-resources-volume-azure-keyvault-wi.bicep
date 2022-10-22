@@ -42,7 +42,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
     application: app.id
     kind: 'azure.com.keyvault'
     identity: {
-      kind: 'Workload'
+      kind: 'azure.com.workload'
       resourceId: kvVolIdentity.id
       issuer: oidcIssuer
     }

@@ -318,7 +318,7 @@
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
-* **identity**: [AzureIdentity](#azureidentity) (Required)
+* **identity**: [IdentitySettings](#identitysettings) (Required)
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
 * **kind**: 'azure.com.keyvault' (Required): The volume kind
 * **resource**: string (Required): The ID of the keyvault to use for this volume resource
@@ -339,10 +339,10 @@
 * **name**: string (Required): The name of the certificate
 * **version**: string: Certificate version
 
-## AzureIdentity
+## IdentitySettings
 ### Properties
-* **issuer**: string: The OIDC Issuer name
-* **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Identity Kind
+* **oidcIssuer**: string: The OIDC Issuer name
 * **resource**: string: The managed identity resource ID
 
 ## AzureKeyVaultVolumePropertiesKeys

@@ -58,28 +58,28 @@ type VolumeResourceProperties struct {
 	AzureKeyVault *AzureKeyVaultVolumeProperties `json:"azureKeyVault,omitempty"`
 }
 
-type AzureIdentityKind string
+type IdentitySettingKind string
 
 const (
-	AzureIdentityNone           AzureIdentityKind = "None"
-	AzureIdentityWorkload       AzureIdentityKind = "Workload"
-	AzureIdentitySystemAssigned AzureIdentityKind = "SystemAssigned"
+	IdentityNone                IdentitySettingKind = "None"
+	AzureIdentityWorkload       IdentitySettingKind = "azure.com.workload"
+	AzureIdentitySystemAssigned IdentitySettingKind = "azure.com.systemassigned"
 )
 
-// AzureIdentity represents the azure identity info to access azure resource, such as Key vault.
-type AzureIdentity struct {
+// IdentitySettings represents the identity info to access azure resource, such as Key vault.
+type IdentitySettings struct {
 	// Kind represents the type of authentication.
-	Kind AzureIdentityKind `json:"kind"`
+	Kind IdentitySettingKind `json:"kind"`
 	// Resource represents the resource id of managed identity.
 	Resource string `json:"resource,omitempty"`
-	// Issuer represents the name of OIDC issuer.
-	Issuer string `json:"issuer,omitempty"`
+	// OIDCIssuer represents the name of OIDC issuer.
+	OIDCIssuer string `json:"oidcIssuer,omitempty"`
 }
 
 // AzureKeyVaultVolumeProperties represents the volume for Azure Keyvault.
 type AzureKeyVaultVolumeProperties struct {
 	// The identity is to access keyvault
-	Identity AzureIdentity `json:"identity"`
+	Identity IdentitySettings `json:"identity"`
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]CertificateObjectProperties `json:"certificates,omitempty"`
 	// The KeyVault keys that this volume exposes

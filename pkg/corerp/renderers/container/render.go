@@ -187,7 +187,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 // prepareFederatedIdentity prepare the output resource and dependencies for ServiceAccount and Azure federated identity.
-func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedValues map[string]interface{}, resource *datamodel.ContainerResource) (string, []outputresource.OutputResource, []outputresource.Dependency, error) {
+func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedValues map[string]any, resource *datamodel.ContainerResource) (string, []outputresource.OutputResource, []outputresource.Dependency, error) {
 	// Ignore this error when identityType is not given.
 	identityType, _ := handlers.GetStringProperty(computedValues, handlers.AzureIdentityTypeKey)
 

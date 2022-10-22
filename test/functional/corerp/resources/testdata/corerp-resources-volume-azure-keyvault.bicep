@@ -40,7 +40,7 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
     application: app.id
     kind: 'azure.com.keyvault'
     identity: {
-      kind: 'SystemAssigned'
+      kind: 'azure.com.systemassigned'
     }
     resource: azTestKeyvault.id
     secrets: {

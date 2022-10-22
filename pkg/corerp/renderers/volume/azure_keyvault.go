@@ -100,7 +100,7 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 				Value: tenantID,
 			},
 			handlers.FederatedIdentityIssuerKey: {
-				Value: dm.Properties.AzureKeyVault.Identity.Issuer,
+				Value: dm.Properties.AzureKeyVault.Identity.OIDCIssuer,
 			},
 		}
 	}

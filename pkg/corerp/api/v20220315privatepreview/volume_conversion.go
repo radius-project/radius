@@ -46,10 +46,10 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 
 		if p.Identity != nil {
-			dm.Identity = datamodel.AzureIdentity{
-				Kind:     toAzureIdentityKind(p.Identity.Kind),
-				Resource: to.String(p.Identity.Resource),
-				Issuer:   to.String(p.Identity.Issuer),
+			dm.Identity = datamodel.IdentitySettings{
+				Kind:       toAzureIdentityKind(p.Identity.Kind),
+				Resource:   to.String(p.Identity.Resource),
+				OIDCIssuer: to.String(p.Identity.OidcIssuer),
 			}
 		}
 
@@ -99,10 +99,10 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			},
 			Kind:        azto.Ptr(resource.Properties.Kind),
 			Application: azto.Ptr(resource.Properties.Application),
-			Identity: &AzureIdentity{
-				Kind:     fromAzureIdentityKind(azProp.Identity.Kind),
-				Resource: toStringPtr(azProp.Identity.Resource),
-				Issuer:   toStringPtr(azProp.Identity.Issuer),
+			Identity: &IdentitySettings{
+				Kind:       fromAzureIdentityKind(azProp.Identity.Kind),
+				Resource:   toStringPtr(azProp.Identity.Resource),
+				OidcIssuer: toStringPtr(azProp.Identity.OIDCIssuer),
 			},
 			Resource:          azto.Ptr(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
@@ -131,29 +131,29 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
-func fromAzureIdentityKind(kind datamodel.AzureIdentityKind) *AzureIdentityKind {
+func fromAzureIdentityKind(kind datamodel.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case datamodel.AzureIdentitySystemAssigned:
-		return azto.Ptr(AzureIdentityKindSystemAssigned)
+		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
 	case datamodel.AzureIdentityWorkload:
-		return azto.Ptr(AzureIdentityKindWorkload)
+		return azto.Ptr(IdentitySettingKindAzureComWorkload)
 	default:
 		return nil
 	}
 }
 
-func toAzureIdentityKind(kind *AzureIdentityKind) datamodel.AzureIdentityKind {
+func toAzureIdentityKind(kind *IdentitySettingKind) datamodel.IdentitySettingKind {
 	if kind == nil {
-		return datamodel.AzureIdentityNone
+		return datamodel.IdentityNone
 	}
 
 	switch *kind {
-	case AzureIdentityKindSystemAssigned:
+	case IdentitySettingKindAzureComSystemassigned:
 		return datamodel.AzureIdentitySystemAssigned
-	case AzureIdentityKindWorkload:
+	case IdentitySettingKindAzureComWorkload:
 		return datamodel.AzureIdentityWorkload
 	default:
-		return datamodel.AzureIdentityNone
+		return datamodel.IdentityNone
 	}
 }
 

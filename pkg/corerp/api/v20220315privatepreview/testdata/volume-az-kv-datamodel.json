@@ -30,8 +30,9 @@
         "azureKeyVault": {
             "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
             "identity": {
-                "kind": "Workload",
-                "clientId": "00000000-0000-0000-0000-000000000000"
+                "kind": "azure.com.workload",
+                "oidcIssuer": "https://oidcurl/guid",
+                "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
             },
             "secrets": {
                 "mysecret-1": {

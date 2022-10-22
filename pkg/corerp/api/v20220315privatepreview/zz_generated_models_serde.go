@@ -129,41 +129,6 @@ func (a *ApplicationResourceList) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type AzureIdentity.
-func (a AzureIdentity) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "issuer", a.Issuer)
-	populate(objectMap, "kind", a.Kind)
-	populate(objectMap, "resource", a.Resource)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type AzureIdentity.
-func (a *AzureIdentity) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", a, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "issuer":
-				err = unpopulate(val, "Issuer", &a.Issuer)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &a.Kind)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, "Resource", &a.Resource)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", a, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type AzureKeyVaultVolumeProperties.
 func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -1459,6 +1424,41 @@ func (i *IamProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "roles":
 				err = unpopulate(val, "Roles", &i.Roles)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", i, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type IdentitySettings.
+func (i IdentitySettings) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "kind", i.Kind)
+	populate(objectMap, "oidcIssuer", i.OidcIssuer)
+	populate(objectMap, "resource", i.Resource)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type IdentitySettings.
+func (i *IdentitySettings) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", i, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "kind":
+				err = unpopulate(val, "Kind", &i.Kind)
+				delete(rawMsg, key)
+		case "oidcIssuer":
+				err = unpopulate(val, "OidcIssuer", &i.OidcIssuer)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, "Resource", &i.Resource)
 				delete(rawMsg, key)
 		}
 		if err != nil {
