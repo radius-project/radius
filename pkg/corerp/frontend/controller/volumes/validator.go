@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
@@ -30,14 +31,15 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource,
 
 	switch newResource.Properties.Kind {
 	case datamodel.AzureKeyVaultVolume:
-		if newResource.Properties.AzureKeyVault.Identity.Kind == datamodel.AzureIdentitySystemAssigned &&
-			newResource.Properties.AzureKeyVault.Identity.ClientID != "" {
-			return rest.NewBadRequestResponse("clientID is not allowed when using system assigned identity"), nil
-		}
-
-		if newResource.Properties.AzureKeyVault.Identity.Kind == datamodel.AzureIdentityWorkload &&
-			newResource.Properties.AzureKeyVault.Identity.ClientID == "" {
-			return rest.NewBadRequestResponse("clientID can not be empty when using workload identity"), nil
+		identity := newResource.Properties.AzureKeyVault.Identity
+		if identity.Kind == datamodel.AzureIdentityWorkload {
+			if identity.Issuer == "" {
+				return rest.NewBadRequestResponse("issuer is required for workload identity."), nil
+			}
+			_, err := resources.ParseResource(identity.Resource)
+			if err != nil {
+				return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is invalid resource for workload identity", identity.Resource)), nil
+			}
 		}
 	default:
 		return rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", newResource.Properties.Kind)), nil

@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -19,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	corerptesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/stretchr/testify/require"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -41,7 +41,8 @@ var (
 			},
 		},
 	}
-	resourceID = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
+	resourceID     = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
+	testIdentityID = "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
 )
 
 func getKubeClientWithScheme(initObjs ...client.Object) client.WithWatch {
@@ -93,8 +94,7 @@ func TestValidateRequest(t *testing.T) {
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentitySystemAssigned,
-								ClientID: "123",
+								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -120,8 +120,7 @@ func TestValidateRequest(t *testing.T) {
 						Kind: "unsupported-kind",
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentitySystemAssigned,
-								ClientID: "123",
+								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -135,7 +134,7 @@ func TestValidateRequest(t *testing.T) {
 			wantErr: nil,
 		},
 		{
-			name: "system-assigned-client-id-not-empty",
+			name: "workload-issuer-empty",
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
@@ -147,8 +146,8 @@ func TestValidateRequest(t *testing.T) {
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentitySystemAssigned,
-								ClientID: "123",
+								Kind:   datamodel.AzureIdentityWorkload,
+								Issuer: "",
 							},
 						},
 					},
@@ -158,11 +157,11 @@ func TestValidateRequest(t *testing.T) {
 					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
 				},
 			},
-			want:    rest.NewBadRequestResponse("clientID is not allowed when using system assigned identity"),
+			want:    rest.NewBadRequestResponse("issuer is required for workload identity."),
 			wantErr: nil,
 		},
 		{
-			name: "workload-client-id-empty",
+			name: "workload-invalid-resource-id",
 			args: args{
 				ctx: v1.WithARMRequestContext(
 					context.Background(), &v1.ARMRequestContext{
@@ -175,7 +174,8 @@ func TestValidateRequest(t *testing.T) {
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
 								Kind:     datamodel.AzureIdentityWorkload,
-								ClientID: "",
+								Issuer:   "https://issuerurl",
+								Resource: "invalid-id",
 							},
 						},
 					},
@@ -185,7 +185,35 @@ func TestValidateRequest(t *testing.T) {
 					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
 				},
 			},
-			want:    rest.NewBadRequestResponse("clientID can not be empty when using workload identity"),
+			want:    rest.NewBadRequestResponse("'invalid-id' is invalid resource for workload identity"),
+			wantErr: nil,
+		},
+		{
+			name: "valid-workload-identity",
+			args: args{
+				ctx: v1.WithARMRequestContext(
+					context.Background(), &v1.ARMRequestContext{
+						ResourceID:    getResourceID(resourceID),
+						OperationType: http.MethodPut,
+					}),
+				newResource: &datamodel.VolumeResource{
+					Properties: datamodel.VolumeResourceProperties{
+						Kind: datamodel.AzureKeyVaultVolume,
+						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
+							Identity: datamodel.AzureIdentity{
+								Kind:     datamodel.AzureIdentityWorkload,
+								Issuer:   "https://issuerurl",
+								Resource: testIdentityID,
+							},
+						},
+					},
+				},
+				oldResource: &datamodel.VolumeResource{},
+				options: &controller.Options{
+					KubeClient: corerptesting.NewKubeFakeClient().DynamicClient(),
+				},
+			},
+			want:    nil,
 			wantErr: nil,
 		},
 		{
@@ -201,8 +229,7 @@ func TestValidateRequest(t *testing.T) {
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentitySystemAssigned,
-								ClientID: "",
+								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -228,8 +255,7 @@ func TestValidateRequest(t *testing.T) {
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
 							Identity: datamodel.AzureIdentity{
-								Kind:     datamodel.AzureIdentitySystemAssigned,
-								ClientID: "",
+								Kind: datamodel.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -245,10 +271,9 @@ func TestValidateRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, err := ValidateRequest(tt.args.ctx, tt.args.newResource, tt.args.oldResource, tt.args.options); !reflect.DeepEqual(got, tt.want) &&
-				(tt.wantErr != nil && tt.wantErr.Error() != err.Error()) {
-				t.Errorf("ValidateRequest() = %v, want %v", got, tt.want)
-			}
+			resp, err := ValidateRequest(tt.args.ctx, tt.args.newResource, tt.args.oldResource, tt.args.options)
+			require.ErrorIs(t, tt.wantErr, err)
+			require.Equal(t, tt.want, resp)
 		})
 	}
 }
