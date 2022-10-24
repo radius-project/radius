@@ -84,7 +84,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: volume.ResourceType,
-			Renderer:     volume.NewRenderer(),
+			Renderer:     volume.NewRenderer(arm),
 		},
 	}
 
@@ -106,6 +106,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Service,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.ServiceAccount,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
 			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
@@ -170,6 +177,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFederatedIdentity,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureFederatedIdentity(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{

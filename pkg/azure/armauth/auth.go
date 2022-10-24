@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 )
 
 // Authentication methods
@@ -22,7 +25,12 @@ const (
 
 // ArmConfig is the configuration we use for managing ARM resources
 type ArmConfig struct {
+	// Auth is the old azure client authenticator.
+	// TODO: Migrate authenticator and clients to new azure sdk - https://github.com/project-radius/radius/issues/4268
 	Auth autorest.Authorizer
+
+	// ClientOption is the client v2 option including new client credentials.
+	ClientOption clientv2.AzureClientOption
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
@@ -32,8 +40,15 @@ func GetArmConfig() (*ArmConfig, error) {
 		return &ArmConfig{}, err
 	}
 
+	// Create Client v2 Credential object.
+	cred, err := NewARMCredential()
+	if err != nil {
+		return nil, err
+	}
+
 	return &ArmConfig{
-		Auth: auth,
+		Auth:         auth,
+		ClientOption: clientv2.AzureClientOption{Cred: cred},
 	}, nil
 }
 
@@ -56,6 +71,21 @@ func GetArmAuthorizerFromValues(clientID string, clientSecret string, tenantID s
 	}
 
 	return auth, nil
+}
+
+// NewARMCredential returns new azure client credential
+func NewARMCredential() (azcore.TokenCredential, error) {
+	authMethod := GetAuthMethod()
+
+	// TODO: Support the other methods - https://github.com/project-radius/radius/issues/4268
+	if authMethod == ServicePrincipalAuth {
+		return azidentity.NewClientSecretCredential(
+			os.Getenv("AZURE_TENANT_ID"),
+			os.Getenv("AZURE_CLIENT_ID"),
+			os.Getenv("AZURE_CLIENT_SECRET"), nil)
+	}
+
+	return nil, nil
 }
 
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process

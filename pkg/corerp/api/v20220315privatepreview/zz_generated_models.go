@@ -78,23 +78,12 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-type AzureIdentity struct {
-	// REQUIRED; Identity Kind
-	Kind *AzureIdentityKind `json:"kind,omitempty"`
-
-	// The client ID for workload and user assigned managed identity
-	ClientID *string `json:"clientId,omitempty"`
-
-	// The tenant ID for workload identity.
-	TenantID *string `json:"tenantId,omitempty"`
-}
-
 type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; The Azure AD identity settings
-	Identity *AzureIdentity `json:"identity,omitempty"`
+	// REQUIRED; The identity settings
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
@@ -789,6 +778,17 @@ type IamProperties struct {
 
 	// RBAC permissions to be assigned on the source resource
 	Roles []*string `json:"roles,omitempty"`
+}
+
+type IdentitySettings struct {
+	// REQUIRED; Identity Kind
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The OIDC Issuer name
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The managed identity resource ID
+	Resource *string `json:"resource,omitempty"`
 }
 
 type KeyObjectProperties struct {
