@@ -46,16 +46,15 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return client, resourceType, id, nil
 }
 
-func getPrimaryIdentifiers(opts ctrl.Options, resourceType string) []interface{} {
+func lookupAWSResourceSchema(opts ctrl.Options, resourceType string) ([]interface{}, error) {
 	sess, err := session.NewSession()
 	if err != nil {
-		fmt.Println("Error creating session ", err)
-		return nil
+		return nil, err
 	}
 
 	var svc awsclient.AWSCloudFormationClient
 	if opts.AWSCloudFormationClient == nil {
-		svc = cloudformation.New(sess, aws.NewConfig().WithRegion("us-west-2"))
+		svc = cloudformation.New(sess, aws.NewConfig())
 	} else {
 		svc = opts.AWSCloudFormationClient
 	}
@@ -65,21 +64,23 @@ func getPrimaryIdentifiers(opts ctrl.Options, resourceType string) []interface{}
 		Type:     aws.String("RESOURCE"),
 	})
 	if err != nil {
-		fmt.Printf("Error describing type: %s", err.Error())
-		return nil
+		return nil, err
 	}
 
 	description := map[string]interface{}{}
 	err = json.Unmarshal([]byte(*output.Schema), &description)
 	if err != nil {
-		fmt.Printf("Error unmarshalling schema: %s", err.Error())
+		return nil, err
 	}
 	primaryIdentifier := description["primaryIdentifier"].([]interface{})
-	return primaryIdentifier
+	return primaryIdentifier, nil
 }
 
 func getResourceIDWithMultiIdentifiers(opts ctrl.Options, url string, resourceType string, properties map[string]interface{}) (string, error) {
-	primaryIdentifiers := getPrimaryIdentifiers(opts, resourceType)
+	primaryIdentifiers, err := lookupAWSResourceSchema(opts, resourceType)
+	if err != nil {
+		return "", err
+	}
 	var resourceID string
 	for _, pi := range primaryIdentifiers {
 		// Primary identifier is of the form /properties/<property-name>

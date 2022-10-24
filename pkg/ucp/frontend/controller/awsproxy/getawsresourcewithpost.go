@@ -49,14 +49,10 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			},
 		}
 
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
+	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -65,20 +61,16 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 			},
 		}
 
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	logger.Info("Fetching resource", "resourceType", resourceType, "resourceID", resourceID)
+	logger.Info("Fetching resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 	response, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
-		Identifier: aws.String(resourceID),
+		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(p.GetRelativePath(req.URL.Path), resourceID)), nil
+		return armrpc_rest.NewNotFoundMessageResponse(constructNotFoundResponseMessage(p.GetRelativePath(req.URL.Path), awsResourceIdentifier)), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
@@ -91,7 +83,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		}
 	}
 
-	computedResourceID := computeResourceID(id, resourceID)
+	computedResourceID := computeResourceID(id, awsResourceIdentifier)
 	body := map[string]interface{}{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,

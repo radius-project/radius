@@ -49,15 +49,10 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				Message: "failed to read request body",
 			},
 		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
+	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -65,14 +60,10 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				Message: err.Error(),
 			},
 		}
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	computedResourceID := computeResourceID(id, resourceID)
+	computedResourceID := computeResourceID(id, awsResourceIdentifier)
 
 	// Create and update work differently for AWS - we need to know if the resource
 	// we're working on exists already.
@@ -80,7 +71,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	existing := true
 	getResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
-		Identifier: aws.String(resourceID),
+		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awserror.IsAWSResourceNotFound(err) {
 		existing = false
@@ -110,7 +101,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	}
 
 	if existing {
-		logger.Info("Updating resource", "resourceType", resourceType, "resourceID", resourceID)
+		logger.Info("Updating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 		// For an existing resource we need to convert the desired state into a JSON-patch document
 		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
 		if err != nil {
@@ -136,7 +127,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
-				Identifier:    aws.String(resourceID),
+				Identifier:    aws.String(awsResourceIdentifier),
 				PatchDocument: aws.String(string(marshaled)),
 			})
 			if err != nil {
@@ -148,13 +139,13 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				return awserror.HandleAWSError(err)
 			}
 		} else {
-			logger.Info("No changes detected, skipping update", "resourceType", resourceType, "resourceID", resourceID)
+			logger.Info("No changes detected, skipping update", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 			// mark provisioning state as succeeded here
 			// and return 200, telling the deployment engine that the resource has already been created
 			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
 			responseBody := map[string]interface{}{
 				"id":         computedResourceID,
-				"name":       resourceID,
+				"name":       awsResourceIdentifier,
 				"type":       id.Type(),
 				"properties": responseProperties,
 			}
@@ -163,7 +154,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return resp, nil
 		}
 	} else {
-		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", resourceID)
+		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
@@ -182,7 +173,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	responseBody := map[string]interface{}{
 		"id":         computedResourceID,
-		"name":       resourceID,
+		"name":       awsResourceIdentifier,
 		"type":       id.Type(),
 		"properties": responseProperties,
 	}
