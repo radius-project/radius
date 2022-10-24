@@ -85,19 +85,23 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 		return err
 	}
 
-	client, err := clientv2.NewFederatedIdentityClient(rID.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOption)
+	subID := rID.FindScope(resources.SubscriptionsSegment)
+	rgName := rID.FindScope(resources.ResourceGroupsSegment)
+
+	client, err := clientv2.NewFederatedIdentityClient(subID, &handler.arm.ClientOption)
 	if err != nil {
 		return err
 	}
 
 	// Populating the federated identity credendial changes takes some time. Therefore, POD will take some time to start.
-	_, err = client.CreateOrUpdate(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), identity.Name, params, nil)
+	// User will encounter the error when the given identity has more than 20 federated identity credentials.
+	_, err = client.CreateOrUpdate(ctx, rgName, rID.Name(), identity.Name, params, nil)
 	if err != nil {
 		return err
 	}
 
 	// WORKAROUND: Ensure that federal identity credential is populated. (Why not they provide async api?)
-	_, err = client.Get(ctx, rID.FindScope(resources.ResourceGroupsSegment), rID.Name(), identity.Name, nil)
+	_, err = client.Get(ctx, rgName, rID.Name(), identity.Name, nil)
 	if err != nil {
 		return err
 	}
