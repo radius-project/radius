@@ -321,11 +321,14 @@
       }
     },
     "MongoDatabaseResponseProperties": {
-      "description": "MongoDatabase link properties",
+      "description": "MongoDatabase link response properties",
       "type": "object",
       "allOf": [
         {
           "$ref": "global.json#/definitions/BasicResourceProperties"
+        },
+        {
+          "$ref": "#/definitions/ValuesMongoDatabaseProperties"
         }
       ],
       "properties": {
@@ -341,22 +344,49 @@
             "account::mongodb.id"
           ]
         },
-        "host": {
-          "description": "Host name of the target Mongo database",
+        "recipe": {
+          "readOnly": true,
+          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link",
+          "type": "object",
+          "$ref": "global.json#/definitions/Recipe"
+        },
+        "mode": {
+          "readOnly": true,
+          "description": "Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource' or 'values'",
           "type": "string"
-        },
-        "port": {
-          "description": "Port value of the target Mongo database",
-          "type": "integer",
-          "example": [
-            27017
-          ]
-        },
-        "database": {
-          "description": "Database name of the target Mongo database",
+        }
+      }
+    },
+    "ResourceMongoDatabaseRequestProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/ValuesMongoDatabaseRequestProperties"
+        }
+      ],
+      "properties": { 
+        "resource": {
+          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link",
           "type": "string",
-          "readOnly": true
-        },
+          "example": [
+            "account::mongodb.id"
+          ]
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "resource"
+    },
+    "RecipeMongoDatabaseRequestProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        }
+      ],
+      "properties": { 
         "recipe": {
           "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link",
           "type": "object",
@@ -364,15 +394,20 @@
         }
       },
       "required": [
-        "environment"
-      ]
-    },
-    "MongoDatabaseProperties": {
-      "description": "MongoDatabase link properties",
+        "mode",
+        "recipe"
+      ],
       "type": "object",
+      "x-ms-discriminator-value": "recipe"
+    },
+    "ValuesMongoDatabaseRequestProperties": {
+      "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/MongoDatabaseResponseProperties"
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        },
+        {
+          "$ref": "#/definitions/ValuesMongoDatabaseProperties"
         }
       ],
       "properties": {
@@ -381,7 +416,64 @@
           "description": "Secrets values provided for the resource",
           "$ref": "#/definitions/MongoDatabaseSecrets"
         }
-      }
+      },
+      "required": [
+        "mode"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
+    },
+    "ValuesMongoDatabaseProperties": {
+      "additionalProperties": false,
+      "properties": {
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+       },
+       "port": {
+         "description": "Port value of the target Mongo database",
+         "type": "integer",
+         "example": [
+           27017
+         ]
+       },
+       "database": {
+          "description": "Database name of the target Mongo database",
+          "type": "string",
+          "readOnly": true
+        }
+      },
+      "type": "object"
+    },
+    "MongoDatabaseProperties": {
+      "description": "MongoDatabase link create/update request properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "mode",
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the mongo database link at the time the operation was called"
+        },
+        "mode" : {
+          "description": "Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource' or 'values'",
+          "type": "string",
+          "enum": [
+            "resource",
+            "recipe",
+            "values"
+          ] 
+        }
+      },
+      "required": [
+        "environment",
+        "mode"
+      ]
     },
     "MongoDatabaseListSecretsResult": {
       "description": "The secret values for the given MongoDatabase resource",

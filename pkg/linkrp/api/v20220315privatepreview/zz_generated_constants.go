@@ -82,6 +82,25 @@ func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind
 	}
 }
 
+// MongoDatabasePropertiesMode - Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource'
+// or 'values'
+type MongoDatabasePropertiesMode string
+
+const (
+	MongoDatabasePropertiesModeRecipe MongoDatabasePropertiesMode = "recipe"
+	MongoDatabasePropertiesModeResource MongoDatabasePropertiesMode = "resource"
+	MongoDatabasePropertiesModeValues MongoDatabasePropertiesMode = "values"
+)
+
+// PossibleMongoDatabasePropertiesModeValues returns the possible values for the MongoDatabasePropertiesMode const type.
+func PossibleMongoDatabasePropertiesModeValues() []MongoDatabasePropertiesMode {
+	return []MongoDatabasePropertiesMode{	
+		MongoDatabasePropertiesModeRecipe,
+		MongoDatabasePropertiesModeResource,
+		MongoDatabasePropertiesModeValues,
+	}
+}
+
 // ProvisioningState - Provisioning state of the link at the time the operation was called
 type ProvisioningState string
 
