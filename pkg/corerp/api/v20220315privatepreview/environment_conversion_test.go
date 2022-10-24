@@ -25,7 +25,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		err      error
 	}{
 		{
-			filename: "environmentresource.json",
+			filename: "environmentresource-with-workload-identity.json",
 			expected: &datamodel.Environment{
 				BaseResource: v1.BaseResource{
 					TrackedResource: v1.TrackedResource{
@@ -51,6 +51,45 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							Kind:       rp.AzureIdentityWorkload,
 							Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 							OIDCIssuer: "https://oidcurl/guid",
+						},
+					},
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+						},
+					},
+					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
+						"cosmos-recipe": {
+							ConnectorType: "Applications.Connector/mongoDatabases",
+							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			filename: "environmentresource.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: datamodel.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: datamodel.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
 						},
 					},
 					Providers: datamodel.Providers{
@@ -102,6 +141,30 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 func TestConvertDataModelToVersioned(t *testing.T) {
 	// arrange
 	rawPayload := radiustesting.ReadFixture("environmentresourcedatamodel.json")
+	r := &datamodel.Environment{}
+	err := json.Unmarshal(rawPayload, r)
+	require.NoError(t, err)
+
+	// act
+	versioned := &EnvironmentResource{}
+	err = versioned.ConvertFrom(r)
+
+	// assert
+	require.NoError(t, err)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", r.ID)
+	require.Equal(t, "env0", r.Name)
+	require.Equal(t, "Applications.Core/environments", r.Type)
+	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
+	require.Equal(t, 1, len(r.Properties.Recipes))
+	require.Equal(t, "Applications.Connector/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].ConnectorType)
+	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
+}
+
+func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
+	// arrange
+	rawPayload := radiustesting.ReadFixture("environmentresourcedatamodel-with-workload-identity.json")
 	r := &datamodel.Environment{}
 	err := json.Unmarshal(rawPayload, r)
 	require.NoError(t, err)

@@ -245,9 +245,9 @@
 
 ## IdentitySettings
 ### Properties
-* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Identity Kind
-* **oidcIssuer**: string: The OIDC Issuer name
-* **resource**: string: The managed identity resource ID
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
 
 ## Providers
 ### Properties

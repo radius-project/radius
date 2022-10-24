@@ -45,7 +45,8 @@ type EnvironmentCompute struct {
 	Kind              EnvironmentComputeKind      `json:"kind"`
 	KubernetesCompute KubernetesComputeProperties `json:"kubernetes,omitempty"`
 
-	// The identity is to access keyvault
+	// Environment-level identity that can be used by any resource in the environment.
+	// Resources can specify its own identities and they will override the environment-level identity.
 	Identity *rp.IdentitySettings `json:"identity"`
 }
 

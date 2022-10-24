@@ -76,7 +76,7 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	}
 }
 
-func fromAzureIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
+func fromIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
 	case rp.AzureIdentitySystemAssigned:
 		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
@@ -87,7 +87,7 @@ func fromAzureIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
 	}
 }
 
-func toAzureIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
+func toIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
 	if kind == nil {
 		return rp.IdentityNone
 	}

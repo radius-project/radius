@@ -99,7 +99,7 @@
     "IdentitySettings": {
       "properties": {
         "kind": {
-          "description": "Identity Kind",
+          "description": "Configuration for supported external identity providers",
           "type": "string",
           "enum": [
             "azure.com.workload",
@@ -112,11 +112,11 @@
           }
         },
         "resource": {
-          "description": "The managed identity resource ID",
+          "description": "The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified",
           "type": "string"
         },
         "oidcIssuer": {
-          "description": "The OIDC Issuer name",
+          "description": "The URI for your compute platform's OIDC issuer",
           "type": "string"
         }
       },

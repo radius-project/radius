@@ -86,7 +86,7 @@ func PossibleFormatValues() []Format {
 	}
 }
 
-// IdentitySettingKind - Identity Kind
+// IdentitySettingKind - Configuration for supported external identity providers
 type IdentitySettingKind string
 
 const (

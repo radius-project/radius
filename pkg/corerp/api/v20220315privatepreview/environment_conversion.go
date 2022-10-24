@@ -134,7 +134,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 		var identity *rp.IdentitySettings
 		if v.Identity != nil {
 			identity = &rp.IdentitySettings{
-				Kind:       toAzureIdentityKind(v.Identity.Kind),
+				Kind:       toIdentityKind(v.Identity.Kind),
 				Resource:   to.String(v.Identity.Resource),
 				OIDCIssuer: to.String(v.Identity.OidcIssuer),
 			}
@@ -159,7 +159,7 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 		var identity *IdentitySettings
 		if envCompute.Identity != nil {
 			identity = &IdentitySettings{
-				Kind:       fromAzureIdentityKind(envCompute.Identity.Kind),
+				Kind:       fromIdentityKind(envCompute.Identity.Kind),
 				Resource:   toStringPtr(envCompute.Identity.Resource),
 				OidcIssuer: toStringPtr(envCompute.Identity.OIDCIssuer),
 			}

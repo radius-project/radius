@@ -787,13 +787,13 @@ type IamProperties struct {
 }
 
 type IdentitySettings struct {
-	// REQUIRED; Identity Kind
+	// REQUIRED; Configuration for supported external identity providers
 	Kind *IdentitySettingKind `json:"kind,omitempty"`
 
-	// The OIDC Issuer name
+	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string `json:"oidcIssuer,omitempty"`
 
-	// The managed identity resource ID
+	// The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
 	Resource *string `json:"resource,omitempty"`
 }
 

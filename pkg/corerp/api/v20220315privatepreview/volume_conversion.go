@@ -47,7 +47,7 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 
 		if p.Identity != nil {
 			dm.Identity = rp.IdentitySettings{
-				Kind:       toAzureIdentityKind(p.Identity.Kind),
+				Kind:       toIdentityKind(p.Identity.Kind),
 				Resource:   to.String(p.Identity.Resource),
 				OIDCIssuer: to.String(p.Identity.OidcIssuer),
 			}
@@ -100,7 +100,7 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			Kind:        azto.Ptr(resource.Properties.Kind),
 			Application: azto.Ptr(resource.Properties.Application),
 			Identity: &IdentitySettings{
-				Kind:       fromAzureIdentityKind(azProp.Identity.Kind),
+				Kind:       fromIdentityKind(azProp.Identity.Kind),
 				Resource:   toStringPtr(azProp.Identity.Resource),
 				OidcIssuer: toStringPtr(azProp.Identity.OIDCIssuer),
 			},
