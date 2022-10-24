@@ -75,6 +75,7 @@ resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     environment: environment
+    mode: 'values'
     secrets: {
       connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'
       username: username
