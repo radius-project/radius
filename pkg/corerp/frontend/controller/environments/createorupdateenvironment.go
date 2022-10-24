@@ -56,8 +56,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
-	// Update Recipes mapping with radius owned recipes.
-	newResource.Properties.Recipes, err = getRadiusOwnedRecipes(ctx, newResource.Properties.Recipes)
+	// Update Recipes mapping with dev recipes.
+	newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
 	if err != nil {
 		return nil, err
 	}
@@ -103,12 +103,12 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
-	if radiusOwnedRecipes == nil {
-		radiusOwnedRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
+func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+	if devRecipes == nil {
+		devRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
 	}
 
-	reg, err := remote.NewRegistry(RadiusOwnedRecipesACRPath)
+	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
@@ -126,9 +126,9 @@ func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]da
 					default:
 						return err
 					}
-					radiusOwnedRecipes[name] = datamodel.EnvironmentRecipeProperties{
+					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
 						ConnectorType: connectorType,
-						TemplatePath:  RadiusOwnedRecipesACRPath + "/" + repo,
+						TemplatePath:  DevRecipesACRPath + "/" + repo,
 					}
 				}
 			}
@@ -140,5 +140,5 @@ func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]da
 		return nil, fmt.Errorf("failed to list recipes available in registry %s", err.Error())
 	}
 
-	return radiusOwnedRecipes, nil
+	return devRecipes, nil
 }

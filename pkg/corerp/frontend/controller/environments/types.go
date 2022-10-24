@@ -6,6 +6,6 @@
 package environments
 
 const (
-	ResourceTypeName          = "Applications.Core/environments"
-	RadiusOwnedRecipesACRPath = "radiusdev.azurecr.io"
+	ResourceTypeName  = "Applications.Core/environments"
+	DevRecipesACRPath = "radiusdev.azurecr.io"
 )
