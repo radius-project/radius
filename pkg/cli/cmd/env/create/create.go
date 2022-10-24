@@ -43,24 +43,24 @@ Applications deployed to an environment will inherit the container runtime, conf
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
-	cmd.Flags().Bool("useRadiusOwnedRecipes", true, "Use this flag to not use radius built in recipes")
+	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 
 	return cmd, runner
 }
 
 type Runner struct {
-	ConfigHolder          *framework.ConfigHolder
-	Output                output.Interface
-	Workspace             *workspaces.Workspace
-	EnvironmentName       string
-	UCPResourceGroup      string
-	Namespace             string
-	ConnectionFactory     connections.Factory
-	ConfigFileInterface   framework.ConfigFileInterface
-	KubernetesInterface   kubernetes.Interface
-	NamespaceInterface    namespace.Interface
-	AppManagementClient   clients.ApplicationsManagementClient
-	UseRadiusOwnedRecipes bool
+	ConfigHolder        *framework.ConfigHolder
+	Output              output.Interface
+	Workspace           *workspaces.Workspace
+	EnvironmentName     string
+	UCPResourceGroup    string
+	Namespace           string
+	ConnectionFactory   connections.Factory
+	ConfigFileInterface framework.ConfigFileInterface
+	KubernetesInterface kubernetes.Interface
+	NamespaceInterface  namespace.Interface
+	AppManagementClient clients.ApplicationsManagementClient
+	SkipDevRecipes      bool
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -89,7 +89,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	r.UseRadiusOwnedRecipes, err = cmd.Flags().GetBool("useRadiusOwnedRecipes")
+	r.SkipDevRecipes, err = cmd.Flags().GetBool("skip-dev-recipes")
 	if err != nil {
 		return err
 	}
@@ -151,7 +151,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		(r.Workspace.ProviderConfig.Azure.SubscriptionID != "" && r.Workspace.ProviderConfig.Azure.ResourceGroup != "") {
 		providers = cmd.CreateEnvAzureProvider(r.Workspace.ProviderConfig.Azure.SubscriptionID, r.Workspace.ProviderConfig.Azure.ResourceGroup)
 	}
-	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, r.UseRadiusOwnedRecipes)
+	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, "global", r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
 	if err != nil || !isEnvCreated {
 		return err
 	}

@@ -89,7 +89,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseRadiusOwnedRecipes: to.Ptr(true),
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
@@ -130,7 +130,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
-					UseRadiusOwnedRecipes: to.Ptr(true),
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),

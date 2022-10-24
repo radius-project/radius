@@ -37,7 +37,7 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 			},
 		},
 		Properties: datamodel.EnvironmentProperties{
-			UseRadiusOwnedRecipes: to.Bool(src.Properties.UseRadiusOwnedRecipes),
+			UseDevRecipes: to.Bool(src.Properties.UseDevRecipes),
 		},
 	}
 
@@ -85,8 +85,8 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Location = to.StringPtr(env.Location)
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
-		ProvisioningState:     fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
-		UseRadiusOwnedRecipes: to.BoolPtr(env.Properties.UseRadiusOwnedRecipes),
+		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
+		UseDevRecipes:     to.BoolPtr(env.Properties.UseDevRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
