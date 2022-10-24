@@ -57,9 +57,11 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with dev recipes.
-	newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
-	if err != nil {
-		return nil, err
+	if newResource.Properties.UseDevRecipes{
+		newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
