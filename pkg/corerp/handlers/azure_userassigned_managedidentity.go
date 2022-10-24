@@ -23,6 +23,7 @@ const (
 	UserAssignedIdentityIDKey          = "userassignedidentityid"
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
 	UserAssignedIdentityClientIDKey    = "userassignedidentityclientid"
+	UserAssignedIdentityTenantIDKey    = "userassignedidentitytenantid"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity

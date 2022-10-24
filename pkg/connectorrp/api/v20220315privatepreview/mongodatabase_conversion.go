@@ -17,12 +17,17 @@ import (
 // ConvertTo converts from the versioned MongoDatabaseResponse resource to version-agnostic datamodel.
 func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabaseResponse{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.MongoDatabaseResponseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -35,9 +40,6 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 			Port:              to.Int32(src.Properties.Port),
 			Database:          to.String(src.Properties.Database),
 		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
-		},
 	}
 	if src.Properties.Recipe != nil {
 		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
@@ -48,12 +50,17 @@ func (src *MongoDatabaseResponseResource) ConvertTo() (conv.DataModelInterface, 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
 func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -67,9 +74,6 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Port:              to.Int32(src.Properties.Port),
 				Database:          to.String(src.Properties.Database),
 			},
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 	if src.Properties.Secrets != nil {

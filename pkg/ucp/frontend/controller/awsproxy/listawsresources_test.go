@@ -18,8 +18,8 @@ import (
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
 
-	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -46,7 +46,7 @@ func Test_ListAWSResources(t *testing.T) {
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.ListResourcesOutput{
 			ResourceDescriptions: []types.ResourceDescription{
 				{
@@ -61,8 +61,8 @@ func Test_ListAWSResources(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -103,11 +103,11 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
+	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -129,11 +129,11 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
+	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -152,7 +152,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
+	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{
 			Err: &smithy.GenericAPIError{
 				Code:    "NotFound",
@@ -162,8 +162,8 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 
 	awsController, err := NewListAWSResources(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

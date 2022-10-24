@@ -47,9 +47,10 @@ func (s *Service) Run(ctx context.Context) error {
 	}
 
 	opts := ctrl.Options{
-		DataProvider: s.StorageProvider,
-		SecretClient: s.SecretClient,
-		KubeClient:   s.KubeClient,
+		DataProvider:  s.StorageProvider,
+		SecretClient:  s.SecretClient,
+		KubeClient:    s.KubeClient,
+		StatusManager: s.OperationStatusManager,
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewDeploymentProcessor(connectorAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
 		},

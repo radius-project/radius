@@ -27,12 +27,12 @@ func Test_CreateAWSResource(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
-	testOptions.AWSClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.CreateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -50,8 +50,8 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -101,14 +101,14 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.StringPtr(string(getResponseBodyBytes)),
 			},
 		}, nil)
 
-	testOptions.AWSClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().UpdateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -126,8 +126,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -177,7 +177,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Properties: to.StringPtr(string(getResponseBodyBytes)),
@@ -194,8 +194,8 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

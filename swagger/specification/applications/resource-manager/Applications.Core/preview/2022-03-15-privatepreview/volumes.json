@@ -457,27 +457,27 @@
       ],
       "type": "object"
     },
-    "AzureIdentity": {
+    "IdentitySettings": {
       "properties": {
         "kind": {
           "description": "Identity Kind",
           "type": "string",
           "enum": [
-            "Workload",
-            "SystemAssigned"
+            "azure.com.workload",
+            "azure.com.systemassigned"
           ],
-          "default": "SystemAssigned",
+          "default": "azure.com.workload",
           "x-ms-enum": {
-            "name": "AzureIdentityKind",
+            "name": "IdentitySettingKind",
             "modelAsString": false
           }
         },
-        "clientId": {
-          "description": "The client ID for workload and user assigned managed identity",
+        "resource": {
+          "description": "The managed identity resource ID",
           "type": "string"
         },
-        "tenantId": {
-          "description": "The tenant ID for workload identity.",
+        "oidcIssuer": {
+          "description": "The OIDC Issuer name",
           "type": "string"
         }
       },
@@ -495,8 +495,8 @@
       ],
       "properties": {
         "identity": {
-          "description": "The Azure AD identity settings",
-          "$ref": "#/definitions/AzureIdentity"
+          "description": "The identity settings",
+          "$ref": "#/definitions/IdentitySettings"
         },
         "certificates": {
           "additionalProperties": {
