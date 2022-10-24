@@ -49,12 +49,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				Message: "failed to read request body",
 			},
 		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
@@ -65,11 +60,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				Message: err.Error(),
 			},
 		}
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	computedResourceID := computeResourceID(id, awsResourceIdentifier)

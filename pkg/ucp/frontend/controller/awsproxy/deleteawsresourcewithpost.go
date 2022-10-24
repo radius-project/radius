@@ -46,12 +46,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 				Message: err.Error(),
 			},
 		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
@@ -63,11 +58,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 			},
 		}
 
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	_, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
