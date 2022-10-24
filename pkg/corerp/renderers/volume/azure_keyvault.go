@@ -76,12 +76,12 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 			return renderers.RendererOutput{}, errors.New("failed to get ServiceProviderClass")
 		}
 
-		clientID, err := handlers.GetStringProperty(provider.Spec.Parameters, handlers.AzureIdentityClientIDKey)
+		clientID, err := handlers.GetString(provider.Spec.Parameters, handlers.AzureIdentityClientIDKey)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
 
-		tenantID, err := handlers.GetStringProperty(provider.Spec.Parameters, handlers.AzureIdentityTenantIDKey)
+		tenantID, err := handlers.GetString(provider.Spec.Parameters, handlers.AzureIdentityTenantIDKey)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}

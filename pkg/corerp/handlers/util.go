@@ -28,8 +28,8 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
 }
 
-// GetStringProperty gets value for key in collection.
-func GetStringProperty(collection any, key string) (string, error) {
+// GetString gets value for key in collection.
+func GetString(collection any, key string) (string, error) {
 	switch c := collection.(type) {
 	case map[string]string:
 		val, ok := c[key]

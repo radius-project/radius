@@ -122,20 +122,20 @@ func (handler *azureFederatedIdentityHandler) GetResourceIdentity(ctx context.Co
 		return identity, err
 	}
 
-	identityID, err := GetStringProperty(props, UserAssignedIdentityNameKey)
+	identityID, err := GetString(props, UserAssignedIdentityNameKey)
 	if err != nil {
 		return identity, err
 	}
 
-	federatedName, err := GetStringProperty(props, FederatedIdentityNameKey)
+	federatedName, err := GetString(props, FederatedIdentityNameKey)
 	if err != nil {
 		return identity, err
 	}
-	issuer, err := GetStringProperty(props, FederatedIdentityIssuerKey)
+	issuer, err := GetString(props, FederatedIdentityIssuerKey)
 	if err != nil {
 		return identity, err
 	}
-	subject, err := GetStringProperty(props, FederatedIdentitySubjectKey)
+	subject, err := GetString(props, FederatedIdentitySubjectKey)
 	if err != nil {
 		return identity, err
 	}
@@ -162,7 +162,7 @@ func (handler *azureFederatedIdentityHandler) GetResourceNativeIdentityKeyProper
 		return properties, ErrInvalidIdentity
 	}
 
-	identityID, err := GetStringProperty(resource.Resource, UserAssignedIdentityNameKey)
+	identityID, err := GetString(resource.Resource, UserAssignedIdentityNameKey)
 	if err != nil {
 		return nil, err
 	}
@@ -176,11 +176,11 @@ func (handler *azureFederatedIdentityHandler) GetResourceNativeIdentityKeyProper
 }
 
 func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	identityID, err := GetStringProperty(resource.Identity.Data, "resource")
+	identityID, err := GetString(resource.Identity.Data, "resource")
 	if err != nil {
 		return err
 	}
-	name, err := GetStringProperty(resource.Identity.Data, "name")
+	name, err := GetString(resource.Identity.Data, "name")
 	if err != nil {
 		return err
 	}
