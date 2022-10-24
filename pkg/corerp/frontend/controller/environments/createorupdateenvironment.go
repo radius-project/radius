@@ -113,25 +113,28 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
+		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())
 	}
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
 			if strings.HasPrefix(repo, "recipes/") {
-				connector, provider := strings.Split(repo, "/")[1], strings.Split(repo, "/")[2]
-				if slices.Contains(supportedProviders(), provider) {
-					var name string
-					var connectorType string
-					switch connector {
-					case "mongodatabases":
-						name = "mongo" + "-" + provider
-						connectorType = mongodatabases.ResourceTypeName
-					default:
-						return nil
-					}
-					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
-						ConnectorType: connectorType,
-						TemplatePath:  DevRecipesACRPath + "/" + repo,
+				recipePath := strings.Split(repo, "recipes/")[1]
+				if strings.Count(recipePath, "/") == 2 {
+					connector, provider := strings.Split(recipePath, "/")[1], strings.Split(recipePath, "/")[2]
+					if slices.Contains(supportedProviders(), provider) {
+						var name string
+						var connectorType string
+						switch connector {
+						case "mongodatabases":
+							name = "mongo" + "-" + provider
+							connectorType = mongodatabases.ResourceTypeName
+						default:
+							continue
+						}
+						devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+							ConnectorType: connectorType,
+							TemplatePath:  DevRecipesACRPath + "/" + repo,
+						}
 					}
 				}
 			}
@@ -140,7 +143,7 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to list recipes available in registry %s", err.Error())
+		return nil, fmt.Errorf("failed to list recipes available in registry at path  %s -  %s", DevRecipesACRPath, err.Error())
 	}
 
 	return devRecipes, nil
