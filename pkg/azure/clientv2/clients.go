@@ -12,7 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 )
 
-var defaultClientOption = &arm.ClientOptions{
+var defaultClientOptions = &arm.ClientOptions{
 	ClientOptions: azcore.ClientOptions{
 		Retry: policy.RetryOptions{
 			MaxRetries: 10, // TODO: Find the better retry number.
@@ -29,11 +29,11 @@ type AzureClientOption struct {
 // NewFederatedIdentityClient creates new federated identity client.
 func NewFederatedIdentityClient(subscriptionID string, option *AzureClientOption) (*armmsi.FederatedIdentityCredentialsClient, error) {
 	// TODO: Add LRU cache to maintain the clients.
-	return armmsi.NewFederatedIdentityCredentialsClient(subscriptionID, option.Cred, defaultClientOption)
+	return armmsi.NewFederatedIdentityCredentialsClient(subscriptionID, option.Cred, defaultClientOptions)
 }
 
 // NewUserAssignedIdentityClient creates new user assigned managed identity client.
 func NewUserAssignedIdentityClient(subscriptionID string, option *AzureClientOption) (*armmsi.UserAssignedIdentitiesClient, error) {
 	// TODO: Add LRU cache to maintain the clients.
-	return armmsi.NewUserAssignedIdentitiesClient(subscriptionID, option.Cred, defaultClientOption)
+	return armmsi.NewUserAssignedIdentitiesClient(subscriptionID, option.Cred, defaultClientOptions)
 }
