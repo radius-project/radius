@@ -1,8 +1,10 @@
 // This is the template to create keyvault volume with system assigned managed identity.
 //
-// 1. Create Keyvault resource and assign system assigned managed identity to this resource as Keyvault admin role.
-// 2. Create Radius Volume resource for the keyvault created by step 1.
-// 3. Associate Radius volume to Container resource.
+// 1. Enable system assigned managed identity for AKS nodes - https://learn.microsoft.com/en-in/azure/aks/csi-secrets-store-identity-access#use-a-system-assigned-managed-identity
+// 2. Make a note of principal id of system assigned managed identity created by step 1 and set this to the value of systemIdentityPrincipalId param.
+// 3. Create Keyvault resource and assign system assigned managed identity to this resource as Keyvault admin role.
+// 4. Create Radius Volume resource for the keyvault created by step 3.
+// 5. Associate Radius volume to Container resource.
 
 import radius as radius
 
@@ -28,8 +30,8 @@ param keyvaultTenantID string = subscription().tenantId
 @description('Specifies the value of keyvault admin role.')
 param keyvaultAdminRoleDefinitionId string = '/providers/Microsoft.Authorization/roleDefinitions/00482a5a-887f-4fb3-b363-3b7fe8e74483'
 
-@description('Specifies the value of System assigned managed identity.')
-param systemIdentityId string
+@description('Specifies the principal ID of System assigned managed identity of VMSS. See this - https://learn.microsoft.com/en-in/azure/aks/csi-secrets-store-identity-access#use-a-system-assigned-managed-identity')
+param systemIdentityPrincipalId string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-volume-azkv'
@@ -100,10 +102,10 @@ resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
 
 resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
   scope: azTestKeyvault
-  name: guid(azTestKeyvault.id, systemIdentityId, keyvaultAdminRoleDefinitionId)
+  name: guid(azTestKeyvault.id, systemIdentityPrincipalId, keyvaultAdminRoleDefinitionId)
   properties: {
     roleDefinitionId: keyvaultAdminRoleDefinitionId
-    principalId: systemIdentityId
+    principalId: systemIdentityPrincipalId
     principalType: 'ServicePrincipal'
   }
 }
