@@ -1,3 +1,9 @@
+// This is the template to create keyvault volume with system assigned managed identity.
+//
+// 1. Create Keyvault resource and assign system assigned managed identity to this resource as Keyvault admin role.
+// 2. Create Radius Volume resource for the keyvault created by step 1.
+// 3. Associate Radius volume to Container resource.
+
 import radius as radius
 
 @description('Specifies the location for resources.')
@@ -74,6 +80,7 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
+// Prepare Azure resources - keyvault and role assignment.
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   name: 'kv-volume-1'
   location: location

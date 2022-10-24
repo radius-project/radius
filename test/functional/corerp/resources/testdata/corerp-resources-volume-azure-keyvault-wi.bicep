@@ -1,3 +1,10 @@
+// This is the template to create keyvault volume with workload identity specified in radius volume resource.
+//
+// 1. Create User assigned managed identity and keyvault resource
+// 2. Assign User assigned managed identity to Keyvault resource as Keyvault admin role.
+// 3. Create Radius Volume resource with workload identity for the keyvault created by step 1.
+// 4. Associate Radius volume to Container resource.
+
 import radius as radius
 
 @description('Specifies the location for resources.')
@@ -78,6 +85,7 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
+// Prepare Azure resources - User assigned managed identity, keyvault, and role assignment.
 resource kvVolIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
   name: 'kv-volume-mi'
   location: location
