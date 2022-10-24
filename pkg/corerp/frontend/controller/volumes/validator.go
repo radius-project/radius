@@ -52,7 +52,7 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource,
 		return rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", newResource.Properties.Kind)), nil
 	}
 
-	// TODO: Based on the Kind (Azure, AWS, GPC, etc.), we will get the specific csi-driver.
+	// TODO: Validate if Secret CSI driver required for ".Properties.Kind" is installed.
 
 	if csiCRDValidationRequired {
 		crd := &apiextv1.CustomResourceDefinition{}
