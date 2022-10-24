@@ -43,8 +43,8 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
     kind: 'azure.com.keyvault'
     identity: {
       kind: 'azure.com.workload'
-      resourceId: kvVolIdentity.id
-      issuer: oidcIssuer
+      resource: kvVolIdentity.id
+      oidcIssuer: oidcIssuer
     }
     resource: azTestKeyvault.id
     secrets: {
