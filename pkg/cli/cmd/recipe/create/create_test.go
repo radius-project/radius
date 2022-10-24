@@ -89,6 +89,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
@@ -103,7 +104,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -129,6 +130,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),

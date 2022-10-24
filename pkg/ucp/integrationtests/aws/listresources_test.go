@@ -24,7 +24,7 @@ import (
 const testProxyRequestAWSListPath = "/planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/Stream"
 
 func Test_ListAWSResources(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,

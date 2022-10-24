@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 
@@ -160,6 +161,11 @@ type ARMRequestContext struct {
 	SkipToken string
 	// Top is the maximum number of records to be returned by the server. The validation will be handled downstream.
 	Top int
+
+	// HTTPMethod represents the original method.
+	HTTPMethod string
+	// OriginalURL represents the original URL of the request.
+	OrignalURL url.URL
 }
 
 // FromARMRequest extracts proxy request headers from http.Request.
@@ -204,6 +210,9 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 
 		SkipToken: r.URL.Query().Get(SkipTokenParameterName),
 		Top:       queryItemCount,
+
+		HTTPMethod: r.Method,
+		OrignalURL: *r.URL,
 	}
 
 	if route := mux.CurrentRoute(r); route != nil {

@@ -12,30 +12,20 @@ import (
 
 // MongoDatabase represents MongoDatabase connector resource.
 type MongoDatabase struct {
-	v1.TrackedResource
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
+	v1.BaseResource
 
 	// ConnectorMetadata represents internal DataModel properties common to all connector types.
 	ConnectorMetadata
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseProperties `json:"properties"`
 }
 
 type MongoDatabaseResponse struct {
-	v1.TrackedResource
+	v1.BaseResource
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties MongoDatabaseResponseProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
 
 	// ConnectorMetadata represents internal DataModel properties common to all connector types.
 	ConnectorMetadata

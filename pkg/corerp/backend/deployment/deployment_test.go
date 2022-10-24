@@ -167,8 +167,10 @@ func getTestResourceID(id string) resources.ID {
 
 func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
 	return connectorrp_dm.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+			},
 		},
 		Properties: connectorrp_dm.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
@@ -325,8 +327,10 @@ func Test_Render(t *testing.T) {
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
 		mongoResource := connectorrp_dm.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+				},
 			},
 			Properties: connectorrp_dm.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{

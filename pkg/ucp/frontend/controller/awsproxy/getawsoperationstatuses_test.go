@@ -28,7 +28,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	eventTime := time.Now()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				EventTime:       aws.Time(eventTime),
@@ -38,8 +38,8 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -66,7 +66,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	errorStatusMessage := "AsyncOperation Failed"
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				EventTime:       aws.Time(eventTime),
@@ -78,8 +78,8 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationStatuses(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

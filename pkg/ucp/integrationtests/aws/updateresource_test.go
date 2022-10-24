@@ -25,7 +25,7 @@ import (
 const ZeroAWSRequestToken = "00000000-0000-0000-0000-000000000000"
 
 func Test_UpdateAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
