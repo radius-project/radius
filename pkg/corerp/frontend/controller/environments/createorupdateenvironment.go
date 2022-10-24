@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
 )
 
@@ -57,7 +58,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with dev recipes.
-	if newResource.Properties.UseDevRecipes{
+	if newResource.Properties.UseDevRecipes {
 		newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
 		if err != nil {
 			return nil, err
@@ -118,7 +119,7 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 		for _, repo := range repos {
 			if strings.HasPrefix(repo, "recipes/") {
 				connector, provider := strings.Split(repo, "/")[1], strings.Split(repo, "/")[2]
-				if provider == "azure" {
+				if slices.Contains(supportedProviders(), provider) {
 					var name string
 					var connectorType string
 					switch connector {
