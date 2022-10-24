@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
+	"github.com/project-radius/radius/pkg/connectorrp/backend"
 	"github.com/project-radius/radius/pkg/connectorrp/frontend"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
@@ -27,9 +28,11 @@ import (
 
 func main() {
 	var configFile string
+	var enableAsyncWorker bool
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
+	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
@@ -50,6 +53,10 @@ func main() {
 	defer flush()
 
 	hostingSvc := []hosting.Service{frontend.NewService(options), metricsservice.NewService(metricOptions)}
+	if enableAsyncWorker {
+		logger.Info("Enable AsyncRequestProcessWorker.")
+		hostingSvc = append(hostingSvc, backend.NewService(options))
+	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
 		options.Config.StorageProvider.ETCD.InMemory {
