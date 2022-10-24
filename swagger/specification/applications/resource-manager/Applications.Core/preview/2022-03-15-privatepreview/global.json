@@ -95,6 +95,35 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "IdentitySettings": {
+      "properties": {
+        "kind": {
+          "description": "Identity Kind",
+          "type": "string",
+          "enum": [
+            "azure.com.workload",
+            "azure.com.systemassigned"
+          ],
+          "default": "azure.com.workload",
+          "x-ms-enum": {
+            "name": "IdentitySettingKind",
+            "modelAsString": false
+          }
+        },
+        "resource": {
+          "description": "The managed identity resource ID",
+          "type": "string"
+        },
+        "oidcIssuer": {
+          "description": "The OIDC Issuer name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     }
   },
   "parameters": {

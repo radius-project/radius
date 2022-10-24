@@ -70,7 +70,7 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 
 	resources := []outputresource.OutputResource{outputResource}
 	computedValues := map[string]rp.ComputedValueReference{}
-	if properties.Identity.Kind == datamodel.AzureIdentityWorkload {
+	if properties.Identity.Kind == rp.AzureIdentityWorkload {
 		provider, ok := outputResource.Resource.(*csiv1.SecretProviderClass)
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("failed to get ServiceProviderClass")
@@ -88,7 +88,7 @@ func (r *AzureKeyvaultVolumeRenderer) Render(ctx context.Context, resource conv.
 
 		computedValues = map[string]rp.ComputedValueReference{
 			handlers.AzureIdentityTypeKey: {
-				Value: string(datamodel.AzureIdentityWorkload),
+				Value: string(rp.AzureIdentityWorkload),
 			},
 			handlers.AzureIdentityIDKey: {
 				Value: dm.Properties.AzureKeyVault.Identity.Resource,
@@ -188,7 +188,7 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 	}
 
 	switch prop.Identity.Kind {
-	case datamodel.AzureIdentitySystemAssigned:
+	case rp.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
 		// clientID must be empty for system assigned managed identity
@@ -196,7 +196,7 @@ func (r *AzureKeyvaultVolumeRenderer) makeSecretProviderClass(ctx context.Contex
 		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
 		params["tenantID"] = "placeholder"
 
-	case datamodel.AzureIdentityWorkload:
+	case rp.AzureIdentityWorkload:
 		rID, err := resources.ParseResource(prop.Identity.Resource)
 		if err != nil {
 			return outputresource.OutputResource{}, errInvalidManagedIdentityID

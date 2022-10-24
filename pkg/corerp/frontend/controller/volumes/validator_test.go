@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
@@ -83,8 +84,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind: datamodel.AzureIdentitySystemAssigned,
+							Identity: rp.IdentitySettings{
+								Kind: rp.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -109,8 +110,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: "unsupported-kind",
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind: datamodel.AzureIdentitySystemAssigned,
+							Identity: rp.IdentitySettings{
+								Kind: rp.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -135,8 +136,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind:       datamodel.AzureIdentityWorkload,
+							Identity: rp.IdentitySettings{
+								Kind:       rp.AzureIdentityWorkload,
 								OIDCIssuer: "",
 							},
 						},
@@ -162,8 +163,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind:       datamodel.AzureIdentityWorkload,
+							Identity: rp.IdentitySettings{
+								Kind:       rp.AzureIdentityWorkload,
 								OIDCIssuer: "https://issuerurl",
 								Resource:   "invalid-id",
 							},
@@ -190,8 +191,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind:       datamodel.AzureIdentityWorkload,
+							Identity: rp.IdentitySettings{
+								Kind:       rp.AzureIdentityWorkload,
 								OIDCIssuer: "https://issuerurl",
 								Resource:   testIdentityID,
 							},
@@ -218,8 +219,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind: datamodel.AzureIdentitySystemAssigned,
+							Identity: rp.IdentitySettings{
+								Kind: rp.AzureIdentitySystemAssigned,
 							},
 						},
 					},
@@ -244,8 +245,8 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: datamodel.IdentitySettings{
-								Kind: datamodel.AzureIdentitySystemAssigned,
+							Identity: rp.IdentitySettings{
+								Kind: rp.AzureIdentitySystemAssigned,
 							},
 						},
 					},

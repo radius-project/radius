@@ -1023,7 +1023,7 @@ func Test_PrepareFederatedIdentity(t *testing.T) {
 		{
 			desc: "clientID not found",
 			computedValues: map[string]any{
-				handlers.AzureIdentityTypeKey: string(datamodel.AzureIdentityWorkload),
+				handlers.AzureIdentityTypeKey: string(rp.AzureIdentityWorkload),
 				handlers.AzureIdentityIDKey:   identityID,
 			},
 			err:     errors.New("clientID not found"),
@@ -1034,7 +1034,7 @@ func Test_PrepareFederatedIdentity(t *testing.T) {
 		{
 			desc: "valid identity",
 			computedValues: map[string]any{
-				handlers.AzureIdentityTypeKey:       string(datamodel.AzureIdentityWorkload),
+				handlers.AzureIdentityTypeKey:       string(rp.AzureIdentityWorkload),
 				handlers.AzureIdentityIDKey:         identityID,
 				handlers.AzureIdentityClientIDKey:   "fakeID",
 				handlers.AzureIdentityTenantIDKey:   "fakeTenantID",
@@ -1100,7 +1100,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					},
 					Kind: datamodel.AzureKeyVaultVolume,
 					AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-						Identity: datamodel.IdentitySettings{Kind: datamodel.AzureIdentitySystemAssigned},
+						Identity: rp.IdentitySettings{Kind: rp.AzureIdentitySystemAssigned},
 						Resource: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
 						Secrets: map[string]datamodel.SecretObjectProperties{
 							"my-secret": {

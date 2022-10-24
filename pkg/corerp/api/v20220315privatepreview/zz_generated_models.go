@@ -82,7 +82,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; The identity settings
+	// REQUIRED; Configuration for supported external identity providers
 	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// REQUIRED; The volume kind
@@ -316,6 +316,9 @@ type EnvironmentComputeClassification interface {
 type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *string `json:"kind,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
@@ -813,6 +816,9 @@ type KubernetesCompute struct {
 	// REQUIRED; The namespace to use for the environment.
 	Namespace *string `json:"namespace,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -822,6 +828,7 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
+		Identity: k.Identity,
 	}
 }
 

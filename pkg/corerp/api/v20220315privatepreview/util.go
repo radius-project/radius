@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -71,5 +73,31 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 		LastModifiedBy:     to.Ptr(s.LastModifiedBy),
 		LastModifiedByType: (*CreatedByType)(to.Ptr(s.LastModifiedByType)),
 		LastModifiedAt:     unmarshalTimeString(s.LastModifiedAt),
+	}
+}
+
+func fromAzureIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
+	switch kind {
+	case rp.AzureIdentitySystemAssigned:
+		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
+	case rp.AzureIdentityWorkload:
+		return azto.Ptr(IdentitySettingKindAzureComWorkload)
+	default:
+		return nil
+	}
+}
+
+func toAzureIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
+	if kind == nil {
+		return rp.IdentityNone
+	}
+
+	switch *kind {
+	case IdentitySettingKindAzureComSystemassigned:
+		return rp.AzureIdentitySystemAssigned
+	case IdentitySettingKindAzureComWorkload:
+		return rp.AzureIdentityWorkload
+	default:
+		return rp.IdentityNone
 	}
 }

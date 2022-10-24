@@ -46,7 +46,7 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 
 		if p.Identity != nil {
-			dm.Identity = datamodel.IdentitySettings{
+			dm.Identity = rp.IdentitySettings{
 				Kind:       toAzureIdentityKind(p.Identity.Kind),
 				Resource:   to.String(p.Identity.Resource),
 				OIDCIssuer: to.String(p.Identity.OidcIssuer),
@@ -129,32 +129,6 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 	}
 
 	return nil
-}
-
-func fromAzureIdentityKind(kind datamodel.IdentitySettingKind) *IdentitySettingKind {
-	switch kind {
-	case datamodel.AzureIdentitySystemAssigned:
-		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
-	case datamodel.AzureIdentityWorkload:
-		return azto.Ptr(IdentitySettingKindAzureComWorkload)
-	default:
-		return nil
-	}
-}
-
-func toAzureIdentityKind(kind *IdentitySettingKind) datamodel.IdentitySettingKind {
-	if kind == nil {
-		return datamodel.IdentityNone
-	}
-
-	switch *kind {
-	case IdentitySettingKindAzureComSystemassigned:
-		return datamodel.AzureIdentitySystemAssigned
-	case IdentitySettingKindAzureComWorkload:
-		return datamodel.AzureIdentityWorkload
-	default:
-		return datamodel.IdentityNone
-	}
 }
 
 func toStringPtr(v string) *string {

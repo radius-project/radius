@@ -28,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -195,7 +196,7 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedVa
 	deps := []outputresource.Dependency{}
 	name := defaultServiceAccountName
 
-	if strings.EqualFold(identityType, string(datamodel.AzureIdentityWorkload)) {
+	if strings.EqualFold(identityType, string(rp.AzureIdentityWorkload)) {
 		// Prepare the service account resource.
 		identityID, err := handlers.GetString(computedValues, handlers.AzureIdentityIDKey)
 		if err != nil {
