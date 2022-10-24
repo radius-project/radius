@@ -124,7 +124,7 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 						name = "mongo" + "-" + provider
 						connectorType = mongodatabases.ResourceTypeName
 					default:
-						return err
+						return nil
 					}
 					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
 						ConnectorType: connectorType,
