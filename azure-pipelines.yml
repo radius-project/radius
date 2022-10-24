@@ -140,7 +140,7 @@ stages:
           --provider-aws \
           --provider-aws-access-key-id $(AWS_ACCESS_KEY_ID) \
           --provider-aws-secret-access-key $(AWS_SECRET_ACCESS_KEY) \
-          --provider-aws-region $(AWS_REGION)
+          --provider-aws-region $AWS_REGION
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
