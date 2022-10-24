@@ -57,7 +57,10 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with radius owned recipes.
-	getRadiusOwnedRecipes(ctx, newResource.Properties.Recipes)
+	newResource.Properties.Recipes, err = getRadiusOwnedRecipes(ctx, newResource.Properties.Recipes)
+	if err != nil {
+		return nil, err
+	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
@@ -100,28 +103,33 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
-	// hard-coding the generation of name and path for now as we identify the best way to support this long-term.
+func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+	if radiusOwnedRecipes == nil {
+		radiusOwnedRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
+	}
+
 	reg, err := remote.NewRegistry(RadiusOwnedRecipesACRPath)
 	if err != nil {
-		return fmt.Errorf("failed to create client to registry %s", err.Error())
+		return nil, fmt.Errorf("failed to create client to registry %s", err.Error())
 	}
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
 			if strings.HasPrefix(repo, "recipes/") {
-				connector, provider := strings.Split(repo, "/")[1], strings.Split(repo, "/")[1]
-				name := provider
-				var connectorType string
-				switch connector {
-				case "mongodatabases":
-					name = name + "-" + "mongo"
-					connectorType = mongodatabases.ResourceTypeName
-				default:
-					return err
-				}
-				radiusOwnedRecipes[name] = datamodel.EnvironmentRecipeProperties{
-					ConnectorType: connectorType,
-					TemplatePath:  RadiusOwnedRecipesACRPath + "/" + repo,
+				connector, provider := strings.Split(repo, "/")[1], strings.Split(repo, "/")[2]
+				if provider == "azure" {
+					var name string
+					var connectorType string
+					switch connector {
+					case "mongodatabases":
+						name = "mongo" + "-" + provider
+						connectorType = mongodatabases.ResourceTypeName
+					default:
+						return err
+					}
+					radiusOwnedRecipes[name] = datamodel.EnvironmentRecipeProperties{
+						ConnectorType: connectorType,
+						TemplatePath:  RadiusOwnedRecipesACRPath + "/" + repo,
+					}
 				}
 			}
 		}
@@ -129,8 +137,8 @@ func getRadiusOwnedRecipes(ctx context.Context, radiusOwnedRecipes map[string]da
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to list recipes available in registry %s", err.Error())
+		return nil, fmt.Errorf("failed to list recipes available in registry %s", err.Error())
 	}
 
-	return nil
+	return radiusOwnedRecipes, nil
 }

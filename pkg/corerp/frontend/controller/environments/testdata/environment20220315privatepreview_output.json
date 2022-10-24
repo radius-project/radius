@@ -17,7 +17,7 @@
         "recipes": {
             "mongo-azure": {
                 "connectorType": "Applications.Connector/mongoDatabases",
-                "templatePath": "radiusdev.azurecr.io/recipes/mongodatabase/azure"
+                "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure"
             }
         }
     },
