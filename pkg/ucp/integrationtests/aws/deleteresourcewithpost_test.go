@@ -39,7 +39,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	cloudformationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
+	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,

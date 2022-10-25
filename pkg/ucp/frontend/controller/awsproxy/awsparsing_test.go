@@ -6,20 +6,22 @@
 package awsproxy
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/golang/mock/gomock"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
-	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
 func TestResourceIDWithMultiIdentifiers(t *testing.T) {
+	ctx := context.Background()
 	mockCtrl := gomock.NewController(t)
 	mockClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
 	resourceType := "AWS::NetworkManager::Device"
@@ -39,15 +41,12 @@ func TestResourceIDWithMultiIdentifiers(t *testing.T) {
 
 	input := cloudformation.DescribeTypeInput{
 		TypeName: aws.String(resourceType),
-		Type:     aws.String("RESOURCE"),
+		Type:     types.RegistryTypeResource,
 	}
-	mockClient.EXPECT().DescribeType(&input).Return(&output, nil)
+	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
 
-	opts := ctrl.Options{
-		AWSCloudFormationClient: mockClient,
-	}
 	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
-	resourceID, err := getResourceIDWithMultiIdentifiers(opts, url, "AWS::NetworkManager::Device", map[string]interface{}{
+	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
 		"GlobalNetworkId": "global-network-id",
 		"DeviceId":        "device-id",
 	})
@@ -56,6 +55,7 @@ func TestResourceIDWithMultiIdentifiers(t *testing.T) {
 }
 
 func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
+	ctx := context.Background()
 	mockCtrl := gomock.NewController(t)
 	mockClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
 	resourceType := "AWS::NetworkManager::Device"
@@ -75,19 +75,16 @@ func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T)
 
 	input := cloudformation.DescribeTypeInput{
 		TypeName: aws.String(resourceType),
-		Type:     aws.String("RESOURCE"),
+		Type:     types.RegistryTypeResource,
 	}
-	mockClient.EXPECT().DescribeType(&input).Return(&output, nil)
+	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
 
-	opts := ctrl.Options{
-		AWSCloudFormationClient: mockClient,
-	}
 	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
-	_, err = getResourceIDWithMultiIdentifiers(opts, url, "AWS::NetworkManager::Device", map[string]interface{}{
+	_, err = getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
 		"GlobalNetworkId": "global-network-id",
 	})
 	require.NotNil(t, err)
-	require.Equal(t, "Mandatory property DeviceId is missing", err.Error())
+	require.Equal(t, "mandatory property DeviceId is missing", err.Error())
 }
 
 func TestComputeResourceID(t *testing.T) {

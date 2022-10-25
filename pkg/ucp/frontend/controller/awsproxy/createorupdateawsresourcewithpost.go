@@ -36,7 +36,7 @@ func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.GetLogger(ctx)
 	// Lookup resource type schema
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +57,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		}
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(p.Options, req.URL.Path, resourceType, properties)
+	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -78,7 +78,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	// we're working on exists already.
 
 	existing := true
-	getResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(resourceID),
 	})
@@ -134,7 +134,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := cloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
 				Identifier:    aws.String(resourceID),
 				PatchDocument: aws.String(string(marshaled)),
@@ -164,7 +164,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		}
 	} else {
 		logger.Info("Creating resource", "resourceType", resourceType, "resourceID", resourceID)
-		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})

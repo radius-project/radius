@@ -30,12 +30,12 @@ func NewGetAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) 
 }
 
 func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	response, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
