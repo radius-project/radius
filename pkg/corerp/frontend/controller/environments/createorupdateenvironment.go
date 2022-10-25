@@ -58,7 +58,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with dev recipes.
-	if !newResource.Properties.UseDevRecipes {
+	if newResource.Properties.UseDevRecipes {
 		newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
 		if err != nil {
 			return nil, err
