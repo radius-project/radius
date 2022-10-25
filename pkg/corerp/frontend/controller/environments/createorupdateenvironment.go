@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -111,6 +112,7 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 		devRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
 	}
 
+	logger := radlogger.GetLogger(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())
@@ -141,6 +143,8 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 				}
 			}
 		}
+
+		logger.Info(fmt.Sprintf("pulled %d dev recipes", len(devRecipes)))
 		return nil
 	})
 
