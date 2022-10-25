@@ -58,7 +58,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Update Recipes mapping with dev recipes.
-	if newResource.Properties.UseDevRecipes {
+	if !newResource.Properties.UseDevRecipes {
 		newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
 		if err != nil {
 			return nil, err
@@ -119,8 +119,8 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 		for _, repo := range repos {
 			if strings.HasPrefix(repo, "recipes/") {
 				recipePath := strings.Split(repo, "recipes/")[1]
-				if strings.Count(recipePath, "/") == 2 {
-					connector, provider := strings.Split(recipePath, "/")[1], strings.Split(recipePath, "/")[2]
+				if strings.Count(recipePath, "/") == 1 {
+					connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
 					if slices.Contains(supportedProviders(), provider) {
 						var name string
 						var connectorType string
