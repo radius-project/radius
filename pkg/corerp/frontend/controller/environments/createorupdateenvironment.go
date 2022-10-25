@@ -115,6 +115,8 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())
 	}
+
+	// if repository has the correct path it should look like: <acrPath>/recipes/<connectorType>/<provider>
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
 			if strings.HasPrefix(repo, "recipes/") {
