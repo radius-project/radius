@@ -157,9 +157,7 @@ func parseRepoPathForMetadata(repo string) (connector string, provider string) {
 		recipePath := strings.Split(repo, "recipes/")[1]
 		if strings.Count(recipePath, "/") == 1 {
 			connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
-			if connector != "" && provider != "" {
-				return connector, provider
-			}
+			return connector, provider
 		}
 	}
 

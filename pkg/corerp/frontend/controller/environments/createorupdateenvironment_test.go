@@ -401,32 +401,42 @@ func TestParseRepoPathForMetadata(t *testing.T) {
 	})
 
 	tests := []struct {
-		name string
-		repo string
+		name              string
+		repo              string
+		expectedConnector string
+		expectedProvider  string
 	}{
 		{
 			"Repo isn't related to recipes",
 			"randomRepo",
+			"",
+			"",
 		},
 		{
 			"Repo for recipes doesn't have connector and provider names",
 			"recipes/noConnectorAndProvider",
+			"",
+			"",
 		},
 		{
 			"Repo for recipes has extra path component",
 			"recipes/connector/provider/randomValue",
+			"",
+			"",
 		},
 		{
 			"Repo name has a connector and no provider",
-			"recipes/connector/",
+			"recipes/connectorName/",
+			"connectorName",
+			"",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			connector, provider := parseRepoPathForMetadata(tt.repo)
-			require.Equal(t, "", connector)
-			require.Equal(t, "", provider)
+			require.Equal(t, tt.expectedConnector, connector)
+			require.Equal(t, tt.expectedProvider, provider)
 		})
 	}
 }
