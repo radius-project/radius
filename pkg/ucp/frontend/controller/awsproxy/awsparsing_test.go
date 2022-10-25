@@ -95,3 +95,71 @@ func TestComputeResourceID(t *testing.T) {
 	computedID := computeResourceID(id, resourceID)
 	require.Equal(t, "/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/global-network-id|device-id", computedID)
 }
+
+func TestFlattenProperties(t *testing.T) {
+	properties := map[string]interface{}{
+		"A": map[string]interface{}{
+			"B": map[string]interface{}{
+				"C": "D",
+			},
+			"E": "F",
+		},
+		"G": "H",
+	}
+
+	flattened := flattenProperties(properties)
+	require.Equal(t, map[string]interface{}{
+		"A/B/C": "D",
+		"A/E":   "F",
+		"G":     "H",
+	}, flattened)
+}
+
+func TestUnflattenProperties(t *testing.T) {
+	properties := map[string]interface{}{
+		"A/B/C": "D",
+		"A/E":   "F",
+		"G":     "H",
+	}
+
+	unflattened := unflattenProperties(properties)
+	require.Equal(t, map[string]interface{}{
+		"A": map[string]interface{}{
+			"B": map[string]interface{}{
+				"C": "D",
+			},
+			"E": "F",
+		},
+		"G": "H",
+	}, unflattened)
+}
+
+func TestFlattenUnflattenInverses(t *testing.T) {
+	properties := map[string]interface{}{
+		"A": map[string]interface{}{
+			"B": map[string]interface{}{
+				"C": "D",
+			},
+			"E": "F",
+		},
+		"G": "H",
+	}
+
+	flattened := flattenProperties(properties)
+	unflattened := unflattenProperties(flattened)
+	require.Equal(t, properties, unflattened)
+}
+
+func TestFlattenUnflattenRealData(t *testing.T) {
+	properties := map[string]interface{}{
+		"ClusterEndpoint:": map[string]interface{}{
+			"Address": "https://A1B2C3D4E5F6.gr7.us-west-2.eks.amazonaws.com",
+			"Port":    443,
+		},
+		"ClusterName": "my-cluster",
+	}
+
+	flattened := flattenProperties(properties)
+	unflattened := unflattenProperties(flattened)
+	require.Equal(t, properties, unflattened)
+}

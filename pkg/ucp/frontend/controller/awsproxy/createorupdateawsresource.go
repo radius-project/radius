@@ -8,8 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	http "net/http"
-	"reflect"
-	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
@@ -246,71 +244,4 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
-}
-
-// flattenProperties flattens a state object
-func flattenProperties(state map[string]interface{}) map[string]interface{} {
-	flattenedState := map[string]interface{}{}
-
-	for k, v := range state {
-		// If the value is a map, flatten it
-		if reflect.TypeOf(v).Kind() == reflect.Map {
-			flattenedSubState := flattenProperties(v.(map[string]interface{}))
-
-			for subK, subV := range flattenedSubState {
-				key := k + "/" + subK
-				flattenedState[key] = subV
-			}
-		} else {
-			flattenedState[k] = v
-		}
-	}
-
-	return flattenedState
-}
-
-// unflattenProperties unflattens a flattened state object
-func unflattenProperties(state map[string]interface{}) map[string]interface{} {
-	unflattenedState := map[string]interface{}{}
-
-	for k, v := range state {
-		splitPath := strings.Split(k, "/")
-		rootKey := splitPath[0]
-
-		if len(splitPath) == 1 {
-			unflattenedState[rootKey] = v
-		} else {
-			var currentState interface{} = unflattenedState
-			for i := 0; i < len(splitPath); i++ {
-				subKey := splitPath[i]
-				if i == len(splitPath)-1 {
-					if propertySet, ok := currentState.(map[string]interface{}); ok {
-						propertySet[subKey] = v
-					}
-				} else {
-					if _, exists := unflattenedState[subKey]; !exists {
-						unflattenedState[subKey] = map[string]interface{}{}
-					}
-
-					currentState = unflattenedState[subKey]
-				}
-			}
-		}
-	}
-
-	return unflattenedState
-}
-
-// removePropertyKeywordFromString removes "/properties/" from the given string
-func removePropertyKeywordFromString(s string) string {
-	return strings.Replace(s, "/properties/", "", 1)
-}
-
-// mapValues implements the map function on an []string
-func mapValues(vs []string, f func(string) string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(v)
-	}
-	return vsm
 }

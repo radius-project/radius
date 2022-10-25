@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"strings"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -119,4 +120,73 @@ func readPropertiesFromBody(req *http.Request) (map[string]interface{}, error) {
 func computeResourceID(id resources.ID, resourceID string) string {
 	computedID := strings.Split(id.String(), "/:")[0] + resources.SegmentSeparator + resourceID
 	return computedID
+}
+
+// flattenProperties flattens a state object
+func flattenProperties(state map[string]interface{}) map[string]interface{} {
+	flattenedState := map[string]interface{}{}
+
+	for k, v := range state {
+		// If the value is a map, flatten it
+		if reflect.TypeOf(v).Kind() == reflect.Map {
+			flattenedSubState := flattenProperties(v.(map[string]interface{}))
+
+			for subK, subV := range flattenedSubState {
+				key := k + "/" + subK
+				flattenedState[key] = subV
+			}
+		} else {
+			flattenedState[k] = v
+		}
+	}
+
+	return flattenedState
+}
+
+// unflattenProperties unflattens a flattened state object
+func unflattenProperties(state map[string]interface{}) map[string]interface{} {
+	unflattenedState := map[string]interface{}{}
+
+	for k, v := range state {
+		splitPath := strings.Split(k, "/")
+		rootKey := splitPath[0]
+
+		if len(splitPath) == 1 {
+			unflattenedState[rootKey] = v
+		} else {
+			var currentState interface{} = unflattenedState
+			for i := 0; i < len(splitPath); i++ {
+				subKey := splitPath[i]
+				if i == len(splitPath)-1 {
+					if currentStateMap, ok := currentState.(map[string]interface{}); ok {
+						currentStateMap[subKey] = v
+					}
+				} else {
+					if currentStateMap, ok := currentState.(map[string]interface{}); ok {
+						if _, exists := currentStateMap[subKey]; !exists {
+							currentStateMap[subKey] = map[string]interface{}{}
+						}
+
+						currentState = currentStateMap[subKey]
+					}
+				}
+			}
+		}
+	}
+
+	return unflattenedState
+}
+
+// removePropertyKeywordFromString removes "/properties/" from the given string
+func removePropertyKeywordFromString(s string) string {
+	return strings.Replace(s, "/properties/", "", 1)
+}
+
+// mapValues implements the map function on an []string
+func mapValues(vs []string, f func(string) string) []string {
+	vsm := make([]string, len(vs))
+	for i, v := range vs {
+		vsm[i] = f(v)
+	}
+	return vsm
 }
