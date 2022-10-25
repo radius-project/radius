@@ -574,6 +574,7 @@ func (d *DaprSidecarExtension) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentCompute.
 func (e EnvironmentCompute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "identity", e.Identity)
 	objectMap["kind"] = e.Kind
 	populate(objectMap, "resourceId", e.ResourceID)
 	return json.Marshal(objectMap)
@@ -588,6 +589,9 @@ func (e *EnvironmentCompute) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "identity":
+				err = unpopulate(val, "Identity", &e.Identity)
+				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &e.Kind)
 				delete(rawMsg, key)
@@ -1510,6 +1514,7 @@ func (k *KeyObjectProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type KubernetesCompute.
 func (k KubernetesCompute) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "identity", k.Identity)
 	objectMap["kind"] = "kubernetes"
 	populate(objectMap, "namespace", k.Namespace)
 	populate(objectMap, "resourceId", k.ResourceID)
@@ -1525,6 +1530,9 @@ func (k *KubernetesCompute) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "identity":
+				err = unpopulate(val, "Identity", &k.Identity)
+				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &k.Kind)
 				delete(rawMsg, key)

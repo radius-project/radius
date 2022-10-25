@@ -46,8 +46,8 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 
 		if p.Identity != nil {
-			dm.Identity = datamodel.IdentitySettings{
-				Kind:       toAzureIdentityKind(p.Identity.Kind),
+			dm.Identity = rp.IdentitySettings{
+				Kind:       toIdentityKind(p.Identity.Kind),
 				Resource:   to.String(p.Identity.Resource),
 				OIDCIssuer: to.String(p.Identity.OidcIssuer),
 			}
@@ -100,7 +100,7 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			Kind:        azto.Ptr(resource.Properties.Kind),
 			Application: azto.Ptr(resource.Properties.Application),
 			Identity: &IdentitySettings{
-				Kind:       fromAzureIdentityKind(azProp.Identity.Kind),
+				Kind:       fromIdentityKind(azProp.Identity.Kind),
 				Resource:   toStringPtr(azProp.Identity.Resource),
 				OidcIssuer: toStringPtr(azProp.Identity.OIDCIssuer),
 			},
@@ -129,32 +129,6 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 	}
 
 	return nil
-}
-
-func fromAzureIdentityKind(kind datamodel.IdentitySettingKind) *IdentitySettingKind {
-	switch kind {
-	case datamodel.AzureIdentitySystemAssigned:
-		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
-	case datamodel.AzureIdentityWorkload:
-		return azto.Ptr(IdentitySettingKindAzureComWorkload)
-	default:
-		return nil
-	}
-}
-
-func toAzureIdentityKind(kind *IdentitySettingKind) datamodel.IdentitySettingKind {
-	if kind == nil {
-		return datamodel.IdentityNone
-	}
-
-	switch *kind {
-	case IdentitySettingKindAzureComSystemassigned:
-		return datamodel.AzureIdentitySystemAssigned
-	case IdentitySettingKindAzureComWorkload:
-		return datamodel.AzureIdentityWorkload
-	default:
-		return datamodel.IdentityNone
-	}
 }
 
 func toStringPtr(v string) *string {

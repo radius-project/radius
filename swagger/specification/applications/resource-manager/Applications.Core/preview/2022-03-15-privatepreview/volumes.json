@@ -457,35 +457,6 @@
       ],
       "type": "object"
     },
-    "IdentitySettings": {
-      "properties": {
-        "kind": {
-          "description": "Identity Kind",
-          "type": "string",
-          "enum": [
-            "azure.com.workload",
-            "azure.com.systemassigned"
-          ],
-          "default": "azure.com.workload",
-          "x-ms-enum": {
-            "name": "IdentitySettingKind",
-            "modelAsString": false
-          }
-        },
-        "resource": {
-          "description": "The managed identity resource ID",
-          "type": "string"
-        },
-        "oidcIssuer": {
-          "description": "The OIDC Issuer name",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
     "AzureKeyVaultVolumeProperties": {
       "additionalProperties": false,
       "allOf": [
@@ -495,8 +466,8 @@
       ],
       "properties": {
         "identity": {
-          "description": "The identity settings",
-          "$ref": "#/definitions/IdentitySettings"
+          "description": "Configuration for supported external identity providers",
+          "$ref": "global.json#/definitions/IdentitySettings"
         },
         "certificates": {
           "additionalProperties": {
