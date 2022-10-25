@@ -51,7 +51,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor:                               step.NewDeployExecutor(template, "streamName="+name),
+			Executor:                               step.NewDeployExecutor(template, "streamName="+name, functional.GetMagpieImage()),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
