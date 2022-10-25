@@ -30,7 +30,7 @@
         "azureKeyVault": {
             "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
             "identity": {
-                "kind": "SystemAssigned"
+                "kind": "azure.com.systemassigned"
             },
             "secrets": {
                 "mysecret": {

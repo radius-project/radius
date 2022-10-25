@@ -54,27 +54,30 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func getPrimaryIdentifiers(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, resourceType string) []interface{} {
+func lookupAWSResourceSchema(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, resourceType string) ([]interface{}, error) {
 	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
 	})
 	if err != nil {
-		fmt.Printf("Error describing type: %s", err.Error())
-		return nil
+		return nil, err
 	}
 
 	description := map[string]interface{}{}
 	err = json.Unmarshal([]byte(*output.Schema), &description)
 	if err != nil {
-		fmt.Printf("Error unmarshalling schema: %s", err.Error())
+		return nil, err
 	}
 	primaryIdentifier := description["primaryIdentifier"].([]interface{})
-	return primaryIdentifier
+	return primaryIdentifier, nil
 }
 
 func getResourceIDWithMultiIdentifiers(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, url string, resourceType string, properties map[string]interface{}) (string, error) {
-	primaryIdentifiers := getPrimaryIdentifiers(ctx, cloudFormationClient, resourceType)
+	primaryIdentifiers, err := lookupAWSResourceSchema(ctx, cloudFormationClient, resourceType)
+	if err != nil {
+		return "", err
+	}
+
 	var resourceID string
 	for _, pi := range primaryIdentifiers {
 		// Primary identifier is of the form /properties/<property-name>

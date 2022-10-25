@@ -203,6 +203,14 @@ func TestAzureKeyvaultVolumeRenderer_Render(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "app0-azkeyvault0",
 			Namespace: "default",
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "radius-rp",
+				"app.kubernetes.io/name":       "azkeyvault0",
+				"app.kubernetes.io/part-of":    "app0",
+				"radius.dev/application":       "app0",
+				"radius.dev/resource":          "azkeyvault0",
+				"radius.dev/resource-type":     "applications.core-volumes",
+			},
 		},
 		Spec: csiv1.SecretProviderClassSpec{
 			Provider: "azure",

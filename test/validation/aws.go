@@ -84,7 +84,7 @@ func getResourceIdentifier(t *testing.T, resourceType string, name string) strin
 	client := sts.New(mySession)
 	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	require.NoError(t, err)
-	region := os.Getenv("AWS_DEFAULT_REGION")
+	region := os.Getenv("AWS_REGION")
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name
 }
 

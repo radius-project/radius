@@ -46,15 +46,10 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 				Message: err.Error(),
 			},
 		}
-
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
+	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -63,16 +58,12 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 			},
 		}
 
-		response := armrpc_rest.NewBadRequestARMResponse(e)
-		err = response.Apply(ctx, w, req)
-		if err != nil {
-			return nil, err
-		}
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
 	_, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
-		Identifier: aws.String(resourceID),
+		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
 		return armrpc_rest.NewNoContentResponse(), nil
@@ -80,10 +71,10 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return awsclient.HandleAWSError(err)
 	}
 
-	logger.Info("Deleting resource", "resourceType", resourceType, "resourceID", resourceID)
+	logger.Info("Deleting resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 	response, err := cloudControlClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		TypeName:   &resourceType,
-		Identifier: aws.String(resourceID),
+		Identifier: aws.String(awsResourceIdentifier),
 	})
 	if err != nil {
 		return awsclient.HandleAWSError(err)

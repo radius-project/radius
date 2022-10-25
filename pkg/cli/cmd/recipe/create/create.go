@@ -27,7 +27,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:     "create",
 		Short:   "Add a connector recipe to an environment.",
 		Long:    `Add a connector recipe to an environment.`,
-		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --templatePath template_path --connectorType Applications.Connector/mongoDatabases`,
+		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --connector-type Applications.Connector/mongoDatabases`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
@@ -35,8 +35,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
-	cmd.Flags().String("templatePath", "", "specify the path to the template provided by the recipe.")
-	cmd.Flags().String("connectorType", "", "specify the type of the connector this recipe can be consumed by")
+	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
+	cmd.Flags().String("connector-type", "", "specify the type of the connector this recipe can be consumed by")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
 
 	return cmd, runner
@@ -122,7 +122,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
 	}
@@ -132,7 +132,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func requireTemplatePath(cmd *cobra.Command) (string, error) {
-	templatePath, err := cmd.Flags().GetString("templatePath")
+	templatePath, err := cmd.Flags().GetString("template-path")
 	if err != nil {
 		return templatePath, err
 	}
@@ -141,7 +141,7 @@ func requireTemplatePath(cmd *cobra.Command) (string, error) {
 }
 
 func requireConnectorType(cmd *cobra.Command) (string, error) {
-	connectorType, err := cmd.Flags().GetString("connectorType")
+	connectorType, err := cmd.Flags().GetString("connector-type")
 	if err != nil {
 		return connectorType, err
 	}

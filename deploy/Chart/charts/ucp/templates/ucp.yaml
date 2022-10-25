@@ -99,5 +99,5 @@ stringData:
 {{ if .Values.global.rp.provider.aws }}
   AWS_ACCESS_KEY_ID: {{ .Values.global.rp.provider.aws.accessKeyId }} 
   AWS_SECRET_ACCESS_KEY: {{ .Values.global.rp.provider.aws.secretAccessKey }}
-  AWS_DEFAULT_REGION: {{ .Values.global.rp.provider.aws.region }}
+  AWS_REGION: {{ .Values.global.rp.provider.aws.region }}
 {{ end }}

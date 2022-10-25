@@ -14,22 +14,6 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// AzureIdentityKind - Identity Kind
-type AzureIdentityKind string
-
-const (
-	AzureIdentityKindWorkload AzureIdentityKind = "Workload"
-	AzureIdentityKindSystemAssigned AzureIdentityKind = "SystemAssigned"
-)
-
-// PossibleAzureIdentityKindValues returns the possible values for the AzureIdentityKind const type.
-func PossibleAzureIdentityKindValues() []AzureIdentityKind {
-	return []AzureIdentityKind{	
-		AzureIdentityKindWorkload,
-		AzureIdentityKindSystemAssigned,
-	}
-}
-
 // CertType - Certificate object type to be downloaded - the certificate itself, private key or public key of the certificate
 type CertType string
 
@@ -99,6 +83,22 @@ func PossibleFormatValues() []Format {
 	return []Format{	
 		FormatPem,
 		FormatPfx,
+	}
+}
+
+// IdentitySettingKind - Identity Kind
+type IdentitySettingKind string
+
+const (
+	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
+	IdentitySettingKindAzureComSystemassigned IdentitySettingKind = "azure.com.systemassigned"
+)
+
+// PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
+func PossibleIdentitySettingKindValues() []IdentitySettingKind {
+	return []IdentitySettingKind{	
+		IdentitySettingKindAzureComWorkload,
+		IdentitySettingKindAzureComSystemassigned,
 	}
 }
 

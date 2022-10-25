@@ -229,6 +229,7 @@
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
+* **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentCompute
 * **Discriminator**: kind
@@ -318,7 +319,7 @@
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
-* **identity**: [AzureIdentity](#azureidentity) (Required)
+* **identity**: [IdentitySettings](#identitysettings) (Required)
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
 * **kind**: 'azure.com.keyvault' (Required): The volume kind
 * **resource**: string (Required): The ID of the keyvault to use for this volume resource
@@ -339,11 +340,11 @@
 * **name**: string (Required): The name of the certificate
 * **version**: string: Certificate version
 
-## AzureIdentity
+## IdentitySettings
 ### Properties
-* **clientId**: string: The client ID for workload and user assigned managed identity
-* **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
-* **tenantId**: string: The tenant ID for workload identity.
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Identity Kind
+* **oidcIssuer**: string: The OIDC Issuer name
+* **resource**: string: The managed identity resource ID
 
 ## AzureKeyVaultVolumePropertiesKeys
 ### Properties
