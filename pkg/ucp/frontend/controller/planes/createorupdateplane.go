@@ -20,7 +20,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -45,9 +44,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 		return nil, err
 	}
 
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
-
+	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.PlaneDataModelFromVersioned(body, apiVersion)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
@@ -64,20 +61,6 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, newResource.Properties.Kind)
-	// At least one provider needs to be configured
-	if newResource.Properties.Kind == rest.PlaneKindUCPNative {
-		if newResource.Properties.ResourceProviders == nil || len(newResource.Properties.ResourceProviders) == 0 {
-			err = fmt.Errorf("At least one resource provider must be configured for UCP native plane: %s", newResource.TrackedResource.Name)
-			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-		}
-	} else if newResource.Properties.Kind != rest.PlaneKindAWS {
-		if *newResource.Properties.URL == "" {
-			err = fmt.Errorf("URL must be specified for plane: %s", newResource.TrackedResource.Name)
-			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-		}
-	}
-
 	// Build the tracked resource
 	newResource.TrackedResource = v1.TrackedResource{
 		ID:   path,
@@ -86,7 +69,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, newResource.Properties.Kind)
-	logger = ucplog.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	// Check if the plane already exists
 	planeExists := true

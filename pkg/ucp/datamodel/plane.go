@@ -28,7 +28,7 @@ type Plane struct {
 }
 
 func (p Plane) ResourceTypeName() string {
-	return "System.Planes/" + p.Type
+	return p.Type
 }
 
 func (plane *Plane) LookupResourceProvider(key string) string {

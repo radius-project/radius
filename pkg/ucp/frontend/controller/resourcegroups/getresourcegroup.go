@@ -55,7 +55,7 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 		return nil, err
 	}
 	// Convert to version agnostic data model
-	apiVersion := ctrl.GetAPIVersion(logger, req)
+	apiVersion := ctrl.GetAPIVersion(req)
 
 	// Return a versioned response of the resource group
 	versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)

@@ -60,8 +60,7 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 
 func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
 	listOfResourceGroups := []interface{}{}
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
+	apiVersion := ctrl.GetAPIVersion(req)
 	if result != nil && len(result.Items) > 0 {
 		for _, item := range result.Items {
 			var rg datamodel.ResourceGroup

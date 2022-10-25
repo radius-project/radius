@@ -7,9 +7,9 @@ package datamodel
 
 // Resource represents a resource within a UCP resource group
 type Resource struct {
-	ID   string `json:"id" yaml:"id"`
-	Name string `json:"name" yaml:"name"`
-	Type string `json:"type" yaml:"type"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Type string `json:"type"`
 }
 
 // ResourceList represents a list of resources

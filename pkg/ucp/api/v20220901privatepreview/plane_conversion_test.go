@@ -43,7 +43,7 @@ func TestPlaneConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "planeresource-invalid-missing-kind.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "63 characters or less"},
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "not nil"},
 		},
 		{
 			filename: "planeresource-empty-resourceproviders.json",

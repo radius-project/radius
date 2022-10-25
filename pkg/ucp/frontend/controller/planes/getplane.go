@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -52,10 +53,15 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 		return nil, err
 	}
 
-	apiVersion := ctrl.GetAPIVersion(logger, req)
+	apiVersion := ctrl.GetAPIVersion(req)
 	versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
 	if err != nil {
-		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
+		return armrpc_rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
+				Message: err.Error(),
+			},
+		}), nil
 	}
 	return armrpc_rest.NewOKResponse(versioned), nil
 }

@@ -5,6 +5,5 @@
 package resourcegroups
 
 const (
-	ResourceTypeName  = "UCP/ResourceGroups"
 	ResourceGroupType = "System.Resources/resourceGroups"
 )

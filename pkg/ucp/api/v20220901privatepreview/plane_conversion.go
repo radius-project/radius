@@ -19,7 +19,7 @@ func (src *PlaneResource) ConvertTo() (conv.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	if src.Properties.Kind == nil {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "63 characters or less"}
+		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "not nil"}
 	}
 
 	var found bool
@@ -59,7 +59,6 @@ func (src *PlaneResource) ConvertTo() (conv.DataModelInterface, error) {
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Plane resource.
 func (dst *PlaneResource) ConvertFrom(src conv.DataModelInterface) error {
-	// TODO: Improve the validation.
 	plane, ok := src.(*datamodel.Plane)
 	if !ok {
 		return conv.ErrInvalidModelConversion

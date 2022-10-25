@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 type ErrUCPResourceGroupCreationFailed struct {
@@ -65,7 +66,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, "2022-09-01-privatepreview"),
+		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, v20220901privatepreview.Version),
 		strings.NewReader(`{}`))
 
 	if err != nil {

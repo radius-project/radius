@@ -36,7 +36,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 			}
 
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
-			v, ok := loader.GetValidator(rID.Type(), apiVersion)
+			v, ok := loader.GetValidator(rID.Type(), apiVersion, false)
 			if !ok {
 				resp := unsupportedAPIVersionResponse(apiVersion, rID.Type(), loader.SupportedVersions(rID.Type()))
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -45,7 +45,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			errs := v.ValidateRequest(r, false)
+			errs := v.ValidateRequest(r)
 			if errs != nil {
 				resp := validationFailedResponse(rID.Type()+"/"+rID.Name(), errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -66,7 +66,7 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			endpointType := UCPEndpointType
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
-			v, ok := loader.GetValidator(endpointType, apiVersion)
+			v, ok := loader.GetValidator(endpointType, apiVersion, true)
 			if !ok {
 				resp := unsupportedAPIVersionResponse(apiVersion, endpointType, loader.SupportedVersions(endpointType))
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -75,7 +75,7 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 				return
 			}
 
-			errs := v.ValidateRequest(r, true)
+			errs := v.ValidateRequest(r)
 			if errs != nil {
 				resp := validationFailedResponse(endpointType, errs)
 				if err := resp.Apply(r.Context(), w, r); err != nil {

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -228,6 +227,6 @@ func ConfigureDefaultHandlers(router *mux.Router, opts Options) {
 }
 
 // GetAPIVersion extracts the API version from the request
-func GetAPIVersion(logger logr.Logger, req *http.Request) string {
+func GetAPIVersion(req *http.Request) string {
 	return req.URL.Query().Get("api-version")
 }

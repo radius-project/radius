@@ -42,8 +42,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	// Convert to version agnostic data model
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
+	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.ResourceGroupDataModelFromVersioned(body, apiVersion)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
@@ -63,7 +62,7 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, id)
-	logger = ucplog.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	existingResource := rest.ResourceGroup{}
 	rgExists := true

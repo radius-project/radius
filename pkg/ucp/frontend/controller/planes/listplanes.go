@@ -53,8 +53,7 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 }
 
 func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
-	logger := ucplog.GetLogger(ctx)
-	apiVersion := ctrl.GetAPIVersion(logger, req)
+	apiVersion := ctrl.GetAPIVersion(req)
 	listOfPlanes := []interface{}{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
