@@ -83,14 +83,14 @@ func Test_KinesisStreamExisting(t *testing.T) {
 					{
 						Name: "aws-ctnr",
 						Type: validation.ContainersResource,
-						App:  name,
+						App:  "aws-kinesis-existing-app",
 					},
 				},
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "aws-ctnr"),
+						validation.NewK8sPodForResource("aws-kinesis-existing-app", "aws-ctnr"),
 					},
 				},
 			},
