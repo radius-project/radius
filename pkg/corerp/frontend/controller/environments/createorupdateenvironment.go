@@ -17,6 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -111,34 +112,36 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 		devRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
 	}
 
+	logger := radlogger.GetLogger(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())
 	}
+
+	// if repository has the correct path it should look like: <acrPath>/recipes/<connectorType>/<provider>
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
-			if strings.HasPrefix(repo, "recipes/") {
-				recipePath := strings.Split(repo, "recipes/")[1]
-				if strings.Count(recipePath, "/") == 2 {
-					connector, provider := strings.Split(recipePath, "/")[1], strings.Split(recipePath, "/")[2]
-					if slices.Contains(supportedProviders(), provider) {
-						var name string
-						var connectorType string
-						switch connector {
-						case "mongodatabases":
-							name = "mongo" + "-" + provider
-							connectorType = mongodatabases.ResourceTypeName
-						default:
-							continue
-						}
-						devRecipes[name] = datamodel.EnvironmentRecipeProperties{
-							ConnectorType: connectorType,
-							TemplatePath:  DevRecipesACRPath + "/" + repo,
-						}
+			connector, provider := parseRepoPathForMetadata(repo)
+			if connector != "" && provider != "" {
+				if slices.Contains(supportedProviders(), provider) {
+					var name string
+					var connectorType string
+					switch connector {
+					case "mongodatabases":
+						name = "mongo" + "-" + provider
+						connectorType = mongodatabases.ResourceTypeName
+					default:
+						continue
+					}
+					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+						ConnectorType: connectorType,
+						TemplatePath:  DevRecipesACRPath + "/" + repo,
 					}
 				}
 			}
 		}
+
+		logger.Info(fmt.Sprintf("pulled %d dev recipes", len(devRecipes)))
 		return nil
 	})
 
@@ -147,4 +150,16 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 	}
 
 	return devRecipes, nil
+}
+
+func parseRepoPathForMetadata(repo string) (connector string, provider string) {
+	if strings.HasPrefix(repo, "recipes/") {
+		recipePath := strings.Split(repo, "recipes/")[1]
+		if strings.Count(recipePath, "/") == 1 {
+			connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
+			return connector, provider
+		}
+	}
+
+	return connector, provider
 }
