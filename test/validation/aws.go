@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ const (
 type AWSResource struct {
 	Type       string
 	Name       string
-	Properties string
+	Properties map[string]interface{}
 }
 
 type AWSResourceSet struct {
@@ -38,16 +39,36 @@ type AWSResourceSet struct {
 func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client aws.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
 		resourceType := getResourceTypeName(t, &resource)
-		_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: to.StringPtr(resource.Name),
 			TypeName:   &resourceType,
 		})
 		require.NoError(t, err)
+
+		if resource.Properties != nil {
+			var resourceResponseProperties map[string]interface{}
+			err := json.Unmarshal([]byte(*resourceResponse.ResourceDescription.Properties), &resourceResponseProperties)
+			require.NoError(t, err)
+
+			assertFieldsArePresent(t, resource.Properties, resourceResponseProperties)
+		}
 	}
 }
 
 func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSCloudControlClient) error {
 	resourceType := getResourceTypeName(t, resource)
+
+	// Check if the resource exists
+	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		Identifier: to.StringPtr(resource.Name),
+		TypeName:   &resourceType,
+	})
+	notFound := aws.IsAWSResourceNotFound(err)
+	if notFound {
+		// Resource does not need to be deleted
+		return nil
+	}
+
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,
@@ -94,4 +115,20 @@ func getResourceTypeName(t *testing.T, resource *AWSResource) string {
 	require.NoError(t, err)
 	resourceType := resources.ToAWSResourceType(resourceID)
 	return resourceType
+}
+
+// assertFieldsArePresent ensures that all fields in actual exist and are equivalent in expected
+func assertFieldsArePresent(t *testing.T, actual interface{}, expected interface{}) {
+	switch actual := actual.(type) {
+	case map[string]interface{}:
+		if expectedMap, ok := expected.(map[string]interface{}); ok {
+			for k := range actual {
+				assertFieldsArePresent(t, actual[k], expectedMap[k])
+			}
+		} else {
+			require.Fail(t, "types of actual and expected do not match")
+		}
+	default:
+		require.Equal(t, actual, expected)
+	}
 }
