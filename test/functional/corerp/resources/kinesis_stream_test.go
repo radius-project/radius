@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
@@ -51,7 +52,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, "streamName="+name),
+			Executor:                               step.NewDeployExecutor(template, "streamName="+name),
 			SkipKubernetesOutputResourceValidation: true,
 			SkipObjectValidation:                   true,
 			AWSResources: &validation.AWSResourceSet{
