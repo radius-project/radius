@@ -18,6 +18,10 @@ import (
 )
 
 const (
+	// This comes from the path: /Users/vinayada/radius/radius/swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
+	// This spec path is parsed and this string needs to be provider/resourceType.
+	// For UCP, the provider is UCP and since all UCP resource types are in a single json, the file is named ucp.json.
+	// Therefore, resourceType = ucp
 	UCPEndpointType = "ucp/ucp"
 	UCPApiVersion   = "2022-09-01-privatepreview"
 )
