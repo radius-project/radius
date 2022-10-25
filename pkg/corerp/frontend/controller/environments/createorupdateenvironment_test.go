@@ -392,3 +392,41 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		})
 	}
 }
+
+func TestParseRepoPathForMetadata(t *testing.T) {
+	t.Run("Successfully returns metadata", func(t *testing.T) {
+		connector, provider := parseRepoPathForMetadata("recipes/connectorName/providerName")
+		require.Equal(t, "connectorName", connector)
+		require.Equal(t, "providerName", provider)
+	})
+
+	tests := []struct {
+		name string
+		repo string
+	}{
+		{
+			"Repo isn't related to recipes",
+			"randomRepo",
+		},
+		{
+			"Repo for recipes doesn't have connector and provider names",
+			"recipes/noConnectorAndProvider",
+		},
+		{
+			"Repo for recipes has extra path component",
+			"recipes/connector/provider/randomValue",
+		},
+		{
+			"Repo name has a connector and no provider",
+			"recipes/connector/",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			connector, provider := parseRepoPathForMetadata(tt.repo)
+			require.Equal(t, "", connector)
+			require.Equal(t, "", provider)
+		})
+	}
+}

@@ -121,24 +121,21 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 	// if repository has the correct path it should look like: <acrPath>/recipes/<connectorType>/<provider>
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
-			if strings.HasPrefix(repo, "recipes/") {
-				recipePath := strings.Split(repo, "recipes/")[1]
-				if strings.Count(recipePath, "/") == 1 {
-					connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
-					if slices.Contains(supportedProviders(), provider) {
-						var name string
-						var connectorType string
-						switch connector {
-						case "mongodatabases":
-							name = "mongo" + "-" + provider
-							connectorType = mongodatabases.ResourceTypeName
-						default:
-							continue
-						}
-						devRecipes[name] = datamodel.EnvironmentRecipeProperties{
-							ConnectorType: connectorType,
-							TemplatePath:  DevRecipesACRPath + "/" + repo,
-						}
+			connector, provider := parseRepoPathForMetadata(repo)
+			if connector != "" && provider != "" {
+				if slices.Contains(supportedProviders(), provider) {
+					var name string
+					var connectorType string
+					switch connector {
+					case "mongodatabases":
+						name = "mongo" + "-" + provider
+						connectorType = mongodatabases.ResourceTypeName
+					default:
+						continue
+					}
+					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+						ConnectorType: connectorType,
+						TemplatePath:  DevRecipesACRPath + "/" + repo,
 					}
 				}
 			}
@@ -153,4 +150,18 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 	}
 
 	return devRecipes, nil
+}
+
+func parseRepoPathForMetadata(repo string) (connector string, provider string) {
+	if strings.HasPrefix(repo, "recipes/") {
+		recipePath := strings.Split(repo, "recipes/")[1]
+		if strings.Count(recipePath, "/") == 1 {
+			connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
+			if connector != "" && provider != "" {
+				return connector, provider
+			}
+		}
+	}
+
+	return connector, provider
 }
