@@ -50,7 +50,15 @@
           },
           "containerPort": 8080
         }
-      }
+      },
+      "command": [
+        "/bin/sh"
+      ],
+      "args": [
+        "-c",
+        "while true; do echo hello; sleep 10;done"
+      ],
+      "workingDir": "/app"
     },
     "extensions": [
       {

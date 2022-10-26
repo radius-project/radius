@@ -9,13 +9,13 @@ import (
 	"encoding/json"
 	"testing"
 
+	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
-
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 )
 
 func TestContainerConvertVersionedToDataModel(t *testing.T) {
@@ -49,6 +49,10 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, 2, len(ct.Properties.Extensions))
+
+	require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
+	require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
+	require.Equal(t, "/app", ct.Properties.Container.WorkingDir)
 }
 
 func TestContainerConvertDataModelToVersioned(t *testing.T) {
@@ -77,6 +81,10 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
 	require.Equal(t, 2, len(versioned.Properties.Extensions))
+
+	require.Equal(t, azto.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
+	require.Equal(t, azto.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
+	require.Equal(t, to.StringPtr("/app"), versioned.Properties.Container.WorkingDir)
 }
 
 func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
@@ -105,6 +113,12 @@ func TestContainerConvertVersionedToDataModelEmptyProtocol(t *testing.T) {
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", ct.Properties.Container.Image)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+
+	var commands []string
+	var args []string
+	require.Equal(t, commands, ct.Properties.Container.Command)
+	require.Equal(t, args, ct.Properties.Container.Args)
+	require.Equal(t, "", ct.Properties.Container.WorkingDir)
 
 }
 

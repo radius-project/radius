@@ -165,6 +165,12 @@ type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string `json:"image,omitempty"`
 
+	// Arguments to the entrypoint. Overrides the container image's CMD
+	Args []*string `json:"args,omitempty"`
+
+	// Entrypoint array. Overrides the container image's ENTRYPOINT
+	Command []*string `json:"command,omitempty"`
+
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
 
@@ -179,6 +185,9 @@ type Container struct {
 
 	// Dictionary of
 	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
+
+	// Working directory for the container
+	WorkingDir *string `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container
