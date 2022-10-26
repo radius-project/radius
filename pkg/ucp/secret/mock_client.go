@@ -64,7 +64,7 @@ func (mr *MockClientMockRecorder) Get(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // Save mocks base method.
-func (m *MockClient) Save(arg0 context.Context, arg1 []byte, arg2 string) error {
+func (m *MockClient) Save(arg0 context.Context, arg1 string, arg2 []byte) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Save", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
