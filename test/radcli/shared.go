@@ -21,7 +21,12 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+<<<<<<< HEAD
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+=======
+	"github.com/project-radius/radius/pkg/cli/setup"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+>>>>>>> 64b01228 (updating tests)
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -37,6 +42,7 @@ type ValidateInput struct {
 	HelmInterface       helm.Interface
 	ConnectionFactory   *connections.MockFactory
 	NamespaceInterface  namespace.Interface
+	AzureInterface      setup.Interface
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -60,6 +66,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,
 				NamespaceInterface:  testcase.NamespaceInterface,
+				AzureInterface:      testcase.AzureInterface,
 			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
