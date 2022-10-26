@@ -22,10 +22,6 @@ type Client interface {
 	Get(ctx context.Context, id string) ([]byte, error)
 }
 
-type Object struct {
-	SecretData interface{}
-}
-
 // SaveSecret saves a generic secret value using secret client.
 func SaveSecret[T any](ctx context.Context, value T, id string, client Client) error {
 	secretData, err := json.Marshal(value)
