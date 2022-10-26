@@ -78,23 +78,12 @@ type ApplicationsClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
-type AzureIdentity struct {
-	// REQUIRED; Identity Kind
-	Kind *AzureIdentityKind `json:"kind,omitempty"`
-
-	// The client ID for workload and user assigned managed identity
-	ClientID *string `json:"clientId,omitempty"`
-
-	// The tenant ID for workload identity.
-	TenantID *string `json:"tenantId,omitempty"`
-}
-
 type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; The Azure AD identity settings
-	Identity *AzureIdentity `json:"identity,omitempty"`
+	// REQUIRED; Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
@@ -328,6 +317,9 @@ type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *string `json:"kind,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -345,6 +337,9 @@ type EnvironmentProperties struct {
 
 	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+
+	// Flag to use radius owned recipes.
+	UseDevRecipes *bool `json:"useDevRecipes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -791,6 +786,17 @@ type IamProperties struct {
 	Roles []*string `json:"roles,omitempty"`
 }
 
+type IdentitySettings struct {
+	// REQUIRED; Configuration for supported external identity providers
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
+	Resource *string `json:"resource,omitempty"`
+}
+
 type KeyObjectProperties struct {
 	// REQUIRED; The name of the key
 	Name *string `json:"name,omitempty"`
@@ -810,6 +816,9 @@ type KubernetesCompute struct {
 	// REQUIRED; The namespace to use for the environment.
 	Namespace *string `json:"namespace,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -819,6 +828,7 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
+		Identity: k.Identity,
 	}
 }
 

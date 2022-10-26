@@ -457,35 +457,6 @@
       ],
       "type": "object"
     },
-    "AzureIdentity": {
-      "properties": {
-        "kind": {
-          "description": "Identity Kind",
-          "type": "string",
-          "enum": [
-            "Workload",
-            "SystemAssigned"
-          ],
-          "default": "SystemAssigned",
-          "x-ms-enum": {
-            "name": "AzureIdentityKind",
-            "modelAsString": false
-          }
-        },
-        "clientId": {
-          "description": "The client ID for workload and user assigned managed identity",
-          "type": "string"
-        },
-        "tenantId": {
-          "description": "The tenant ID for workload identity.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
-    },
     "AzureKeyVaultVolumeProperties": {
       "additionalProperties": false,
       "allOf": [
@@ -495,8 +466,8 @@
       ],
       "properties": {
         "identity": {
-          "description": "The Azure AD identity settings",
-          "$ref": "#/definitions/AzureIdentity"
+          "description": "Configuration for supported external identity providers",
+          "$ref": "global.json#/definitions/IdentitySettings"
         },
         "certificates": {
           "additionalProperties": {

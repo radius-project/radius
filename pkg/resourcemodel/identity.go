@@ -67,6 +67,20 @@ type KubernetesIdentity struct {
 	Namespace  string `bson:"namespace" json:"namespace"`
 }
 
+// AzureFederatedIdentity represents the federated identity for OIDC issuer.
+type AzureFederatedIdentity struct {
+	// Name represents the name of federeated identity.
+	Name string `json:"name"`
+	// Resource represents the associated identity resource.
+	Resource string `json:"resource"`
+	// OIDCIssuer represents the OIDC issuer.
+	OIDCIssuer string `json:"oidcIssuer"`
+	// Audience represents the client ID of Resource
+	Audience string `json:"audience"`
+	// Subejct represents the subject of Identity
+	Subject string `json:"subject"`
+}
+
 // AADPodIdentityIdentity uniquely identifies a 'pod identity' psuedo-resource
 type AADPodIdentityIdentity struct {
 	AKSClusterName string `bson:"aksClusterName" json:"aksClusterName"`

@@ -92,7 +92,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return fmt.Errorf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)
 	}
 	delete(recipeProperties, r.RecipeName)
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to delete the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}

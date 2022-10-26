@@ -35,7 +35,7 @@ type AWSResourceSet struct {
 	Resources []AWSResource
 }
 
-func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client aws.AWSClient) {
+func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client aws.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
 		resourceType := getResourceTypeName(t, &resource)
 		_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -46,7 +46,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSClient) error {
+func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSCloudControlClient) error {
 	resourceType := getResourceTypeName(t, resource)
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
 		Identifier: to.StringPtr(resource.Name),
@@ -64,7 +64,7 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	return err
 }
 
-func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSClient) {
+func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSCloudControlClient) {
 	// Verify that the resource is indeed deleted
 	resourceType := getResourceTypeName(t, resource)
 	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
@@ -84,7 +84,7 @@ func getResourceIdentifier(t *testing.T, resourceType string, name string) strin
 	client := sts.New(mySession)
 	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
 	require.NoError(t, err)
-	region := os.Getenv("AWS_DEFAULT_REGION")
+	region := os.Getenv("AWS_REGION")
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name
 }
 

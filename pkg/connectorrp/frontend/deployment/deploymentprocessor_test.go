@@ -41,10 +41,12 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   id,
-			Name: "mongo0",
-			Type: "applications.connector/mongodatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   id,
+				Name: "mongo0",
+				Type: "applications.connector/mongodatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -107,10 +109,12 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   id,
-			Name: "mongo0",
-			Type: "applications.connector/mongodatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   id,
+				Name: "mongo0",
+				Type: "applications.connector/mongodatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -170,10 +174,12 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   id,
-			Name: "mongo0",
-			Type: "Applications.Connector/MongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   id,
+				Name: "mongo0",
+				Type: "Applications.Connector/MongoDatabases",
+			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
 			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -426,10 +432,12 @@ func Test_Render(t *testing.T) {
 		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 		resourceID := getResourceID(id)
 		resource := datamodel.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID:   id,
-				Name: "mongo0",
-				Type: "Applications.Connector/MongoDatabases",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   id,
+					Name: "mongo0",
+					Type: "Applications.Connector/MongoDatabases",
+				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -462,10 +470,12 @@ func Test_Render(t *testing.T) {
 		testInvalidResourceID := "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.foo/foo/mongo0"
 		parsedID := getResourceID(testInvalidResourceID)
 		testInvalidResource := datamodel.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID:   testInvalidResourceID,
-				Name: "Applications.foo/foo",
-				Type: "foo",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   testInvalidResourceID,
+					Name: "Applications.foo/foo",
+					Type: "foo",
+				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
@@ -487,10 +497,12 @@ func Test_Render(t *testing.T) {
 		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
 		resourceID := getResourceID(id)
 		resource := datamodel.MongoDatabase{
-			TrackedResource: v1.TrackedResource{
-				ID:   id,
-				Name: "mongo0",
-				Type: "Applications.Connector/MongoDatabases",
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID:   id,
+					Name: "mongo0",
+					Type: "Applications.Connector/MongoDatabases",
+				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
 				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{

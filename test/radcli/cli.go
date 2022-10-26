@@ -248,8 +248,8 @@ func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, conn
 		"recipe",
 		"create",
 		"--name", recipeName,
-		"--templatePath", templatePath,
-		"--connectorType", connectorType,
+		"--template-path", templatePath,
+		"--connector-type", connectorType,
 	}
 	return cli.RunCommand(ctx, args)
 }

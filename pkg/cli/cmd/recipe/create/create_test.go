@@ -31,7 +31,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Create Command",
-			Input:         []string{"--name", "test_recipe", "--templatePath", "test_template", "--connectorType", "Applications.Connector/mongoDatabases"},
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--connector-type", "Applications.Connector/mongoDatabases"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -40,7 +40,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create Command without name",
-			Input:         []string{"--templatePath", "test_template", "--connectorType", "Applications.Connector/mongoDatabases"},
+			Input:         []string{"--template-path", "test_template", "--connector-type", "Applications.Connector/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -48,8 +48,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without templatePath",
-			Input:         []string{"--name", "test_recipe", "--connectorType", "Applications.Connector/mongoDatabases"},
+			Name:          "Create Command without connector-type",
+			Input:         []string{"--name", "test_recipe", "--connector-type", "Applications.Connector/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -57,8 +57,8 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without connectorType",
-			Input:         []string{"--name", "test_recipe", "--templatePath", "test_template"},
+			Name:          "Create Command without connector-type",
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -89,6 +89,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
@@ -103,7 +104,7 @@ func Test_Run(t *testing.T) {
 				GetEnvDetails(gomock.Any(), gomock.Any()).
 				Return(envResource, nil).Times(1)
 			appManagementClient.EXPECT().
-				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any()).
+				CreateEnvironment(context.Background(), "kind-kind", "global", "default", "Kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 				Return(true, nil).Times(1)
 
 			outputSink := &output.MockOutput{}
@@ -129,6 +130,7 @@ func Test_Run(t *testing.T) {
 				Type:     to.Ptr("applications.core/environments"),
 				Location: to.Ptr("global"),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
+					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
 							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),

@@ -229,17 +229,25 @@
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
+* **useDevRecipes**: bool: Flag to use radius owned recipes.
 
 ## EnvironmentCompute
 * **Discriminator**: kind
 
 ### Base Properties
+* **identity**: [IdentitySettings](#identitysettings)
 * **resourceId**: string: The resource id of the compute resource for application environment.
 ### KubernetesCompute
 #### Properties
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.
 
+
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
 
 ## Providers
 ### Properties
@@ -318,7 +326,7 @@
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
-* **identity**: [AzureIdentity](#azureidentity) (Required)
+* **identity**: [IdentitySettings](#identitysettings) (Required)
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
 * **kind**: 'azure.com.keyvault' (Required): The volume kind
 * **resource**: string (Required): The ID of the keyvault to use for this volume resource
@@ -338,12 +346,6 @@
 * **format**: 'pem' | 'pfx': Certificate format. Default pem
 * **name**: string (Required): The name of the certificate
 * **version**: string: Certificate version
-
-## AzureIdentity
-### Properties
-* **clientId**: string: The client ID for workload and user assigned managed identity
-* **kind**: 'SystemAssigned' | 'Workload' (Required): Identity Kind
-* **tenantId**: string: The tenant ID for workload identity.
 
 ## AzureKeyVaultVolumePropertiesKeys
 ### Properties

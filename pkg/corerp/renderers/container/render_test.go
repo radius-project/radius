@@ -7,6 +7,7 @@ package container
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"testing"
@@ -41,6 +42,10 @@ const (
 	envVarName2           = "TEST_VAR_2"
 	envVarValue2          = "81"
 	secretName            = "test-app-test-container"
+
+	tempVolName      = "TempVolume"
+	tempVolMountPath = "/tmpfs"
+	testResourceID   = "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
 )
 
 func createContext(t *testing.T) context.Context {
@@ -969,11 +974,100 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
-	const tempVolName = "TempVolume"
-	const tempVolMountPath = "/tmpfs"
-	testResourceID := "/subscriptions/sub/resourceGroups/rg/providers/Microsoft.KeyVault/vaults/azure-kv"
+func Test_PrepareFederatedIdentity(t *testing.T) {
+	appName := "testapp"
+	namespace := "testns"
 
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+			Volumes: map[string]datamodel.VolumeProperties{
+				tempVolName: {
+					Kind: datamodel.Persistent,
+					Persistent: &datamodel.PersistentVolume{
+						VolumeBase: datamodel.VolumeBase{
+							MountPath: tempVolMountPath,
+						},
+						Source: testResourceID,
+					},
+				},
+			},
+		},
+	}
+
+	container := makeResource(t, properties)
+
+	const identityID = "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
+
+	fedIdTests := []struct {
+		desc           string
+		computedValues map[string]any
+
+		// expected values
+		err     error
+		saName  string
+		outRes  []string
+		outDeps []outputresource.Dependency
+	}{
+		{
+			desc:           "nil computeValues",
+			computedValues: nil,
+			err:            nil,
+			saName:         "default",
+			outRes:         []string{},
+			outDeps:        []outputresource.Dependency{},
+		},
+		{
+			desc: "clientID not found",
+			computedValues: map[string]any{
+				handlers.AzureIdentityTypeKey: string(rp.AzureIdentityWorkload),
+				handlers.AzureIdentityIDKey:   identityID,
+			},
+			err:     errors.New("clientID not found"),
+			saName:  "",
+			outRes:  []string{},
+			outDeps: []outputresource.Dependency{},
+		},
+		{
+			desc: "valid identity",
+			computedValues: map[string]any{
+				handlers.AzureIdentityTypeKey:       string(rp.AzureIdentityWorkload),
+				handlers.AzureIdentityIDKey:         identityID,
+				handlers.AzureIdentityClientIDKey:   "fakeID",
+				handlers.AzureIdentityTenantIDKey:   "fakeTenantID",
+				handlers.FederatedIdentityIssuerKey: "https://fakeIssuer",
+			},
+			err:    nil,
+			saName: "testapp-test-container",
+			outRes: []string{outputresource.LocalIDServiceAccount, outputresource.LocalIDFederatedIdentity},
+			outDeps: []outputresource.Dependency{
+				{LocalID: outputresource.LocalIDServiceAccount},
+				{LocalID: outputresource.LocalIDFederatedIdentity},
+			},
+		},
+	}
+
+	testRenderer := Renderer{}
+
+	for _, tc := range fedIdTests {
+		t.Run(tc.desc, func(t *testing.T) {
+			sa, resources, deps, err := testRenderer.prepareFederatedIdentity(appName, namespace, tc.computedValues, container)
+			if tc.err != nil {
+				require.ErrorContains(t, err, tc.err.Error())
+			}
+			require.Equal(t, tc.saName, sa)
+			for i, id := range tc.outRes {
+				require.Equal(t, id, resources[i].LocalID)
+			}
+			require.ElementsMatch(t, tc.outDeps, deps)
+		})
+	}
+}
+
+func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: applicationResourceID,
@@ -1006,7 +1100,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					},
 					Kind: datamodel.AzureKeyVaultVolume,
 					AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-						Identity: datamodel.AzureIdentity{Kind: datamodel.AzureIdentitySystemAssigned},
+						Identity: rp.IdentitySettings{Kind: rp.AzureIdentitySystemAssigned},
 						Resource: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
 						Secrets: map[string]datamodel.SecretObjectProperties{
 							"my-secret": {

@@ -33,7 +33,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
 				Identifier: aws.String(testAWSResourceName),
@@ -41,7 +41,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 			},
 		}, nil)
 
-	testOptions.AWSClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().DeleteResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.DeleteResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -50,8 +50,8 @@ func Test_DeleteAWSResource(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -79,14 +79,14 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
 			Message: aws.String("Resource not found"),
 		})
 
 	awsController, err := NewDeleteAWSResource(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

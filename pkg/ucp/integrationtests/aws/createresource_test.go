@@ -23,7 +23,7 @@ import (
 )
 
 func Test_CreateAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		notfound := types.ResourceNotFoundException{

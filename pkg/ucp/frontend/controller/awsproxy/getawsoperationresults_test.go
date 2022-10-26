@@ -25,7 +25,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -34,8 +34,8 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
@@ -55,7 +55,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	defer cancel()
 
 	testOptions := setupTest(t)
-	testOptions.AWSClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
@@ -64,8 +64,8 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 		}, nil)
 
 	awsController, err := NewGetAWSOperationResults(ctrl.Options{
-		AWSClient: testOptions.AWSClient,
-		DB:        testOptions.StorageClient,
+		AWSCloudControlClient: testOptions.AWSCloudControlClient,
+		DB:                    testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

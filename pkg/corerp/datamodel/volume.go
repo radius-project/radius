@@ -35,6 +35,8 @@ func (h *VolumeResource) ResourceTypeName() string {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (h *VolumeResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
+	h.ComputedValues = do.ComputedValues
+	h.SecretValues = do.SecretValues
 }
 
 // OutputResources returns the output resources array.
@@ -56,28 +58,10 @@ type VolumeResourceProperties struct {
 	AzureKeyVault *AzureKeyVaultVolumeProperties `json:"azureKeyVault,omitempty"`
 }
 
-type AzureIdentityKind string
-
-const (
-	AzureIdentityNone           AzureIdentityKind = "None"
-	AzureIdentityWorkload       AzureIdentityKind = "Workload"
-	AzureIdentitySystemAssigned AzureIdentityKind = "SystemAssigned"
-)
-
-// AzureIdentity represents the azure identity info to access azure resource, such as Key vault.
-type AzureIdentity struct {
-	// Kind represents the type of authentication.
-	Kind AzureIdentityKind `json:"kind"`
-	// ClientID represents the client id of workload identity or user assigned managed identity.
-	ClientID string `json:"clientId,omitempty"`
-	// TenantID represents the tenant id for the resource.
-	TenantID string `json:"tenantId,omitempty"`
-}
-
 // AzureKeyVaultVolumeProperties represents the volume for Azure Keyvault.
 type AzureKeyVaultVolumeProperties struct {
 	// The identity is to access keyvault
-	Identity AzureIdentity `json:"identity"`
+	Identity rp.IdentitySettings `json:"identity"`
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]CertificateObjectProperties `json:"certificates,omitempty"`
 	// The KeyVault keys that this volume exposes

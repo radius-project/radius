@@ -14,8 +14,8 @@ import (
 // Didn't see an interface for aws-sdk-go-v2, v1 had: https://pkg.go.dev/github.com/aws/aws-sdk-go/service/cloudcontrolapi/cloudcontrolapiiface
 // This is most likely due to using json schemas to define types rather than crafting by hand. There are significantly less functions in v2, so a small mock.
 //
-//go:generate mockgen -destination=./mock_awsclient.go -package=aws -self_package github.com/project-radius/radius/pkg/ucp/aws github.com/project-radius/radius/pkg/ucp/aws AWSClient
-type AWSClient interface {
+//go:generate mockgen -destination=./mock_awscloudcontrolclient.go -package=aws -self_package github.com/project-radius/radius/pkg/ucp/aws github.com/project-radius/radius/pkg/ucp/aws AWSCloudControlClient
+type AWSCloudControlClient interface {
 	GetResource(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error)
 	ListResources(ctx context.Context, params *cloudcontrol.ListResourcesInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourcesOutput, error)
 	DeleteResource(ctx context.Context, params *cloudcontrol.DeleteResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.DeleteResourceOutput, error)
@@ -26,4 +26,4 @@ type AWSClient interface {
 	ListResourceRequests(ctx context.Context, params *cloudcontrol.ListResourceRequestsInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.ListResourceRequestsOutput, error)
 }
 
-var _ = AWSClient(&cloudcontrol.Client{})
+var _ = AWSCloudControlClient(&cloudcontrol.Client{})
