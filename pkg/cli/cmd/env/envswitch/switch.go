@@ -29,7 +29,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:     "switch [environment]",
 		Short:   "Switch the current environment",
 		Long:    "Switch the current environment",
-		Args:    cobra.MinimumNArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		Example: `rad env switch newEnvironment`,
 		RunE:    framework.RunCommand(runner),
 	}
@@ -83,7 +83,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	r.EnvironmentId = r.Scope.Append(resources.TypeSegment{Type: "Applications.Core/environments", Name: r.EnvironmentName})
 
-	// HEY YOU: Keep the logic below here in sync with `rad app switch`
+	// Keep the logic below here in sync with `rad app switch`
 	if strings.EqualFold(r.Workspace.Environment, r.EnvironmentId.String()) {
 		r.Output.LogInfo("Default environment is already set to %v", r.EnvironmentName)
 		return nil
@@ -94,11 +94,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	//ignore envResource as we only check for existence of environment
+	// Validate that the environment exists
 	_, err = r.AppManagementClient.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch environments as requested environment %s does not exist.\n", r.EnvironmentName)}
+	} else if err != nil {
+		return err
 	}
 
 	if r.Workspace.Environment == "" {

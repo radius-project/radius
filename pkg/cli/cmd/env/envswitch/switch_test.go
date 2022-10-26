@@ -34,7 +34,7 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Switch Command with valid command",
+			Name:          "Switch Command with valid arguments",
 			Input:         []string{"validEnvToSwitchTo"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{

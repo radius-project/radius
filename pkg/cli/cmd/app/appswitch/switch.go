@@ -26,13 +26,12 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		Use:     "switch",
 		Short:   "Switch the default RAD application",
 		Long:    "Switches the default RAD application",
-		Args:    cobra.ExactArgs(1),
+		Args:    cobra.MaximumNArgs(1),
 		Example: `rad app switch newApplication`,
 		RunE:    framework.RunCommand(runner),
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
-	commonflags.AddEnvironmentNameFlag(cmd)
 	commonflags.AddApplicationNameFlag(cmd)
 
 	return cmd, runner
@@ -70,7 +69,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// HEY YOU: Keep the logic below here in sync with `rad env switch``
+	// Keep the logic below here in sync with `rad env switch``
 	if strings.EqualFold(r.Workspace.DefaultApplication, r.ApplicationName) {
 		r.Output.LogInfo("Default application is already set to %v", r.ApplicationName)
 		return nil
@@ -81,10 +80,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	//ignore applicationresource as we only check for existence of application
+	// Validate that the application exists
 	_, err = r.AppManagementClient.ShowApplication(cmd.Context(), r.ApplicationName)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch applications as the requested application %s does not exist.\n", r.ApplicationName)}
+	} else if err != nil {
+		return err
 	}
 
 	if workspace.DefaultApplication == "" {
