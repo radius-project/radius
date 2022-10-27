@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
@@ -22,7 +23,8 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
 		rgID := "/planes/radius/local/resourceGroups/test-rg"
-		rgURL := fmt.Sprintf("%s%s", url, rgID)
+		apiVersion := v20220901privatepreview.Version
+		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
 
 		t.Cleanup(func() {
 			deleteResourceGroup(t, roundTripper, rgURL)
@@ -32,7 +34,8 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		createResourceGroup(t, roundTripper, rgURL)
 
 		// List Resource Groups
-		rgs := listResourceGroups(t, roundTripper, fmt.Sprintf("%s/planes/radius/local/resourceGroups", url))
+		listRGsURL := fmt.Sprintf("%s%s?api-version=%s", url, "/planes/radius/local/resourceGroups", apiVersion)
+		rgs := listResourceGroups(t, roundTripper, listRGsURL)
 		require.GreaterOrEqual(t, len(rgs), 1)
 
 		// Get Resource Group
@@ -69,7 +72,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 	t.Logf("Resource group: %s created/updated successfully", url)
 }
 
-func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []rest.ResourceGroup {
+func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []interface{} {
 	listRgsRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -85,11 +88,12 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var listOfResourceGroups rest.ResourceGroupList
+
+	var listOfResourceGroups []interface{}
 	err = json.Unmarshal(payload, &listOfResourceGroups)
 	require.NoError(t, err)
 
-	return listOfResourceGroups.Value
+	return listOfResourceGroups
 }
 
 func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (rest.ResourceGroup, int) {

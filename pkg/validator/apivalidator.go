@@ -18,8 +18,12 @@ import (
 )
 
 const (
-	UCPEndpointType = "ucp"
-	UCPApiVersion   = "2022-03-15-privatepreview"
+	// This comes from the path: /Users/vinayada/radius/radius/swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
+	// This spec path is parsed and this string needs to be provider/resourceType.
+	// For UCP, the provider is UCP and since all UCP resource types are in a single json, the file is named ucp.json.
+	// Therefore, resourceType = ucp
+	UCPEndpointType = "ucp/ucp"
+	UCPApiVersion   = "2022-09-01-privatepreview"
 )
 
 // APIValidator is the middleware to validate incoming request with OpenAPI spec.
@@ -36,7 +40,7 @@ func APIValidator(loader *Loader) func(h http.Handler) http.Handler {
 			}
 
 			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
-			v, ok := loader.GetValidator(rID.Type(), apiVersion)
+			v, ok := loader.GetValidator(rID.Type(), apiVersion, false)
 			if !ok {
 				resp := unsupportedAPIVersionResponse(apiVersion, rID.Type(), loader.SupportedVersions(rID.Type()))
 				if err := resp.Apply(r.Context(), w, r); err != nil {
@@ -65,9 +69,8 @@ func APIValidatorUCP(loader *Loader) func(h http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			endpointType := UCPEndpointType
-			// TODO: Currently, UCP APIs do not support versioning. Using a dummy version here
-			apiVersion := UCPApiVersion
-			v, ok := loader.GetValidator(endpointType, apiVersion)
+			apiVersion := r.URL.Query().Get(APIVersionQueryKey)
+			v, ok := loader.GetValidator(endpointType, apiVersion, true)
 			if !ok {
 				resp := unsupportedAPIVersionResponse(apiVersion, endpointType, loader.SupportedVersions(endpointType))
 				if err := resp.Apply(r.Context(), w, r); err != nil {

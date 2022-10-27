@@ -9,9 +9,13 @@ import (
 	"net/http"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -42,16 +46,18 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 			"kind": "UCPNative"
 		}
 	}`)
-	path := "/planes/radius/local"
+	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
-	plane := rest.Plane{
-		ID:   "/planes/radius/local",
-		Type: "System.Planes/radius",
-		Name: "local",
-		Properties: rest.PlaneProperties{
-			ResourceProviders: map[string]string{
-				"Applications.Core":       "http://localhost:9080/",
-				"Applications.Connection": "http://localhost:9081/",
+	dataModelPlane := datamodel.Plane{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local",
+			Type: "System.Planes/radius",
+			Name: "local",
+		},
+		Properties: datamodel.PlaneProperties{
+			ResourceProviders: map[string]*string{
+				"Applications.Core":       to.Ptr("http://localhost:9080/"),
+				"Applications.Connection": to.Ptr("http://localhost:9081/"),
 			},
 			Kind: rest.PlaneKindUCPNative,
 		},
@@ -59,21 +65,34 @@ func Test_CreateUCPNativePlane(t *testing.T) {
 
 	o := &store.Object{
 		Metadata: store.Metadata{
-			ID: plane.ID,
+			ID: dataModelPlane.TrackedResource.ID,
 		},
-		Data: plane,
+		Data: dataModelPlane,
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any())
 	mockStorageClient.EXPECT().Save(gomock.Any(), o, gomock.Any())
 
-	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 
-	expectedResponse := armrpc_rest.NewOKResponse(plane)
+	versionedPlane := v20220901privatepreview.PlaneResource{
+		Properties: &v20220901privatepreview.PlaneResourceProperties{
+			Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+			ResourceProviders: map[string]*string{
+				"Applications.Connection": to.Ptr("http://localhost:9081/"),
+				"Applications.Core":       to.Ptr("http://localhost:9080/"),
+			},
+		},
+		ID:   to.Ptr("/planes/radius/local"),
+		Name: to.Ptr("local"),
+		Type: to.Ptr("System.Planes/radius"),
+	}
+
+	expectedResponse := armrpc_rest.NewOKResponse(&versionedPlane)
 	response, err := planesCtrl.Run(ctx, nil, request)
-
 	require.NoError(t, err)
+
 	assert.DeepEqual(t, expectedResponse, response)
 }
 
@@ -95,16 +114,16 @@ func Test_CreateUCPNativePlane_NoResourceProviders(t *testing.T) {
 			"kind": "UCPNative"
 		}
 	}`)
-	path := "/planes/radius/local"
+	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
-	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 	badResponse := &armrpc_rest.BadRequestResponse{
 		Body: armrpc_v1.ErrorResponse{
 			Error: armrpc_v1.ErrorDetails{
 				Code:    armrpc_v1.CodeInvalid,
-				Message: "At least one resource provider must be configured for UCP native plane: local",
+				Message: "$.properties.resourceProviders must be at least one provided.",
 			},
 		},
 	}
@@ -130,16 +149,16 @@ func Test_CreateAzurePlane_NoURL(t *testing.T) {
 			"kind": "Azure"
 		}
 	}`)
-	path := "/planes/azure/azurecloud"
+	url := "/planes/azure/azurecloud?api-version=2022-09-01-privatepreview"
 
-	request, err := http.NewRequest(http.MethodPut, path, bytes.NewBuffer(body))
+	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 	badResponse := &armrpc_rest.BadRequestResponse{
 		Body: armrpc_v1.ErrorResponse{
 			Error: armrpc_v1.ErrorDetails{
 				Code:    armrpc_v1.CodeInvalid,
-				Message: "URL must be specified for plane: azurecloud",
+				Message: "$.properties.URL must be non-empty string.",
 			},
 		},
 	}

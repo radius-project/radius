@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 )
 

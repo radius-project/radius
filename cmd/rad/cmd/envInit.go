@@ -275,7 +275,17 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
 	//
 	// We'll flesh this out more when we add explicit commands for managing resource groups.
-	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
+	var connection workspaces.Connection
+	if workspace != nil {
+		connection, err = workspace.Connect()
+		if err != nil {
+			return err
+		}
+	} else {
+		connection = &workspaces.KubernetesConnection{Context: contextName}
+	}
+
+	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), connection, workspaceName)
 	if err != nil {
 		return err
 	}

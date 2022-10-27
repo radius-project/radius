@@ -3,7 +3,7 @@
     "info": {
       "title": "UCP APIs",
       "description": "REST API for UCP Plane Resource",
-      "version": "2022-03-15-privatepreview"
+      "version": "2022-09-01-privatepreview"
     },
     "host": "api.ucp.dev",
     "schemes": [
@@ -41,7 +41,11 @@
           "tags": [
             "Planes"
           ],
-          "parameters": [],
+          "parameters": [
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            }
+          ],
           "responses": {
             "200": {
               "description": "Plane list.",
@@ -80,6 +84,9 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -126,6 +133,9 @@
               "schema": {
                 "$ref": "#/definitions/PlaneResource"
               }
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -169,6 +179,9 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -208,6 +221,9 @@
             },
             {
               "$ref": "#/parameters/PlaneNameParameter"
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -251,6 +267,9 @@
             },
             {
               "$ref": "#/parameters/ResourceGroupNameParameter"
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -300,6 +319,9 @@
               "schema": {
                 "$ref": "#/definitions/ResourceGroupResource"
               }
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -346,6 +368,9 @@
             },
             {
               "$ref": "#/parameters/ResourceGroupNameParameter"
+            },
+            {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
             }
           ],
           "responses": {
@@ -744,6 +769,11 @@
       "PlaneResource": {
         "description": "UCP Plane.",
         "type": "object",
+        "allOf": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          }
+        ],
         "required": [
           "properties"
         ],
@@ -783,7 +813,8 @@
         "description": "Plane kinds supported.",
         "enum": [
           "UCPNative",
-          "Azure"
+          "Azure",
+          "AWS"
         ],
         "x-ms-enum": {
           "name": "PlaneKind",
