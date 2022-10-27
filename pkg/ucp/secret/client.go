@@ -16,14 +16,13 @@ import (
 type Client interface {
 	// Save creates or updates secrets. 
 	// Returns ErrInvalid in case of invalid input.
-	// Returns ErrInternalServer in case of failure during saving.
 	Save(ctx context.Context, name string, value []byte) error
+
 	// Delete deletes secrets of id.
-	// Returns ErrInternalServer in case of failure during saving.
 	Delete(ctx context.Context, name string) error
+
 	// Get gets secret name if present else returns an error.
 	// Returns ErrNotFound in case of invalid input.
-	// Returns ErrInternalServer in case of failure during saving.
 	Get(ctx context.Context, name string) ([]byte, error)
 }
 
@@ -75,25 +74,6 @@ func (e *ErrInvalid) Error() string {
 }
 
 func (e *ErrInvalid) Is(target error) bool {
-	t, ok := target.(*ErrInvalid)
-	if !ok {
-		return false
-	}
-
-	return (e.Message == t.Message || t.Message == "")
-}
-
-var _ error = (*ErrInternalServer)(nil)
-
-type ErrInternalServer struct {
-	Message string
-}
-
-func (e *ErrInternalServer) Error() string {
-	return e.Message
-}
-
-func (e *ErrInternalServer) Is(target error) bool {
 	t, ok := target.(*ErrInvalid)
 	if !ok {
 		return false
