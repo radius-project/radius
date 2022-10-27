@@ -107,7 +107,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return fmt.Errorf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
 	if recipeProperties != nil {
 		recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{

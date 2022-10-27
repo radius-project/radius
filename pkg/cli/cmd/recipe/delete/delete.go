@@ -90,7 +90,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	recipeProperties := envResource.Properties.Recipes
 
 	if recipeProperties[r.RecipeName] == nil {
-		return fmt.Errorf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)}
 	}
 	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)

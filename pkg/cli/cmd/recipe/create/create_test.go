@@ -96,6 +96,9 @@ func Test_Run(t *testing.T) {
 							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
+					Compute: &v20220315privatepreview.KubernetesCompute{
+						Namespace: to.Ptr("default"),
+					},
 				},
 			}
 
