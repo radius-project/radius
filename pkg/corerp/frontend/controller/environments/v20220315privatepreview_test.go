@@ -30,3 +30,19 @@ func getTestModels20220315privatepreview() (*v20220315privatepreview.Environment
 
 	return envInput, envDataModel, expectedOutput
 }
+
+func getTestModelsWithDevRecipes20220315privatepreview() (*v20220315privatepreview.EnvironmentResource, *datamodel.Environment, *v20220315privatepreview.EnvironmentResource) {
+	rawInput := radiustesting.ReadFixture("environmentwithdevrecipes20220315privatepreview_input.json")
+	envInput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawInput, envInput)
+
+	rawDataModel := radiustesting.ReadFixture("environmentwithdevrecipes20220315privatepreview_datamodel.json")
+	envDataModel := &datamodel.Environment{}
+	_ = json.Unmarshal(rawDataModel, envDataModel)
+
+	rawExpectedOutput := radiustesting.ReadFixture("environmentwithdevrecipes20220315privatepreview_output.json")
+	expectedOutput := &v20220315privatepreview.EnvironmentResource{}
+	_ = json.Unmarshal(rawExpectedOutput, expectedOutput)
+
+	return envInput, envDataModel, expectedOutput
+}

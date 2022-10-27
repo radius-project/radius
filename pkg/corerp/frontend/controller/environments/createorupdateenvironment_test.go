@@ -391,6 +391,54 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
 	}
+
+	t.Run("Add dev recipes successfully", func(t *testing.T) {
+		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
+			})
+		mStorageClient.
+			EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			})
+
+		expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
+		expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
+		expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
+
+		mStorageClient.
+			EXPECT().
+			Save(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+				obj.ETag = "new-resource-etag"
+				obj.Data = envDataModel
+				return nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewCreateOrUpdateEnvironment(opts)
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, w, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+		require.Equal(t, expectedOutput, actualOutput)
+	})
 }
 
 func TestParseRepoPathForMetadata(t *testing.T) {
