@@ -27,7 +27,7 @@ type Client interface {
 }
 
 // SaveSecret saves a generic secret value using secret client.
-func SaveSecret[T any](ctx context.Context, name string, value T, client Client) error {
+func SaveSecret[T any](ctx context.Context, client Client,name string, value T) error {
 	secretData, err := json.Marshal(value)
 	if err != nil {
 		return err
@@ -36,7 +36,7 @@ func SaveSecret[T any](ctx context.Context, name string, value T, client Client)
 }
 
 // GetSecret gets a generic secret value using secret client.
-func GetSecret[T any](ctx context.Context, name string, client Client) (T, error) {
+func GetSecret[T any](ctx context.Context, client Client, name string) (T, error) {
 	secretData, err := client.Get(ctx, name)
 	var res T
 	if err != nil {

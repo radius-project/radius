@@ -48,7 +48,7 @@ func Test_SaveSecret(t *testing.T) {
 					Save(context.Background(), testSecretName, gomock.Any()).
 					Return(saveError).Times(1)
 			}
-			err := SaveSecret(ctx, testSecretName, tt.secret, tt.secretClient)
+			err := SaveSecret(ctx, tt.secretClient, testSecretName, tt.secret)
 			if tt.isSuccess {
 				require.NoError(t, err)
 			} else {
@@ -87,7 +87,7 @@ func Test_GetSecret(t *testing.T) {
 					Get(context.Background(), testSecretName).
 					Return(nil, getError).Times(1)
 			}
-			secretResponse, err := GetSecret[testSecretObject](ctx, testSecretName, tt.secretClient)
+			secretResponse, err := GetSecret[testSecretObject](ctx, tt.secretClient, testSecretName)
 			if tt.isSuccess {
 				require.NoError(t, err)
 				require.Equal(t, secretResponse.ClientID, "clientId")
