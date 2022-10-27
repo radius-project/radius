@@ -240,19 +240,12 @@ func initMocksWithCloudProvider(kubernetesMock *kubernetes.MockInterface, prompt
 	initGetKubeContextSuccess(kubernetesMock)
 	initKubeContextWithKind(prompterMock)
 	initHelmMockRadiusInstalled(helmMock)
-	initRadiusReInstallYes(prompterMock)
+	initPromptYes(prompterMock)
 	initEnvNamePrompt(prompterMock)
 	initNameSpacePrompt(prompterMock)
-	initAddCloudProviderPromptYes(prompterMock)
+	initPromptYes(prompterMock)
 	initSelectCloudProvider(prompterMock)
 	initParseCloudProvider(azureMock, prompterMock)
-	/*initAddCloudProviderPromptYes(prompterMock) // Y add azure provider
-	initAddCloudProviderPromptYes(prompterMock) // Y use default subscription
-	initAddCloudProviderPromptYes(prompterMock) // Y create RG
-	initSelectRGName(prompterMock)              // Use radius-rg as name
-	initEnvNamePrompt(prompterMock)             // Mock appID for cloud provider
-	initEnvNamePrompt(prompterMock)             // Mock password for cloud provider
-	initEnvNamePrompt(prompterMock)             // Mock tenant for cloud provider*/
 	initAddCloudProviderPromptNo(prompterMock) // N dont add another cloud provider
 }
 
@@ -336,12 +329,6 @@ func initRadiusReInstallNo(prompter *prompt.MockInterface) {
 		Return("N", nil).Times(1)
 }
 
-func initRadiusReInstallYes(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
-		Return("Y", nil).Times(1)
-}
-
 func initEnvNamePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
@@ -372,16 +359,10 @@ func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 		Return("N", nil).Times(1)
 }
 
-func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
+func initPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(gomock.Any()).
-		Return("y", nil).Times(1)
-}
-
-func initSelectRGName(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
-		Return("radius-rg", nil).Times(1)
+		Return("Y", nil).Times(1)
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface) {
