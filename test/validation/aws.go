@@ -12,12 +12,10 @@ import (
 	"time"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	awsclient "github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
-	"github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
+	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
@@ -36,9 +34,9 @@ type AWSResourceSet struct {
 	Resources []AWSResource
 }
 
-func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client aws.AWSCloudControlClient) {
+func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResourceSet, client awsclient.AWSCloudControlClient) {
 	for _, resource := range expected.Resources {
-		resourceType := getResourceTypeName(t, &resource)
+		resourceType := getResourceTypeName(ctx, t, &resource)
 		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			Identifier: to.StringPtr(resource.Name),
 			TypeName:   &resourceType,
@@ -55,15 +53,15 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	}
 }
 
-func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSCloudControlClient) error {
-	resourceType := getResourceTypeName(t, resource)
+func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client awsclient.AWSCloudControlClient) error {
+	resourceType := getResourceTypeName(ctx, t, resource)
 
 	// Check if the resource exists
 	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,
 	})
-	notFound := aws.IsAWSResourceNotFound(err)
+	notFound := awsclient.IsAWSResourceNotFound(err)
 	if notFound {
 		// Resource does not need to be deleted
 		return nil
@@ -85,32 +83,37 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	return err
 }
 
-func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client aws.AWSCloudControlClient) {
+func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client awsclient.AWSCloudControlClient) {
 	// Verify that the resource is indeed deleted
-	resourceType := getResourceTypeName(t, resource)
+	resourceType := getResourceTypeName(ctx, t, resource)
 	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		Identifier: to.StringPtr(resource.Name),
 		TypeName:   &resourceType,
 	})
 
-	notFound := aws.IsAWSResourceNotFound(err)
+	notFound := awsclient.IsAWSResourceNotFound(err)
 	require.True(t, notFound)
 }
 
-func getResourceIdentifier(t *testing.T, resourceType string, name string) string {
-	creds := credentials.NewStaticCredentials(os.Getenv("AWS_ACCESS_KEY_ID"), os.Getenv("AWS_SECRET_ACCESS_KEY"), "")
-	awsConfig := awsclient.NewConfig().WithCredentials(creds).WithMaxRetries(3)
-	mySession, err := session.NewSession(awsConfig)
-	require.NoError(t, err)
-	client := sts.New(mySession)
-	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-	require.NoError(t, err)
+func getResourceIdentifier(ctx context.Context, t *testing.T, resourceType string, name string) string {
+	accessKey := os.Getenv("AWS_ACCESS_KEY_ID")
+	secretAccessKey := os.Getenv("AWS_SECRET_ACCESS_KEY")
+	sessionToken := ""
 	region := os.Getenv("AWS_REGION")
+
+	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
+
+	stsClient := sts.New(sts.Options{
+		Credentials: credentialsProvider,
+	})
+	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
+	require.NoError(t, err)
+
 	return "/planes/aws/aws/accounts/" + *result.Account + "/regions/" + region + "/providers/" + resourceType + "/" + name
 }
 
-func getResourceTypeName(t *testing.T, resource *AWSResource) string {
-	id := getResourceIdentifier(t, resource.Type, resource.Name)
+func getResourceTypeName(ctx context.Context, t *testing.T, resource *AWSResource) string {
+	id := getResourceIdentifier(ctx, t, resource.Type, resource.Name)
 	resourceID, err := resources.Parse(id)
 	require.NoError(t, err)
 	resourceType := resources.ToAWSResourceType(resourceID)
