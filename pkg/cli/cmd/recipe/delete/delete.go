@@ -10,12 +10,12 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -92,11 +92,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if recipeProperties[r.RecipeName] == nil {
 		return fmt.Errorf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)
 	}
-	namespace := ""
-	switch v := envResource.Properties.Compute.(type) {
-	case *coreRpApps.KubernetesCompute:
-		namespace = *v.Namespace
-	}
+	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
