@@ -17,6 +17,7 @@ import (
 	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -438,6 +439,92 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		actualOutput := &v20220315privatepreview.EnvironmentResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
+	})
+
+	t.Run("Append dev recipes to user recipes successfully", func(t *testing.T) {
+		envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipes20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
+			})
+		mStorageClient.
+			EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			})
+
+		expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
+		expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
+		expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
+
+		mStorageClient.
+			EXPECT().
+			Save(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+				obj.ETag = "new-resource-etag"
+				obj.Data = envDataModel
+				return nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewCreateOrUpdateEnvironment(opts)
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, w, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+		require.Equal(t, expectedOutput, actualOutput)
+	})
+}
+
+func TestGetDevRecipes(t *testing.T) {
+	t.Run("Successfully returns dev recipes", func(t *testing.T) {
+		ctx := context.Background()
+		devRecipes, err := getDevRecipes(ctx, nil)
+		require.NoError(t, err)
+		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				ConnectorType: "Applications.Connector/mongoDatabases",
+				TemplatePath:  "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
+		}
+		require.Equal(t, devRecipes, expectedRecipes)
+	})
+
+	t.Run("Succssfully add dev recipes to existing recipes", func(t *testing.T) {
+		ctx := context.Background()
+		recipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"redis": datamodel.EnvironmentRecipeProperties{
+				ConnectorType: "Applications.Connector/redisCaches",
+				TemplatePath:  "radiusdev.azurecr.io/redis:1.0",
+			},
+		}
+		recipes, err := getDevRecipes(ctx, recipes)
+		require.NoError(t, err)
+		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"redis": datamodel.EnvironmentRecipeProperties{
+				ConnectorType: "Applications.Connector/redisCaches",
+				TemplatePath:  "radiusdev.azurecr.io/redis:1.0",
+			},
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				ConnectorType: "Applications.Connector/mongoDatabases",
+				TemplatePath:  "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
+		}
+		require.Equal(t, recipes, expectedRecipes)
 	})
 }
 
