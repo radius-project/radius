@@ -24,7 +24,7 @@ var (
 	// ResourceTypeNames is the array that holds resource types that needs async processing.
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
-		"Applications.Connector/mongoDatabases",
+		"Applications.Link/mongoDatabases",
 	}
 )
 

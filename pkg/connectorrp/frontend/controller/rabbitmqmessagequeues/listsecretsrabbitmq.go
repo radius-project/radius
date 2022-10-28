@@ -38,7 +38,7 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.Res
 
 	resource := &datamodel.RabbitMQMessageQueue{}
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
-	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Connector/rabbitMQMessageQueues/<resource_name>/listsecrets
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Link/rabbitMQMessageQueues/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {

@@ -22,10 +22,10 @@ using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
 
 @armNamespace
-@serviceTitle("Applications.Connector Management APIs")
-@doc("REST API for Applications.Connector DaprInvokeHttpRoute Resource")
+@serviceTitle("Applications.Link Management APIs")
+@doc("REST API for Applications.Link DaprInvokeHttpRoute Resource")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
-namespace Applications.Connector;
+namespace Applications.Link;
 
 @doc("DaprInvokeHttpRoute properties")
 @discriminator("kind")

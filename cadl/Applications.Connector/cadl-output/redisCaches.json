@@ -1,9 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management APIs",
+    "title": "Applications.Link Management APIs",
     "version": "0000-00-00",
-    "description": "REST API for Applications.Connector RedisCache Resource",
+    "description": "REST API for Applications.Link RedisCache Resource",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -47,7 +47,7 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Connector/redisCaches": {
+    "/{rootScope}/providers/Applications.Link/redisCaches": {
       "get": {
         "tags": [
           "RedisCaches"
@@ -81,7 +81,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}": {
+    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}": {
       "get": {
         "tags": [
           "RedisCaches"
@@ -260,7 +260,7 @@
         "x-ms-long-running-operation": true
       }
     },
-    "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
       "get": {
         "operationId": "Post",
         "description": "Lists secrets values for the specified RedisCache resource",
@@ -305,7 +305,7 @@
         }
       }
     },
-    "/providers/Applications.Connector/operations": {
+    "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
           "Operations"

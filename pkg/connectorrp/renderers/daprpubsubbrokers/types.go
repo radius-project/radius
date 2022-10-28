@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ResourceType     = "Applications.Connector/daprPubSubBrokers"
+	ResourceType     = "Applications.Link/daprPubSubBrokers"
 	TopicNameKey     = "topic"
 	NamespaceNameKey = "namespace"
 	PubSubNameKey    = "pubSubName"

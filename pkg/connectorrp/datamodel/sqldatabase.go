@@ -27,7 +27,7 @@ type SqlDatabase struct {
 }
 
 func (sql SqlDatabase) ResourceTypeName() string {
-	return "Applications.Connector/sqlDatabases"
+	return "Applications.Link/sqlDatabases"
 }
 
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.

@@ -21,7 +21,7 @@ import (
 
 var _ ctrl.Controller = (*DeleteResource)(nil)
 
-// DeleteResource is the async operation controller to delete Applications.Connector resource.
+// DeleteResource is the async operation controller to delete Applications.Link resource.
 type DeleteResource struct {
 	ctrl.BaseController
 }

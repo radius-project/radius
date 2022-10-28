@@ -1,6 +1,6 @@
 {
     "location": "West US",
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprPubSubBrokers/daprpubsub0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprPubSubBrokers/daprpubsub0",
     "name": "daprpubsub0",
     "properties": {
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",

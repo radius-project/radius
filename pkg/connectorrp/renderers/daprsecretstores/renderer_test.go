@@ -49,9 +49,9 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -74,9 +74,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -117,7 +117,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
-				"type":    "Applications.Connector/daprSecretStores",
+				"type":    "Applications.Link/daprSecretStores",
 				"version": "v1",
 				"metadata": []map[string]interface{}{
 					{
@@ -136,9 +136,9 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -161,9 +161,9 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -189,9 +189,9 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -218,9 +218,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -247,9 +247,9 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 	renderer := Renderer{SupportedSecretStoreKindValues}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.DaprSecretStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

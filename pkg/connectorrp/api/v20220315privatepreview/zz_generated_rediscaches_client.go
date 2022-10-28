@@ -79,7 +79,7 @@ func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, redisCacheN
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
@@ -127,7 +127,7 @@ func (client *RedisCachesClient) Delete(ctx context.Context, redisCacheName stri
 
 // deleteCreateRequest creates the Delete request.
 func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
@@ -166,7 +166,7 @@ func (client *RedisCachesClient) Get(ctx context.Context, redisCacheName string,
 
 // getCreateRequest creates the Get request.
 func (client *RedisCachesClient) getCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")
@@ -226,7 +226,7 @@ func (client *RedisCachesClient) NewListByRootScopePager(options *RedisCachesCli
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *RedisCachesClient) listByRootScopeCreateRequest(ctx context.Context, options *RedisCachesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches"
+	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
@@ -270,7 +270,7 @@ func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName
 
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, redisCacheName string, options *RedisCachesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/redisCaches/{redisCacheName}/listSecrets"
+	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if redisCacheName == "" {
 		return nil, errors.New("parameter redisCacheName cannot be empty")

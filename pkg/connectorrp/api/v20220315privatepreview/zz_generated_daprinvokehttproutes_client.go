@@ -79,7 +79,7 @@ func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, da
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
@@ -128,7 +128,7 @@ func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, daprInvoke
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
@@ -168,7 +168,7 @@ func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, daprInvokeHTT
 
 // getCreateRequest creates the Get request.
 func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
 		return nil, errors.New("parameter daprInvokeHTTPRouteName cannot be empty")
@@ -228,7 +228,7 @@ func (client *DaprInvokeHTTPRoutesClient) NewListByRootScopePager(options *DaprI
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *DaprInvokeHTTPRoutesClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprInvokeHTTPRoutesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprInvokeHttpRoutes"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {

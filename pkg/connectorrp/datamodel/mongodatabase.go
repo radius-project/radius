@@ -32,11 +32,11 @@ type MongoDatabaseResponse struct {
 }
 
 func (mongo MongoDatabase) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+	return "Applications.Link/mongoDatabases"
 }
 
 func (mongo MongoDatabaseResponse) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+	return "Applications.Link/mongoDatabases"
 }
 
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
@@ -67,5 +67,5 @@ func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
 }
 
 func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+	return "Applications.Link/mongoDatabases"
 }

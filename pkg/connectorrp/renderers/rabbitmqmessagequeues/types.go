@@ -5,6 +5,6 @@
 
 package rabbitmqmessagequeues
 
-const ResourceType = "Applications.Connector/rabbitMQMessageQueues"
+const ResourceType = "Applications.Link/rabbitMQMessageQueues"
 
 const QueueNameKey = "queue"

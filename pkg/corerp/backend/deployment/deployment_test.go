@@ -169,7 +169,7 @@ func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
 	return connectorrp_dm.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo",
 			},
 		},
 		Properties: connectorrp_dm.MongoDatabaseProperties{
@@ -251,7 +251,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
 		requiredResources := []resources.ID{depId1, depId2}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -329,7 +329,7 @@ func Test_Render(t *testing.T) {
 		mongoResource := connectorrp_dm.MongoDatabase{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo",
 				},
 			},
 			Properties: connectorrp_dm.MongoDatabaseProperties{
@@ -1065,7 +1065,7 @@ func Test_getResourceDataByID(t *testing.T) {
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
-		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
 		mongoResource := buildMongoDBConnectorWithRecipe()
 		mr := store.Object{
 			Metadata: store.Metadata{

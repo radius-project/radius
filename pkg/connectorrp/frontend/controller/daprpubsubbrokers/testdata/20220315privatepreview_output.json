@@ -1,5 +1,5 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.connector/daprpubsubbrokers/daprpubsub0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/daprpubsubbrokers/daprpubsub0",
     "location": "West US",
     "name": "daprpubsub0",
     "properties": {
@@ -27,5 +27,5 @@
         "lastModifiedByType": "User"
     },
     "tags": {},
-    "type": "applications.connector/daprpubsubbrokers"
+    "type": "applications.link/daprpubsubbrokers"
 }

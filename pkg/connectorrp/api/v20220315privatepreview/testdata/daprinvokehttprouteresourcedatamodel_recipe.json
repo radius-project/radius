@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprInvokeHttpRoutes/daprHttpRoute0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0",
     "name": "daprHttpRoute0",
-    "type": "Applications.Connector/daprInvokeHttpRoutes",
+    "type": "Applications.Link/daprInvokeHttpRoutes",
     "systemData": {
         "createdBy": "fakeid@live.com",
         "createdByType": "User",

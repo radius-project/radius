@@ -42,7 +42,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-privatepreview' = {
+resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
   name: 'gnrc-scs'
   location: location
   properties: {

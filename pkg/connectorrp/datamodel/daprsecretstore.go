@@ -34,7 +34,7 @@ type DaprSecretStore struct {
 }
 
 func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
-	return "Applications.Connector/daprSecretStores"
+	return "Applications.Link/daprSecretStores"
 }
 
 // DaprSecretStoreProperties represents the properties of DaprSecretStore resource.

@@ -1,0 +1,426 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Link Management APIs",
+    "description": "REST APIs for Applications.Link/redisCaches",
+    "version": "2022-03-15-privatepreview"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/{rootScope}/providers/Applications.Link/redisCaches": {
+      "get": {
+        "description": "Lists information about all redisCache resources in the given root scope",
+        "operationId": "RedisCaches_ListByRootScope",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesListByRootScope": {
+            "$ref": "./examples/RedisCachesListByRootScope.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of RedisCache resources",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheList"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}": {
+      "get": {
+        "description": "Retrieves information about a redisCache resource",
+        "operationId": "RedisCaches_Get",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesGet": {
+            "$ref": "./examples/RedisCachesGet.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RedisCache resource",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResponseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Creates or updates a RedisCache resource",
+        "operationId": "RedisCaches_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesPut": {
+            "$ref": "./examples/RedisCachesPut.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          },
+          {
+            "name": "RedisCacheParameters",
+            "description": "redisCache create parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request was successful; response contains the redisCache resource",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResponseResource"
+            }
+          },
+          "201": {
+            "description": "The request was successful, resource will be updated asynchronously",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResponseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deletes an existing redisCache resource",
+        "operationId": "RedisCaches_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesDelete": {
+            "$ref": "./examples/RedisCachesDelete.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The RedisCache connector was successfully deleted."
+          },
+          "202": {
+            "description": "The RedisCache connector will be deleted asynchronously."
+          },
+          "204": {
+            "description": "The RedisCache connector does not exist."
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
+      "post": {
+        "description": "Lists secrets values for the specified RedisCache resource",
+        "operationId": "RedisCaches_listSecrets",
+        "produces": [
+          "application/json"
+        ],
+        "x-ms-examples": {
+          "RedisCachesGet": {
+            "$ref": "./examples/RedisCachesListSecrets.json"
+          }
+        },
+        "tags": [
+          "RedisCaches"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "global.json#/parameters/RootScopeParameter"
+          },
+          {
+            "$ref": "#/parameters/RedisCacheNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "RedisCache secrets",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "RedisCacheList": {
+      "description": "Object that includes an array of RedisCache and a possible link for next set",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "List of RedisCache resources",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/RedisCacheResponseResource"
+          }
+        },
+        "nextLink": {
+          "description": "The link used to fetch the next page of RedisCache list.",
+          "type": "string"
+        }
+      }
+    },
+    "RedisCacheResource": {
+      "description": "RedisCache connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/RedisCacheProperties"
+        }
+      }
+    },
+    "RedisCacheResponseResource": {
+      "description": "RedisCache connector",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "systemData": {
+          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+        },
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/RedisCacheResponseProperties"
+        }
+      }
+    },
+    "RedisCacheListSecretsResult": {
+      "description": "The secret values for the given RedisCache resource",
+      "$ref": "#/definitions/RedisCacheSecrets"
+    },
+    "RedisCacheSecrets": {
+      "description": "The secret values for the given RedisCache resource",
+      "properties": {
+        "connectionString": {
+          "description": "The connection string used to connect to the redis cache",
+          "type": "string",
+          "example": [
+            "myrediscache.redis.cache.windows.net:6380",
+            "redis.default.svc.cluster.local:6379"
+          ]
+        },
+        "password": {
+          "description": "The password for this Redis instance",
+          "type": "string"
+        }
+      }
+    },
+    "RedisCacheResponseProperties": {
+      "description": "RedisCache connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the redis cache connector at the time the operation was called"
+        },
+        "resource": {
+          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this connector",
+          "type": "string",
+          "example": [
+            "account::redis.id"
+          ]
+        },
+        "host": {
+          "description": "The host name of the target redis cache",
+          "type": "string",
+          "example": [
+            "myrediscache.redis.cache.windows.net",
+            "redis.default.svc.cluster.local"
+          ]
+        },
+        "port": {
+          "description": "The port value of the target redis cache",
+          "type": "integer",
+          "example": [
+            6380,
+            6379
+          ]
+        },
+        "username": {
+          "type": "string",
+          "description": "The username for redis",
+          "readOnly": true
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "RedisCacheProperties": {
+      "description": "RedisCache connector properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/RedisCacheResponseProperties"
+        }
+      ],
+      "properties": {
+        "secrets": {
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "#/definitions/RedisCacheSecrets"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "RedisCacheNameParameter": {
+      "description": "The name of the RedisCache connector resource",
+      "name": "redisCacheName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

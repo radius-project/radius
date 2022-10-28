@@ -44,7 +44,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 	return &v1.PaginatedList{
 		Value: []interface{}{
 			&v1.Operation{
-				Name: "Applications.Connector/operations/read",
+				Name: "Applications.Link/operations/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "operations",
@@ -54,7 +54,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/mongoDatabases/read",
+				Name: "Applications.Link/mongoDatabases/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "mongoDatabases",
@@ -64,7 +64,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/mongoDatabases/write",
+				Name: "Applications.Link/mongoDatabases/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "mongoDatabases",
@@ -74,7 +74,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/mongoDatabases/delete",
+				Name: "Applications.Link/mongoDatabases/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "mongoDatabases",
@@ -84,7 +84,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/mongoDatabases/listsecrets/action",
+				Name: "Applications.Link/mongoDatabases/listsecrets/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "mongoDatabases",
@@ -94,27 +94,27 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/register/action",
+				Name: "Applications.Link/register/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    ProviderNamespaceName,
-					Operation:   "Register Applications.Connector resource provider",
-					Description: "Registers 'Applications.Connector' resource provider with a subscription.",
+					Operation:   "Register Applications.Link resource provider",
+					Description: "Registers 'Applications.Link' resource provider with a subscription.",
 				},
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/unregister/action",
+				Name: "Applications.Link/unregister/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
-					Resource:    "Applications.Connector",
-					Operation:   "Unregister 'Applications.Connector' resource provider",
-					Description: "Unregisters 'Applications.Connector' resource provider with a subscription.",
+					Resource:    "Applications.Link",
+					Operation:   "Unregister 'Applications.Link' resource provider",
+					Description: "Unregisters 'Applications.Link' resource provider with a subscription.",
 				},
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/sqlDatabases/read",
+				Name: "Applications.Link/sqlDatabases/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "sqlDatabases",
@@ -124,7 +124,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/sqlDatabases/write",
+				Name: "Applications.Link/sqlDatabases/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "sqlDatabases",
@@ -134,7 +134,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/sqlDatabases/delete",
+				Name: "Applications.Link/sqlDatabases/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "sqlDatabases",
@@ -144,7 +144,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/redisCaches/read",
+				Name: "Applications.Link/redisCaches/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "redisCaches",
@@ -154,7 +154,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/redisCaches/write",
+				Name: "Applications.Link/redisCaches/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "redisCaches",
@@ -164,7 +164,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/redisCaches/delete",
+				Name: "Applications.Link/redisCaches/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "redisCaches",
@@ -174,7 +174,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/redisCaches/listsecrets/action",
+				Name: "Applications.Link/redisCaches/listsecrets/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "redisCaches",
@@ -184,7 +184,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/rabbitMQMessageQueues/read",
+				Name: "Applications.Link/rabbitMQMessageQueues/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "rabbitMQMessageQueues",
@@ -194,7 +194,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/rabbitMQMessageQueues/write",
+				Name: "Applications.Link/rabbitMQMessageQueues/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "rabbitMQMessageQueues",
@@ -204,7 +204,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/rabbitMQMessageQueues/delete",
+				Name: "Applications.Link/rabbitMQMessageQueues/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "rabbitMQMessageQueues",
@@ -214,7 +214,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/rabbitMQMessageQueues/listsecrets/action",
+				Name: "Applications.Link/rabbitMQMessageQueues/listsecrets/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "rabbitMQMessageQueues",
@@ -224,7 +224,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/extenders/read",
+				Name: "Applications.Link/extenders/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
@@ -234,7 +234,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/extenders/write",
+				Name: "Applications.Link/extenders/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
@@ -244,7 +244,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/extenders/delete",
+				Name: "Applications.Link/extenders/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
@@ -254,7 +254,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/extenders/listsecrets/action",
+				Name: "Applications.Link/extenders/listsecrets/action",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "extenders",
@@ -264,7 +264,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprInvokeHttpRoutes/read",
+				Name: "Applications.Link/daprInvokeHttpRoutes/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprInvokeHttpRoutes",
@@ -274,7 +274,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprInvokeHttpRoutes/write",
+				Name: "Applications.Link/daprInvokeHttpRoutes/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprInvokeHttpRoutes",
@@ -284,7 +284,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprInvokeHttpRoutes/delete",
+				Name: "Applications.Link/daprInvokeHttpRoutes/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprInvokeHttpRoutes",
@@ -294,7 +294,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprSecretStores/read",
+				Name: "Applications.Link/daprSecretStores/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprSecretStores",
@@ -304,7 +304,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprSecretStores/write",
+				Name: "Applications.Link/daprSecretStores/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprSecretStores",
@@ -314,7 +314,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprSecretStores/delete",
+				Name: "Applications.Link/daprSecretStores/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprSecretStores",
@@ -324,7 +324,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprStateStores/read",
+				Name: "Applications.Link/daprStateStores/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprStateStores",
@@ -334,7 +334,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprStateStores/write",
+				Name: "Applications.Link/daprStateStores/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprStateStores",
@@ -344,7 +344,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprStateStores/delete",
+				Name: "Applications.Link/daprStateStores/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprStateStores",
@@ -354,7 +354,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprPubSubBrokers/read",
+				Name: "Applications.Link/daprPubSubBrokers/read",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprPubSubBrokers",
@@ -364,7 +364,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprPubSubBrokers/write",
+				Name: "Applications.Link/daprPubSubBrokers/write",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprPubSubBrokers",
@@ -374,7 +374,7 @@ func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 				IsDataAction: false,
 			},
 			&v1.Operation{
-				Name: "Applications.Connector/daprPubSubBrokers/delete",
+				Name: "Applications.Link/daprPubSubBrokers/delete",
 				Display: &v1.OperationDisplayProperties{
 					Provider:    ProviderNamespaceName,
 					Resource:    "daprPubSubBrokers",

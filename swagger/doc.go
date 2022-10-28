@@ -17,7 +17,7 @@ We use OpenAPI Spec v2 as a source of truth to:
 
 OpenAPI specification files must be stored in the structured directory:
 
-  specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview
+  specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview
                 ------------                  ---------------------- ------- -------------------------
 				Product Name                  RP Namespace           preview API version
 				                                                        or

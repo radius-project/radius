@@ -27,7 +27,7 @@ import (
 
 const (
 	applicationName      = "test-app"
-	resourceID           = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprPubSubBrokers/test-pub-sub"
+	resourceID           = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/test-pub-sub"
 	applicationID        = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
 	environmentID        = "/subscriptions/test-subscription/resourceGroups/test-rg/providers/Applications.Core/environments/test-env"
 	serviceBusResourceID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace"

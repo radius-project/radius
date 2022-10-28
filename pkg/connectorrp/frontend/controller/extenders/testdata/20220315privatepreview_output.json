@@ -1,5 +1,5 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.connector/extenders/extender0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/extenders/extender0",
     "location": "West US",
     "name": "extender0",
     "properties": {
@@ -24,5 +24,5 @@
         "lastModifiedByType": "User"
     },
     "tags": {},
-    "type": "applications.connector/extenders"
+    "type": "applications.link/extenders"
 }

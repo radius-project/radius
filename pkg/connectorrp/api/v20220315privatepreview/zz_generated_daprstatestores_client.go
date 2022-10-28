@@ -79,7 +79,7 @@ func (client *DaprStateStoresClient) CreateOrUpdate(ctx context.Context, daprSta
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *DaprStateStoresClient) createOrUpdateCreateRequest(ctx context.Context, daprStateStoreName string, daprStateStoreParameters DaprStateStoreResource, options *DaprStateStoresClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
@@ -127,7 +127,7 @@ func (client *DaprStateStoresClient) Delete(ctx context.Context, daprStateStoreN
 
 // deleteCreateRequest creates the Delete request.
 func (client *DaprStateStoresClient) deleteCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoresClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
@@ -166,7 +166,7 @@ func (client *DaprStateStoresClient) Get(ctx context.Context, daprStateStoreName
 
 // getCreateRequest creates the Get request.
 func (client *DaprStateStoresClient) getCreateRequest(ctx context.Context, daprStateStoreName string, options *DaprStateStoresClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores/{daprStateStoreName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprStateStoreName == "" {
 		return nil, errors.New("parameter daprStateStoreName cannot be empty")
@@ -226,7 +226,7 @@ func (client *DaprStateStoresClient) NewListByRootScopePager(options *DaprStateS
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *DaprStateStoresClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprStateStoresClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/daprStateStores"
+	urlPath := "/{rootScope}/providers/Applications.Link/daprStateStores"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {

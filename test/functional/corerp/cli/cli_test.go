@@ -42,7 +42,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	cli := radcli.NewCLI(t, options.ConfigFilePath)
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
-	connectorType := "Applications.Connector/connectorType"
+	connectorType := "Applications.Link/connectorType"
 	t.Run("Validate rad recipe create", func(t *testing.T) {
 		output, err := cli.RecipeCreate(ctx, recipeName, recipeTemplate, connectorType)
 		require.NoError(t, err)
