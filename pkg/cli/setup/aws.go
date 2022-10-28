@@ -121,8 +121,7 @@ func verifyAWSCredentials(ctx context.Context, keyID string, secretAccessKey str
 	})
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		errStr := "AWS credential verification failed: %s"
-		return nil, fmt.Errorf(errStr, err.Error())
+		return nil, fmt.Errorf("AWS credential verification failed: %s", err.Error())
 	}
 
 	return &radAWS.Provider{
