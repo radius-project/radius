@@ -30,9 +30,9 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.RedisCache)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0", convertedResource.ID)
 		require.Equal(t, "redis0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", convertedResource.Type)
+		require.Equal(t, "Applications.Link/redisCaches", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
@@ -71,9 +71,9 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", *versionedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0", *versionedResource.ID)
 		require.Equal(t, "redis0", *versionedResource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
+		require.Equal(t, "Applications.Link/redisCaches", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 		if payload == "rediscacheresourcedatamodel.json" || payload == "rediscacheresourcedatamodel2.json" {
@@ -112,9 +112,9 @@ func TestRedisCacheResponse_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.RedisCache)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0", convertedResource.ID)
 		require.Equal(t, "redis0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", convertedResource.Type)
+		require.Equal(t, "Applications.Link/redisCaches", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", convertedResource.Properties.Resource)
@@ -142,9 +142,9 @@ func TestRedisCacheResponse_ConvertDataModelToVersioned(t *testing.T) {
 
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/redisCaches/redis0", *versionedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/redisCaches/redis0", *versionedResource.ID)
 		require.Equal(t, "redis0", *versionedResource.Name)
-		require.Equal(t, "Applications.Connector/redisCaches", *versionedResource.Type)
+		require.Equal(t, "Applications.Link/redisCaches", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Cache/Redis/testCache", *versionedResource.Properties.Resource)

@@ -45,7 +45,7 @@ func TestAPIValidator_UCPID(t *testing.T) {
 
 func runTest(t *testing.T, resourceIDUrl string) {
 	// Load OpenAPI Spec for applications.core provider.
-	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}")
+	l, err := LoadSpec(context.Background(), "applications.core", swagger.SpecFiles, "/{rootScope:.*}", "rootScope")
 
 	require.NoError(t, err)
 

@@ -82,7 +82,7 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; The identity settings
+	// REQUIRED; Configuration for supported external identity providers
 	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// REQUIRED; The volume kind
@@ -317,6 +317,9 @@ type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *string `json:"kind,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -344,7 +347,7 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	ConnectorType *string `json:"connectorType,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
@@ -784,13 +787,13 @@ type IamProperties struct {
 }
 
 type IdentitySettings struct {
-	// REQUIRED; Identity Kind
+	// REQUIRED; Configuration for supported external identity providers
 	Kind *IdentitySettingKind `json:"kind,omitempty"`
 
-	// The OIDC Issuer name
+	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string `json:"oidcIssuer,omitempty"`
 
-	// The managed identity resource ID
+	// The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
 	Resource *string `json:"resource,omitempty"`
 }
 
@@ -813,6 +816,9 @@ type KubernetesCompute struct {
 	// REQUIRED; The namespace to use for the environment.
 	Namespace *string `json:"namespace,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -822,6 +828,7 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
+		Identity: k.Identity,
 	}
 }
 

@@ -9,8 +9,12 @@ import (
 	http "net/http"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/rest"
@@ -33,16 +37,18 @@ func Test_GetPlaneByID(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	path := "/planes/radius/local"
+	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
-	dbPlane := rest.Plane{
-		ID:   "/planes/radius/local",
-		Type: "radius",
-		Name: "local",
-		Properties: rest.PlaneProperties{
+	dbPlane := datamodel.Plane{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local",
+			Type: "radius",
+			Name: "local",
+		},
+		Properties: datamodel.PlaneProperties{
 			Kind: rest.PlaneKindUCPNative,
-			ResourceProviders: map[string]string{
-				"Applications.Core": "http://localhost:8080",
+			ResourceProviders: map[string]*string{
+				"Applications.Core": to.Ptr("http://localhost:8080"),
 			},
 		},
 	}
@@ -54,17 +60,18 @@ func Test_GetPlaneByID(t *testing.T) {
 		}, nil
 	})
 
-	request, err := http.NewRequest(http.MethodGet, path, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
-	expectedResponse := armrpc_rest.NewOKResponse(rest.Plane{
-		ID:   "/planes/radius/local",
-		Type: "radius",
-		Name: "local",
-		Properties: rest.PlaneProperties{
-			Kind: rest.PlaneKindUCPNative,
-			ResourceProviders: map[string]string{
-				"Applications.Core": "http://localhost:8080",
+	planeKind := v20220901privatepreview.PlaneKindUCPNative
+	expectedResponse := armrpc_rest.NewOKResponse(&v20220901privatepreview.PlaneResource{
+		ID:   to.Ptr("/planes/radius/local"),
+		Type: to.Ptr("radius"),
+		Name: to.Ptr("local"),
+		Properties: &v20220901privatepreview.PlaneResourceProperties{
+			Kind: &planeKind,
+			ResourceProviders: map[string]*string{
+				"Applications.Core": to.Ptr("http://localhost:8080"),
 			},
 		},
 	})
@@ -86,13 +93,13 @@ func Test_GetPlaneByID_PlaneDoesNotExist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	path := "/planes/radius/local"
+	url := "/planes/radius/local?api-version=2022-09-01-privatepreview"
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
 		return nil, &store.ErrNotFound{}
 	})
 
-	request, err := http.NewRequest(http.MethodGet, path, nil)
+	request, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err)
 	response, err := planesCtrl.Run(ctx, nil, request)
 	require.NoError(t, err)

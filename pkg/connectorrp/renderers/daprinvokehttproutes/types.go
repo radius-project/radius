@@ -6,6 +6,6 @@
 package daprinvokehttproutes
 
 const (
-	ResourceType = "Applications.Connector/daprInvokeHttpRoutes"
+	ResourceType = "Applications.Link/daprInvokeHttpRoutes"
 	AppIDKey     = "appId"
 )

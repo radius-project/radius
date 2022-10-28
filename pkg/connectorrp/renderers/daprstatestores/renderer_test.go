@@ -38,9 +38,9 @@ func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -81,9 +81,9 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -107,9 +107,9 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -131,9 +131,9 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -157,9 +157,9 @@ func Test_Render_Generic_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -214,9 +214,9 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -241,9 +241,9 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -270,9 +270,9 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -300,9 +300,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -326,9 +326,9 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprStateStores/test-state-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
 			Name: resourceName,
-			Type: "Applications.Connector/daprStateStores",
+			Type: "Applications.Link/daprStateStores",
 		},
 		Properties: datamodel.DaprStateStoreProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

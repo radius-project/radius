@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.connector/sqldatabases/sql0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/sqldatabases/sql0",
     "name": "sql0",
-    "type": "applications.connector/sqldatabases",
+    "type": "applications.link/sqldatabases",
     "location": "West US",
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

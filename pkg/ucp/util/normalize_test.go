@@ -18,7 +18,7 @@ func TestNormalizeString(t *testing.T) {
 	}{
 		{"applications.core/environments", "applicationscore-environments"},
 		{"applications.core/provider", "applicationscore-provider"},
-		{"applications.connector/provider", "applicationsconnector-provider"},
+		{"applications.link/provider", "applicationslink-provider"},
 	}
 
 	for _, tc := range testrt {

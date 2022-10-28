@@ -36,9 +36,6 @@ const (
 	deletePath                = "delete"
 )
 
-var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
-var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
-
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
 	baseURL := ctrlOpts.BasePath
@@ -63,26 +60,30 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		}...)
 
 	}
-	logger := ucplog.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
-	if err != nil {
-		return err
-	}
-
-	rootScopeRouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
-	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
 		BasePath: baseURL,
 	})
 
-	planeCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeCollectionPath)).Subrouter()
-	planeCollectionByTypeSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeCollectionByType)).Subrouter()
-	planeSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeItemPath)).Subrouter()
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
-	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
-	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
+	if err != nil {
+		return err
+	}
+
+	rootScopeRouter := router.PathPrefix(baseURL).Subrouter()
+	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
+
+	planeCollectionSubRouter := rootScopeRouter.Path(planeCollectionPath).Subrouter()
+	planeCollectionByTypeSubRouter := rootScopeRouter.Path(planeCollectionByType).Subrouter()
+	planeSubRouter := rootScopeRouter.Path(planeItemPath).Subrouter()
+
+	var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
+	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
+	resourceGroupCollectionSubRouter := rootScopeRouter.Path(resourceGroupCollectionPath).Subrouter()
+	resourceGroupSubRouter := rootScopeRouter.Path(resourceGroupItemPath).Subrouter()
 
 	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
 	awsResourceCollectionSubRouter := awsResourcesSubRouter.Path(awsResourceCollectionPath).Subrouter()

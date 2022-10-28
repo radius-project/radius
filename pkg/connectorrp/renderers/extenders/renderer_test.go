@@ -32,9 +32,9 @@ func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	resource := datamodel.Extender{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: "test-secret-store",
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
@@ -74,9 +74,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	ctx := createContext(t)
 	resource := datamodel.Extender{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprSecretStores/test-secret-store",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
 			Name: "test-secret-store",
-			Type: "Applications.Connector/daprSecretStores",
+			Type: "Applications.Link/daprSecretStores",
 		},
 		Properties: datamodel.ExtenderProperties{
 			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{

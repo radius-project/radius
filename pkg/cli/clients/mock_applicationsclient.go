@@ -11,7 +11,7 @@ import (
 	gomock "github.com/golang/mock/gomock"
 	generated "github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	v20220315privatepreview0 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 // MockApplicationsManagementClient is a mock of ApplicationsManagementClient interface.
@@ -53,7 +53,7 @@ func (mr *MockApplicationsManagementClientMockRecorder) CreateEnvironment(arg0, 
 }
 
 // CreateUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220315privatepreview0.ResourceGroupResource) (bool, error) {
+func (m *MockApplicationsManagementClient) CreateUCPGroup(arg0 context.Context, arg1, arg2, arg3 string, arg4 v20220901privatepreview.ResourceGroupResource) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateUCPGroup", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(bool)
@@ -248,10 +248,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListEnv(arg0 interface{}
 }
 
 // ListUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20220315privatepreview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ListUCPGroup(arg0 context.Context, arg1, arg2 string) ([]v20220901privatepreview.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListUCPGroup", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]v20220315privatepreview0.ResourceGroupResource)
+	ret0, _ := ret[0].([]v20220901privatepreview.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -293,10 +293,10 @@ func (mr *MockApplicationsManagementClientMockRecorder) ShowResource(arg0, arg1,
 }
 
 // ShowUCPGroup mocks base method.
-func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20220315privatepreview0.ResourceGroupResource, error) {
+func (m *MockApplicationsManagementClient) ShowUCPGroup(arg0 context.Context, arg1, arg2, arg3 string) (v20220901privatepreview.ResourceGroupResource, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ShowUCPGroup", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(v20220315privatepreview0.ResourceGroupResource)
+	ret0, _ := ret[0].(v20220901privatepreview.ResourceGroupResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -27,7 +27,7 @@ type DaprInvokeHttpRoute struct {
 }
 
 func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
-	return "Applications.Connector/daprInvokeHttpRoutes"
+	return "Applications.Link/daprInvokeHttpRoutes"
 }
 
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.

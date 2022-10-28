@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -89,10 +90,11 @@ func (r *Runner) Run(ctx context.Context) error {
 	recipeProperties := envResource.Properties.Recipes
 
 	if recipeProperties[r.RecipeName] == nil {
-		return fmt.Errorf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe %q is not part of the environment %q ", r.RecipeName, r.Workspace.Environment)}
 	}
+	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to delete the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}

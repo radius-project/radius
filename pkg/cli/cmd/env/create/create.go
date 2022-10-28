@@ -43,7 +43,7 @@ Applications deployed to an environment will inherit the container runtime, conf
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddNamespaceFlag(cmd)
-	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
+	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use dev recipes")
 
 	return cmd, runner
 }

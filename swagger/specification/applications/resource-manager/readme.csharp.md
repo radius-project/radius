@@ -56,6 +56,6 @@ input-file:
 ``` yaml $(tag) == 'package-connector-2022-03-15-privatepreview'
 output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/connector/src/Generated
 input-file:
-- Applications.Connector/preview/2022-03-15-privatepreview/global.json
-- Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+- Applications.Link/preview/2022-03-15-privatepreview/global.json
+- Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
 ```

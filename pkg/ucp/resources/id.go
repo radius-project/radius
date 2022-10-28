@@ -20,7 +20,7 @@ const (
 	LocationsSegment      = "locations"
 
 	CoreRPNamespace      = "Applications.Core"
-	ConnectorRPNamespace = "Applications.Connector"
+	ConnectorRPNamespace = "Applications.Link"
 )
 
 // ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()

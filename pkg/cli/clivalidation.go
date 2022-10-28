@@ -180,7 +180,7 @@ func RequireResourceTypeAndName(args []string) (string, string, error) {
 	return resourceType, resourceName, nil
 }
 
-// example of resource Type: Applications.Core/httpRoutes, Applications.Connector/redisCaches
+// example of resource Type: Applications.Core/httpRoutes, Applications.Link/redisCaches
 func RequireResourceType(args []string) (string, error) {
 	if len(args) < 1 {
 		return "", errors.New("no resource type provided")

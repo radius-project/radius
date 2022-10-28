@@ -42,11 +42,11 @@ type RedisCacheResponse struct {
 }
 
 func (redis RedisCache) ResourceTypeName() string {
-	return "Applications.Connector/redisCaches"
+	return "Applications.Link/redisCaches"
 }
 
 func (redis RedisCacheResponse) ResourceTypeName() string {
-	return "Applications.Connector/redisCaches"
+	return "Applications.Link/redisCaches"
 }
 
 func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
@@ -76,5 +76,5 @@ type RedisCacheSecrets struct {
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {
-	return "Applications.Connector/redisCaches"
+	return "Applications.Link/redisCaches"
 }

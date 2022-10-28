@@ -235,12 +235,19 @@
 * **Discriminator**: kind
 
 ### Base Properties
+* **identity**: [IdentitySettings](#identitysettings)
 * **resourceId**: string: The resource id of the compute resource for application environment.
 ### KubernetesCompute
 #### Properties
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.
 
+
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
 
 ## Providers
 ### Properties
@@ -257,7 +264,7 @@
 
 ## EnvironmentRecipeProperties
 ### Properties
-* **connectorType**: string (Required): Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+* **connectorType**: string (Required): Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
 ## TrackedResourceTags
@@ -339,12 +346,6 @@
 * **format**: 'pem' | 'pfx': Certificate format. Default pem
 * **name**: string (Required): The name of the certificate
 * **version**: string: Certificate version
-
-## IdentitySettings
-### Properties
-* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Identity Kind
-* **oidcIssuer**: string: The OIDC Issuer name
-* **resource**: string: The managed identity resource ID
 
 ## AzureKeyVaultVolumePropertiesKeys
 ### Properties

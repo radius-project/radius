@@ -79,7 +79,7 @@ func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, r
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
@@ -128,7 +128,7 @@ func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, rabbitMQM
 
 // deleteCreateRequest creates the Delete request.
 func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
@@ -168,7 +168,7 @@ func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, rabbitMQMess
 
 // getCreateRequest creates the Get request.
 func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
@@ -228,7 +228,7 @@ func (client *RabbitMQMessageQueuesClient) NewListByRootScopePager(options *Rabb
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *RabbitMQMessageQueuesClient) listByRootScopeCreateRequest(ctx context.Context, options *RabbitMQMessageQueuesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues"
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
@@ -273,7 +273,7 @@ func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, rabb
 
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if rabbitMQMessageQueueName == "" {
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")

@@ -57,7 +57,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   name: 'sql-db'
   location: location
   properties: {

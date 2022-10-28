@@ -16,7 +16,7 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
-	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
@@ -34,15 +34,15 @@ var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(
 
 var (
 	ResourceTypesList = []string{
-		"Applications.Connector/mongoDatabases",
-		"Applications.Connector/rabbitMQMessageQueues",
-		"Applications.Connector/redisCaches",
-		"Applications.Connector/sqlDatabases",
-		"Applications.Connector/daprStateStores",
-		"Applications.Connector/daprSecretStores",
-		"Applications.Connector/daprPubSubBrokers",
-		"Applications.Connector/daprInvokeHttpRoutes",
-		"Applications.Connector/extenders",
+		"Applications.Link/mongoDatabases",
+		"Applications.Link/rabbitMQMessageQueues",
+		"Applications.Link/redisCaches",
+		"Applications.Link/sqlDatabases",
+		"Applications.Link/daprStateStores",
+		"Applications.Link/daprSecretStores",
+		"Applications.Link/daprPubSubBrokers",
+		"Applications.Link/daprInvokeHttpRoutes",
+		"Applications.Link/extenders",
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",

@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/rest"
+	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -36,17 +37,21 @@ func Test_ProxyOperations(t *testing.T) {
 		startTestRP(t, "")
 
 		// Create a Non UCP-Native Plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
-		nonNativePlaneID := "/planes/testNonNativeType/nonNativePlane"
-		nonNativePlaneURL := fmt.Sprintf("%s%s", url, nonNativePlaneID)
-		nonNativePlane := rest.Plane{
-			ID:   nonNativePlaneID,
-			Type: "System.Planes/testNonNativeType",
-			Name: "nonNativePlane",
-			Properties: rest.PlaneProperties{
-				Kind: "testNonNativeType",
-				URL:  fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
+		nonNativePlaneID := "/planes/testnonnativetype/nonnativeplane"
+		apiVersion := v20220901privatepreview.Version
+		nonNativePlaneURL := fmt.Sprintf("%s%s?api-version=%s", url, nonNativePlaneID, apiVersion)
+
+		nonNativePlane := v20220901privatepreview.PlaneResource{
+			ID:       to.Ptr(nonNativePlaneID),
+			Type:     to.Ptr("System.Planes/testnonnativetype"),
+			Name:     to.Ptr("nonnativeplane"),
+			Location: to.Ptr("global"),
+			Properties: &v20220901privatepreview.PlaneResourceProperties{
+				Kind: to.Ptr(v20220901privatepreview.PlaneKindAWS),
+				URL:  to.Ptr(fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber)),
 			},
 		}
+
 		createPlane(t, roundTripper, nonNativePlaneURL, nonNativePlane)
 		t.Cleanup(func() {
 			deletePlane(t, roundTripper, nonNativePlaneURL)
@@ -54,25 +59,26 @@ func Test_ProxyOperations(t *testing.T) {
 
 		rgID := nonNativePlaneID + "/resourceGroups/test-rg"
 		rgURL := fmt.Sprintf("%s%s", url, rgID)
-		createResourceGroup(t, roundTripper, rgURL)
+		rgURLVersioned := fmt.Sprintf("%s?api-version=%s", rgURL, apiVersion)
+		createResourceGroup(t, roundTripper, rgURLVersioned)
 		t.Cleanup(func() {
-			deleteResourceGroup(t, roundTripper, rgURL)
+			deleteResourceGroup(t, roundTripper, rgURLVersioned)
 		})
 
 		// Send a request which will be proxied to the TestRP
-		issueGetRequest(t, roundTripper, url, rgURL, "", "")
+		issueGetRequest(t, roundTripper, url, rgURL, "", "", apiVersion)
 
 		// Create UCP-native plane with TestRP so that UCP will use the TestRP service address to forward requests to the RP
-		nativePlaneID := "/planes/testNativeType/testNativePlane"
-		nativeplaneURL := fmt.Sprintf("%s%s", url, nativePlaneID)
-		nativePlane := rest.Plane{
-			ID:   nonNativePlaneID,
-			Type: "System.Planes/testNativeType",
-			Name: "testNativePlane",
-			Properties: rest.PlaneProperties{
-				Kind: rest.PlaneKindUCPNative,
-				ResourceProviders: map[string]string{
-					"Applications.Test": fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber),
+		nativePlaneID := "/planes/testnativetype/testnativeplane"
+		nativeplaneURL := fmt.Sprintf("%s%s?api-version=%s", url, nativePlaneID, apiVersion)
+		nativePlane := v20220901privatepreview.PlaneResource{
+			ID:   to.Ptr(nonNativePlaneID),
+			Type: to.Ptr("System.Planes/testnativetype"),
+			Name: to.Ptr("testnativeplane"),
+			Properties: &v20220901privatepreview.PlaneResourceProperties{
+				Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
+				ResourceProviders: map[string]*string{
+					"Applications.Test": to.Ptr(fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber)),
 				},
 			},
 		}
@@ -83,24 +89,25 @@ func Test_ProxyOperations(t *testing.T) {
 
 		rgID = nativePlaneID + "/resourceGroups/test-rg"
 		rgURL = fmt.Sprintf("%s%s", url, rgID)
-		createResourceGroup(t, roundTripper, rgURL)
+		rgURLVersioned = fmt.Sprintf("%s?api-version=%s", rgURL, apiVersion)
+		createResourceGroup(t, roundTripper, rgURLVersioned)
 		t.Cleanup(func() {
-			deleteResourceGroup(t, roundTripper, rgURL)
+			deleteResourceGroup(t, roundTripper, rgURLVersioned)
 		})
 
 		// Send a request which will be proxied to the TestRP and verify if the location header is translated by UCP
-		issueGetRequest(t, roundTripper, url, rgURL, "Location", "location-header-value")
-		issueGetRequest(t, roundTripper, url, rgURL, "Azure-Asyncoperation", "async-header-value")
+		issueGetRequest(t, roundTripper, url, rgURL, "Location", "location-header-value", apiVersion)
+		issueGetRequest(t, roundTripper, url, rgURL, "Azure-Asyncoperation", "async-header-value", apiVersion)
 	})
 	test.Test(t)
 }
 
-func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, rgURL string, asyncHeaderName string, asyncHeaderValue string) {
+func issueGetRequest(t *testing.T, roundTripper http.RoundTripper, url string, rgURL string, asyncHeaderName string, asyncHeaderValue string, apiVersion string) {
 	var requestURL string
 	if asyncHeaderName != "" {
 		requestURL = fmt.Sprintf("%s/providers/Applications.Test/hello?%s=%s", rgURL, asyncHeaderName, asyncHeaderValue)
 	} else {
-		requestURL = fmt.Sprintf("%s/providers/Applications.Test/hello", rgURL)
+		requestURL = fmt.Sprintf("%s/providers/Applications.Test/hello?api-version=%s", rgURL, apiVersion)
 	}
 	t.Logf("Fetching URL: %s", requestURL)
 

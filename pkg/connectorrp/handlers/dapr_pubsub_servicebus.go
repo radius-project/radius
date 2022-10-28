@@ -29,7 +29,7 @@ const (
 	RootManageSharedAccessKey    = "RootManageSharedAccessKey"
 	ServiceBusTopicNameKey       = "servicebustopic"
 	ServiceBusNamespaceNameKey   = "servicebusnamespace"
-	DaprPubSubBrokerResourceType = "Applications.Connector/daprPubSubBrokers"
+	DaprPubSubBrokerResourceType = "Applications.Link/daprPubSubBrokers"
 )
 
 type daprPubSubServiceBusBaseHandler struct {

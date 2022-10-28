@@ -6,5 +6,5 @@
 package daprstatestores
 
 const (
-	ResourceTypeName = "Applications.Connector/daprStateStores"
+	ResourceTypeName = "Applications.Link/daprStateStores"
 )

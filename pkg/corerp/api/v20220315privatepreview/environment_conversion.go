@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -130,12 +131,22 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
+		var identity *rp.IdentitySettings
+		if v.Identity != nil {
+			identity = &rp.IdentitySettings{
+				Kind:       toIdentityKind(v.Identity.Kind),
+				Resource:   to.String(v.Identity.Resource),
+				OIDCIssuer: to.String(v.Identity.OidcIssuer),
+			}
+		}
+
 		return &datamodel.EnvironmentCompute{
 			Kind: k,
 			KubernetesCompute: datamodel.KubernetesComputeProperties{
 				ResourceID: to.String(v.ResourceID),
 				Namespace:  to.String(v.Namespace),
 			},
+			Identity: identity,
 		}, nil
 	default:
 		return nil, conv.ErrInvalidModelConversion
@@ -145,10 +156,20 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
 	switch envCompute.Kind {
 	case datamodel.KubernetesComputeKind:
+		var identity *IdentitySettings
+		if envCompute.Identity != nil {
+			identity = &IdentitySettings{
+				Kind:       fromIdentityKind(envCompute.Identity.Kind),
+				Resource:   toStringPtr(envCompute.Identity.Resource),
+				OidcIssuer: toStringPtr(envCompute.Identity.OIDCIssuer),
+			}
+		}
+
 		return &KubernetesCompute{
 			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
 			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
 			Namespace:  &envCompute.KubernetesCompute.Namespace,
+			Identity:   identity,
 		}
 	default:
 		return nil

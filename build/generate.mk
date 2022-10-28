@@ -50,7 +50,7 @@ generate-rad-connectorrp-client: generate-node-installed generate-autorest-insta
 .PHONY: generate-rad-ucp-client
 generate-rad-ucp-client: generate-node-installed generate-autorest-installed ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/ucp/api/README.md --tag=ucp-2022-03-15-privatepreview
+	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

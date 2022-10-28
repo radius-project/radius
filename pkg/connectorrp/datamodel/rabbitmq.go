@@ -42,11 +42,11 @@ type RabbitMQMessageQueueResponse struct {
 }
 
 func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
-	return "Applications.Connector/rabbitMQMessageQueues"
+	return "Applications.Link/rabbitMQMessageQueues"
 }
 
 func (rabbitmq RabbitMQMessageQueueResponse) ResourceTypeName() string {
-	return "Applications.Connector/rabbitMQMessageQueues"
+	return "Applications.Link/rabbitMQMessageQueues"
 }
 
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
@@ -69,5 +69,5 @@ type RabbitMQSecrets struct {
 }
 
 func (rabbitmq RabbitMQSecrets) ResourceTypeName() string {
-	return "Applications.Connector/rabbitMQMessageQueues"
+	return "Applications.Link/rabbitMQMessageQueues"
 }

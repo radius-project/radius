@@ -95,6 +95,35 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "IdentitySettings": {
+      "properties": {
+        "kind": {
+          "description": "Configuration for supported external identity providers",
+          "type": "string",
+          "enum": [
+            "azure.com.workload",
+            "azure.com.systemassigned"
+          ],
+          "default": "azure.com.workload",
+          "x-ms-enum": {
+            "name": "IdentitySettingKind",
+            "modelAsString": false
+          }
+        },
+        "resource": {
+          "description": "The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified",
+          "type": "string"
+        },
+        "oidcIssuer": {
+          "description": "The URI for your compute platform's OIDC issuer",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     }
   },
   "parameters": {

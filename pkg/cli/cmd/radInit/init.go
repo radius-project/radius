@@ -25,7 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -224,14 +224,14 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	//ignore the id of the resource group created
-	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
+	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{})
 	if err != nil || !isGroupCreated {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220315privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{})
 	if err != nil {
 		return err
 	}

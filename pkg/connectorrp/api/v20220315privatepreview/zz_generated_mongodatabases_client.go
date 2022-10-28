@@ -79,7 +79,7 @@ func (client *MongoDatabasesClient) CreateOrUpdate(ctx context.Context, mongoDat
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, mongoDatabaseName string, mongoDatabaseParameters MongoDatabaseResource, options *MongoDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
@@ -127,7 +127,7 @@ func (client *MongoDatabasesClient) Delete(ctx context.Context, mongoDatabaseNam
 
 // deleteCreateRequest creates the Delete request.
 func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
@@ -166,7 +166,7 @@ func (client *MongoDatabasesClient) Get(ctx context.Context, mongoDatabaseName s
 
 // getCreateRequest creates the Get request.
 func (client *MongoDatabasesClient) getCreateRequest(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
@@ -226,7 +226,7 @@ func (client *MongoDatabasesClient) NewListByRootScopePager(options *MongoDataba
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *MongoDatabasesClient) listByRootScopeCreateRequest(ctx context.Context, options *MongoDatabasesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/mongoDatabases"
+	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
@@ -271,7 +271,7 @@ func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, mongoDataba
 
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/mongoDatabases/{mongoDatabaseName}/listSecrets"
+	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")

@@ -31,6 +31,7 @@ type Loader struct {
 	supportedVersions map[string][]string
 	providerName      string
 	rootScopePrefix   string
+	rootScopeParam    string
 	specFiles         fs.FS
 }
 
@@ -48,9 +49,10 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 }
 
 // GetValidator returns the cached validator.
-func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
+func (l *Loader) GetValidator(resourceType, version string, ignoreUndefinedPath bool) (Validator, bool) {
 	// ARM types are compared case-insensitively
 	v, ok := l.validators[getValidatorKey(resourceType, version)]
+	v.ignoreUndefinedPath = ignoreUndefinedPath
 	if ok {
 		return &v, true
 	}
@@ -58,13 +60,14 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 }
 
 // LoadSpec loads the swagger files and caches the validator.
-func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePrefix string) (*Loader, error) {
+func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePrefix string, rootScopeParam string) (*Loader, error) {
 	log := logr.FromContextOrDiscard(ctx)
 	l := &Loader{
 		providerName:      providerName,
 		validators:        map[string]validator{},
 		supportedVersions: map[string][]string{},
 		rootScopePrefix:   rootScopePrefix,
+		rootScopeParam:    rootScopeParam,
 		specFiles:         specs,
 	}
 
@@ -122,6 +125,7 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 			APIVersion:      parsed["version"],
 			specDoc:         wDoc,
 			rootScopePrefix: l.rootScopePrefix,
+			rootScopeParam:  l.rootScopeParam,
 			paramCache:      make(map[string]map[string]spec.Parameter),
 			paramCacheMu:    &sync.RWMutex{},
 		}

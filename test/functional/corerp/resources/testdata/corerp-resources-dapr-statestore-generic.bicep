@@ -68,7 +68,7 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   name: 'gnrc-rds-rds'
   location: 'global'
   properties: {
@@ -83,7 +83,7 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   }
 }
 
-resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
+resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview' = {
   name: 'gnrc-sts'
   location: location
   properties: {

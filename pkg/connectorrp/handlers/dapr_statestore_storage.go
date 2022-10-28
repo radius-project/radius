@@ -26,7 +26,7 @@ import (
 const (
 	StorageAccountNameKey      = "storageaccount"
 	ResourceIDKey              = "resourceid"
-	DaprStateStoreResourceType = "Applications.Connector/daprStateStores"
+	DaprStateStoreResourceType = "Applications.Link/daprStateStores"
 )
 
 func NewDaprStateStoreAzureStorageHandler(arm *armauth.ArmConfig, k8s client.Client) ResourceHandler {

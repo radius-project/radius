@@ -1,0 +1,10 @@
+{
+    "id": "/planes/radius/local",
+    "name": "local",
+    "type": "System.Planes/radius",
+    "properties": {
+        "resourceProviders": {
+            "Applications.Core": "https://applications.core.radius.azure.com"
+        }
+    }
+}

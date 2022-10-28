@@ -10,12 +10,14 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -37,12 +39,10 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
-		if err != nil {
-			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-		}
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	logger.Info(fmt.Sprintf("Getting plane %s from db", resourceId))
-	plane := rest.Plane{}
+	plane := datamodel.Plane{}
 	_, err = p.GetResource(ctx, resourceId.String(), &plane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
@@ -52,6 +52,16 @@ func (p *GetPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Req
 		}
 		return nil, err
 	}
-	restResponse := armrpc_rest.NewOKResponse(plane)
-	return restResponse, nil
+
+	apiVersion := ctrl.GetAPIVersion(req)
+	versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+	if err != nil {
+		return armrpc_rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
+				Message: err.Error(),
+			},
+		}), nil
+	}
+	return armrpc_rest.NewOKResponse(versioned), nil
 }

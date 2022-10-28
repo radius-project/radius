@@ -35,7 +35,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   name: 'redis-connector'
   location: 'global'
   properties: {
