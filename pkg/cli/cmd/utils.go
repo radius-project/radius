@@ -19,3 +19,11 @@ func CreateEnvAzureProvider(subscriptionID, resourceGroup string) corerp.Provide
 	}
 	return providers
 }
+
+func GetNamespace(envResource corerp.EnvironmentResource) string {
+	switch v := envResource.Properties.Compute.(type) {
+	case *corerp.KubernetesCompute:
+		return *v.Namespace
+	}
+	return ""
+}

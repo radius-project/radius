@@ -11,12 +11,13 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	coreRpApps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	corerpapps "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -106,23 +107,24 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	recipeProperties := envResource.Properties.Recipes
 	if recipeProperties[r.RecipeName] != nil {
-		return fmt.Errorf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)
+		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
 	if recipeProperties != nil {
-		recipeProperties[r.RecipeName] = &coreRpApps.EnvironmentRecipeProperties{
+		recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
 			ConnectorType: &r.ConnectorType,
 			TemplatePath:  &r.TemplatePath,
 		}
 	} else {
-		recipeProperties = map[string]*coreRpApps.EnvironmentRecipeProperties{
+		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{
 			r.RecipeName: {
 				ConnectorType: &r.ConnectorType,
 				TemplatePath:  &r.TemplatePath,
 			},
 		}
 	}
+	namespace := cmd.GetNamespace(envResource)
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", "default", "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
 	}
