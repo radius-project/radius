@@ -21,6 +21,8 @@ import (
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 
+	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
@@ -48,6 +50,7 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
 var recipeCmd = NewRecipeCommand()
 var envCmd = NewEnvironmentCommand()
@@ -150,6 +153,12 @@ func initSubCommands() {
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
+
+	appSwitchCmd, _ := appSwitch.NewCommand(framework)
+	applicationCmd.AddCommand(appSwitchCmd)
+
+	envSwitchCmd, _ := envSwitch.NewCommand(framework)
+	envCmd.AddCommand(envSwitchCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
