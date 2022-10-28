@@ -79,7 +79,7 @@ type Runner struct {
 	KubernetesInterface    kubernetes.Interface
 	HelmInterface          helm.Interface
 	SkipDevRecipes         bool
-	AzureInterface         setup.Interface
+	SetupInterface         setup.Interface
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -91,7 +91,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
-		AzureInterface:      factory.GetAzureInterface(),
+		SetupInterface:      factory.GetSetupInterface(),
 	}
 }
 
@@ -186,7 +186,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 		switch cloudProvider {
 		case Azure:
-			r.AzureCloudProvider, err = r.AzureInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
+			r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 			if err != nil {
 				return err
 			}

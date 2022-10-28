@@ -353,7 +353,7 @@ func generateRandomName(prefix string, affixes ...string) string {
 	return randname.GenerateWithPrefix(b.String(), 5)
 }
 
-//go:generate mockgen -destination=./mock_azure.go -package=setup -self_package github.com/project-radius/radius/pkg/cli/setup github.com/project-radius/radius/pkg/cli/setup Interface
+//go:generate mockgen -destination=./mock_setup.go -package=setup -self_package github.com/project-radius/radius/pkg/cli/setup github.com/project-radius/radius/pkg/cli/setup Interface
 type Interface interface {
 	ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error)
 }
@@ -361,6 +361,7 @@ type Interface interface {
 type Impl struct {
 }
 
+// Parses user input from the CLI for Azure Provider arguments
 func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
 	return ParseAzureProviderArgs(cmd, interactive, prompter)
 }

@@ -30,7 +30,7 @@ type Factory interface {
 	GetHelmInterface() helm.Interface
 	GetNamespaceInterface() namespace.Interface
 	GetAppManagementClient() clients.ApplicationsManagementClient
-	GetAzureInterface() setup.Interface
+	GetSetupInterface() setup.Interface
 }
 
 type Impl struct {
@@ -43,7 +43,7 @@ type Impl struct {
 	HelmInterface       helm.Interface
 	NamespaceInterface  namespace.Interface
 	AppManagementClient clients.ApplicationsManagementClient
-	AzureInterface      setup.Interface
+	SetupInterface      setup.Interface
 }
 
 func (i *Impl) GetConnectionFactory() connections.Factory {
@@ -87,8 +87,8 @@ func (i *Impl) GetAppManagementClient() clients.ApplicationsManagementClient {
 	return i.AppManagementClient
 }
 
-func (i *Impl) GetAzureInterface() setup.Interface {
-	return i.AzureInterface
+func (i *Impl) GetSetupInterface() setup.Interface {
+	return i.SetupInterface
 }
 
 type Runner interface {

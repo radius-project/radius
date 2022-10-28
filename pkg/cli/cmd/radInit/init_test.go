@@ -38,7 +38,7 @@ func Test_Validate(t *testing.T) {
 	kubernetesMock := kubernetes.NewMockInterface(ctrl)
 	prompter := prompt.NewMockInterface(ctrl)
 	helmMock := helm.NewMockInterface(ctrl)
-	azureMock := setup.NewMockInterface(ctrl)
+	setupMock := setup.NewMockInterface(ctrl)
 
 	initMocksWithoutCloudProvider(kubernetesMock, prompter, helmMock)
 	// Scenario with error kubeContext read
@@ -50,7 +50,7 @@ func Test_Validate(t *testing.T) {
 	// Scenario with error name space read
 	initMocksWithErrorNamespaceRead(kubernetesMock, prompter, helmMock)
 	// Scenario with cloud provider configured
-	initMocksWithCloudProvider(kubernetesMock, prompter, helmMock, azureMock)
+	initMocksWithCloudProvider(kubernetesMock, prompter, helmMock, setupMock)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Init Command",
@@ -120,7 +120,7 @@ func Test_Validate(t *testing.T) {
 			KubernetesInterface: kubernetesMock,
 			Prompter:            prompter,
 			HelmInterface:       helmMock,
-			AzureInterface:      azureMock,
+			SetupInterface:      setupMock,
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
