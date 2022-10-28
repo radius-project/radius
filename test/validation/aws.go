@@ -104,6 +104,7 @@ func getResourceIdentifier(ctx context.Context, t *testing.T, resourceType strin
 	credentialsProvider := credentials.NewStaticCredentialsProvider(accessKey, secretAccessKey, sessionToken)
 
 	stsClient := sts.New(sts.Options{
+		Region:      region,
 		Credentials: credentialsProvider,
 	})
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})

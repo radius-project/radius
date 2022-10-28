@@ -117,6 +117,7 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 func verifyAWSCredentials(ctx context.Context, keyID string, secretAccessKey string, region string) (*radAWS.Provider, error) {
 	credentialsProvider := credentials.NewStaticCredentialsProvider(keyID, secretAccessKey, "")
 	stsClient := sts.New(sts.Options{
+		Region:      region,
 		Credentials: credentialsProvider,
 	})
 	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
