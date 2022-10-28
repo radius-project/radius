@@ -66,15 +66,18 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			require.NoError(t, err, "flag parsing failed")
 
 			err = cmd.ValidateArgs(cmd.Flags().Args())
-			if !testcase.ExpectedValid && err != nil {
+			if err != nil && testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have failed but it passed")
+			} else if err != nil {
+				// We expected this to fail, so it's OK if it does. No need to run Validate.
 				return
 			}
 
 			err = runner.Validate(cmd, cmd.Flags().Args())
-			if !testcase.ExpectedValid {
-				if err == nil {
-					require.Error(t, err, "validation should have failed but it passed")
-				}
+			if testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have passed but it failed")
+			} else {
+				require.Error(t, err, "validation should have failed but it passed")
 			}
 		})
 	}
