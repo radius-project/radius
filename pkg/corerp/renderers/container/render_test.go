@@ -255,6 +255,72 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, properties.Container.Image, container.Image)
 		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
 
+		var commands []string
+		var args []string
+		require.Equal(t, commands, container.Command)
+		require.Equal(t, args, container.Args)
+		require.Equal(t, "", container.WorkingDir)
+
+		expectedEnv := []v1.EnvVar{
+			{Name: envVarName1, Value: envVarValue1},
+			{Name: envVarName2, Value: envVarValue2},
+		}
+		require.Equal(t, expectedEnv, container.Env)
+
+	})
+	require.Len(t, output.Resources, 1)
+}
+
+func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: applicationResourceID,
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+			Env: map[string]string{
+				envVarName1: envVarValue1,
+				envVarName2: envVarValue2,
+			},
+			Command:    []string{"command1", "command2"},
+			Args:       []string{"arg1", "arg2"},
+			WorkingDir: "/some/path",
+		},
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	renderer := Renderer{}
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Empty(t, output.ComputedValues)
+	require.Empty(t, output.SecretValues)
+
+	labels := kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName())
+	matchLabels := kubernetes.MakeSelectorLabels(applicationName, resource.Name)
+
+	t.Run("verify deployment", func(t *testing.T) {
+		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
+		require.NotNil(t, deployment)
+
+		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		require.Equal(t, outputResource, expectedOutputResource)
+
+		// Only real thing to verify here is the image and the labels
+		require.Equal(t, labels, deployment.Labels)
+		require.Equal(t, labels, deployment.Spec.Template.Labels)
+		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
+
+		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
+
+		container := deployment.Spec.Template.Spec.Containers[0]
+		require.Equal(t, resourceName, container.Name)
+		require.Equal(t, properties.Container.Image, container.Image)
+		require.Equal(t, v1.PullAlways, container.ImagePullPolicy)
+		require.Equal(t, []string{"command1", "command2"}, container.Command)
+		require.Equal(t, []string{"arg1", "arg2"}, container.Args)
+		require.Equal(t, "/some/path", container.WorkingDir)
+
 		expectedEnv := []v1.EnvVar{
 			{Name: envVarName1, Value: envVarValue1},
 			{Name: envVarName2, Value: envVarValue2},

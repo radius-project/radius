@@ -607,6 +607,24 @@
           "additionalProperties": {
             "$ref": "#/definitions/Volume"
           }
+        },
+        "command": {
+          "description": "Entrypoint array. Overrides the container image's ENTRYPOINT",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "args": {
+          "description": "Arguments to the entrypoint. Overrides the container image's CMD",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "workingDir": {
+          "description": "Working directory for the container",
+          "type": "string"
         }
       }
     },
