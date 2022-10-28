@@ -28,7 +28,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
-			OperationType:    "APPLICATIONS.CONNECTOR/MONGODATABASES|DELETE",
+			OperationType:    "APPLICATIONS.LINK/MONGODATABASES|DELETE",
 			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0",
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
@@ -108,7 +108,7 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
-			OperationType:    "APPLICATIONS.CONNECTOR/INVALID|DELETE",
+			OperationType:    "APPLICATIONS.LINK/INVALID|DELETE",
 			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/invalidType/invalid",
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
