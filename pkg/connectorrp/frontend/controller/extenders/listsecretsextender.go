@@ -36,7 +36,7 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter,
 
 	resource := &datamodel.Extender{}
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
-	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Connector/extenders/<resource_name>/listsecrets
+	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Link/extenders/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
 	if err != nil {

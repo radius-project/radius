@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/redisCaches"
+	ResourceType = "Applications.Link/redisCaches"
 )
 
 var RedisResourceType = resources.KnownType{

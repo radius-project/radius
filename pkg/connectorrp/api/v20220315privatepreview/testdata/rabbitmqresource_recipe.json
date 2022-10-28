@@ -1,7 +1,7 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/rabbitMQMessageQueues/rabbitmq0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0",
     "name": "rabbitmq0",
-    "type": "Applications.Connector/rabbitMQMessageQueues",
+    "type": "Applications.Link/rabbitMQMessageQueues",
     "properties": {
         "status": {
             "outputResources": [{

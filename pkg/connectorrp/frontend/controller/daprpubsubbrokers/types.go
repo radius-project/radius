@@ -6,5 +6,5 @@
 package daprpubsubbrokers
 
 const (
-	ResourceTypeName = "Applications.Connector/daprPubSubBrokers"
+	ResourceTypeName = "Applications.Link/daprPubSubBrokers"
 )

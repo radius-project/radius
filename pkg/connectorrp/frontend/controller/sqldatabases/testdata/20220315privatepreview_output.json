@@ -1,5 +1,5 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.connector/sqldatabases/sql0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/sqldatabases/sql0",
     "location": "West US",
     "name": "sql0",
     "properties": {
@@ -26,5 +26,5 @@
         "lastModifiedByType": "User"
     },
     "tags": {},
-    "type": "applications.connector/sqldatabases"
+    "type": "applications.link/sqldatabases"
 }

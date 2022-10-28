@@ -1,9 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management APIs",
+    "title": "Applications.Link Management APIs",
     "version": "0000-00-00",
-    "description": "REST API for Applications.Connector DaprPubSubBroker Resource",
+    "description": "REST API for Applications.Link DaprPubSubBroker Resource",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -47,7 +47,7 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers": {
+    "/{rootScope}/providers/Applications.Link/daprPubSubBrokers": {
       "get": {
         "tags": [
           "DaprPubSubBroker"
@@ -81,7 +81,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Connector/daprPubSubBrokers/{daprPubSubBrokerName}": {
+    "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}": {
       "get": {
         "tags": [
           "DaprPubSubBroker"
@@ -260,7 +260,7 @@
         "x-ms-long-running-operation": true
       }
     },
-    "/providers/Applications.Connector/operations": {
+    "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
           "Operations"

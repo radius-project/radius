@@ -6,7 +6,7 @@
 package mongodatabases
 
 const (
-	ResourceTypeName = "Applications.Connector/mongoDatabases"
+	ResourceTypeName = "Applications.Link/mongoDatabases"
 
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"

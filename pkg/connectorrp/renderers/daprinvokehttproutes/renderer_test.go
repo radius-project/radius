@@ -34,9 +34,9 @@ func Test_Render_Success(t *testing.T) {
 
 	resource := datamodel.DaprInvokeHttpRoute{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/test-http-route",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
 			Name: "test-http-route",
-			Type: "Applications.Connector/daprInvokeHttpRoutes",
+			Type: "Applications.Link/daprInvokeHttpRoutes",
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -68,9 +68,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	resource := datamodel.DaprInvokeHttpRoute{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/daprInvokeHttpRoutes/test-http-route",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
 			Name: "test-http-route",
-			Type: "Applications.Connector/daprInvokeHttpRoutes",
+			Type: "Applications.Link/daprInvokeHttpRoutes",
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

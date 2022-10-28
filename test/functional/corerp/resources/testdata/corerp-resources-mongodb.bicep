@@ -35,7 +35,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mdb-db'
   location: 'global'
   properties: {

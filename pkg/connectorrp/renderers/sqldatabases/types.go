@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/sqlDatabases"
+	ResourceType = "Applications.Link/sqlDatabases"
 )
 
 var AzureSQLResourceType = resources.KnownType{

@@ -42,11 +42,11 @@ type ExtenderResponse struct {
 }
 
 func (extender Extender) ResourceTypeName() string {
-	return "Applications.Connector/extenders"
+	return "Applications.Link/extenders"
 }
 
 func (extender ExtenderResponse) ResourceTypeName() string {
-	return "Applications.Connector/extenders"
+	return "Applications.Link/extenders"
 }
 
 // ExtenderProperties represents the properties of Extender resource.

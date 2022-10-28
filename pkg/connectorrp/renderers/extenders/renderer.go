@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/extenders"
+	ResourceType = "Applications.Link/extenders"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)

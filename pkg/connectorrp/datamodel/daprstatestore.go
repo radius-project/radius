@@ -36,7 +36,7 @@ type DaprStateStore struct {
 }
 
 func (daprStateStore DaprStateStore) ResourceTypeName() string {
-	return "Applications.Connector/daprStateStores"
+	return "Applications.Link/daprStateStores"
 }
 
 // DaprStateStoreProperties represents the properties of DaprStateStore resource.

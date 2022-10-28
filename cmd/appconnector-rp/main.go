@@ -46,7 +46,7 @@ func main() {
 	}
 	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := radlogger.NewLogger("applications.connector")
+	logger, flush, err := radlogger.NewLogger("applications.link")
 	if err != nil {
 		log.Fatal(err)
 	}

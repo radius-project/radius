@@ -58,16 +58,16 @@ These settings apply only when `--tag=package-connector-2022-03-15-privateprevie
 
 ``` yaml $(tag) == 'package-connector-2022-03-15-privatepreview'
 input-file:
-  - Applications.Connector/preview/2022-03-15-privatepreview/global.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/sqlDatabases.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/redisCaches.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/daprSecretStores.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/daprStateStores.json
-  - Applications.Connector/preview/2022-03-15-privatepreview/extenders.json
+  - Applications.Link/preview/2022-03-15-privatepreview/global.json
+  - Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
+  - Applications.Link/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
+  - Applications.Link/preview/2022-03-15-privatepreview/sqlDatabases.json
+  - Applications.Link/preview/2022-03-15-privatepreview/redisCaches.json
+  - Applications.Link/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
+  - Applications.Link/preview/2022-03-15-privatepreview/daprSecretStores.json
+  - Applications.Link/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
+  - Applications.Link/preview/2022-03-15-privatepreview/daprStateStores.json
+  - Applications.Link/preview/2022-03-15-privatepreview/extenders.json
 ```
 
 # Code Generation

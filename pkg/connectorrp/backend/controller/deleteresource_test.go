@@ -29,7 +29,7 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
 			OperationType:    "APPLICATIONS.CONNECTOR/MONGODATABASES|DELETE",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0",
+			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0",
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
@@ -109,7 +109,7 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 		req := &ctrl.Request{
 			OperationID:      uuid.New(),
 			OperationType:    "APPLICATIONS.CONNECTOR/INVALID|DELETE",
-			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/invalidType/invalid",
+			ResourceID:       "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/invalidType/invalid",
 			CorrelationID:    uuid.NewString(),
 			OperationTimeout: &ctrl.DefaultAsyncOperationTimeout,
 		}
@@ -141,6 +141,6 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 
 		_, err = ctrl.Run(context.Background(), req)
 		require.Error(t, err)
-		require.Equal(t, "async delete operation unsupported on resource type: \"applications.connector/invalidtype\". Resource ID: \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/invalidType/invalid\"", err.Error())
+		require.Equal(t, "async delete operation unsupported on resource type: \"applications.link/invalidtype\". Resource ID: \"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/invalidType/invalid\"", err.Error())
 	})
 }

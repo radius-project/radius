@@ -34,9 +34,9 @@ func Test_Render_User_Secrets(t *testing.T) {
 
 	resource := datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/queue0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 			Name: "queue0",
-			Type: "Applications.Connector/rabbitMQMessageQueues",
+			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
@@ -76,9 +76,9 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 
 	resource := datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/queue0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 			Name: "queue0",
-			Type: "Applications.Connector/rabbitMQMessageQueues",
+			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
@@ -102,9 +102,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	resource := datamodel.RabbitMQMessageQueue{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/rabbitMQMessageQueues/queue0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
 			Name: "queue0",
-			Type: "Applications.Connector/rabbitMQMessageQueues",
+			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{

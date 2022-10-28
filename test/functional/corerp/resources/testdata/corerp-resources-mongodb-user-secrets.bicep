@@ -69,7 +69,7 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
+resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mdb-us-db'
   location: 'global'
   properties: {

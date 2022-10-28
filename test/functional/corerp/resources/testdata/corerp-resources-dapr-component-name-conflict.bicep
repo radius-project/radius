@@ -13,7 +13,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 // Dapr Component #1
-resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {
@@ -33,7 +33,7 @@ resource namespace 'Microsoft.ServiceBus/namespaces@2017-04-01' = {
 }
 
 // Dapr Component #2
-resource secretstore 'Applications.Connector/daprSecretStores@2022-03-15-privatepreview' = {
+resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privatepreview' = {
   name: 'dapr-component'
   location: 'global'
   properties: {

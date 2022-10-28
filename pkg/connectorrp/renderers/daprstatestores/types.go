@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	ResourceType = "Applications.Connector/daprStateStores"
+	ResourceType = "Applications.Link/daprStateStores"
 )
 
 var StorageAccountResourceType = resources.KnownType{

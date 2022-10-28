@@ -31,7 +31,7 @@ func Test_Validate(t *testing.T) {
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Create Command",
-			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--connector-type", "Applications.Connector/mongoDatabases"},
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--connector-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -40,7 +40,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create Command without name",
-			Input:         []string{"--template-path", "test_template", "--connector-type", "Applications.Connector/mongoDatabases"},
+			Input:         []string{"--template-path", "test_template", "--connector-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -49,7 +49,7 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Create Command without connector-type",
-			Input:         []string{"--name", "test_recipe", "--connector-type", "Applications.Connector/mongoDatabases"},
+			Input:         []string{"--name", "test_recipe", "--connector-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
@@ -92,7 +92,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
+							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
 							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -117,7 +117,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				ConnectorType:     "Applications.Connector/mongoDatabases",
+				ConnectorType:     "Applications.Link/mongoDatabases",
 				RecipeName:        "cosmosDB_new",
 			}
 
@@ -136,7 +136,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
+							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
 							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -157,7 +157,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				ConnectorType:     "Applications.Connector/mongoDatabases",
+				ConnectorType:     "Applications.Link/mongoDatabases",
 				RecipeName:        "cosmosDB_no_namespace",
 			}
 
@@ -176,7 +176,7 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Connector/mongoDatabases"),
+							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
 							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
@@ -195,7 +195,7 @@ func Test_Run(t *testing.T) {
 				Output:            outputSink,
 				Workspace:         &workspaces.Workspace{Environment: "kind-kind"},
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-				ConnectorType:     "Applications.Connector/mongoDatabases",
+				ConnectorType:     "Applications.Link/mongoDatabases",
 				RecipeName:        "cosmosDB",
 			}
 

@@ -42,7 +42,7 @@ Then, you can run and debug `Applications.Core RP` from VSCode.
 
 With this configuration:
 - Applications.Core RP will be running on port `8080`
-- Applications.Connector RP will be running on port `8081`
+- Applications.Link RP will be running on port `8081`
 - `etcd` will be used for storage
 
 ## Step 2: Running UCP
@@ -114,7 +114,7 @@ You'll need to:
 - Duplicate the contents of a workspace
 - Give the new workspace a memorable name (like `localrp`)
 - Add overrides for the UCP URL
-  - Note: The UCP URL is the only one that needs to be overridden because all calls from the CLI will be proxied through UCP. See [ucp-self-hosted-dev.yaml](https://github.com/project-radius/radius/blob/main/cmd/ucpd/ucp-self-hosted-dev.yaml) - notice that the UCP config includes the same URLs for the running processes of Applications.Core, Applications.Connector, and Deployment Engine as were set up in steps 1 and 3.
+  - Note: The UCP URL is the only one that needs to be overridden because all calls from the CLI will be proxied through UCP. See [ucp-self-hosted-dev.yaml](https://github.com/project-radius/radius/blob/main/cmd/ucpd/ucp-self-hosted-dev.yaml) - notice that the UCP config includes the same URLs for the running processes of Applications.Core, Applications.Link, and Deployment Engine as were set up in steps 1 and 3.
 
 **Example**
 

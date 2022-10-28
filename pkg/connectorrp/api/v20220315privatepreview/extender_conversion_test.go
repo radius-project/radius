@@ -32,9 +32,9 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.Extender)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/extenders/extender0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", convertedResource.ID)
 		require.Equal(t, "extender0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/extenders", convertedResource.Type)
+		require.Equal(t, "Applications.Link/extenders", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "222-222-2222", convertedResource.Properties.AdditionalProperties["fromNumber"])
@@ -62,9 +62,9 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 		secrets := map[string]interface{}{"accountSid": "sid", "authToken:": "token"}
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/extenders/extender0", resource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", resource.ID)
 		require.Equal(t, "extender0", resource.Name)
-		require.Equal(t, "Applications.Connector/extenders", resource.Type)
+		require.Equal(t, "Applications.Link/extenders", resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		require.Equal(t, "222-222-2222", resource.Properties.AdditionalProperties["fromNumber"])
@@ -92,9 +92,9 @@ func TestExtenderResponse_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.Extender)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/extenders/extender0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", convertedResource.ID)
 		require.Equal(t, "extender0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/extenders", convertedResource.Type)
+		require.Equal(t, "Applications.Link/extenders", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "222-222-2222", convertedResource.Properties.AdditionalProperties["fromNumber"])
@@ -120,9 +120,9 @@ func TestExtenderResponse_ConvertDataModelToVersioned(t *testing.T) {
 
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/extenders/extender0", resource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/extenders/extender0", resource.ID)
 		require.Equal(t, "extender0", resource.Name)
-		require.Equal(t, "Applications.Connector/extenders", resource.Type)
+		require.Equal(t, "Applications.Link/extenders", resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		require.Equal(t, "222-222-2222", resource.Properties.AdditionalProperties["fromNumber"])

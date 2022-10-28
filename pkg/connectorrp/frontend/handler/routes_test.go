@@ -24,31 +24,31 @@ var handlerTests = []struct {
 	isAzureAPI bool
 }{
 	{
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/mongodatabases/mongo/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
-		url:        "/providers/applications.connector/operations?api-version=2022-03-15-privatepreview",
+		url:        "/providers/applications.link/operations?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: true,
 	}, {
@@ -56,172 +56,172 @@ var handlerTests = []struct {
 		method:     http.MethodPut,
 		isAzureAPI: true,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rediscaches/redis/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rediscaches/redis/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/rabbitmqmessagequeues/rabbitmq/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/rabbitmqmessagequeues/rabbitmq/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases/sql?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases/sql?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases/sql?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/sqldatabases/sql?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/sqldatabases/sql?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/extenders?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/extenders/extender/listsecrets?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPost,
 		isAzureAPI: false,
 	},
 	{
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprstatestores/daprstatestore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprsecretstores/daprsecretstore?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprpubsubbrokers/daprpubsub?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes?api-version=2022-03-15-privatepreview",
 		method:     http.MethodGet,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPut,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
 		method:     http.MethodPatch,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	}, {
-		url:        "/resourcegroups/testrg/providers/applications.connector/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
+		url:        "/resourcegroups/testrg/providers/applications.link/daprinvokehttproutes/daprhttproute?api-version=2022-03-15-privatepreview",
 		method:     http.MethodDelete,
 		isAzureAPI: false,
 	},
