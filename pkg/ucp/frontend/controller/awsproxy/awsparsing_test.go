@@ -163,27 +163,3 @@ func TestFlattenUnflattenRealData(t *testing.T) {
 	unflattened := unflattenProperties(flattened)
 	require.Equal(t, properties, unflattened)
 }
-
-func TestRemovePropertyKeywordFromString(t *testing.T) {
-	require.Equal(t, "ClusterEndpoint", removePropertyKeywordFromString("/properties/ClusterEndpoint"))
-	require.Equal(t, "ClusterEndpoint/Address", removePropertyKeywordFromString("/properties/ClusterEndpoint/Address"))
-	require.Equal(t, "ClusterEndpoint/Address/Port", removePropertyKeywordFromString("/properties/ClusterEndpoint/Address/Port"))
-}
-
-func TestMapValues(t *testing.T) {
-	var input []string
-	var expected []string
-	var actual []string
-
-	input = []string{"A", "B", "C"}
-	actual = mapValues(input, func(value string) string {
-		return value + "test"
-	})
-	expected = []string{"Atest", "Btest", "Ctest"}
-	require.Equal(t, expected, actual)
-
-	input = []string{"/properties/Status", "/properties/ClusterEndpoint/Address", "/properties/ClusterEndpoint/Port", "/properties/Port"}
-	actual = mapValues(input, removePropertyKeywordFromString)
-	expected = []string{"Status", "ClusterEndpoint/Address", "ClusterEndpoint/Port", "Port"}
-	require.Equal(t, expected, actual)
-}

@@ -24,6 +24,12 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+type ResourceTypeSchema struct {
+	Properties           map[string]interface{} `json:"properties,omitempty"`
+	ReadOnlyProperties   []string               `json:"readOnlyProperties,omitempty"`
+	CreateOnlyProperties []string               `json:"createOnlyProperties,omitempty"`
+}
+
 func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
 	// Common parsing in AWS plane requests
 	cfg, err := config.LoadDefaultConfig(ctx)
@@ -175,18 +181,4 @@ func unflattenProperties(state map[string]interface{}) map[string]interface{} {
 	}
 
 	return unflattenedState
-}
-
-// removePropertyKeywordFromString removes "/properties/" from the given string
-func removePropertyKeywordFromString(s string) string {
-	return strings.Replace(s, "/properties/", "", 1)
-}
-
-// mapValues implements the map function on an []string
-func mapValues(vs []string, f func(string) string) []string {
-	vsm := make([]string, len(vs))
-	for i, v := range vs {
-		vsm[i] = f(v)
-	}
-	return vsm
 }

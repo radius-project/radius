@@ -7,6 +7,7 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -22,12 +23,6 @@ import (
 	"github.com/wI2L/jsondiff"
 	"golang.org/x/exp/slices"
 )
-
-type ResourceTypeSchema struct {
-	Properties           map[string]interface{} `json:"properties,omitempty"`
-	ReadOnlyProperties   []string               `json:"readOnlyProperties,omitempty"`
-	CreateOnlyProperties []string               `json:"createOnlyProperties,omitempty"`
-}
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 
@@ -118,68 +113,13 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			TypeName: aws.String(resourceType),
 		})
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return nil, err
 		}
 
-		var resourceTypeSchema ResourceTypeSchema
-		err = json.Unmarshal([]byte(*describeTypeOutput.Schema), &resourceTypeSchema)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-		var readOnlyProperties = mapValues(resourceTypeSchema.ReadOnlyProperties, removePropertyKeywordFromString)
-		var createOnlyProperties = mapValues(resourceTypeSchema.CreateOnlyProperties, removePropertyKeywordFromString)
-
-		var currentStateObject map[string]interface{}
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &currentStateObject)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-
-		var flattenedCurrentStateObject = flattenProperties(currentStateObject)
-
-		var desiredStateObject map[string]interface{}
-		err = json.Unmarshal(desiredState, &desiredStateObject)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-
-		var flattenedDesiredStateObject = flattenProperties(desiredStateObject)
-
-		var flattenedGoalStateObject = map[string]interface{}{}
-
-		// Add read-only and create-only properties from the current state to the goal state
-		for k, v := range flattenedCurrentStateObject {
-			if slices.Contains(readOnlyProperties, k) || slices.Contains(createOnlyProperties, k) {
-				flattenedGoalStateObject[k] = v
-			}
-		}
-
-		// Add (or overwrite) properties from desired state to the goal state
-		for k, v := range flattenedDesiredStateObject {
-			// Don't add create-only properties (for idempotency)
-			if !slices.Contains(createOnlyProperties, k) {
-				flattenedGoalStateObject[k] = v
-			}
-		}
-
-		// Convert current and goal states back into unflattened maps
-		unflattenedCurrentStateObject := unflattenProperties(flattenedCurrentStateObject)
-		unflattenedGoalStateObject := unflattenProperties(flattenedGoalStateObject)
-
-		// Marshal current state
-		currentState, err := json.Marshal(unflattenedCurrentStateObject)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-
-		// Marshal goal state
-		goalState, err := json.Marshal(unflattenedGoalStateObject)
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-
-		// Calculate the patch based on the current state and the goal state
-		patch, err := jsondiff.CompareJSON(currentState, goalState)
+		// Generate patch
+		currentState := []byte(*getResponse.ResourceDescription.Properties)
+		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
+		patch, err := generatePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
@@ -244,4 +184,60 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
+}
+
+// generatePatch generates a JSON patch based on a given current state, desired state, and resource type schema
+func generatePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
+	// See: https://github.com/project-radius/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
+
+	// Get the resource type schema - this will tell us the properties of the
+	// resource as well as which properties are read-only, create-only, etc.
+	var resourceTypeSchema ResourceTypeSchema
+	err := json.Unmarshal(schema, &resourceTypeSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the current state of the resource
+	var currentStateObject map[string]interface{}
+	err = json.Unmarshal(currentState, &currentStateObject)
+	if err != nil {
+		return nil, err
+	}
+	var flattenedCurrentStateObject = flattenProperties(currentStateObject)
+
+	// Get the desired state of the resource
+	var desiredStateObject map[string]interface{}
+	err = json.Unmarshal(desiredState, &desiredStateObject)
+	if err != nil {
+		return nil, err
+	}
+	var flattenedDesiredStateObject = flattenProperties(desiredStateObject)
+
+	// Add read-only and create-only properties from current state to the desired state
+	for k, v := range flattenedCurrentStateObject {
+		property := fmt.Sprintf("/properties/%s", k)
+
+		// Add the property to the desired state if it is not already set
+		if _, exists := flattenedDesiredStateObject[k]; !exists {
+			// Only add the property to the desired state if it is read-only or create-only
+			isReadOnlyProperty := slices.Contains(resourceTypeSchema.ReadOnlyProperties, property)
+			isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
+			if isReadOnlyProperty || isCreateOnlyProperty {
+				flattenedDesiredStateObject[k] = v
+			}
+		}
+	}
+
+	// Convert desired patch state back into unflattened object
+	unflattenedDesiredStateObject := unflattenProperties(flattenedDesiredStateObject)
+
+	// Marshal desired state into bytes
+	updatedDesiredState, err := json.Marshal(unflattenedDesiredStateObject)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate the patch based on the current state and the goal state
+	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }
