@@ -14,6 +14,7 @@ import (
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	"github.com/project-radius/radius/pkg/connectorrp/handlers"
 	"github.com/project-radius/radius/pkg/connectorrp/model"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
@@ -233,7 +234,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return nil, err
 	}
 
-	resourceIdentity, properties, err := outputResourceModel.ResourceHandler.Put(ctx, outputResource)
+	resourceIdentity, properties, err := outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{Resource: outputResource})
 	if err != nil {
 		return nil, err
 	}
@@ -295,7 +296,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
 		}

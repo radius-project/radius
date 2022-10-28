@@ -45,8 +45,8 @@ type kubernetesHandler struct {
 	clientSet k8s.Interface
 }
 
-func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
-	item, err := convertToUnstructured(*resource)
+func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) error {
+	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		return err
 	}
 
-	if resource.Deployed {
+	if options.Resource.Deployed {
 		return nil
 	}
 
@@ -170,9 +170,9 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 	return nil
 }
 
-func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
+	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
 		return err
 	}
 

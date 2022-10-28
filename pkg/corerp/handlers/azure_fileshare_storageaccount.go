@@ -31,16 +31,16 @@ type azureFileShareStorageAccountHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
-	identity, err := handler.GetResourceIdentity(ctx, *resource)
+func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, options *PutOptions) error {
+	identity, err := handler.GetResourceIdentity(ctx, *options.Resource)
 	if err != nil {
 		return err
 	}
-	resource.Identity = identity
+	options.Resource.Identity = identity
 	return nil
 }
 
-func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
 

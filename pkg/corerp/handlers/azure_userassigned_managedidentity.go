@@ -42,14 +42,15 @@ type azureUserAssignedManagedIdentityHandler struct {
 	ResourceGroup  string
 }
 
-func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
-	resource_identity, err := handler.GetResourceIdentity(ctx, *resource)
+
+	resource_identity, err := handler.GetResourceIdentity(ctx, *options.Resource)
 	if err != nil {
 		return err
 	}
 
-	resource.Identity = resource_identity
+	options.Resource.Identity = resource_identity
 	id := resource_identity.Data.(resourcemodel.ARMIdentity)
 	logger.WithValues(
 		radlogger.LogFieldResourceID, id,
@@ -95,6 +96,6 @@ func (handler *azureUserAssignedManagedIdentityHandler) GetResourceNativeIdentit
 	return properties, nil
 }
 
-func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }

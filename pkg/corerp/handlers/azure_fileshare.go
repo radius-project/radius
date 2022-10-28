@@ -27,16 +27,16 @@ type azureFileShareHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureFileShareHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptions) error {
 	armhandler := NewARMHandler(handler.arm)
-	err := armhandler.Put(ctx, resource)
+	err := armhandler.Put(ctx, options)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (handler *azureFileShareHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureFileShareHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
 

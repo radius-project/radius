@@ -60,9 +60,9 @@ type azureFederatedIdentityHandler struct {
 }
 
 // Put creates or updates the federated identity resource of the azure identity.
-func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
-	ri, err := handler.GetResourceIdentity(ctx, *resource)
+	ri, err := handler.GetResourceIdentity(ctx, *options.Resource)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, resource 
 		return err
 	}
 
-	resource.Identity = ri
+	options.Resource.Identity = ri
 	logger.WithValues(
 		radlogger.LogFieldResourceID, identity,
 		radlogger.LogFieldLocalID, outputresource.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
@@ -175,12 +175,12 @@ func (handler *azureFederatedIdentityHandler) GetResourceNativeIdentityKeyProper
 	return properties, nil
 }
 
-func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	identityID, err := GetString(resource.Identity.Data, "resource")
+func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+	identityID, err := GetString(options.Resource.Identity.Data, "resource")
 	if err != nil {
 		return err
 	}
-	name, err := GetString(resource.Identity.Data, "name")
+	name, err := GetString(options.Resource.Identity.Data, "name")
 	if err != nil {
 		return err
 	}

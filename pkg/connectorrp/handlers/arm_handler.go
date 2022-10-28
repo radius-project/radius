@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -31,8 +30,8 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
-	id, apiVersion, err := resource.Identity.RequireARM()
+func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+	id, apiVersion, err := options.Resource.Identity.RequireARM()
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -49,12 +48,12 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
-	resource.Resource = serialized
+	options.Resource.Resource = serialized
 
 	return resourcemodel.ResourceIdentity{}, map[string]string{}, nil
 }
 
-func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
 

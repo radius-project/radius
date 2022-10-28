@@ -28,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -150,7 +151,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput, deployedOutputResources map[string]map[string]string) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
@@ -164,10 +165,11 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = outputResourceModel.ResourceHandler.Put(ctx, &outputResource)
+	err = outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResources})
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
+	deployedOutputResources[outputResource.LocalID] = properties
 
 	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
 	if err != nil {
@@ -221,6 +223,8 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 	// Values consumed by other Radius resource types through connections
 	computedValues := map[string]interface{}{}
+
+	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
@@ -278,7 +282,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, outputResource)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
 		}

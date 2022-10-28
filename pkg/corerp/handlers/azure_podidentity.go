@@ -44,9 +44,9 @@ type azurePodIdentityHandler struct {
 	K8sClusterName    string
 }
 
-func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
-	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, *resource)
+	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, *options.Resource)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func (handler *azurePodIdentityHandler) Put(ctx context.Context, resource *outpu
 		return fmt.Errorf("failed to add pod identity on the cluster: %w", err)
 	}
 
-	resource.Identity = resourcemodel.ResourceIdentity{
+	options.Resource.Identity = resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
 			Type:     resourcekinds.AzurePodIdentity,
 			Provider: resourcemodel.ProviderAzureKubernetesService,
@@ -199,8 +199,8 @@ func (handler *azurePodIdentityHandler) GetResourceIdentity(ctx context.Context,
 	return identity, nil
 }
 
-func (handler *azurePodIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	podidentityCluster, podIdentityName, _, err := resource.Identity.RequireAADPodIdentity()
+func (handler *azurePodIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+	podidentityCluster, podIdentityName, _, err := options.Resource.Identity.RequireAADPodIdentity()
 	if err != nil {
 		return err
 	}

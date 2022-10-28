@@ -36,9 +36,10 @@ type azureRoleAssignmentHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
-	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, *resource)
+
+	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, *options.Resource)
 	if err != nil {
 		return err
 	}
@@ -75,7 +76,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, resource *ou
 	}
 	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], scope))
 
-	resource.Identity = resourcemodel.NewARMIdentity(&resource.ResourceType, *roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return nil
 }
 
@@ -121,6 +122,6 @@ func (handler *azureRoleAssignmentHandler) GetResourceNativeIdentityKeyPropertie
 	return properties, nil
 }
 
-func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }

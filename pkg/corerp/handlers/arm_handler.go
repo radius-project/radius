@@ -29,9 +29,9 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *armHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *armHandler) Put(ctx context.Context, options *PutOptions) error {
 	// Do a GET just to validate that the resource exists.
-	arm_resource, err := getByID(ctx, handler.arm.Auth, resource.Identity)
+	arm_resource, err := getByID(ctx, handler.arm.Auth, options.Resource.Identity)
 	if err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	if err != nil {
 		return err
 	}
-	resource.Resource = serialized
+	options.Resource.Resource = serialized
 
 	return nil
 }
@@ -54,7 +54,7 @@ func (handler *armHandler) GetResourceNativeIdentityKeyProperties(ctx context.Co
 	return map[string]string{}, nil
 }
 
-func (handler *armHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	return nil
 }
 
