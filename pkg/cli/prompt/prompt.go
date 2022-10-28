@@ -157,6 +157,9 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 type Interface interface {
 	RunPrompt(prompter promptui.Prompt) (string, error)
 	RunSelect(selector promptui.Select) (int, string, error)
+
+	// Confirm prompts the user to confirm the answer to a yes/no question.
+	ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error)
 }
 
 type Impl struct{}
@@ -169,6 +172,10 @@ func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
 // Prompts user to select from a list of values
 func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 	return selector.Run()
+}
+
+func (i *Impl) ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error) {
+	return ConfirmWithDefault(prompt, defaultAns)
 }
 
 // Creates a Yes or No prompts where user has to enter either a Y or N as input
