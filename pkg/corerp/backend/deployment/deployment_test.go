@@ -892,28 +892,28 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		expectedKubernetesproperties := map[string]string{
-			handlers.KubernetesKindKey:       resourcekinds.Service,
-			handlers.KubernetesAPIVersionKey: "v1",
-			handlers.KubernetesNamespaceKey:  "test-namespace",
-			handlers.ResourceName:            "test-deployment",
-		}
-
-		expectedIdentity := resourcemodel.ResourceIdentity{
-			ResourceType: &resourcemodel.ResourceType{
-				Type:     resourcekinds.Service,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			Data: resourcemodel.KubernetesIdentity{
-				Name:       expectedKubernetesproperties[handlers.ResourceName],
-				Namespace:  expectedKubernetesproperties[handlers.KubernetesNamespaceKey],
-				Kind:       expectedKubernetesproperties[handlers.KubernetesKindKey],
-				APIVersion: expectedKubernetesproperties[handlers.ResourceName],
-			},
-		}
-
-		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(expectedIdentity, nil)
-		mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(expectedKubernetesproperties, nil)
+		/*
+			expectedKubernetesproperties := map[string]string{
+				handlers.KubernetesKindKey:       resourcekinds.Service,
+				handlers.KubernetesAPIVersionKey: "v1",
+				handlers.KubernetesNamespaceKey:  "test-namespace",
+				handlers.ResourceName:            "test-deployment",
+			}
+				expectedIdentity := resourcemodel.ResourceIdentity{
+					ResourceType: &resourcemodel.ResourceType{
+						Type:     resourcekinds.Service,
+						Provider: resourcemodel.ProviderKubernetes,
+					},
+					Data: resourcemodel.KubernetesIdentity{
+						Name:       expectedKubernetesproperties[handlers.ResourceName],
+						Namespace:  expectedKubernetesproperties[handlers.KubernetesNamespaceKey],
+						Kind:       expectedKubernetesproperties[handlers.KubernetesKindKey],
+						APIVersion: expectedKubernetesproperties[handlers.ResourceName],
+					},
+				}
+		*/
+		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(expectedIdentity, nil)
+		//mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(expectedKubernetesproperties, nil)
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
@@ -928,8 +928,8 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
-		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to deploy the resource"))
+		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to deploy the resource"))
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.Error(t, err)
@@ -968,8 +968,8 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
-		mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
+		//mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
 		require.Error(t, err)

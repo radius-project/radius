@@ -151,33 +151,24 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput, deployedOutputResources map[string]map[string]string) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput, deployedOutputResources map[string]map[string]string) (map[string]interface{}, error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
 	}
 
-	resourceIdentity, err = outputResourceModel.ResourceHandler.GetResourceIdentity(ctx, outputResource)
+	properties, err := outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{Resource: outputResource, DependencyProperties: deployedOutputResources})
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
 	}
 
-	err = outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResources})
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
 	deployedOutputResources[outputResource.LocalID] = properties
 
-	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
-
 	// Values consumed by other Radius resource types through connections
-	computedValues = map[string]interface{}{}
+	computedValues := map[string]interface{}{}
 
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
@@ -191,20 +182,18 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
 			value, _, err := pointer.Get(outputResource.Resource)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 			computedValues[k] = value
 		}
 	}
 
-	return resourceIdentity, computedValues, nil
+	return computedValues, nil
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
@@ -229,13 +218,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
+		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput, deployedOutputResourceProperties)
 		if err != nil {
 			return rp.DeploymentOutput{}, err
-		}
-
-		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
-			outputResource.Identity = resourceIdentity
 		}
 
 		if outputResource.Identity.ResourceType == nil {

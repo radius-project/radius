@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -29,28 +28,20 @@ type armHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *armHandler) Put(ctx context.Context, options *PutOptions) error {
+func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	// Do a GET just to validate that the resource exists.
-	arm_resource, err := getByID(ctx, handler.arm.Auth, options.Resource.Identity)
+	res, err := getByID(ctx, handler.arm.Auth, options.Resource.Identity)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Return the resource so renderers can use it for computed values.
-	serialized, err := handler.serializeResource(*arm_resource)
+	serialized, err := handler.serializeResource(*res)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	options.Resource.Resource = serialized
 
-	return nil
-}
-
-func (handler *armHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
-	return resource.Identity, nil
-}
-
-func (handler *armHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
 	return map[string]string{}, nil
 }
 

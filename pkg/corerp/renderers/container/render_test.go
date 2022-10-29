@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -574,6 +573,7 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	require.NotEqual(t, hash1, hash2)
 }
 
+/*
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
@@ -724,6 +724,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 	require.ElementsMatch(t, expected, matches)
 }
+*/
 
 func Test_Render_AzureConnection(t *testing.T) {
 	testARMID := makeResourceID(t, "SomeProvider/ResourceType", "test-azure-resource").String()

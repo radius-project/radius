@@ -2,8 +2,14 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-
 package handlers
+
+const (
+	PodIdentityNameKey = "podidentityname"
+	PodNamespaceKey    = "podnamespace"
+)
+
+/*
 
 import (
 	"context"
@@ -44,7 +50,7 @@ type azurePodIdentityHandler struct {
 	K8sClusterName    string
 }
 
-func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) error {
+func (handler *azurePodIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
 	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, *options.Resource)
 	if err != nil {
@@ -281,3 +287,4 @@ func (handler *azurePodIdentityHandler) deleteManagedIdentity(ctx context.Contex
 
 	return nil
 }
+*/
