@@ -1019,13 +1019,28 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, nil, nil, nil, nil}
 
-	radiusSystemNamespace := "radius-system"
+	env := &datamodel.Environment{
+		Properties: datamodel.EnvironmentProperties{
+			Compute: datamodel.EnvironmentCompute{
+				Kind: datamodel.KubernetesComputeKind,
+				KubernetesCompute: datamodel.KubernetesComputeProperties{
+					Namespace: "radius-system",
+				},
+				Identity: &rp.IdentitySettings{},
+			},
+			Providers: datamodel.Providers{
+				Azure: datamodel.ProvidersAzure{
+					Scope: "/subscriptions/subid/resourceGroup/rgName",
+				},
+			},
+		},
+	}
 
 	t.Run("Verify getEnvOptions succeeds (host:port)", func(t *testing.T) {
 		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "localhost:8000")
 		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
-		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		options, err := dp.getEnvOptions(ctx, env)
 		require.NoError(t, err)
 
 		require.True(t, options.Gateway.PublicEndpointOverride)
@@ -1038,7 +1053,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "www.contoso.com")
 		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
-		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		options, err := dp.getEnvOptions(ctx, env)
 		require.NoError(t, err)
 
 		require.True(t, options.Gateway.PublicEndpointOverride)
@@ -1051,7 +1066,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 		os.Setenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE", "http://localhost:8000")
 		defer os.Unsetenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
-		options, err := dp.getEnvOptions(ctx, radiusSystemNamespace)
+		options, err := dp.getEnvOptions(ctx, env)
 		require.Error(t, err)
 		require.EqualError(t, err, "a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		require.Equal(t, options, renderers.EnvironmentOptions{})

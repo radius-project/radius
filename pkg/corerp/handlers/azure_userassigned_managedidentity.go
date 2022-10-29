@@ -24,6 +24,7 @@ const (
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
 	UserAssignedIdentityClientIDKey    = "userassignedidentityclientid"
 	UserAssignedIdentityTenantIDKey    = "userassignedidentitytenantid"
+	UserAssignedIdentityScope          = "userassignedidentityscope"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
@@ -33,13 +34,6 @@ func NewAzureUserAssignedManagedIdentityHandler(arm *armauth.ArmConfig) Resource
 
 type azureUserAssignedManagedIdentityHandler struct {
 	arm *armauth.ArmConfig
-
-	// TODO: this code has been written to assume that we work with a single subscription/resourceGroup
-	// for a single instance of the Radius control plane. This code is also non-functional. If we bring
-	// back this functionality, we need to rework these semantics. Users should configure these details as
-	// part of the environment configuration, and not as a static "one-per-control-plane" setting.
-	SubscriptionID string
-	ResourceGroup  string
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {

@@ -194,13 +194,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
