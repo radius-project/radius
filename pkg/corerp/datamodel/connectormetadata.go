@@ -7,8 +7,8 @@ package datamodel
 
 import "github.com/project-radius/radius/pkg/rp"
 
-// ConnectorMetadata represents internal DataModel properties common to all connector types.
-type ConnectorMetadata struct {
+// LinkMetadata represents internal DataModel properties common to all link types.
+type LinkMetadata struct {
 	// TODO: stop using this type in CoreRP models.
 
 	// ComputedValues map is any resource values that will be needed for more operations.

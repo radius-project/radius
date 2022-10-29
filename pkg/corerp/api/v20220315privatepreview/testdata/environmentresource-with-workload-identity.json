@@ -20,7 +20,7 @@
         },
         "recipes": {
             "cosmos-recipe": {
-                "connectorType": "Applications.Link/mongoDatabases",
+                "linkType": "Applications.Link/mongoDatabases",
                 "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
             }
         }

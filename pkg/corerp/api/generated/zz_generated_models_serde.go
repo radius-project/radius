@@ -663,7 +663,7 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentRecipeProperties.
 func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "connectorType", e.ConnectorType)
+	populate(objectMap, "linkType", e.LinkType)
 	populate(objectMap, "templatePath", e.TemplatePath)
 	return json.Marshal(objectMap)
 }
@@ -677,8 +677,8 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connectorType":
-				err = unpopulate(val, "ConnectorType", &e.ConnectorType)
+		case "linkType":
+				err = unpopulate(val, "LinkType", &e.LinkType)
 				delete(rawMsg, key)
 		case "templatePath":
 				err = unpopulate(val, "TemplatePath", &e.TemplatePath)

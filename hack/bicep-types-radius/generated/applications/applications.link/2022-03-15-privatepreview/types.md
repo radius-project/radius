@@ -7,7 +7,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprInvokeHttpRouteProperties](#daprinvokehttprouteproperties) (Required): DaprInvokeHttpRoute connector properties
+* **properties**: [DaprInvokeHttpRouteProperties](#daprinvokehttprouteproperties) (Required): DaprInvokeHttpRoute link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprInvokeHttpRoutes' (ReadOnly, DeployTimeConstant): The resource type
@@ -19,7 +19,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties) (Required): DaprPubSubBroker connector properties
+* **properties**: [DaprPubSubBrokerProperties](#daprpubsubbrokerproperties) (Required): DaprPubSubBroker link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprPubSubBrokers' (ReadOnly, DeployTimeConstant): The resource type
@@ -31,7 +31,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties) (Required): DaprSecretStore connector properties
+* **properties**: [DaprSecretStoreProperties](#daprsecretstoreproperties) (Required): DaprSecretStore link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprSecretStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -43,7 +43,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties) (Required): DaprStateStore connector properties
+* **properties**: [DaprStateStoreProperties](#daprstatestoreproperties) (Required): DaprStateStore link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/daprStateStores' (ReadOnly, DeployTimeConstant): The resource type
@@ -55,7 +55,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender connector properties
+* **properties**: [ExtenderProperties](#extenderproperties) (Required): Extender link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/extenders' (ReadOnly, DeployTimeConstant): The resource type
@@ -67,7 +67,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): MongoDatabase connector properties
+* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): MongoDatabase link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -79,7 +79,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue connector properties
+* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/rabbitMQMessageQueues' (ReadOnly, DeployTimeConstant): The resource type
@@ -91,7 +91,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [RedisCacheProperties](#rediscacheproperties) (Required): RedisCache connector properties
+* **properties**: [RedisCacheProperties](#rediscacheproperties) (Required): RedisCache link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/redisCaches' (ReadOnly, DeployTimeConstant): The resource type
@@ -103,7 +103,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabse connector properties
+* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabse link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/sqlDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -131,10 +131,10 @@
 ## DaprInvokeHttpRouteProperties
 ### Properties
 * **appId**: string (Required): The Dapr appId used for the route
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## Recipe
@@ -164,11 +164,11 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **topic**: string: Topic name of the Azure ServiceBus resource
 ### DaprPubSubGenericResourceProperties
@@ -191,13 +191,13 @@
 
 ## DaprSecretStoreProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
@@ -211,11 +211,11 @@
 * **Discriminator**: kind
 
 ### Base Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### DaprStateStoreGenericResourceProperties
 #### Properties
@@ -242,9 +242,9 @@
 
 ## ExtenderProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **secrets**: [ExtenderSecrets](#extendersecrets) (WriteOnly): The secret values for the given Extender resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### Additional Properties
@@ -262,14 +262,14 @@
 
 ## MongoDatabaseProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string (ReadOnly): Database name of the target Mongo database
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **host**: string: Host name of the target Mongo database
 * **port**: int: Port value of the target Mongo database
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
-* **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this connector
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this link
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -286,11 +286,11 @@
 
 ## RabbitMQMessageQueueProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **queue**: string (Required): The name of the queue
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **secrets**: [RabbitMQSecrets](#rabbitmqsecrets) (WriteOnly): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -305,13 +305,13 @@
 
 ## RedisCacheProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **host**: string: The host name of the target redis cache
 * **port**: int: The port value of the target redis cache
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
-* **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this connector
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resource**: string: Fully qualified resource ID of a supported resource with Redis API to use for this link
 * **secrets**: [RedisCacheSecrets](#rediscachesecrets) (WriteOnly): The secret values for the given RedisCache resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **username**: string (ReadOnly): The username for redis
@@ -328,12 +328,12 @@
 
 ## SQLDatabaseProperties
 ### Properties
-* **application**: string: Fully qualified resource ID for the application that the connector is consumed by
+* **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **database**: string: The name of the SQL database.
-* **environment**: string (Required): Fully qualified resource ID for the environment that the connector is linked to
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the connector at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a connector
-* **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this connector
+* **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
+* **resource**: string: Fully qualified resource ID of a supported resource with SQL API to use for this link
 * **server**: string: The fully qualified domain name of the SQL database.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 

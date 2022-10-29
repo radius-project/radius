@@ -16,8 +16,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	"github.com/project-radius/radius/pkg/connectorrp/backend"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend"
+	"github.com/project-radius/radius/pkg/linkrp/backend"
+	"github.com/project-radius/radius/pkg/linkrp/frontend"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
 	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
