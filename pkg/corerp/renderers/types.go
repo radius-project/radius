@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -44,9 +45,14 @@ type RendererDependency struct {
 	OutputResources map[string]resourcemodel.ResourceIdentity
 }
 
+// EnvironmentOptions represents the options for the linked environment resource.
 type EnvironmentOptions struct {
-	Gateway   GatewayOptions
+	// Namespace represents the Kubernetes namespace.
 	Namespace string
+	// Providers represents the cloud provider's configurations.
+	CloudProviders *datamodel.Providers
+	// Gateway represents the gateway options.
+	Gateway GatewayOptions
 }
 
 type GatewayOptions struct {

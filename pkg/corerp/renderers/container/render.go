@@ -27,7 +27,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -178,13 +177,14 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
 		outputResources = append(outputResources, roles...)
-		outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
-		outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
+		//outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
+		//outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
 	}
 
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
+/*
 // prepareFederatedIdentity prepare the output resource and dependencies for ServiceAccount and Azure federated identity.
 func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedValues map[string]any, resource *datamodel.ContainerResource) (string, []outputresource.OutputResource, []outputresource.Dependency, error) {
 	// Ignore this error when identityType is not given.
@@ -224,13 +224,10 @@ func (r Renderer) prepareFederatedIdentity(appName, namespace string, computedVa
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
 
 		// TODO: Need to support the other federated identities.
-		subs := handlers.GetKubeAzureSubject(namespace, name)
-		resources = append(resources, r.makeAzureFederatedIdentity(identityID, name, subs, issuer))
-		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDFederatedIdentity})
 	}
 
 	return name, resources, deps, nil
-}
+}*/
 
 func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) (outputresource.OutputResource, []outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
@@ -364,9 +361,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 					outputResources = append(outputResources, outResources...)
 					deploymentDeps = append(deploymentDeps, deps...)*/
 
-				// Make Managed Identity
-				managedIdentity := r.makeManagedIdentity(ctx, resource, applicationName)
-				outputResources = append(outputResources, managedIdentity)
+				managedIdentity, err := r.makeManagedIdentity(ctx, resource, applicationName, options.Environment.CloudProviders)
+				outputResources = append(outputResources, *managedIdentity)
 
 				// Make Role assignments
 				roleNames := []string{}
@@ -383,13 +379,11 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				}
 				outputResources = append(outputResources, roleAssignments...)
 
-				// Create Federated identity
-				// Make Pod Identity
-				podIdentity := r.makePodIdentity(ctx, resource, applicationName, []outputresource.OutputResource{})
-				outputResources = append(outputResources, podIdentity)
+				federatedIdentities := r.makeAzureFederatedIdentity(resource, &options.Environment)
+				outputResources = append(outputResources, federatedIdentities)
 
-				// Generated identity name
-				// Create service account and serviceProviderClass
+				// Create ServiceAccount
+				// Create SecretProviderClass handler
 
 				// Create spec for secret store
 				volumeSpec, volumeMountSpec, err = r.makeAzureKeyVaultPersistentVolume(volumeName, volumeProperties.Persistent, identity.Name, options)
@@ -522,7 +516,8 @@ func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationNa
 	return env, secretData
 }
 
-func (r Renderer) makeAzureFederatedIdentity(identityID, name, subject, issuer string) outputresource.OutputResource {
+func (r Renderer) makeAzureFederatedIdentity(resource datamodel.ContainerResource, envOpt *renderers.EnvironmentOptions) outputresource.OutputResource {
+	subject := handlers.GetKubeAzureSubject(envOpt.Namespace, resource.Name)
 	return outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureFederatedIdentity,
@@ -531,10 +526,14 @@ func (r Renderer) makeAzureFederatedIdentity(identityID, name, subject, issuer s
 		LocalID:  outputresource.LocalIDFederatedIdentity,
 		Deployed: false,
 		Resource: map[string]string{
-			handlers.UserAssignedIdentityNameKey: identityID,
-			handlers.FederatedIdentityNameKey:    name,
+			handlers.FederatedIdentityNameKey:    resource.Name,
 			handlers.FederatedIdentitySubjectKey: subject,
-			handlers.FederatedIdentityIssuerKey:  issuer,
+			handlers.FederatedIdentityIssuerKey:  "issuer",
+		},
+		Dependencies: []outputresource.Dependency{
+			{
+				LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
+			},
 		},
 	}
 }
@@ -672,9 +671,15 @@ func (r Renderer) isIdentitySupported(kind datamodel.IAMKind) bool {
 }
 
 // Builds a user-assigned managed identity output resource.
-func (r Renderer) makeManagedIdentity(ctx context.Context, resource datamodel.ContainerResource, applicationName string) outputresource.OutputResource {
-	managedIdentityName := kubernetes.MakeResourceName(applicationName, resource.Name)
-	identityOutputResource := outputresource.OutputResource{
+func (r Renderer) makeManagedIdentity(ctx context.Context, resource datamodel.ContainerResource, applicationName string, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
+	if cloudProvider == nil || cloudProvider.Azure.Scope == "" {
+		rID, err := resources.Parse(cloudProvider.Azure.Scope)
+		if err != nil || rID.FindScope(resources.SubscriptionsSegment) == "" || rID.FindScope(resources.ResourceGroupsSegment) == "" {
+			return nil, errors.New("invalid Azure Root scope for identity")
+		}
+	}
+
+	return &outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
 			Type:     resourcekinds.AzureUserAssignedManagedIdentity,
 			Provider: resourcemodel.ProviderAzure,
@@ -682,11 +687,10 @@ func (r Renderer) makeManagedIdentity(ctx context.Context, resource datamodel.Co
 		LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
 		Deployed: false,
 		Resource: map[string]string{
-			handlers.UserAssignedIdentityNameKey: managedIdentityName,
+			handlers.UserAssignedIdentityNameKey: kubernetes.MakeResourceName(applicationName, resource.Name),
+			handlers.UserAssignedIdentityScope:   cloudProvider.Azure.Scope,
 		},
-	}
-
-	return identityOutputResource
+	}, nil
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.

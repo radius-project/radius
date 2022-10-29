@@ -7,8 +7,6 @@ package container
 
 import (
 	"context"
-	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -23,39 +21,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
-
-// Builds an AKS pod-identity output resource.
-func (r Renderer) makePodIdentity(ctx context.Context, resource datamodel.ContainerResource, applicationName string, roles []outputresource.OutputResource) outputresource.OutputResource {
-	// Note: Pod Identity name cannot have camel case
-	podIdentityName := fmt.Sprintf("podid-%s-%s", strings.ToLower(applicationName), strings.ToLower(resource.Name))
-
-	// Managed identity with required role assignments should be created first
-	dependencies := []outputresource.Dependency{
-		{
-			LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
-		},
-	}
-
-	for _, role := range roles {
-		dependencies = append(dependencies, outputresource.Dependency{LocalID: role.LocalID})
-	}
-
-	outputResource := outputresource.OutputResource{
-		LocalID: outputresource.LocalIDAADPodIdentity,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
-		},
-		Deployed: false,
-		Resource: map[string]string{
-			handlers.PodIdentityNameKey: podIdentityName,
-			handlers.PodNamespaceKey:    applicationName,
-		},
-		Dependencies: dependencies,
-	}
-
-	return outputResource
-}
 
 func (r Renderer) makeServiceAccountForVolume(appName, name, namespace, clientID, tenantID string, resource *datamodel.ContainerResource) (outputresource.OutputResource, error) {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
@@ -76,11 +41,18 @@ func (r Renderer) makeServiceAccountForVolume(appName, name, namespace, clientID
 			},
 		},
 	}
-	return outputresource.NewKubernetesOutputResource(
+
+	or := outputresource.NewKubernetesOutputResource(
 		resourcekinds.ServiceAccount,
 		outputresource.LocalIDServiceAccount,
 		sa,
-		sa.ObjectMeta), nil
+		sa.ObjectMeta)
+
+	or.Dependencies = []outputresource.Dependency{
+		{LocalID: outputresource.LocalIDUserAssignedManagedIdentity},
+	}
+
+	return or, nil
 }
 
 // Assigns roles/permissions to a specific resource for the managed identity resource.

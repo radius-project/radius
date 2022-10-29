@@ -101,7 +101,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	namespace, err := dp.getEnvironmentNamespace(ctx, environment, resourceID.String())
+	env, err := dp.fetchEnvironment(ctx, environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -117,7 +117,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	envOptions, err := dp.getEnvOptions(ctx, namespace)
+	envOptions, err := dp.getEnvOptions(ctx, env)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -378,13 +378,25 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
+func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+	var kubeNamespace string
+	if env.Properties.Compute.Kind == datamodel.KubernetesComputeKind && env.Properties.Compute.KubernetesCompute.Namespace != "" {
+		kubeNamespace = env.Properties.Compute.KubernetesCompute.Namespace
+	} else {
+		return renderers.EnvironmentOptions{}, errors.New("Kubernetes' namespace is not specified.")
+	}
+	envOpts := renderers.EnvironmentOptions{
+		Namespace:      kubeNamespace,
+		CloudProviders: &env.Properties.Providers,
+	}
+
 	if publicEndpointOverride != "" {
 		// Check if publicEndpointOverride contains a scheme,
 		// and if so, throw an error to the user
 		if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
-			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
+			return renderers.EnvironmentOptions{}, errors.New("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		}
 
 		hostname, port, err := net.SplitHostPort(publicEndpointOverride)
@@ -395,14 +407,13 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 			port = ""
 		}
 
-		return renderers.EnvironmentOptions{
-			Gateway: renderers.GatewayOptions{
-				PublicEndpointOverride: true,
-				Hostname:               hostname,
-				Port:                   port,
-			},
-			Namespace: namespace,
-		}, nil
+		envOpts.Gateway = renderers.GatewayOptions{
+			PublicEndpointOverride: true,
+			Hostname:               hostname,
+			Port:                   port,
+		}
+
+		return envOpts, nil
 	}
 
 	if dp.k8sClient != nil {
@@ -416,20 +427,18 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		for _, service := range services.Items {
 			if service.Name == "contour-envoy" {
 				for _, in := range service.Status.LoadBalancer.Ingress {
-					return renderers.EnvironmentOptions{
-						Gateway: renderers.GatewayOptions{
-							PublicEndpointOverride: false,
-							Hostname:               in.Hostname,
-							ExternalIP:             in.IP,
-						},
-						Namespace: namespace,
-					}, nil
+					envOpts.Gateway = renderers.GatewayOptions{
+						PublicEndpointOverride: false,
+						Hostname:               in.Hostname,
+						ExternalIP:             in.IP,
+					}
+					return envOpts, nil
 				}
 			}
 		}
 	}
 
-	return renderers.EnvironmentOptions{Namespace: namespace}, nil
+	return envOpts, nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
@@ -658,4 +667,38 @@ func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, envi
 	} else {
 		return "", fmt.Errorf("cannot find namespace in the environment resource")
 	}
+}
+
+// fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
+	envId, err := resources.ParseResource(environmentID)
+	if err != nil {
+		return nil, err
+	}
+
+	env := &datamodel.Environment{}
+
+	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
+	}
+
+	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
+	if err != nil {
+		return nil, err
+	}
+	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
+	res, err := sc.Get(ctx, envId.String())
+	if err != nil {
+		if errors.Is(&store.ErrNotFound{}, err) {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %s does not exist", environmentID, resourceID))
+		}
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
+	}
+
+	err = res.As(env)
+	if err != nil {
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
+	}
+
+	return env, nil
 }
