@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -346,11 +347,11 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}
 
-	loc := "global"
 	id := "self"
+	location := v1.LocationGlobal
 
 	toCreate := coreRpApps.EnvironmentResource{
-		Location: &loc,
+		Location: &location,
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.KubernetesCompute{
 				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),

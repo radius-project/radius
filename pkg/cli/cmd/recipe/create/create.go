@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -127,7 +128,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	namespace := cmd.GetNamespace(envResource)
 
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
 	}

@@ -85,7 +85,7 @@ func TestOperationStatusResourceID(t *testing.T) {
 		},
 	}
 
-	sm := &statusManager{providerName: "applications.core", location: "global"}
+	sm := &statusManager{providerName: "applications.core", location: v1.LocationGlobal}
 
 	for _, tc := range resourceIDTests {
 		t.Run(tc.resourceID, func(t *testing.T) {

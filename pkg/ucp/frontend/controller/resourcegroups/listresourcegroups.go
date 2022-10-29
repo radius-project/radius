@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -58,24 +59,24 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 	return ok, nil
 }
 
-func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
-	listOfResourceGroups := []interface{}{}
+func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	items := v1.PaginatedList{}
 	apiVersion := ctrl.GetAPIVersion(req)
-	if result != nil && len(result.Items) > 0 {
-		for _, item := range result.Items {
-			var rg datamodel.ResourceGroup
-			err := item.As(&rg)
-			if err != nil {
-				return listOfResourceGroups, err
-			}
 
-			versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
-			if err != nil {
-				return nil, err
-			}
-
-			listOfResourceGroups = append(listOfResourceGroups, versioned)
+	for _, item := range result.Items {
+		var rg datamodel.ResourceGroup
+		err := item.As(&rg)
+		if err != nil {
+			return nil, err
 		}
+
+		versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		items.Value = append(items.Value, versioned)
 	}
-	return listOfResourceGroups, nil
+
+	return &items, nil
 }

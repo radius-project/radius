@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -142,7 +143,7 @@ func Test_Run(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().
@@ -194,7 +195,7 @@ func Test_Run_WithoutAzureProvider(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", "global", "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().

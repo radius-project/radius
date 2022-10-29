@@ -24,7 +24,6 @@ var (
 	ResourceID   = "/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/containers/containera-app-with-resources"
 	ResourceName = "containera-app-with-resources"
 	ResourceType = "applications.core/containers"
-	Location     = "global"
 )
 
 func Test_CommandValidation(t *testing.T) {

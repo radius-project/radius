@@ -1,6 +1,8 @@
 {
     "id": "/planes/radius/local/resourceGroups/test-rg",
     "name": "test-rg",
+    "type": "System.Resources/resourceGroups",
+    "location": "global",
     "systemData": {
         "createdBy": "fakeid@live.com",
         "createdByType": "User",
