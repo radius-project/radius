@@ -8,11 +8,11 @@
         },
         "recipes": {
           "redis": {
-            "connectorType": "Applications.Link/redisCache",
+            "linkType": "Applications.Link/redisCache",
             "templatePath": "radiusdev.azurecr.io/redis:1.0"
           },
           "sql": {
-            "connectorType": "Applications.Link/sqlDatabases",
+            "linkType": "Applications.Link/sqlDatabases",
             "templatePath": "radiusdev.azurecr.io/sql:1.0"
           }
         },
