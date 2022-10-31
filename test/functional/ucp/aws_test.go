@@ -26,12 +26,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var streamName = "my-stream" + uuid.NewString()
 var resourceType = "AWS::Kinesis::Stream"
 
 func Test_AWS_DeleteResource(t *testing.T) {
+	var streamName = "my-stream" + uuid.NewString()
 	ctx := context.Background()
-	setupTestAWSResource(t, ctx)
+	setupTestAWSResource(t, ctx, streamName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Call UCP Delete AWS Resource API
@@ -88,8 +88,9 @@ func Test_AWS_DeleteResource(t *testing.T) {
 }
 
 func Test_AWS_ListResources(t *testing.T) {
+	var streamName = "my-stream" + uuid.NewString()
 	ctx := context.Background()
-	setupTestAWSResource(t, ctx)
+	setupTestAWSResource(t, ctx, streamName)
 
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Call UCP Delete AWS Resource API
@@ -119,13 +120,13 @@ func Test_AWS_ListResources(t *testing.T) {
 	test.Test(t)
 }
 
-func setupTestAWSResource(t *testing.T, ctx context.Context) {
+func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string) {
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]interface{}{
-		"Name":                 streamName,
+		"Name":                 resourceName,
 		"RetentionPeriodHours": 180,
 		"ShardCount":           4,
 	}
@@ -143,7 +144,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context) {
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: &streamName,
+			Identifier: &resourceName,
 			TypeName:   &resourceType,
 		})
 		if aws.IsAWSResourceNotFound(err) {
@@ -151,7 +152,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context) {
 		}
 		// Just in case delete fails
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-			Identifier: &streamName,
+			Identifier: &resourceName,
 			TypeName:   &resourceType,
 		})
 		require.NoError(t, err)
