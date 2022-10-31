@@ -156,7 +156,7 @@ func getDevRecipes(ctx context.Context, recipes map[string]datamodel.Environment
 	return recipes, nil
 }
 
-func parseRepoPathForMetadata(repo string) (link string, provider string) {
+func parseRepoPathForMetadata(repo string) (link, provider string) {
 	if strings.HasPrefix(repo, "recipes/") {
 		recipePath := strings.Split(repo, "recipes/")[1]
 		if strings.Count(recipePath, "/") == 1 {
