@@ -34,6 +34,21 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 	return m.recorder
 }
 
+// ConfirmWithDefault mocks base method.
+func (m *MockInterface) ConfirmWithDefault(arg0 string, arg1 BinaryAnswer) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConfirmWithDefault", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConfirmWithDefault indicates an expected call of ConfirmWithDefault.
+func (mr *MockInterfaceMockRecorder) ConfirmWithDefault(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfirmWithDefault", reflect.TypeOf((*MockInterface)(nil).ConfirmWithDefault), arg0, arg1)
+}
+
 // RunPrompt mocks base method.
 func (m *MockInterface) RunPrompt(arg0 promptui.Prompt) (string, error) {
 	m.ctrl.T.Helper()

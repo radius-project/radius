@@ -14,9 +14,10 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -43,7 +44,7 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 	}
 
 	logger.Info(fmt.Sprintf("Getting resource group %s from db", resourceID))
-	rg := rest.ResourceGroup{}
+	rg := datamodel.ResourceGroup{}
 	_, err = r.GetResource(ctx, resourceID.String(), &rg)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
@@ -53,6 +54,15 @@ func (r *GetResourceGroup) Run(ctx context.Context, w http.ResponseWriter, req *
 		}
 		return nil, err
 	}
-	restResponse := armrpc_rest.NewOKResponse(rg)
+	// Convert to version agnostic data model
+	apiVersion := ctrl.GetAPIVersion(req)
+
+	// Return a versioned response of the resource group
+	versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+	if err != nil {
+		return nil, err
+	}
+
+	restResponse := armrpc_rest.NewOKResponse(versioned)
 	return restResponse, nil
 }

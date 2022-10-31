@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Options represents controller options.
@@ -131,7 +132,7 @@ func (c *BaseController) DeleteResource(ctx context.Context, id string, etag str
 
 // Responds with an HTTP 500
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	var response armrpc_rest.Response
 	// Try to use the ARM format to send back the error info
@@ -223,4 +224,9 @@ func ConfigureDefaultHandlers(router *mux.Router, opts Options) {
 	b := NewBaseController(opts)
 	router.NotFoundHandler = http.HandlerFunc(b.NotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(b.MethodNotAllowedHandler)
+}
+
+// GetAPIVersion extracts the API version from the request
+func GetAPIVersion(req *http.Request) string {
+	return req.URL.Query().Get("api-version")
 }

@@ -6,5 +6,5 @@
 package sqldatabases
 
 const (
-	ResourceTypeName = "Applications.Connector/sqlDatabases"
+	ResourceTypeName = "Applications.Link/sqlDatabases"
 )

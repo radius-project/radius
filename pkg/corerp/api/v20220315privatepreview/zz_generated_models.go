@@ -165,6 +165,12 @@ type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string `json:"image,omitempty"`
 
+	// Arguments to the entrypoint. Overrides the container image's CMD
+	Args []*string `json:"args,omitempty"`
+
+	// Entrypoint array. Overrides the container image's ENTRYPOINT
+	Command []*string `json:"command,omitempty"`
+
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
 
@@ -179,6 +185,9 @@ type Container struct {
 
 	// Dictionary of
 	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
+
+	// Working directory for the container
+	WorkingDir *string `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container
@@ -347,7 +356,7 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
+	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 	ConnectorType *string `json:"connectorType,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.

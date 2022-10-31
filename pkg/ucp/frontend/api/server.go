@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
+	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -136,7 +137,9 @@ func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.Sto
 			return err
 		}
 
-		request, err := http.NewRequest(http.MethodPut, plane.ID, bytes.NewBuffer(body))
+		// Using the latest API version to make a request to configure the default planes
+		url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
+		request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 		if err != nil {
 			return err
 		}

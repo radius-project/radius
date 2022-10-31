@@ -45,9 +45,9 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.MongoDatabase)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", convertedResource.ID)
 		require.Equal(t, "mongo0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/mongoDatabases", convertedResource.Type)
+		require.Equal(t, "Applications.Link/mongoDatabases", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
@@ -75,9 +75,9 @@ func TestMongoDatabaseResponse_ConvertVersionedToDataModel(t *testing.T) {
 	// assert
 	require.NoError(t, err)
 	convertedResource := dm.(*datamodel.MongoDatabase)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0", convertedResource.ID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", convertedResource.ID)
 	require.Equal(t, "mongo0", convertedResource.Name)
-	require.Equal(t, "Applications.Connector/mongoDatabases", convertedResource.Type)
+	require.Equal(t, "Applications.Link/mongoDatabases", convertedResource.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 	require.Equal(t, "", convertedResource.Properties.Resource)
@@ -105,9 +105,9 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0", *versionedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
 		require.Equal(t, "mongo0", *versionedResource.Name)
-		require.Equal(t, "Applications.Connector/mongoDatabases", *versionedResource.Type)
+		require.Equal(t, "Applications.Link/mongoDatabases", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *versionedResource.Properties.Host)
@@ -140,9 +140,9 @@ func TestMongoDatabaseResponse_ConvertDataModelToVersioned(t *testing.T) {
 
 	// assert
 	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/mongoDatabases/mongo0", *versionedResource.ID)
+	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
 	require.Equal(t, "mongo0", *versionedResource.Name)
-	require.Equal(t, "Applications.Connector/mongoDatabases", resource.Type)
+	require.Equal(t, "Applications.Link/mongoDatabases", resource.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *versionedResource.Properties.Resource)

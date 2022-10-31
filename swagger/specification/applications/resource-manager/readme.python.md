@@ -41,10 +41,10 @@ These settings apply only when `--tag=package-connector-2022-03-15-privateprevie
 Please also specify `--python-sdks-folder=<path to the root directory of your azure-sdk-for-python clone>`.
 
 ``` yaml $(tag) == 'package-connector-2022-03-15-privatepreview'
-namespace: azure.mgmt.applications.connector.v2022_03_15_privatepreview
+namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
 output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/connector/v2022_03_15_privatepreview
 python:
-  namespace: azure.mgmt.applications.connector.v2022_03_15_privatepreview
+  namespace: azure.mgmt.applications.link.v2022_03_15_privatepreview
   output-folder: $(python-sdks-folder)/applications/azure-mgmt-applications/azure/mgmt/applications/connector/v2022_03_15_privatepreview
 ```
 

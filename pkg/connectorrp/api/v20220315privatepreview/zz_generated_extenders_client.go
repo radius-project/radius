@@ -79,7 +79,7 @@ func (client *ExtendersClient) CreateOrUpdate(ctx context.Context, extenderName 
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *ExtendersClient) createOrUpdateCreateRequest(ctx context.Context, extenderName string, extenderParameters ExtenderResource, options *ExtendersClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/extenders/{extenderName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
@@ -127,7 +127,7 @@ func (client *ExtendersClient) Delete(ctx context.Context, extenderName string, 
 
 // deleteCreateRequest creates the Delete request.
 func (client *ExtendersClient) deleteCreateRequest(ctx context.Context, extenderName string, options *ExtendersClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/extenders/{extenderName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
@@ -166,7 +166,7 @@ func (client *ExtendersClient) Get(ctx context.Context, extenderName string, opt
 
 // getCreateRequest creates the Get request.
 func (client *ExtendersClient) getCreateRequest(ctx context.Context, extenderName string, options *ExtendersClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/extenders/{extenderName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")
@@ -226,7 +226,7 @@ func (client *ExtendersClient) NewListByRootScopePager(options *ExtendersClientL
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *ExtendersClient) listByRootScopeCreateRequest(ctx context.Context, options *ExtendersClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/extenders"
+	urlPath := "/{rootScope}/providers/Applications.Link/extenders"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
@@ -270,7 +270,7 @@ func (client *ExtendersClient) ListSecrets(ctx context.Context, extenderName str
 
 // listSecretsCreateRequest creates the ListSecrets request.
 func (client *ExtendersClient) listSecretsCreateRequest(ctx context.Context, extenderName string, options *ExtendersClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/extenders/{extenderName}/listSecrets"
+	urlPath := "/{rootScope}/providers/Applications.Link/extenders/{extenderName}/listSecrets"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if extenderName == "" {
 		return nil, errors.New("parameter extenderName cannot be empty")

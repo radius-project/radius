@@ -10,9 +10,10 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -27,16 +28,19 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	path := "/planes/radius/local/resourceGroups/default"
+	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
 		DB: mockStorageClient,
 	})
 	require.NoError(t, err)
 
-	rg := rest.ResourceGroup{
-		ID:   "/planes/radius/local/resourceGroups/default",
-		Name: "default",
+	rg := datamodel.ResourceGroup{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local/resourceGroups/default",
+			Name: "default",
+			Type: ResourceGroupType,
+		},
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -49,7 +53,7 @@ func Test_DeleteResourceGroupByID(t *testing.T) {
 	mockStorageClient.EXPECT().Query(gomock.Any(), gomock.Any())
 	mockStorageClient.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any())
 
-	request, err := http.NewRequest(http.MethodDelete, path, nil)
+	request, err := http.NewRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 	// Issue Delete request
 	response, err := rgCtrl.Run(ctx, nil, request)
@@ -68,15 +72,18 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	defer mockCtrl.Finish()
 	mockStorageClient := store.NewMockStorageClient(mockCtrl)
 
-	path := "/planes/radius/local/resourceGroups/default"
+	url := "/planes/radius/local/resourceGroups/default?api-version=2022-09-01-privatepreview"
 	rgCtrl, err := NewDeleteResourceGroup(ctrl.Options{
 		DB: mockStorageClient,
 	})
 	require.NoError(t, err)
 
-	rg := rest.ResourceGroup{
-		ID:   "/planes/radius/local/resourceGroups/default",
-		Name: "default",
+	rg := datamodel.ResourceGroup{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/planes/radius/local/resourceGroups/default",
+			Name: "default",
+			Type: ResourceGroupType,
+		},
 	}
 
 	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
@@ -87,7 +94,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 	})
 
 	// This is corresponding to Get for all resources within the resource group
-	envResource := rest.Resource{
+	envResource := datamodel.Resource{
 		ID:   "/planes/radius/local/resourceGroups/default/providers/Applications.Core/environments/my-env",
 		Name: "my-env",
 		Type: "Applications.Core/environments",
@@ -104,7 +111,7 @@ func Test_NonEmptyResourceGroup_CannotBeDeleted(t *testing.T) {
 		}, nil
 	})
 
-	request, err := http.NewRequest(http.MethodDelete, path, nil)
+	request, err := http.NewRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err)
 	// Issue Delete request
 	response, err := rgCtrl.Run(ctx, nil, request)

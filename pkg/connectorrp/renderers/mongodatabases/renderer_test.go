@@ -35,9 +35,9 @@ func Test_Render_Success(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -109,9 +109,9 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -155,9 +155,9 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -181,9 +181,9 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 
 	mongoDBResource := datamodel.SqlDatabase{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+			Type: "Applications.Link/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -206,9 +206,9 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -235,9 +235,9 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -264,9 +264,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -293,9 +293,9 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -346,9 +346,9 @@ func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
 	mongoDBResource := datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 				Name: "mongo0",
-				Type: "Applications.Connector/mongoDatabases",
+				Type: "Applications.Link/mongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -370,9 +370,9 @@ func Test_Render_Recipe_InvalidConnectorType(t *testing.T) {
 				Name: "mongodb",
 			},
 			TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			ConnectorType: "Applications.Connector/redisCaches",
+			ConnectorType: "Applications.Link/redisCaches",
 		}})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "connector type \"Applications.Connector/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Connector/mongoDatabases\" resource type. Recipe connector type must match connector resource type.", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, "connector type \"Applications.Link/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Link/mongoDatabases\" resource type. Recipe connector type must match connector resource type.", err.(*conv.ErrClientRP).Message)
 }

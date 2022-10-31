@@ -1,9 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management APIs",
+    "title": "Applications.Link Management APIs",
     "version": "0000-00-00",
-    "description": "REST API for Applications.Connector RabbitMQMessageQueue Resource",
+    "description": "REST API for Applications.Link RabbitMQMessageQueue Resource",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -47,7 +47,7 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues": {
       "get": {
         "tags": [
           "RabbitMQMessageQueues"
@@ -81,7 +81,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
       "get": {
         "tags": [
           "RabbitMQMessageQueues"
@@ -260,7 +260,7 @@
         "x-ms-long-running-operation": true
       }
     },
-    "/{rootScope}/providers/Applications.Connector/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
       "get": {
         "operationId": "Post",
         "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
@@ -305,7 +305,7 @@
         }
       }
     },
-    "/providers/Applications.Connector/operations": {
+    "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
           "Operations"

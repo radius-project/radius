@@ -79,7 +79,7 @@ func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, sqlDatabas
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
@@ -127,7 +127,7 @@ func (client *SQLDatabasesClient) Delete(ctx context.Context, sqlDatabaseName st
 
 // deleteCreateRequest creates the Delete request.
 func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
@@ -166,7 +166,7 @@ func (client *SQLDatabasesClient) Get(ctx context.Context, sqlDatabaseName strin
 
 // getCreateRequest creates the Get request.
 func (client *SQLDatabasesClient) getCreateRequest(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases/{sqlDatabaseName}"
+	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
 		return nil, errors.New("parameter sqlDatabaseName cannot be empty")
@@ -226,7 +226,7 @@ func (client *SQLDatabasesClient) NewListByRootScopePager(options *SQLDatabasesC
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
 func (client *SQLDatabasesClient) listByRootScopeCreateRequest(ctx context.Context, options *SQLDatabasesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Connector/sqlDatabases"
+	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {

@@ -15,7 +15,7 @@ npm install -g autorest
 1. Add api version tags and openapi file below in this README.md
 2. Run autorest.
 ```bash
-autorest README.md --tag=ucp-2022-03-15-privatepreview
+autorest README.md --tag=ucp-2022-09-01-privatepreview
 ```
 3. Create or modify the corresponding datamodels in [datamodel](../datamodel/)
 4. Add the converter between versioned model and datamodel in [converter](../datamodel/converter/)
@@ -28,13 +28,13 @@ The following are the settings for this using this API with AutoRest.
 
 ### Input OpenAPI specificiations
 
-#### Tag: ucp-2022-03-15-privatepreview
+#### Tag: ucp-2022-09-01-privatepreview
 
-These settings apply only when `--tag=ucp-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=ucp-2022-09-01-privatepreview` is specified on the command line.
 
-```yaml $(tag) == 'ucp-2022-03-15-privatepreview'
+```yaml $(tag) == 'ucp-2022-09-01-privatepreview'
 input-file:
-  - ../../../swagger/specification/ucp/resource-manager/UCP/preview/2022-03-15-privatepreview/ucp.json
+  - ../../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
@@ -54,10 +54,10 @@ azure-arm: true
 
 ### Output
 
-#### Tag: ucp-2022-03-15-privatepreview
+#### Tag: 2022-09-01-privatepreview
 
-These settings apply only when `--tag=ucp-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=ucp-2022-09-01-privatepreview` is specified on the command line.
 
-```yaml $(tag) == 'ucp-2022-03-15-privatepreview'
-output-folder: ./v20220315privatepreview
+```yaml $(tag) == 'ucp-2022-09-01-privatepreview'
+output-folder: ./v20220901privatepreview
 ```

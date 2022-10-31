@@ -27,15 +27,15 @@ const (
 	ContainersResource   = "applications.core/containers"
 	VolumesResource      = "applications.core/volumes"
 
-	MongoDatabasesResource        = "applications.connector/mongoDatabases"
-	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
-	RedisCachesResource           = "applications.connector/redisCaches"
-	SQLDatabasesResource          = "applications.connector/sqlDatabases"
-	DaprPubSubBrokersResource     = "applications.connector/daprPubSubBrokers"
-	DaprSecretStoresResource      = "applications.connector/daprSecretStores"
-	DaprStateStoresResource       = "applications.connector/daprStateStores"
-	DaprInvokeHttpRoutesResource  = "applications.connector/daprInvokeHttpRoutes"
-	ExtendersResource             = "applications.connector/extenders"
+	MongoDatabasesResource        = "applications.link/mongoDatabases"
+	RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
+	RedisCachesResource           = "applications.link/redisCaches"
+	SQLDatabasesResource          = "applications.link/sqlDatabases"
+	DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
+	DaprSecretStoresResource      = "applications.link/daprSecretStores"
+	DaprStateStoresResource       = "applications.link/daprStateStores"
+	DaprInvokeHttpRoutesResource  = "applications.link/daprInvokeHttpRoutes"
+	ExtendersResource             = "applications.link/extenders"
 )
 
 type CoreRPResource struct {

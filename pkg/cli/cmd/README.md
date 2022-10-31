@@ -4,7 +4,10 @@ This package `pkg/cli/cmd` is the root for our CLI commands. Commands are organi
 according to their heirarchy of sub-commands. For example `rad resource show` would be
 located in `pkg/cli/cmd/resource/show/show.go`.
 
-Each command is its own page to discourage accidentally sharing code between commands.
+Some of our command names are reserved words in Go and so they can't be used as package names.
+When this happens add a prefix from the parent command. eg: `switch` -> `appswitch`.
+
+Each command is its own package to discourage accidentally sharing code between commands.
 Any functionality that needs to be shared should be moved to another location outside of
 `pkg/cli/cmd`.
 

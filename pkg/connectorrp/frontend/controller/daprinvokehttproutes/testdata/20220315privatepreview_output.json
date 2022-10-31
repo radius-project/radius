@@ -1,5 +1,5 @@
 {
-    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.connector/daprinvokehttproutes/daprInvokeHttpRoute0",
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/daprinvokehttproutes/daprInvokeHttpRoute0",
     "location": "West US",
     "name": "daprInvokeHttpRoute0",
     "properties": {
@@ -20,5 +20,5 @@
         "lastModifiedByType": "User"
     },
     "tags": {},
-    "type": "applications.connector/daprinvokehttproutes"
+    "type": "applications.link/daprinvokehttproutes"
 }

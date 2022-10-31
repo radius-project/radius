@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	ProviderNamespaceName = "Applications.Connector"
+	ProviderNamespaceName = "Applications.Link"
 )
 
 func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
@@ -44,7 +44,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 		return err
 	}
 
-	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath)
+	specLoader, err := validator.LoadSpec(ctx, ProviderNamespaceName, swagger.SpecFiles, pathBase+resourceGroupPath, "rootScope")
 	if err != nil {
 		return err
 	}
@@ -52,31 +52,31 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 	rootScopeRouter := router.PathPrefix(pathBase + resourceGroupPath).Subrouter()
 	rootScopeRouter.Use(validator.APIValidator(specLoader))
 
-	mongoRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/mongodatabases").Subrouter()
+	mongoRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/mongodatabases").Subrouter()
 	mongoResourceRouter := mongoRTSubrouter.PathPrefix("/{mongoDatabaseName}").Subrouter()
 
-	daprHttpRouteRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprinvokehttproutes").Subrouter()
+	daprHttpRouteRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprinvokehttproutes").Subrouter()
 	daprHttpRouteResourceRouter := daprHttpRouteRTSubrouter.PathPrefix("/{daprInvokeHttpRouteName}").Subrouter()
 
-	daprPubSubRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprpubsubbrokers").Subrouter()
+	daprPubSubRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprpubsubbrokers").Subrouter()
 	daprPubSubResourceRouter := daprPubSubRTSubrouter.PathPrefix("/{daprPubSubBrokerName}").Subrouter()
 
-	daprSecretStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprsecretstores").Subrouter()
+	daprSecretStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprsecretstores").Subrouter()
 	daprSecretStoreResourceRouter := daprSecretStoreRTSubrouter.PathPrefix("/{daprSecretStoreName}").Subrouter()
 
-	daprStateStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/daprstatestores").Subrouter()
+	daprStateStoreRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/daprstatestores").Subrouter()
 	daprStateStoreResourceRouter := daprStateStoreRTSubrouter.PathPrefix("/{daprStateStoreName}").Subrouter()
 
-	extenderRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/extenders").Subrouter()
+	extenderRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/extenders").Subrouter()
 	extenderResourceRouter := extenderRTSubrouter.PathPrefix("/{extenderName}").Subrouter()
 
-	redisRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/rediscaches").Subrouter()
+	redisRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/rediscaches").Subrouter()
 	redisResourceRouter := redisRTSubrouter.PathPrefix("/{redisCacheName}").Subrouter()
 
-	rabbitmqRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/rabbitmqmessagequeues").Subrouter()
+	rabbitmqRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/rabbitmqmessagequeues").Subrouter()
 	rabbitmqResourceRouter := rabbitmqRTSubrouter.PathPrefix("/{rabbitMQMessageQueueName}").Subrouter()
 
-	sqlRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.connector/sqldatabases").Subrouter()
+	sqlRTSubrouter := rootScopeRouter.PathPrefix("/providers/applications.link/sqldatabases").Subrouter()
 	sqlResourceRouter := sqlRTSubrouter.PathPrefix("/{sqlDatabaseName}").Subrouter()
 
 	handlerOptions := []server.HandlerOptions{

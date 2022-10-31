@@ -14,7 +14,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       recipe1: {
-          connectorType: 'Applications.Connector/mongoDatabases' 
+          connectorType: 'Applications.Link/mongoDatabases' 
           templatePath: 'testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1' 
       }
     }

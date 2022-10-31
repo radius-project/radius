@@ -404,7 +404,7 @@
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
         "connectorType": {
-          "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'",
+          "description": "Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
           "type": "string"
         },
         "templatePath": {

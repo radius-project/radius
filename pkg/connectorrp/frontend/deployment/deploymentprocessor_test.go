@@ -38,14 +38,14 @@ import (
 )
 
 func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
-	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:   id,
 				Name: "mongo0",
-				Type: "applications.connector/mongodatabases",
+				Type: "applications.link/mongodatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -106,14 +106,14 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 }
 
 func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
-	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:   id,
 				Name: "mongo0",
-				Type: "applications.connector/mongodatabases",
+				Type: "applications.link/mongodatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -171,14 +171,14 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 }
 
 func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, testResource datamodel.MongoDatabase, rendererOutput renderers.RendererOutput) {
-	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+	id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 	resourceID = getResourceID(id)
 	testResource = datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
 				ID:   id,
 				Name: "mongo0",
-				Type: "Applications.Connector/MongoDatabases",
+				Type: "Applications.Link/MongoDatabases",
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -287,7 +287,7 @@ func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Prov
 	if recipeName != "" {
 		environment.Properties.Recipes = map[string]corerpDatamodel.EnvironmentRecipeProperties{
 			recipeName: {
-				ConnectorType: "Applications.Connector/MongoDatabases",
+				ConnectorType: "Applications.Link/MongoDatabases",
 				TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 			},
 		}
@@ -429,14 +429,14 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render error: invalid environment id", func(t *testing.T) {
-		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 		resourceID := getResourceID(id)
 		resource := datamodel.MongoDatabase{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					ID:   id,
 					Name: "mongo0",
-					Type: "Applications.Connector/MongoDatabases",
+					Type: "Applications.Link/MongoDatabases",
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
@@ -494,14 +494,14 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid environment type", func(t *testing.T) {
-		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.connector/mongodatabases/mongo0"
+		id := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 		resourceID := getResourceID(id)
 		resource := datamodel.MongoDatabase{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
 					ID:   id,
 					Name: "mongo0",
-					Type: "Applications.Connector/MongoDatabases",
+					Type: "Applications.Link/MongoDatabases",
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
@@ -1023,7 +1023,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 
 		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.NoError(t, err)
-		require.Equal(t, "Applications.Connector/MongoDatabases", envMetadata.RecipeConnectorType)
+		require.Equal(t, "Applications.Link/MongoDatabases", envMetadata.RecipeConnectorType)
 		require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", envMetadata.RecipeTemplatePath)
 
 	})

@@ -41,9 +41,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		// assert
 		require.NoError(t, err)
 		convertedResource := dm.(*datamodel.DaprStateStore)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprStateStores/daprStateStore0", convertedResource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0", convertedResource.ID)
 		require.Equal(t, "daprStateStore0", convertedResource.Name)
-		require.Equal(t, "Applications.Connector/daprStateStores", convertedResource.Type)
+		require.Equal(t, "Applications.Link/daprStateStores", convertedResource.Type)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
@@ -110,9 +110,9 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 
 		// assert
 		require.NoError(t, err)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Connector/daprStateStores/daprStateStore0", resource.ID)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprStateStores/daprStateStore0", resource.ID)
 		require.Equal(t, "daprStateStore0", resource.Name)
-		require.Equal(t, "Applications.Connector/daprStateStores", resource.Type)
+		require.Equal(t, "Applications.Link/daprStateStores", resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		switch resource.Properties.Kind {

@@ -31,7 +31,7 @@ planes:
     properties:
       resourceProviders:
         Applications.Core: "http://appcore-rp.radius-system:5443"
-        Applications.Connector: "http://appcore-rp.radius-system:5444"
+        Applications.Link: "http://appcore-rp.radius-system:5444"
       kind: "UCPNative"
   - id: "/planes/deployments/local"
     properties:

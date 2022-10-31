@@ -18,7 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
@@ -107,7 +107,7 @@ func Test_Run(t *testing.T) {
 				},
 			}
 
-			testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
+			testResourceGroup := v20220901privatepreview.ResourceGroupResource{}
 
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()
@@ -165,7 +165,7 @@ func Test_Run(t *testing.T) {
 			config.SetConfigFile(configPath)
 			require.NoError(t, err)
 
-			testResourceGroup := v20220315privatepreview.ResourceGroupResource{}
+			testResourceGroup := v20220901privatepreview.ResourceGroupResource{}
 
 			ctrl := gomock.NewController(t)
 			defer ctrl.Finish()

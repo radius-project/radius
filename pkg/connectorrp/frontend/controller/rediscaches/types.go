@@ -6,7 +6,7 @@
 package rediscaches
 
 const (
-	ResourceTypeName = "Applications.Connector/redisCaches"
+	ResourceTypeName = "Applications.Link/redisCaches"
 
 	// User defined operation names
 	OperationListSecret = "LISTSECRETS"

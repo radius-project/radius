@@ -18,8 +18,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
@@ -53,7 +54,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			framework := &framework.Impl{
 				ConnectionFactory:   testcase.ConnectionFactory,
 				ConfigHolder:        &testcase.ConfigHolder,
-				Output:              nil,
+				Output:              &output.MockOutput{},
 				KubernetesInterface: testcase.KubernetesInterface,
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,
@@ -66,15 +67,18 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			require.NoError(t, err, "flag parsing failed")
 
 			err = cmd.ValidateArgs(cmd.Flags().Args())
-			if !testcase.ExpectedValid && err != nil {
+			if err != nil && testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have failed but it passed")
+			} else if err != nil {
+				// We expected this to fail, so it's OK if it does. No need to run Validate.
 				return
 			}
 
 			err = runner.Validate(cmd, cmd.Flags().Args())
-			if !testcase.ExpectedValid {
-				if err == nil {
-					require.Error(t, err, "validation should have failed but it passed")
-				}
+			if testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have passed but it failed")
+			} else {
+				require.Error(t, err, "validation should have failed but it passed")
 			}
 		})
 	}
@@ -138,9 +142,9 @@ func CreateResource(resourceType string, resourceName string) generated.GenericR
 	}
 }
 
-func CreateResourceGroup(resourceGroupName string) v20220315privatepreview.ResourceGroupResource {
+func CreateResourceGroup(resourceGroupName string) v20220901privatepreview.ResourceGroupResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", resourceGroupName)
-	return v20220315privatepreview.ResourceGroupResource{
+	return v20220901privatepreview.ResourceGroupResource{
 		Name: &resourceGroupName,
 		ID:   &id,
 	}

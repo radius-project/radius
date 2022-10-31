@@ -33,9 +33,9 @@ func Test_Render_Success(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
@@ -106,9 +106,9 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
@@ -153,9 +153,9 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
@@ -178,9 +178,9 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 
 	redisResource := datamodel.SqlDatabase{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/mongoDatabases/mongo0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
 			Name: "mongo0",
-			Type: "Applications.Connector/mongoDatabases",
+			Type: "Applications.Link/mongoDatabases",
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -202,9 +202,9 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
@@ -229,9 +229,9 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
@@ -256,9 +256,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	redisResource := datamodel.RedisCache{
 		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Connector/redisCaches/redis0",
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
 			Name: "redis0",
-			Type: "Applications.Connector/redisCaches",
+			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
 			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{

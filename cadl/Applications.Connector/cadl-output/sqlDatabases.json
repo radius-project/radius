@@ -1,9 +1,9 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "Applications.Connector Management APIs",
+    "title": "Applications.Link Management APIs",
     "version": "0000-00-00",
-    "description": "REST API for Applications.Connector SQLDatabase Resource",
+    "description": "REST API for Applications.Link SQLDatabase Resource",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -47,7 +47,7 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Connector/SQLDatabases": {
+    "/{rootScope}/providers/Applications.Link/SQLDatabases": {
       "get": {
         "tags": [
           "SQLDatabase"
@@ -81,7 +81,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Connector/SQLDatabases/{SQLDatabaseName}": {
+    "/{rootScope}/providers/Applications.Link/SQLDatabases/{SQLDatabaseName}": {
       "get": {
         "tags": [
           "SQLDatabase"
@@ -260,7 +260,7 @@
         "x-ms-long-running-operation": true
       }
     },
-    "/providers/Applications.Connector/operations": {
+    "/providers/Applications.Link/operations": {
       "get": {
         "tags": [
           "Operations"

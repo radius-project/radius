@@ -35,7 +35,7 @@ type DaprPubSubBroker struct {
 }
 
 func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
-	return "Applications.Connector/daprPubSubBrokers"
+	return "Applications.Link/daprPubSubBrokers"
 }
 
 type DaprPubSubGenericResourceProperties struct {
