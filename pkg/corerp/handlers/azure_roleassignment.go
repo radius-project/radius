@@ -47,39 +47,41 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	roleName := properties[RoleNameKey]
 	scope := properties[RoleAssignmentScope]
 
-	// Get dependencies
-	managedIdentityProperties := map[string]string{}
-	if prop, ok := properties[outputresource.LocalIDUserAssignedManagedIdentity]; ok {
-		managedIdentityProperties[outputresource.LocalIDUserAssignedManagedIdentity] = prop
+	// Get dependency
+	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
+	if !ok {
+		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 
-	if len(managedIdentityProperties) == 0 {
-		return properties, errors.New("missing dependency: a user assigned identity is required to create role assignment")
+	principalID, ok := identityProp[UserAssignedIdentityPrincipalIDKey]
+	if !ok {
+		return nil, errors.New("fails to get identity principal id")
 	}
 
 	// Scope may be a resource ID or an azure scope. We don't really need to know which so we're using the generic 'Parse' function.
-	parsedScope, err := resources.Parse(scope)
+	parsedScope, err := resources.ParseResource(scope)
 	if err != nil {
 		return nil, err
 	}
 
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, parsedScope.FindScope(resources.SubscriptionsSegment), managedIdentityProperties[UserAssignedIdentityPrincipalIDKey], scope, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, parsedScope.FindScope(resources.SubscriptionsSegment), principalID, scope, roleName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
-			roleName,
-			managedIdentityProperties[UserAssignedIdentityIDKey],
-			scope,
-			err)
+			roleName, principalID, scope, err)
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, managedIdentityProperties[UserAssignedIdentityIDKey], scope))
+	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return properties, nil
 }
 
 func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	return nil
+	roleID, _, err := options.Resource.Identity.RequireARM()
+	if err != nil {
+		return err
+	}
+	return roleassignment.Delete(ctx, handler.arm.Auth, roleID)
 }

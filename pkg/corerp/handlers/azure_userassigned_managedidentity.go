@@ -10,12 +10,13 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -24,7 +25,8 @@ const (
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
 	UserAssignedIdentityClientIDKey    = "userassignedidentityclientid"
 	UserAssignedIdentityTenantIDKey    = "userassignedidentitytenantid"
-	UserAssignedIdentityScope          = "userassignedidentityscope"
+	UserAssignedIdentitySubscriptionID = "userassignedidentitysubscriptionid"
+	UserAssignedIdentityResourceGroup  = "userassignedidentityresourcegroup"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
@@ -44,23 +46,36 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, handler.SubscriptionID, handler.ResourceGroup)
+	identityName, err := GetString(properties, UserAssignedIdentityNameKey)
+	if err != nil {
+		return nil, err
+	}
+
+	subID, err := GetString(properties, UserAssignedIdentitySubscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	rgName, err := GetString(properties, UserAssignedIdentityResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, subID, rgName)
 	if err != nil {
 		return properties, err
 	}
 
-	identityName := properties[UserAssignedIdentityNameKey]
-	msiClient := clients.NewUserAssignedIdentitiesClient(handler.SubscriptionID, handler.arm.Auth)
-	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.ResourceGroup, identityName, msi.Identity{
-		Location: to.Ptr(*rgLocation),
-	})
+	msiClient := clients.NewUserAssignedIdentitiesClient(subID, handler.arm.Auth)
+	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, msi.Identity{Location: rgLocation})
 	if err != nil {
 		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
-	properties[UserAssignedIdentityIDKey] = *identity.ID
+	properties[UserAssignedIdentityIDKey] = to.String(identity.ID)
 	properties[UserAssignedIdentityPrincipalIDKey] = identity.PrincipalID.String()
 	properties[UserAssignedIdentityClientIDKey] = identity.ClientID.String()
+	properties[UserAssignedIdentityTenantIDKey] = identity.TenantID.String()
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
 	logger.WithValues(
@@ -71,7 +86,22 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	// TODO: right now this resource is deleted in a different handler :(
-	// this should be done here instead when we have built a more mature system.
+	msiResourceID, _, err := options.Resource.Identity.RequireARM()
+	if err != nil {
+		return err
+	}
+
+	parsed, err := resources.ParseResource(msiResourceID)
+	if err != nil {
+		return err
+	}
+
+	msiClient := clients.NewUserAssignedIdentitiesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+	resp, err := msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name())
+
+	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+
 	return nil
 }

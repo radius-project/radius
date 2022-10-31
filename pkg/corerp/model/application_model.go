@@ -21,9 +21,11 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	"k8s.io/client-go/kubernetes"
+
+	azcontainer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -112,13 +114,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.ServiceAccount,
-				Provider: resourcemodel.ProviderKubernetes,
-			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.Secret,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
@@ -150,7 +145,16 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Type:     resourcekinds.SecretProviderClass,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+			ResourceTransformer: azcontainer.TransformSecretProviderClass,
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.ServiceAccount,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceTransformer: azcontainer.TransformFederatedIdentitySA,
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 	}
 

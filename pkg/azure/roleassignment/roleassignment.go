@@ -16,6 +16,7 @@ import (
 	"github.com/gofrs/uuid"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // Create assigns the specified role name to the Identity over the specified scope
@@ -87,6 +88,25 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 	}
 
 	return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
+}
+
+// Delete deletes the specified role name to the Identity over the specified scope
+func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error {
+	rID, err := resources.Parse(roleID)
+	if err != nil {
+		return err
+	}
+
+	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+
+	// Check if role assignment already exists for the managed identity
+	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
+	_, err = roleAssignmentClient.DeleteByID(ctx, roleID, "")
+	if err != nil {
+		return fmt.Errorf("failed to create role assignment for role '%s': %w", roleID, err)
+	}
+
+	return nil
 }
 
 // Returns roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"

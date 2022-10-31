@@ -53,6 +53,8 @@ type EnvironmentOptions struct {
 	CloudProviders *datamodel.Providers
 	// Gateway represents the gateway options.
 	Gateway GatewayOptions
+	// Identity represents identity of the environment.
+	Identity *rp.IdentitySettings
 }
 
 type GatewayOptions struct {

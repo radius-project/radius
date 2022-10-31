@@ -160,8 +160,20 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return nil, err
 	}
 
-	properties, err := outputResourceModel.ResourceHandler.Put(ctx, &handlers.PutOptions{Resource: outputResource, DependencyProperties: deployedOutputResources})
+	putOptions := &handlers.PutOptions{Resource: outputResource, DependencyProperties: deployedOutputResources}
+	// Transform resource before deploying resource.
+	if outputResourceModel.ResourceTransformer != nil {
+		if err := outputResourceModel.ResourceTransformer(ctx, putOptions); err != nil {
+			return nil, err
+		}
+	}
+	properties, err := outputResourceModel.ResourceHandler.Put(ctx, putOptions)
 	if err != nil {
+		return nil, err
+	}
+
+	if outputResource.Identity.ResourceType == nil {
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
 		return nil, err
 	}
 
@@ -368,17 +380,31 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 }
 
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
+	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
-	var kubeNamespace string
-	if env.Properties.Compute.Kind == datamodel.KubernetesComputeKind && env.Properties.Compute.KubernetesCompute.Namespace != "" {
-		kubeNamespace = env.Properties.Compute.KubernetesCompute.Namespace
-	} else {
-		return renderers.EnvironmentOptions{}, errors.New("Kubernetes' namespace is not specified.")
-	}
 	envOpts := renderers.EnvironmentOptions{
-		Namespace:      kubeNamespace,
 		CloudProviders: &env.Properties.Providers,
+	}
+
+	// Extract compute info
+	switch env.Properties.Compute.Kind {
+	case datamodel.KubernetesComputeKind:
+		kubeProp := &env.Properties.Compute.KubernetesCompute
+		if kubeProp.Namespace != "" {
+			envOpts.Namespace = kubeProp.Namespace
+		} else {
+			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified.")
+		}
+
+	default:
+		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
+	}
+
+	// Extract identity info.
+	envOpts.Identity = env.Properties.Compute.Identity
+	if envOpts.Identity == nil {
+		logger.V(radlogger.Warn).Info("environment identity is not specified.")
 	}
 
 	if publicEndpointOverride != "" {
