@@ -51,8 +51,8 @@ func NewDaprPubSubServiceBusHandler(arm *armauth.ArmConfig, k8s client.Client) R
 	}
 }
 
-func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *PutOptions) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
-	properties, ok := options.Resource.Resource.(map[string]string)
+func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (outputResourceIdentity resourcemodel.ResourceIdentity, properties map[string]string, err error) {
+	properties, ok := resource.Resource.(map[string]string)
 	if !ok {
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("invalid required properties for resource")
 	}
@@ -72,7 +72,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 	}
 
 	// Use the identity of the namespace as the thing to monitor.
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
 	if err != nil {
@@ -84,7 +84,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = handler.PatchDaprPubSub(ctx, properties, *cs, options.Resource)
+	err = handler.PatchDaprPubSub(ctx, properties, *cs, resource)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -92,8 +92,8 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, options *Pu
 	return outputResourceIdentity, properties, nil
 }
 
-func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, options *DeleteOptions) error {
-	properties := options.Resource.Resource.(map[string]interface{})
+func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+	properties := resource.Resource.(map[string]interface{})
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {

@@ -12,6 +12,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -26,10 +27,10 @@ type daprComponentHandler struct {
 	k8s client.Client
 }
 
-func (handler *daprComponentHandler) Put(ctx context.Context, options *PutOptions) (resourcemodel.ResourceIdentity, map[string]string, error) {
+func (handler *daprComponentHandler) Put(ctx context.Context, resource *outputresource.OutputResource) (resourcemodel.ResourceIdentity, map[string]string, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	item, err := convertToUnstructured(*options.Resource)
+	item, err := convertToUnstructured(*resource)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -46,7 +47,7 @@ func (handler *daprComponentHandler) Put(ctx context.Context, options *PutOption
 		ResourceName:            item.GetName(),
 	}
 
-	if options.Resource.Deployed {
+	if resource.Deployed {
 		return resourcemodel.ResourceIdentity{}, properties, nil
 	}
 
@@ -60,9 +61,9 @@ func (handler *daprComponentHandler) Put(ctx context.Context, options *PutOption
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.ResourceIdentity{
+	resource.Identity = resourcemodel.ResourceIdentity{
 		ResourceType: &resourcemodel.ResourceType{
-			Type:     options.Resource.ResourceType.Type,
+			Type:     resource.ResourceType.Type,
 			Provider: resourcemodel.ProviderKubernetes,
 		},
 		Data: resourcemodel.KubernetesIdentity{
@@ -98,9 +99,9 @@ func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespa
 	return nil
 }
 
-func (handler *daprComponentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+func (handler *daprComponentHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
 	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
+	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
 		return err
 	}
 
