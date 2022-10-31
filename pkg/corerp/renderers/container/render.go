@@ -24,7 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azoutput "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
+	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -310,7 +310,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 			case datamodel.AzureKeyVaultVolume:
 				// 1. Create Per-Container managed identity.
 				defaultName := kubernetes.MakeResourceName(applicationName, resource.Name)
-				managedIdentity, err := azoutput.MakeManagedIdentity(ctx, defaultName, &resource, options.Environment.CloudProviders)
+				managedIdentity, err := azrenderer.MakeManagedIdentity(ctx, defaultName, &resource, options.Environment.CloudProviders)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
@@ -327,12 +327,12 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 				// 3. Build RoleAssignment output.resource
 				kvID := vol.Properties.AzureKeyVault.Resource
-				roleAssignments, raDeps := azoutput.MakeRoleAssignments(ctx, kvID, roleNames)
+				roleAssignments, raDeps := azrenderer.MakeRoleAssignments(ctx, kvID, roleNames)
 				outputResources = append(outputResources, roleAssignments...)
 				deps = append(deps, raDeps...)
 
 				// 4. Create Per-container federated identity resource.
-				fedIdentity, err := azoutput.MakeFederatedIdentity(defaultName, &options.Environment)
+				fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultName, &options.Environment)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
@@ -340,7 +340,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 				// 5. Create Per-container service account.
 				podSAName = defaultName
-				saAccount := azoutput.MakeFederatedIdentitySA(applicationName, defaultName, options.Environment.Namespace, &resource)
+				saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultName, options.Environment.Namespace, &resource)
 				outputResources = append(outputResources, *saAccount)
 
 				// 6. Create Per-Pod SecretProviderClass for the selected volume
@@ -351,7 +351,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				}
 
 				spcName := kubernetes.MakeResourceName(defaultName, vol.Name)
-				secretProvider, err := azoutput.MakeKeyVaultSecretProviderClass(applicationName, spcName, options.Environment.Namespace, vol, objectSpec, options.Environment.Identity)
+				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, options.Environment.Namespace, vol, objectSpec, options.Environment.Identity)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
@@ -359,7 +359,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDSecretProviderClass})
 
 				// 7. Create volume spec which associated with secretProviderClass.
-				volumeSpec, volumeMountSpec, err = azoutput.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent, spcName, options)
+				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent, spcName, options)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}

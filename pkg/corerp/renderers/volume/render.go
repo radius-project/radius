@@ -13,7 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
-	azvoloutput "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
+	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -28,7 +28,7 @@ type Renderer struct {
 func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 	return &Renderer{
 		VolumeRenderers: map[string]VolumeRenderer{
-			datamodel.AzureKeyVaultVolume: &azvoloutput.AzureKeyVaultRenderer{},
+			datamodel.AzureKeyVaultVolume: &azvolrenderer.AzureKeyVaultRenderer{},
 		},
 	}
 }
