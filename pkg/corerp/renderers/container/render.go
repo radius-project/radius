@@ -178,9 +178,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
 		outputResources = append(outputResources, roles...)
-		// Enable later
-		//outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
-		//outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
+		// TODO: Enable later - https://github.com/project-radius/radius/issues/4395
+		// outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
+		// outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
 	}
 
 	return renderers.RendererOutput{Resources: outputResources}, nil
