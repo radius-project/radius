@@ -332,7 +332,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				deps = append(deps, raDeps...)
 
 				// 4. Create Per-container federated identity resource.
-				fedIdentity, err := azoutput.BuildFederatedIdentity(defaultName, &options.Environment)
+				fedIdentity, err := azoutput.MakeFederatedIdentity(defaultName, &options.Environment)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}

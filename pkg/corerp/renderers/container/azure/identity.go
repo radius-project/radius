@@ -76,8 +76,8 @@ func MakeRoleAssignments(ctx context.Context, azResourceID string, roleNames []s
 	return outputResources, deps
 }
 
-// BuildFederatedIdentity builds azure federated identity (aka workload identity) for User assignmend managed identity.
-func BuildFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*outputresource.OutputResource, error) {
+// MakeFederatedIdentity builds azure federated identity (aka workload identity) for User assignmend managed identity.
+func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*outputresource.OutputResource, error) {
 	if envOpt.Identity == nil || envOpt.Identity.OIDCIssuer == "" {
 		return nil, errors.New("OIDC Issuer URL is not specified")
 	}
