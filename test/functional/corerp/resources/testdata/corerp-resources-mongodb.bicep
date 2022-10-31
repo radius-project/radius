@@ -26,6 +26,9 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     container: {
       image: magpieimage
+      env: {
+        host: db.properties.host
+      }
       readinessProbe:{
         kind:'httpGet'
         containerPort:3000
@@ -34,6 +37,21 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
   }
 }
+resource dbresource 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' ={ 
+  name: 'db'  
+  location: 'global'  
+  properties: {  
+    mode: 'recipe' 
+    environment: environment 
+    application: app.id 
+    recipe: {  
+      name: 'foo'  
+      parameters: {  
+        port: 6001  
+      } 
+    } 
+  } 
+} 
 
 resource db 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mdb-db'

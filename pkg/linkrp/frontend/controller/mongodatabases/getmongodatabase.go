@@ -33,7 +33,7 @@ func NewGetMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
 func (mongo *GetMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.MongoDatabaseResponse{}
+	existingResource := &datamodel.MongoDatabase{}
 	_, err := mongo.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -42,6 +42,6 @@ func (mongo *GetMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, r
 		return nil, err
 	}
 
-	versioned, _ := converter.MongoDatabaseResponseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
+	versioned, _ := converter.MongoDatabaseDataModelToVersioned(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }

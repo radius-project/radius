@@ -82,8 +82,8 @@ func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind
 	}
 }
 
-// MongoDatabasePropertiesMode - Mode of the Mongo Database link deployment. It can be either one of 'recipe', 'resource'
-// or 'values'
+// MongoDatabasePropertiesMode - How to build the Mongo database link. Options are to build automatically via 'recipe' or
+// 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 type MongoDatabasePropertiesMode string
 
 const (

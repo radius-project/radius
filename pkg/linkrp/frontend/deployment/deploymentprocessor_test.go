@@ -53,11 +53,9 @@ func buildTestMongoResource() (resourceID resources.ID, testResource datamodel.M
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
+	testResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 	azureMongoOutputResources := []outputresource.OutputResource{
 		{
@@ -121,15 +119,13 @@ func buildTestMongoRecipe() (resourceID resources.ID, testResource datamodel.Mon
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			RecipeMongoDatabaseProperties: datamodel.RecipeMongoDatabaseProperties{
-				Recipe: datamodel.LinkRecipe{
-					Name: "mongoDB",
-					Parameters: map[string]interface{}{
-						"ResourceGroup": "testRG",
-						"Subscription":  "Radius-Test",
-					},
-				},
-			},
+		},
+	}
+	testResource.Properties.Recipe = datamodel.LinkRecipe{
+		Name: "mongoDB",
+		Parameters: map[string]interface{}{
+			"ResourceGroup": "testRG",
+			"Subscription":  "Radius-Test",
 		},
 	}
 
@@ -186,11 +182,9 @@ func buildTestMongoResourceMixedCaseResourceType() (resourceID resources.ID, tes
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
 		},
 	}
+	testResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 	azureMongoOutputResources := []outputresource.OutputResource{
 		{
@@ -479,11 +473,9 @@ func Test_Render(t *testing.T) {
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 				},
-				ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-					Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-				},
 			},
 		}
+		testInvalidResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 		_, err := dp.Render(ctx, parsedID, &testInvalidResource)
 		require.Error(t, err)

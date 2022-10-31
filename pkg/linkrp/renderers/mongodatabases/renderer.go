@@ -7,6 +7,7 @@ package mongodatabases
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -38,23 +39,25 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, err
 	}
 
-	if resource.Properties.Recipe.Name != "" {
+	switch resource.Properties.Mode {
+	case datamodel.MongoDatabaseModeRecipe:
 		rendererOutput, err := RenderAzureRecipe(resource, options)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		return rendererOutput, nil
-	} else if resource.Properties.Resource != "" {
+	case datamodel.MongoDatabaseModeResource:
 		// Source resource identifier is provided
 		// Currently only Azure resources are supported with non empty resource id
+		if resource.Properties.Resource == "" {
+			return renderers.RendererOutput{}, nil
+		}
 		rendererOutput, err := RenderAzureResource(resource.Properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		return rendererOutput, nil
-	} else {
+	case datamodel.MongoDatabaseModeValues:
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -64,6 +67,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			},
 			SecretValues: getProvidedSecretValues(resource.Properties),
 		}, nil
+	default:
+		return renderers.RendererOutput{}, errors.New("invalid mode")
 	}
 }
 
@@ -100,6 +105,7 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
+
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
@@ -163,7 +169,6 @@ func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[s
 			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
-
 	return secretValues
 }
 
@@ -184,6 +189,5 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 			},
 		}
 	}
-
 	return secretValues
 }

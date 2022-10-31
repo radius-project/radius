@@ -28,32 +28,13 @@ type MongoDatabase struct {
 	Properties MongoDatabaseProperties `json:"properties"`
 }
 
-type MongoDatabaseResponse struct {
-	v1.BaseResource
-
-	// Properties is the properties of the resource.
-	Properties MongoDatabaseResponseProperties `json:"properties"`
-
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
-}
-
-// MongoDatabaseProperties represents the properties of MongoDatabase resource.
-type MongoDatabaseResponseProperties struct {
-	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Resource          string               `json:"resource,omitempty"`
-	Host              string               `json:"host,omitempty"`
-	Port              int32                `json:"port,omitempty"`
-	Database          string               `json:"database,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-}
-
 // MongoDatabaseProperties represents the properties of MongoDatabase resource.
 type MongoDatabaseProperties struct {
 	rp.BasicResourceProperties
-	ResourceMongoDatabaseProperties
-	RecipeMongoDatabaseProperties
+	MongoDatabaseResourceProperties
+	MongoDatabaseRecipeProperties
+	MongoDatabaseValuesProperties
+	Secrets           MongoDatabaseSecrets `json:"secrets,omitempty"`
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
 	Mode              MongoDatabaseMode    `json:"mode"`
 }
@@ -74,25 +55,19 @@ func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
 }
 
 func (mongo MongoDatabase) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+	return "Applications.Link/mongoDatabases"
 }
 
-func (mongo MongoDatabaseResponse) ResourceTypeName() string {
-	return "Applications.Connector/mongoDatabases"
+type MongoDatabaseValuesProperties struct {
+	Host     string `json:"host,omitempty"`
+	Port     int32  `json:"port,omitempty"`
+	Database string `json:"database,omitempty"`
 }
 
-type ValuesMongoDatabaseProperties struct {
-	Secrets  MongoDatabaseSecrets `json:"secrets,omitempty"`
-	Host     string               `json:"host,omitempty"`
-	Port     int32                `json:"port,omitempty"`
-	Database string               `json:"database,omitempty"`
-}
-
-type ResourceMongoDatabaseProperties struct {
-	ValuesMongoDatabaseProperties
+type MongoDatabaseResourceProperties struct {
 	Resource string `json:"resource,omitempty"`
 }
 
-type RecipeMongoDatabaseProperties struct {
+type MongoDatabaseRecipeProperties struct {
 	Recipe LinkRecipe `json:"recipe,omitempty"`
 }

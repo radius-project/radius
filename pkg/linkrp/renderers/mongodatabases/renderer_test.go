@@ -45,11 +45,10 @@ func Test_Render_Success(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
+			Mode: datamodel.MongoDatabaseModeResource,
 		},
 	}
+	mongoDBResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 	accountResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
@@ -119,14 +118,11 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				ValuesMongoDatabaseProperties: datamodel.ValuesMongoDatabaseProperties{
-					Secrets: datamodel.MongoDatabaseSecrets{
-						Username:         userName,
-						Password:         password,
-						ConnectionString: connectionString,
-					},
-				},
+			Mode: datamodel.MongoDatabaseModeValues,
+			Secrets: datamodel.MongoDatabaseSecrets{
+				Username:         userName,
+				Password:         password,
+				ConnectionString: connectionString,
 			},
 		},
 	}
@@ -167,6 +163,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
+			Mode: datamodel.MongoDatabaseModeResource,
 		},
 	}
 
@@ -216,12 +213,10 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
+			Mode: datamodel.MongoDatabaseModeResource,
 		},
 	}
-
+	mongoDBResource.Properties.Resource = "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -245,11 +240,10 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
+			Mode: datamodel.MongoDatabaseModeResource,
 		},
 	}
+	mongoDBResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
@@ -274,11 +268,10 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			ResourceMongoDatabaseProperties: datamodel.ResourceMongoDatabaseProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-			},
+			Mode: datamodel.MongoDatabaseModeResource,
 		},
 	}
+	mongoDBResource.Properties.Resource = "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
@@ -303,12 +296,11 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			RecipeMongoDatabaseProperties: datamodel.RecipeMongoDatabaseProperties{
-				Recipe: datamodel.LinkRecipe{
-					Name: "mongodb",
-				},
-			},
+			Mode: datamodel.MongoDatabaseModeRecipe,
 		},
+	}
+	mongoDBResource.Properties.Recipe = datamodel.LinkRecipe{
+		Name: "mongodb",
 	}
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
@@ -356,12 +348,11 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			RecipeMongoDatabaseProperties: datamodel.RecipeMongoDatabaseProperties{
-				Recipe: datamodel.LinkRecipe{
-					Name: "mongodb",
-				},
-			},
+			Mode: datamodel.MongoDatabaseModeRecipe,
 		},
+	}
+	mongoDBResource.Properties.Recipe = datamodel.LinkRecipe{
+		Name: "mongodb",
 	}
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
