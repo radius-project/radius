@@ -133,7 +133,7 @@ func getDevRecipes(ctx context.Context, recipes map[string]datamodel.Environment
 					default:
 						continue
 					}
-					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+					recipes[name] = datamodel.EnvironmentRecipeProperties{
 						LinkType:     linkType,
 						TemplatePath: DevRecipesACRPath + "/" + repo + ":1.0",
 					}
