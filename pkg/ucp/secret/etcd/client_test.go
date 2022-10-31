@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	testSecretName = "azure_azurecloud_default"
+	testSecretName = "azure-azurecloud-default"
 )
 
 func Test_ETCD(t *testing.T) {

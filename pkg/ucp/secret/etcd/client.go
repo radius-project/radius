@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/util"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -61,16 +62,16 @@ func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 		return nil, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
 	}
 	secretName := generateSecretResourceName(name)
-	response, err := c.ETCDClient.Get(ctx, secretName)
+	resp, err := c.ETCDClient.Get(ctx, secretName)
 	if err != nil {
 		return nil, err
 	}
-	if response.Count == 0 {
+	if resp.Count == 0 {
 		return nil, &secret.ErrNotFound{}
 	}
-	return response.Kvs[0].Value, nil
+	return resp.Kvs[0].Value, nil
 }
 
 func generateSecretResourceName(name string) string {
-	return secretResourcePrefix + name
+	return secretResourcePrefix + util.NormalizeStringToLower(name)
 }
