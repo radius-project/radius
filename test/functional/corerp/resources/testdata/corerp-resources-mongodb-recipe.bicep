@@ -22,7 +22,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
     }
     recipes: {
       mongodb: {
-          connectorType: 'Applications.Link/mongoDatabases' 
+          linkType: 'Applications.Link/mongoDatabases' 
           templatePath: 'radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0' 
       }
     }

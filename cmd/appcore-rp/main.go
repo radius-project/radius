@@ -26,19 +26,19 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 
-	connector_backend "github.com/project-radius/radius/pkg/connectorrp/backend"
-	connector_frontend "github.com/project-radius/radius/pkg/connectorrp/frontend"
+	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
+	link_frontend "github.com/project-radius/radius/pkg/linkrp/frontend"
 )
 
-func newConnectorHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
+func newLinkHosts(configFile string, enableAsyncWorker bool) ([]hosting.Service, *hostoptions.HostOptions) {
 	hostings := []hosting.Service{}
 	options, err := hostoptions.NewHostOptionsFromEnvironment(configFile)
 	if err != nil {
 		log.Fatal(err)
 	}
-	hostings = append(hostings, connector_frontend.NewService(options))
+	hostings = append(hostings, link_frontend.NewService(options))
 	if enableAsyncWorker {
-		hostings = append(hostings, connector_backend.NewService(options))
+		hostings = append(hostings, link_backend.NewService(options))
 	}
 
 	return hostings, &options
@@ -48,16 +48,16 @@ func main() {
 	var configFile string
 	var enableAsyncWorker bool
 
-	var runConnector bool
-	var connectorConfigFile string
+	var runLink bool
+	var linkConfigFile string
 
 	defaultConfig := fmt.Sprintf("radius-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
-	flag.BoolVar(&runConnector, "run-connector", true, "Flag to run Applications.Link RP (for private preview and dev/test purpose).")
-	defaultConnectorConfig := fmt.Sprintf("connector-%s.yaml", hostoptions.Environment())
-	flag.StringVar(&connectorConfigFile, "connector-config", defaultConnectorConfig, "The service configuration file for Applications.Link.")
+	flag.BoolVar(&runLink, "run-link", true, "Flag to run Applications.Link RP (for private preview and dev/test purpose).")
+	defaultLinkConfig := fmt.Sprintf("link-%s.yaml", hostoptions.Environment())
+	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for Applications.Link.")
 
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
@@ -86,10 +86,10 @@ func main() {
 
 	// Configure Applications.Link to run it with Applications.Core RP.
 	var connOpts *hostoptions.HostOptions
-	if runConnector && connectorConfigFile != "" {
+	if runLink && linkConfigFile != "" {
 		logger.Info("Run Applications.Link.")
 		var connSvcs []hosting.Service
-		connSvcs, connOpts = newConnectorHosts(connectorConfigFile, enableAsyncWorker)
+		connSvcs, connOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
 		hostingSvc = append(hostingSvc, connSvcs...)
 	}
 

@@ -17,12 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	deployment "github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"

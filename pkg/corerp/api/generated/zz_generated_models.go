@@ -339,8 +339,8 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
-	ConnectorType *string `json:"connectorType,omitempty"`
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	LinkType *string `json:"linkType,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`

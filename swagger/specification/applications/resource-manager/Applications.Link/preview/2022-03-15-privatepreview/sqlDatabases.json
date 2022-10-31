@@ -200,13 +200,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The SQLDatabase connector was successfully deleted."
+            "description": "The SQLDatabase link was successfully deleted."
           },
           "202": {
-            "description": "The SQLDatabase connector will be deleted asynchronously."
+            "description": "The SQLDatabase link will be deleted asynchronously."
           },
           "204": {
-            "description": "The SQLDatabase connector does not exist."
+            "description": "The SQLDatabase link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -237,7 +237,7 @@
       }
     },
     "SQLDatabaseResource": {
-      "description": "SQLDatabse connector",
+      "description": "SQLDatabse link",
       "type": "object",
       "allOf": [
         {
@@ -258,7 +258,7 @@
       }
     },
     "SQLDatabaseProperties": {
-      "description": "SQLDatabse connector properties",
+      "description": "SQLDatabse link properties",
       "type": "object",
       "allOf": [
         {
@@ -269,10 +269,10 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the SQL database connector at the time the operation was called"
+          "description": "Provisioning state of the SQL database link at the time the operation was called"
         },
         "resource": {
-          "description": "Fully qualified resource ID of a supported resource with SQL API to use for this connector",
+          "description": "Fully qualified resource ID of a supported resource with SQL API to use for this link",
           "type": "string"
         },
         "database": {
@@ -284,7 +284,7 @@
           "type": "string"
         },
         "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database connector",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database link",
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"
@@ -297,7 +297,7 @@
   },
   "parameters": {
     "SQLDatabaseNameParameter": {
-      "description": "The name of the SQLDatabase connector resource",
+      "description": "The name of the SQLDatabase link resource",
       "name": "sqlDatabaseName",
       "in": "path",
       "required": true,

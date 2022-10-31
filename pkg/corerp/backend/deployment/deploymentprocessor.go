@@ -16,17 +16,8 @@ import (
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	connector_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
+	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -34,6 +25,15 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -76,8 +76,8 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	AppID           resources.ID            // Application ID for which the resource is created
-	RecipeData      connector_dm.RecipeData // Relevant only for connectors created with recipes to find relevant connections created by that recipe
+	AppID           resources.ID       // Application ID for which the resource is created
+	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -356,7 +356,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	}
 
 	if recipeData.Resources != nil {
-		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", recipeData.Name)
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the link", recipeData.Name)
 	}
 
 	var match *outputresource.OutputResource
@@ -455,75 +455,75 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
 		obj := &datamodel.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(volume.ResourceType):
 		obj := &datamodel.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(mongodatabases.ResourceType):
-		obj := &connector_dm.MongoDatabase{}
+		obj := &link_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(sqldatabases.ResourceType):
-		obj := &connector_dm.SqlDatabase{}
+		obj := &link_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rediscaches.ResourceType):
-		obj := &connector_dm.RedisCache{}
+		obj := &link_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
-		obj := &connector_dm.RabbitMQMessageQueue{}
+		obj := &link_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(extenders.ResourceType):
-		obj := &connector_dm.Extender{}
+		obj := &link_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, connector_dm.RecipeData{})
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(daprstatestores.ResourceType):
-		obj := &connector_dm.DaprStateStore{}
+		obj := &link_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprsecretstores.ResourceType):
-		obj := &connector_dm.DaprSecretStore{}
+		obj := &link_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
-		obj := &connector_dm.DaprPubSubBroker{}
+		obj := &link_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
-		obj := &connector_dm.DaprInvokeHttpRoute{}
+		obj := &link_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
@@ -533,7 +533,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData connector_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
@@ -541,8 +541,8 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = parsedID
-	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.ConnectorRPNamespace) {
-		// Application id is optional for connector resource types
+	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {
+		// Application id is optional for link resource types
 		appID = resources.ID{}
 	} else {
 		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())

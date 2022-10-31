@@ -243,13 +243,13 @@ func (cli *CLI) Recipelist(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, connectorType string) (string, error) {
+func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
 		"create",
 		"--name", recipeName,
 		"--template-path", templatePath,
-		"--connector-type", connectorType,
+		"--link-type", linkType,
 	}
 	return cli.RunCommand(ctx, args)
 }
