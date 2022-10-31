@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-func Test_KinesisStream(t *testing.T) {
+func Test_AWS_KinesisStream(t *testing.T) {
 	template := "testdata/aws-kinesis.bicep"
 	name := "ms" + uuid.New().String()
 
