@@ -34,7 +34,7 @@
   },
   "definitions": {
     "ProvisioningState": {
-      "description": "Provisioning state of the connector at the time the operation was called",
+      "description": "Provisioning state of the link at the time the operation was called",
       "type": "string",
       "readOnly": true,
       "enum": [
@@ -52,7 +52,7 @@
       }
     },
     "Application": {
-      "description": "Fully qualified resource ID for the application that the connector is consumed by",
+      "description": "Fully qualified resource ID for the application that the link is consumed by",
       "type": "string",
       "example": [
         "app.id"
@@ -68,7 +68,7 @@
           "readOnly": true
         },
         "environment": {
-          "description": "Fully qualified resource ID for the environment that the connector is linked to",
+          "description": "Fully qualified resource ID for the environment that the link is linked to",
           "type": "string"
         },
         "application": {
@@ -108,7 +108,7 @@
       "properties": {}
     },
     "Recipe": {
-      "description": "The recipe used to automatically deploy underlying infrastructure for a connector",
+      "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "type": "object",
       "properties": {
         "name": {

@@ -24,8 +24,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "delete",
-		Short:   "Delete a connector recipe from an environment",
-		Long:    `Delete a connector recipe from an environment`,
+		Short:   "Delete a link recipe from an environment",
+		Long:    `Delete a link recipe from an environment`,
 		Example: `rad recipe delete --name cosmosdb`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),

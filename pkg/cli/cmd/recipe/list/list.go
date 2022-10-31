@@ -23,8 +23,8 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "list",
-		Short:   "List connector recipes",
-		Long:    "List connector recipes within an environment",
+		Short:   "List link recipes",
+		Long:    "List link recipes within an environment",
 		Example: `rad recipe list`,
 		RunE:    framework.RunCommand(runner),
 		Args:    cobra.ExactArgs(0),
@@ -88,9 +88,9 @@ func (r *Runner) Run(ctx context.Context) error {
 	var envRecipes []EnvironmentRecipe
 	for recipeName, recipeProperties := range envResource.Properties.Recipes {
 		recipe := EnvironmentRecipe{
-			Name:          recipeName,
-			ConnectorType: *recipeProperties.ConnectorType,
-			TemplatePath:  *recipeProperties.TemplatePath,
+			Name:         recipeName,
+			LinkType:     *recipeProperties.LinkType,
+			TemplatePath: *recipeProperties.TemplatePath,
 		}
 		envRecipes = append(envRecipes, recipe)
 	}
@@ -103,7 +103,7 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 type EnvironmentRecipe struct {
-	Name          string `json:"name,omitempty"`
-	ConnectorType string `json:"connectorType,omitempty"`
-	TemplatePath  string `json:"templatePath,omitempty"`
+	Name         string `json:"name,omitempty"`
+	LinkType     string `json:"linkType,omitempty"`
+	TemplatePath string `json:"templatePath,omitempty"`
 }

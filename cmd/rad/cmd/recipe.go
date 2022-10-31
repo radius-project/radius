@@ -12,9 +12,9 @@ import (
 func NewRecipeCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "recipe",
-		Short: "Manage connector recipes",
-		Long: `Manage connector recipes
-		Connector recipes automate the deployment of infrastructure and configuration of connectors.`,
+		Short: "Manage link recipes",
+		Long: `Manage link recipes
+		Link recipes automate the deployment of infrastructure and configuration of links.`,
 	}
 }
 

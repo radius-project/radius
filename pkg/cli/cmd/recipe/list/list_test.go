@@ -74,17 +74,17 @@ func Test_Run(t *testing.T) {
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.StringPtr("Applications.Link/mongoDatabases"),
-							TemplatePath:  to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							LinkType:     to.StringPtr("Applications.Link/mongoDatabases"),
+							TemplatePath: to.StringPtr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
 			}
 			recipes := []EnvironmentRecipe{
 				{
-					Name:          "cosmosDB",
-					ConnectorType: "Applications.Link/mongoDatabases",
-					TemplatePath:  "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+					Name:         "cosmosDB",
+					LinkType:     "Applications.Link/mongoDatabases",
+					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				},
 			}
 

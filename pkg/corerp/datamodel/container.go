@@ -16,7 +16,7 @@ type ContainerResource struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	ConnectorMetadata
+	LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`

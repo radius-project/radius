@@ -14,9 +14,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"golang.org/x/exp/slices"
@@ -118,24 +118,24 @@ func getDevRecipes(ctx context.Context, recipes map[string]datamodel.Environment
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())
 	}
 
-	// if repository has the correct path it should look like: <acrPath>/recipes/<connectorType>/<provider>
+	// if repository has the correct path it should look like: <acrPath>/recipes/<linkType>/<provider>
 	err = reg.Repositories(ctx, "", func(repos []string) error {
 		for _, repo := range repos {
-			connector, provider := parseRepoPathForMetadata(repo)
-			if connector != "" && provider != "" {
+			link, provider := parseRepoPathForMetadata(repo)
+			if link != "" && provider != "" {
 				if slices.Contains(supportedProviders(), provider) {
 					var name string
-					var connectorType string
-					switch connector {
+					var linkType string
+					switch link {
 					case "mongodatabases":
 						name = "mongo" + "-" + provider
-						connectorType = mongodatabases.ResourceTypeName
+						linkType = mongodatabases.ResourceTypeName
 					default:
 						continue
 					}
-					recipes[name] = datamodel.EnvironmentRecipeProperties{
-						ConnectorType: connectorType,
-						TemplatePath:  DevRecipesACRPath + "/" + repo + ":1.0",
+					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+						LinkType:     linkType,
+						TemplatePath: DevRecipesACRPath + "/" + repo + ":1.0",
 					}
 				}
 			}
@@ -152,14 +152,14 @@ func getDevRecipes(ctx context.Context, recipes map[string]datamodel.Environment
 	return recipes, nil
 }
 
-func parseRepoPathForMetadata(repo string) (connector string, provider string) {
+func parseRepoPathForMetadata(repo string) (link string, provider string) {
 	if strings.HasPrefix(repo, "recipes/") {
 		recipePath := strings.Split(repo, "recipes/")[1]
 		if strings.Count(recipePath, "/") == 1 {
-			connector, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
-			return connector, provider
+			link, provider := strings.Split(recipePath, "/")[0], strings.Split(recipePath, "/")[1]
+			return link, provider
 		}
 	}
 
-	return connector, provider
+	return link, provider
 }

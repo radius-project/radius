@@ -355,7 +355,7 @@ func TestSave(t *testing.T) {
 // 4. Query records by subscription, resource group, and resource type
 // 5. Query records by subscription, resource group, and custom filter
 // 6. Query records by resource type and custom filter (across subscription)
-//   - Use case - this will be used when environment queries all linked applications and connectors.
+//   - Use case - this will be used when environment queries all linked applications and links.
 func TestQuery(t *testing.T) {
 	ctx := context.Background()
 	client := mustGetTestClient(t)
