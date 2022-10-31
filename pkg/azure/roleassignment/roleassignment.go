@@ -98,12 +98,14 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 	}
 
 	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+	if subscriptionID == "" {
+		return fmt.Errorf("invalid role id: %s", roleID)
+	}
 
-	// Check if role assignment already exists for the managed identity
 	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
 	_, err = roleAssignmentClient.DeleteByID(ctx, roleID, "")
 	if err != nil {
-		return fmt.Errorf("failed to create role assignment for role '%s': %w", roleID, err)
+		return fmt.Errorf("failed to delete role assignment for role '%s': %w", roleID, err)
 	}
 
 	return nil

@@ -648,42 +648,6 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 	return app.Properties.Environment, nil
 }
 
-// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
-	envId, err := resources.ParseResource(environmentID)
-	if err != nil {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
-	}
-
-	env := &datamodel.Environment{}
-	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
-	}
-
-	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
-	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
-	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-	res, err := sc.Get(ctx, envId.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
-		}
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-	err = res.As(env)
-	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-
-	if env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
-		return env.Properties.Compute.KubernetesCompute.Namespace, nil
-	} else {
-		return "", fmt.Errorf("cannot find namespace in the environment resource")
-	}
-}
-
 // fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
 func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
 	envId, err := resources.ParseResource(environmentID)
