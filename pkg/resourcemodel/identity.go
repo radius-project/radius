@@ -117,9 +117,12 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 
 func (r ResourceIdentity) RequireARM() (string, string, error) {
 	if r.ResourceType.Provider == ProviderAzure {
-		data := &ARMIdentity{}
-		if err := store.DecodeMap(r.Data, data); err != nil {
-			return "", "", err
+		data, ok := r.Data.(ARMIdentity)
+		if !ok {
+			data = ARMIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", "", err
+			}
 		}
 		return data.ID, data.APIVersion, nil
 	}
@@ -129,9 +132,12 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
 	if r.ResourceType.Provider == ProviderKubernetes {
-		data := &KubernetesIdentity{}
-		if err := store.DecodeMap(r.Data, data); err != nil {
-			return schema.GroupVersionKind{}, "", "", err
+		data, ok := r.Data.(KubernetesIdentity)
+		if !ok {
+			data = KubernetesIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return schema.GroupVersionKind{}, "", "", err
+			}
 		}
 		return schema.FromAPIVersionAndKind(data.APIVersion, data.Kind), data.Namespace, data.Name, nil
 	}
