@@ -10,12 +10,14 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 )
 
 func Test_KinesisStream(t *testing.T) {
@@ -87,7 +89,11 @@ func Test_KinesisStreamExisting(t *testing.T) {
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
-				deployments, err := ct.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{})
+				labelset := kubernetes.MakeSelectorLabels("aws-kinesis-existing-app", "aws-ctnr")
+
+				deployments, err := ct.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
+					LabelSelector: labels.SelectorFromSet(labelset).String(),
+				})
 				require.NoError(t, err, "failed to list deployments")
 				require.Len(t, deployments.Items, 1, "expected 1 deployment")
 				deployment := deployments.Items[0]
