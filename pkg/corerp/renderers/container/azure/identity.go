@@ -8,6 +8,7 @@ package azure
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -28,7 +29,7 @@ func MakeManagedIdentity(ctx context.Context, name string, resource *datamodel.C
 	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
 		rID, err = resources.Parse(cloudProvider.Azure.Scope)
 		if err != nil || rID.FindScope(resources.SubscriptionsSegment) == "" || rID.FindScope(resources.ResourceGroupsSegment) == "" {
-			return nil, err
+			return nil, fmt.Errorf("invalid environment Azure Provider scope: %s", cloudProvider.Azure.Scope)
 		}
 	}
 
