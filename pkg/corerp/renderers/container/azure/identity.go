@@ -25,7 +25,7 @@ import (
 func MakeManagedIdentity(ctx context.Context, name string, resource *datamodel.ContainerResource, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
 	var rID resources.ID
 	var err error
-	if cloudProvider != nil || cloudProvider.Azure.Scope != "" {
+	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
 		rID, err = resources.Parse(cloudProvider.Azure.Scope)
 		if err != nil || rID.FindScope(resources.SubscriptionsSegment) == "" || rID.FindScope(resources.ResourceGroupsSegment) == "" {
 			return nil, err
