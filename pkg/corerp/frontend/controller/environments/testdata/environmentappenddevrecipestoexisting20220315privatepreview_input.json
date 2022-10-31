@@ -1,0 +1,26 @@
+{
+    "location": "West US",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "resourceId": "fakeid",
+            "namespace": "default"
+        },
+        "recipes": {
+          "redis": {
+            "connectorType": "Applications.Connector/redisCache",
+            "templatePath": "radiusdev.azurecr.io/redis:1.0"
+          },
+          "sql": {
+            "connectorType": "Applications.Connector/sqlDatabases",
+            "templatePath": "radiusdev.azurecr.io/sql:1.0"
+          }
+        },
+        "useDevRecipes":true,
+        "providers": {
+            "azure": {
+                "scope" : "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+            }
+        }
+    }
+}

@@ -488,6 +488,53 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
+
+	t.Run("Append dev recipes and user recipes to existing user recipes successfully", func(t *testing.T) {
+		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipesToExisting20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (res *store.Object, err error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "existing-data-model"},
+					Data:     envExistingDataModel,
+				}, nil
+			})
+		mStorageClient.
+			EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			})
+
+		mStorageClient.
+			EXPECT().
+			Save(gomock.Any(), gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
+				obj.ETag = "new-resource-etag"
+				obj.Data = envDataModel
+				return nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewCreateOrUpdateEnvironment(opts)
+		require.NoError(t, err)
+		resp, err := ctl.Run(ctx, w, req)
+		require.NoError(t, err)
+		_ = resp.Apply(ctx, w, req)
+		actualOutput := &v20220315privatepreview.EnvironmentResource{}
+		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
+		require.Equal(t, expectedOutput, actualOutput)
+	})
 }
 
 func TestGetDevRecipes(t *testing.T) {
