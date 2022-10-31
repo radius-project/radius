@@ -263,3 +263,5 @@ require (
 	sigs.k8s.io/json v0.0.0-20220713155537-f223a00ba0e2 // indirect
 	sigs.k8s.io/kustomize/api v0.12.1 // indirect
 )
+
+replace cloud.google.com/go => cloud.google.com/go v0.100.2
