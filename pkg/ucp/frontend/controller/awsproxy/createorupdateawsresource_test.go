@@ -69,6 +69,12 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.Equal(t, http.StatusCreated, res.StatusCode)
 	body, err := io.ReadAll(res.Body)
 	require.NoError(t, err)
+
+	require.NotNil(t, res.Header.Get("Location"))
+	require.Equal(t, testlocationHeader, res.Header.Get("Location"))
+
+	require.NotNil(t, res.Header.Get("Azure-AsyncOperation"))
+	require.Equal(t, testazureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{

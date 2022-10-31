@@ -26,6 +26,8 @@ const (
 	testPrimaryIdentifier1          = "abc"
 	testPrimaryIdentifier2          = "xyz"
 	testMultiIdentifierResourceType = "AWS.RedShift/EndpointAuthorization"
+	testlocationHeader              = "http:///planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global/operationResults/79b9f0da-4882-4dc8-a367-6fd3bc122ded"
+	testazureAsyncOpHeader          = "http:///planes/aws/aws/accounts/1234567/regions/us-east-1/providers/AWS.Kinesis/locations/global/operationStatuses/79b9f0da-4882-4dc8-a367-6fd3bc122ded"
 )
 
 type TestOptions struct {
