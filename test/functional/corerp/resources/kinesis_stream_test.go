@@ -66,14 +66,6 @@ func Test_KinesisStreamExisting(t *testing.T) {
 		},
 		{
 			Executor: step.NewDeployExecutor(templateExisting, "streamName="+name, functional.GetMagpieImage()),
-			AWSResources: &validation.AWSResourceSet{
-				Resources: []validation.AWSResource{
-					{
-						Name: name,
-						Type: validation.KinesisResourceType,
-					},
-				},
-			},
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
