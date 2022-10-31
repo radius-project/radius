@@ -87,6 +87,38 @@ func Test_AWS_DeleteResource(t *testing.T) {
 
 }
 
+func Test_AWS_ListResources(t *testing.T) {
+	ctx := context.Background()
+	setupTestAWSResource(t, ctx)
+
+	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		// Call UCP Delete AWS Resource API
+		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
+
+		// Remove the stream name from the to form the post URL and add the stream name to the body
+		resourceIDParts := strings.Split(resourceID, "/")
+		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
+		resourceID = strings.Join(resourceIDParts, "/")
+		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20220901privatepreview.Version)
+
+		// Issue the List Request
+		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)
+		require.NoError(t, err)
+		listResponse, err := roundTripper.RoundTrip(listRequest)
+		require.NoError(t, err)
+		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+		payload, err := io.ReadAll(listResponse.Body)
+		require.NoError(t, err)
+		body := map[string][]interface{}{}
+		err = json.Unmarshal(payload, &body)
+		require.NoError(t, err)
+		require.Len(t, body, 1)
+		require.GreaterOrEqual(t, len(body["value"]), 1)
+	})
+
+	test.Test(t)
+}
+
 func setupTestAWSResource(t *testing.T, ctx context.Context) {
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
