@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/cli/output"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -187,11 +186,4 @@ func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	}
 
 	return copy
-}
-
-type ServerLifecycleClient interface {
-	GetStatus(ctx context.Context) (interface{}, []output.Column, error)
-	IsRunning(ctx context.Context) (bool, error)
-	EnsureStarted(ctx context.Context) error
-	EnsureStopped(ctx context.Context) error
 }
