@@ -544,7 +544,7 @@ func TestGetDevRecipes(t *testing.T) {
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": datamodel.EnvironmentRecipeProperties{
-				ConnectorType: "Applications.Connector/mongoDatabases",
+				ConnectorType: "Applications.Link/mongoDatabases",
 				TemplatePath:  "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 		}
@@ -555,7 +555,7 @@ func TestGetDevRecipes(t *testing.T) {
 		ctx := context.Background()
 		recipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"redis": datamodel.EnvironmentRecipeProperties{
-				ConnectorType: "Applications.Connector/redisCaches",
+				ConnectorType: "Applications.Link/redisCaches",
 				TemplatePath:  "radiusdev.azurecr.io/redis:1.0",
 			},
 		}
@@ -563,11 +563,11 @@ func TestGetDevRecipes(t *testing.T) {
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"redis": datamodel.EnvironmentRecipeProperties{
-				ConnectorType: "Applications.Connector/redisCaches",
+				ConnectorType: "Applications.Link/redisCaches",
 				TemplatePath:  "radiusdev.azurecr.io/redis:1.0",
 			},
 			"mongo-azure": datamodel.EnvironmentRecipeProperties{
-				ConnectorType: "Applications.Connector/mongoDatabases",
+				ConnectorType: "Applications.Link/mongoDatabases",
 				TemplatePath:  "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
 			},
 		}

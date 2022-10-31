@@ -8,7 +8,7 @@
         },
         "recipes": {
           "redis": {
-            "connectorType": "Applications.Connector/redisCache",
+            "connectorType": "Applications.Link/redisCache",
             "templatePath": "radiusdev.azurecr.io/redis:1.0"
           }
         },

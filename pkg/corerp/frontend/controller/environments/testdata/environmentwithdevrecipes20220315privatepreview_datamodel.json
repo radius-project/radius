@@ -22,7 +22,7 @@
         },
         "recipes": {
           "mongo-azure": {
-            "connectorType": "Applications.Connector/mongoDatabases",
+            "connectorType": "Applications.Link/mongoDatabases",
             "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"
           }
         },

@@ -15,11 +15,11 @@
         },
         "recipes": {
           "mongo-azure": {
-            "connectorType": "Applications.Connector/mongoDatabases",
+            "connectorType": "Applications.Link/mongoDatabases",
             "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0"
           },
           "redis": {
-            "connectorType": "Applications.Connector/redisCache",
+            "connectorType": "Applications.Link/redisCache",
             "templatePath": "radiusdev.azurecr.io/redis:1.0"
           }
         },
