@@ -19,15 +19,15 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	connectorrp_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
-	connectorrp_r "github.com/project-radius/radius/pkg/connectorrp/renderers"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -165,25 +165,25 @@ func getTestResourceID(id string) resources.ID {
 	return resourceID
 }
 
-func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
-	return connectorrp_dm.MongoDatabase{
+func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
+	return linkrp_dm.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
-				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo",
 			},
 		},
-		Properties: connectorrp_dm.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
+		Properties: linkrp_dm.MongoDatabaseProperties{
+			MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
 			},
 		},
-		ConnectorMetadata: connectorrp_dm.ConnectorMetadata{
-			RecipeData: connectorrp_dm.RecipeData{
-				RecipeProperties: connectorrp_dm.RecipeProperties{
-					ConnectorRecipe: connectorrp_dm.ConnectorRecipe{
+		LinkMetadata: linkrp_dm.LinkMetadata{
+			RecipeData: linkrp_dm.RecipeData{
+				RecipeProperties: linkrp_dm.RecipeProperties{
+					LinkRecipe: linkrp_dm.LinkRecipe{
 						Name: "mongoDB",
 						Parameters: map[string]interface{}{
 							"ResourceGroup": "testRG",
@@ -201,10 +201,10 @@ func buildMongoDBConnectorWithRecipe() connectorrp_dm.MongoDatabase {
 }
 
 func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
-	testResource := buildMongoDBConnectorWithRecipe()
+	testResource := buildMongoDBLinkWithRecipe()
 
 	secretValues := map[string]rp.SecretValueReference{}
-	secretValues[connectorrp_r.ConnectionStringValue] = rp.SecretValueReference{
+	secretValues[linkrp_r.ConnectionStringValue] = rp.SecretValueReference{
 		LocalID:              outputresource.LocalIDAzureCosmosAccount,
 		Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
 		ValueSelector:        "/connectionStrings/0/connectionString",
@@ -216,7 +216,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	}
 
 	computedValues := map[string]interface{}{
-		connectorrp_r.DatabaseNameValue: "db",
+		linkrp_r.DatabaseNameValue: "db",
 	}
 
 	testResource.ComputedValues = computedValues
@@ -251,7 +251,7 @@ func Test_Render(t *testing.T) {
 		resourceID := getTestResourceID(testResource.ID)
 
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
-		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
+		depId2, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
 		requiredResources := []resources.ID{depId1, depId2}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
@@ -326,14 +326,14 @@ func Test_Render(t *testing.T) {
 
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&nr, nil)
 
-		mongoResource := connectorrp_dm.MongoDatabase{
+		mongoResource := linkrp_dm.MongoDatabase{
 			BaseResource: v1.BaseResource{
 				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo",
+					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo",
 				},
 			},
-			Properties: connectorrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: connectorrp_dm.MongoDatabaseResponseProperties{
+			Properties: linkrp_dm.MongoDatabaseProperties{
+				MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
 					BasicResourceProperties: rp.BasicResourceProperties{
 						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 					},
@@ -1080,8 +1080,8 @@ func Test_getResourceDataByID(t *testing.T) {
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
-		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Connector/mongoDatabases/test-mongo")
-		mongoResource := buildMongoDBConnectorWithRecipe()
+		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
+		mongoResource := buildMongoDBLinkWithRecipe()
 		mr := store.Object{
 			Metadata: store.Metadata{
 				ID: mongoResource.ID,
@@ -1104,10 +1104,10 @@ func Test_fetchSecrets(t *testing.T) {
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
-		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[connectorrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
+		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
 		secretValues, err := dp.FetchSecrets(ctx, mongoResource)
 		require.NoError(t, err)
 		require.Equal(t, 1, len(secretValues))
-		require.Equal(t, secret, secretValues[connectorrp_r.ConnectionStringValue])
+		require.Equal(t, secret, secretValues[linkrp_r.ConnectionStringValue])
 	})
 }

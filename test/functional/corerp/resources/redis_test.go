@@ -85,7 +85,7 @@ func Test_RedisAzure(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "redis-connector",
+						Name: "redis-link",
 						Type: validation.RedisCachesResource,
 						App:  name,
 					},

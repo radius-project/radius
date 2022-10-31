@@ -101,3 +101,14 @@ func toIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
 		return rp.IdentityNone
 	}
 }
+
+func stringSlice(s []*string) []string {
+	if s == nil {
+		return nil
+	}
+	var r []string
+	for _, v := range s {
+		r = append(r, *v)
+	}
+	return r
+}

@@ -9,8 +9,6 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -19,6 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 
@@ -160,7 +160,7 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 
 	azureOutputResourceModel := []OutputResourceModel{
 		// Azure CosmosDB and Azure Redis models are consumed by deployment processor to fetch secrets for container dependencies.
-		// Any new SecretValueTransformer for a connector should be added here to support connections from container.
+		// Any new SecretValueTransformer for a link should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,

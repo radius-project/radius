@@ -26,9 +26,9 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	cmd := &cobra.Command{
 		Use:     "create",
-		Short:   "Add a connector recipe to an environment.",
-		Long:    `Add a connector recipe to an environment.`,
-		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --connector-type Applications.Connector/mongoDatabases`,
+		Short:   "Add a link recipe to an environment.",
+		Long:    `Add a link recipe to an environment.`,
+		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases`,
 		Args:    cobra.ExactArgs(0),
 		RunE:    framework.RunCommand(runner),
 	}
@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
-	cmd.Flags().String("connector-type", "", "specify the type of the connector this recipe can be consumed by")
+	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
 
 	return cmd, runner
@@ -49,7 +49,7 @@ type Runner struct {
 	Output            output.Interface
 	Workspace         *workspaces.Workspace
 	TemplatePath      string
-	ConnectorType     string
+	LinkType          string
 	RecipeName        string
 }
 
@@ -81,11 +81,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.TemplatePath = templatePath
 
-	connectorType, err := requireConnectorType(cmd)
+	linkType, err := requireLinkType(cmd)
 	if err != nil {
 		return err
 	}
-	r.ConnectorType = connectorType
+	r.LinkType = linkType
 
 	recipeName, err := requireRecipeName(cmd)
 	if err != nil {
@@ -111,14 +111,14 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	if recipeProperties != nil {
 		recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
-			ConnectorType: &r.ConnectorType,
-			TemplatePath:  &r.TemplatePath,
+			LinkType:     &r.LinkType,
+			TemplatePath: &r.TemplatePath,
 		}
 	} else {
 		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{
 			r.RecipeName: {
-				ConnectorType: &r.ConnectorType,
-				TemplatePath:  &r.TemplatePath,
+				LinkType:     &r.LinkType,
+				TemplatePath: &r.TemplatePath,
 			},
 		}
 	}
@@ -142,12 +142,12 @@ func requireTemplatePath(cmd *cobra.Command) (string, error) {
 
 }
 
-func requireConnectorType(cmd *cobra.Command) (string, error) {
-	connectorType, err := cmd.Flags().GetString("connector-type")
+func requireLinkType(cmd *cobra.Command) (string, error) {
+	linkType, err := cmd.Flags().GetString("link-type")
 	if err != nil {
-		return connectorType, err
+		return linkType, err
 	}
-	return connectorType, nil
+	return linkType, nil
 }
 
 func requireRecipeName(cmd *cobra.Command) (string, error) {

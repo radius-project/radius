@@ -68,7 +68,7 @@ resource backend 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource daprBackend 'Applications.Connector/daprInvokeHttpRoutes@2022-03-15-privatepreview' = {
+resource daprBackend 'Applications.Link/daprInvokeHttpRoutes@2022-03-15-privatepreview' = {
   name: 'dapr-backend-httproute'
   location: location
   properties: {

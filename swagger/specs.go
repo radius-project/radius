@@ -14,7 +14,7 @@ var (
 	// each file may depend on one or more files on the preceding
 	// lines.
 
-	//go:embed specification/applications/resource-manager/Applications.Connector/preview/2022-03-15-privatepreview/*.json
+	//go:embed specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/*.json
 	//go:embed specification/applications/resource-manager/Applications.Core/preview/2022-03-15-privatepreview/*.json
 	//go:embed specification/common-types/resource-management/v2/types.json
 	SpecFiles embed.FS

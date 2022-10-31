@@ -11,7 +11,7 @@
         "type": "System.Planes/example",
         "properties": {
           "resourceProviders": {
-              "Applications.Connector": "http://appcore-rp.radius-system:5444",
+              "Applications.Link": "http://appcore-rp.radius-system:5444",
               "Applications.Core": "http://appcore-rp.radius-system:5443"
           },
           "kind": "UCPNative",

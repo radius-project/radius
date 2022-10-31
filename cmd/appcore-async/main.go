@@ -16,8 +16,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
-	connector_backend "github.com/project-radius/radius/pkg/connectorrp/backend"
 	"github.com/project-radius/radius/pkg/corerp/backend"
+	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -49,7 +49,7 @@ func main() {
 	services := []hosting.Service{
 		backend.NewSystemService(options),
 		backend.NewService(options),
-		connector_backend.NewService(options),
+		link_backend.NewService(options),
 	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&

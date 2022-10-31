@@ -51,6 +51,20 @@ func (mr *MockConfigFileInterfaceMockRecorder) ConfigFromContext(arg0 interface{
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConfigFromContext", reflect.TypeOf((*MockConfigFileInterface)(nil).ConfigFromContext), arg0)
 }
 
+// DeleteWorkspace mocks base method.
+func (m *MockConfigFileInterface) DeleteWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteWorkspace", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteWorkspace indicates an expected call of DeleteWorkspace.
+func (mr *MockConfigFileInterfaceMockRecorder) DeleteWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).DeleteWorkspace), arg0, arg1, arg2)
+}
+
 // EditWorkspaces mocks base method.
 func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *viper.Viper, arg2 *workspaces.Workspace, arg3 *azure.Provider) error {
 	m.ctrl.T.Helper()
@@ -63,4 +77,18 @@ func (m *MockConfigFileInterface) EditWorkspaces(arg0 context.Context, arg1 *vip
 func (mr *MockConfigFileInterfaceMockRecorder) EditWorkspaces(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "EditWorkspaces", reflect.TypeOf((*MockConfigFileInterface)(nil).EditWorkspaces), arg0, arg1, arg2, arg3)
+}
+
+// SetDefaultWorkspace mocks base method.
+func (m *MockConfigFileInterface) SetDefaultWorkspace(arg0 context.Context, arg1 *viper.Viper, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetDefaultWorkspace", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetDefaultWorkspace indicates an expected call of SetDefaultWorkspace.
+func (mr *MockConfigFileInterfaceMockRecorder) SetDefaultWorkspace(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetDefaultWorkspace", reflect.TypeOf((*MockConfigFileInterface)(nil).SetDefaultWorkspace), arg0, arg1, arg2)
 }

@@ -312,12 +312,15 @@ func (c *ConnectionProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type Container.
 func (c Container) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "args", c.Args)
+	populate(objectMap, "command", c.Command)
 	populate(objectMap, "env", c.Env)
 	populate(objectMap, "image", c.Image)
 	populate(objectMap, "livenessProbe", c.LivenessProbe)
 	populate(objectMap, "ports", c.Ports)
 	populate(objectMap, "readinessProbe", c.ReadinessProbe)
 	populate(objectMap, "volumes", c.Volumes)
+	populate(objectMap, "workingDir", c.WorkingDir)
 	return json.Marshal(objectMap)
 }
 
@@ -330,6 +333,12 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "args":
+				err = unpopulate(val, "Args", &c.Args)
+				delete(rawMsg, key)
+		case "command":
+				err = unpopulate(val, "Command", &c.Command)
+				delete(rawMsg, key)
 		case "env":
 				err = unpopulate(val, "Env", &c.Env)
 				delete(rawMsg, key)
@@ -347,6 +356,9 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "volumes":
 				c.Volumes, err = unmarshalVolumeClassificationMap(val)
+				delete(rawMsg, key)
+		case "workingDir":
+				err = unpopulate(val, "WorkingDir", &c.WorkingDir)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -652,7 +664,7 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentRecipeProperties.
 func (e EnvironmentRecipeProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "connectorType", e.ConnectorType)
+	populate(objectMap, "linkType", e.LinkType)
 	populate(objectMap, "templatePath", e.TemplatePath)
 	return json.Marshal(objectMap)
 }
@@ -666,8 +678,8 @@ func (e *EnvironmentRecipeProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "connectorType":
-				err = unpopulate(val, "ConnectorType", &e.ConnectorType)
+		case "linkType":
+				err = unpopulate(val, "LinkType", &e.LinkType)
 				delete(rawMsg, key)
 		case "templatePath":
 				err = unpopulate(val, "TemplatePath", &e.TemplatePath)

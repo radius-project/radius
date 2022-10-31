@@ -35,9 +35,17 @@
         "failureThreshold": 5,
         "initialDelaySeconds": 5,
         "periodSeconds": 5,
-        "timeoutSeconds":5,
+        "timeoutSeconds": 5,
         "containerPort": 8080
-      }
+      },
+      "command": [
+        "/bin/sh"
+      ],
+      "args": [
+        "-c",
+        "while true; do echo hello; sleep 10;done"
+      ],
+      "workingDir": "/app"
     },
     "extensions": [
       {

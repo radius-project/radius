@@ -16,7 +16,7 @@ type ContainerResource struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	ConnectorMetadata
+	LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
@@ -75,6 +75,9 @@ type Container struct {
 	Ports          map[string]ContainerPort    `json:"ports,omitempty"`
 	ReadinessProbe HealthProbeProperties       `json:"readinessProbe,omitempty"`
 	Volumes        map[string]VolumeProperties `json:"volumes,omitempty"`
+	Command        []string                    `json:"command,omitempty"`
+	Args           []string                    `json:"args,omitempty"`
+	WorkingDir     string                      `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container

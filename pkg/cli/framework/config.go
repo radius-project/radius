@@ -40,10 +40,32 @@ func ConfigFromContext(ctx context.Context) *viper.Viper {
 
 type ConfigFileInterface interface {
 	ConfigFromContext(ctx context.Context) *viper.Viper
+	SetDefaultWorkspace(ctx context.Context, config *viper.Viper, name string) error
+	DeleteWorkspace(ctx context.Context, config *viper.Viper, name string) error
 	EditWorkspaces(ctx context.Context, config *viper.Viper, workspace *workspaces.Workspace, azureProvider *azure.Provider) error
 }
 
+var _ ConfigFileInterface = (*ConfigFileInterfaceImpl)(nil)
+
 type ConfigFileInterfaceImpl struct {
+}
+
+func (i *ConfigFileInterfaceImpl) SetDefaultWorkspace(ctx context.Context, config *viper.Viper, name string) error {
+	return cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
+		section.Default = name
+		return nil
+	})
+}
+
+func (i *ConfigFileInterfaceImpl) DeleteWorkspace(ctx context.Context, config *viper.Viper, name string) error {
+	return cli.EditWorkspaces(ctx, config, func(section *cli.WorkspaceSection) error {
+		delete(section.Items, strings.ToLower(name))
+		if strings.EqualFold(section.Default, name) {
+			section.Default = ""
+		}
+
+		return nil
+	})
 }
 
 // Edits and updates the rad config file with the specified sections to edit

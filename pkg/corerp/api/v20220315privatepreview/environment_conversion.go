@@ -53,8 +53,8 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 		for key, val := range src.Properties.Recipes {
 			if val != nil {
 				recipes[key] = datamodel.EnvironmentRecipeProperties{
-					ConnectorType: to.String(val.ConnectorType),
-					TemplatePath:  to.String(val.TemplatePath),
+					LinkType:     to.String(val.LinkType),
+					TemplatePath: to.String(val.TemplatePath),
 				}
 			}
 		}
@@ -99,8 +99,8 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 		recipes := make(map[string]*EnvironmentRecipeProperties)
 		for key, val := range env.Properties.Recipes {
 			recipes[key] = &EnvironmentRecipeProperties{
-				ConnectorType: to.StringPtr(val.ConnectorType),
-				TemplatePath:  to.StringPtr(val.TemplatePath),
+				LinkType:     to.StringPtr(val.LinkType),
+				TemplatePath: to.StringPtr(val.TemplatePath),
 			}
 		}
 		dst.Properties.Recipes = recipes

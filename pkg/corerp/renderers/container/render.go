@@ -238,6 +238,9 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 		Ports:           ports,
 		Env:             []corev1.EnvVar{},
 		VolumeMounts:    []corev1.VolumeMount{},
+		Command:         cc.Container.Command,
+		Args:            cc.Container.Args,
+		WorkingDir:      cc.Container.WorkingDir,
 	}
 
 	var err error

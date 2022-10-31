@@ -142,7 +142,7 @@ func GetEnvironmentRecipesTableFormat() output.FormatterOptions {
 			},
 			{
 				Heading:  "TYPE",
-				JSONPath: "{ .ConnectorType }",
+				JSONPath: "{ .LinkType }",
 			},
 			{
 				Heading:  "TEMPLATE",

@@ -12,7 +12,7 @@ accepted
 
 Right now, the Radius RP and UCP require a shared data store. This ADR documents the need for a shared data store between the Radius RP and UCP. This is subject to change in the future.
 
-UCP owns the ResourceGroup resource and implements the CRUD operations on the ResourceGroup. All the Applications.Core/Applications.Connector Resource Provider resources are contained within the resource group but are owned by the RP.
+UCP owns the ResourceGroup resource and implements the CRUD operations on the ResourceGroup. All the Applications.Core/Applications.Link Resource Provider resources are contained within the resource group but are owned by the RP.
 
 We need to enable querying of all resources within a resource group for supporting deletion of a resourceGroup. However, since the individual resources within the resource group are owned by the RP, the UCP has no knowledge of those unless we have a shared data store.
 
