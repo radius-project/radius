@@ -25,7 +25,7 @@ spec:
       - args:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-connector
-        - --connector-config=/etc/config/connector-self-host.yaml
+        - --connector-config=/etc/config/link-self-host.yaml
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         envFrom:
         - secretRef: 
@@ -47,7 +47,7 @@ spec:
           name: appcore-rp
           protocol: TCP
         - containerPort: 5444
-          name: appconnector-rp
+          name: applink-rp
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
@@ -92,7 +92,7 @@ data:
   radius-self-host.yaml: |-
 {{ .Files.Get "radius-self-host.yaml" | indent 4}}
   connector-self-host.yaml: |-
-{{ .Files.Get "connector-self-host.yaml" | indent 4}}
+{{ .Files.Get "link-self-host.yaml" | indent 4}}
 ---
 apiVersion: v1
 kind: Secret
