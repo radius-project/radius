@@ -142,6 +142,10 @@ func getDevRecipes(ctx context.Context, recipes map[string]datamodel.Environment
 		}
 
 		logger.Info(fmt.Sprintf("pulled %d dev recipes", len(recipes)))
+
+		// This function never returns an error as we currently silently continue on any repositories that don't have the path pattern specified.
+		// It has a definition that specifies an error is returned to match the definition defined by reg.Repositories.
+		// TODO: Add metrics here to identify how long this takes. Long-term, we should ensure the registry only has recipes. #4440
 		return nil
 	})
 
