@@ -36,6 +36,7 @@ type azureRoleAssignmentHandler struct {
 	arm *armauth.ArmConfig
 }
 
+// Put assigns the selected roles to the identity.
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
 
@@ -78,6 +79,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	return properties, nil
 }
 
+// Delete deletes the role from the resource.
 func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	roleID, _, err := options.Resource.Identity.RequireARM()
 	if err != nil {

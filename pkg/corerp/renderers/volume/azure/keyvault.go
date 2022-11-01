@@ -38,11 +38,11 @@ type objectValues struct {
 	format   string
 }
 
-// AzureKeyVaultRenderer is a render for azure keyvault volume.
-type AzureKeyVaultRenderer struct {
+// KeyVaultRenderer is a render for azure keyvault volume.
+type KeyVaultRenderer struct {
 }
 
-func (r *AzureKeyVaultRenderer) Render(ctx context.Context, resource conv.DataModelInterface, options *renderers.RenderOptions) (*renderers.RendererOutput, error) {
+func (r *KeyVaultRenderer) Render(ctx context.Context, resource conv.DataModelInterface, options *renderers.RenderOptions) (*renderers.RendererOutput, error) {
 	dm, ok := resource.(*datamodel.VolumeResource)
 	if !ok {
 		return nil, conv.ErrInvalidModelConversion

@@ -28,7 +28,7 @@ type Renderer struct {
 func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 	return &Renderer{
 		VolumeRenderers: map[string]VolumeRenderer{
-			datamodel.AzureKeyVaultVolume: &azvolrenderer.AzureKeyVaultRenderer{},
+			datamodel.AzureKeyVaultVolume: &azvolrenderer.KeyVaultRenderer{},
 		},
 	}
 }
