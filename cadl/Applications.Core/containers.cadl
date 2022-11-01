@@ -113,10 +113,6 @@ model PersistentVolume extends Volume {
   source: string;
 }
 
-@doc("Extension of a resource.")
-@discriminator("kind")
-model Extension {}
-
 @doc("ManualScaling Extension")
 model ManualScalingExtension extends Extension {
   @doc("Specifies the extension of the resource")
@@ -145,6 +141,10 @@ model DaprSidecarExtension extends Extension {
 
   @doc("Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.")
   provides: string;
+}
+
+@doc("Specifies the metadata that should be applied to Kubernetes resources created for the Container resource")
+model ContainerKubernetesMetadataExtension extends KubernetesMetadataExtension {
 }
 
 @doc("Iam properties")

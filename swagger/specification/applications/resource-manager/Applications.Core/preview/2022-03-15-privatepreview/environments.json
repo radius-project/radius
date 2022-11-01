@@ -353,6 +353,15 @@
         }
       }
     },
+    "EnvironmentKubernetesMetadataExtension": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/KubernetesMetadataExtension"
+        }
+      ],
+      "type": "object",
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Environment."
+    },
     "EnvironmentProperties": {
       "description": "Application environment properties",
       "type": "object",
@@ -382,6 +391,13 @@
             "description": "Specifies Recipe linked to the Environment."
           },
           "type": "object"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Extension"
+          },
+          "description": "Extensions spec of the resource"
         }
       }
     },

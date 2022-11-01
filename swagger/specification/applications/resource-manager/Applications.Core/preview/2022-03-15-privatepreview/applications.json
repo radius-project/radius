@@ -313,6 +313,15 @@
           }
         }
       },
+      "ApplicationKubernetesMetadataExtension": {
+        "allOf": [
+          {
+            "$ref": "#/definitions/KubernetesMetadataExtension"
+          }
+        ],
+        "type": "object",
+        "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Application."
+      },
       "ApplicationProperties": {
         "description": "Application properties",
         "type": "object",
@@ -328,6 +337,13 @@
           "environment": {
             "description": "The resource id of the environment linked to application.",
             "type": "string"
+          },
+          "extensions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Extension"
+            },
+            "description": "Extensions spec of the resource"
           }
         }
       }

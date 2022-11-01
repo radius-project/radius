@@ -689,19 +689,14 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "Extension": {
-      "description": "Extension of a resource.",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "description": "Specifies the extensions of a resource.",
-          "type": "string"
+    "ContainerKubernetesMetadataExtension": {
+      "allOf": [
+        {
+          "$ref": "#/definitions/KubernetesMetadataExtension"
         }
-      },
-      "required": [
-        "kind"
       ],
-      "type": "object"
+      "type": "object",
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource"
     },
     "ContainerProperties": {
       "allOf": [
