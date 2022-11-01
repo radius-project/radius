@@ -48,10 +48,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 	}
 
 	// Generate a new role assignment name
-	raName, err := uuid.NewV4()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
-	}
+	raName := uuid.New()
 
 	// Retry to wait for the managed identity to propagate
 	MaxRetries := 100
