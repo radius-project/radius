@@ -56,6 +56,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	request, err := http.NewRequest(http.MethodPut, testAWSSingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	request.Host = testHost
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
