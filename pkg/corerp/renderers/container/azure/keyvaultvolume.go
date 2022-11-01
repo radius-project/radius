@@ -29,6 +29,7 @@ var (
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )
 
+// MakeKeyVaultVolumeSpec builds CSI volume spec for Azure Keyvault.
 func MakeKeyVaultVolumeSpec(volumeName string, keyvaultVolume *datamodel.PersistentVolume, secretProviderClassName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make Volume Spec which uses the SecretProvider created above
 	volumeSpec := corev1.Volume{
@@ -74,6 +75,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	return nil
 }
 
+// MakeKeyVaultSecretProviderClass builds SecretProviderClass CR for keyvault secrets.
 func MakeKeyVaultSecretProviderClass(appName, name, namespace string, res *datamodel.VolumeResource, objSpec string, identity *rp.IdentitySettings) (*outputresource.OutputResource, error) {
 	prop := res.Properties.AzureKeyVault
 

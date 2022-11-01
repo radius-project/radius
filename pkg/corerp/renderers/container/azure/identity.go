@@ -22,6 +22,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	azureWorkloadIdentityClientID = "azure.workload.identity/client-id"
+	azureWorkloadIdentityTenantID = "azure.workload.identity/tenant-id"
+)
+
 // MakeManagedIdentity builds a user-assigned managed identity output resource.
 func MakeManagedIdentity(ctx context.Context, name string, resource *datamodel.ContainerResource, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
 	var rID resources.ID
@@ -116,8 +121,8 @@ func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOpti
 		return err
 	}
 
-	sa.Annotations["azure.workload.identity/client-id"] = clientID
-	sa.Annotations["azure.workload.identity/tenant-id"] = tenantID
+	sa.Annotations[azureWorkloadIdentityClientID] = clientID
+	sa.Annotations[azureWorkloadIdentityTenantID] = tenantID
 
 	return nil
 }
@@ -158,9 +163,9 @@ func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamode
 			Namespace: namespace,
 			Labels:    labels,
 			Annotations: map[string]string{
-				// Mutator mutates these values before deploying resource.
-				"azure.workload.identity/client-id": "placeholder",
-				"azure.workload.identity/tenant-id": "placeholder",
+				// ResourceTransformer transforms these values before deploying resource.
+				azureWorkloadIdentityClientID: "placeholder",
+				azureWorkloadIdentityTenantID: "placeholder",
 			},
 		},
 	}
