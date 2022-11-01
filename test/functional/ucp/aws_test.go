@@ -26,18 +26,18 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var streamName = "my-stream" + uuid.NewString()
 var resourceType = "AWS::Kinesis::Stream"
 
 func Test_AWS_DeleteResource(t *testing.T) {
+	var streamName = "my-stream" + uuid.NewString()
 	ctx := context.Background()
-	setupTestAWSResource(t, ctx)
+	setupTestAWSResource(t, ctx, streamName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Call UCP Delete AWS Resource API
 		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
 
-		// Remove the stream name from the to form the post URL and add the stream name to the body
+		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
@@ -87,13 +87,50 @@ func Test_AWS_DeleteResource(t *testing.T) {
 
 }
 
-func setupTestAWSResource(t *testing.T, ctx context.Context) {
+func Test_AWS_ListResources(t *testing.T) {
+	var streamName = "my-stream" + uuid.NewString()
+	ctx := context.Background()
+	setupTestAWSResource(t, ctx, streamName)
+
+	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		// Call UCP Delete AWS Resource API
+		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
+
+		// Remove the stream name from the to form the post URL and add the stream name to the body
+		resourceIDParts := strings.Split(resourceID, "/")
+		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
+		resourceID = strings.Join(resourceIDParts, "/")
+		listURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceID, v20220901privatepreview.Version)
+
+		// Issue the List Request
+		listRequest, err := http.NewRequest(http.MethodGet, listURL, nil)
+		require.NoError(t, err)
+		listResponse, err := roundTripper.RoundTrip(listRequest)
+		require.NoError(t, err)
+
+		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+
+		payload, err := io.ReadAll(listResponse.Body)
+		require.NoError(t, err)
+		body := map[string][]interface{}{}
+		err = json.Unmarshal(payload, &body)
+		require.NoError(t, err)
+
+		// Verify payload has at least one resource
+		require.Len(t, body, 1)
+		require.GreaterOrEqual(t, len(body["value"]), 1)
+	})
+
+	test.Test(t)
+}
+
+func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string) {
 	// Test setup - Create AWS resource using AWS APIs
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	desiredState := map[string]interface{}{
-		"Name":                 streamName,
+		"Name":                 resourceName,
 		"RetentionPeriodHours": 180,
 		"ShardCount":           4,
 	}
@@ -111,7 +148,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context) {
 		// Check if resource exists before issuing a delete because the AWS SDK async delete operation
 		// seems to fail if the resource does not exist
 		_, err := awsClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: &streamName,
+			Identifier: &resourceName,
 			TypeName:   &resourceType,
 		})
 		if aws.IsAWSResourceNotFound(err) {
@@ -119,7 +156,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context) {
 		}
 		// Just in case delete fails
 		deleteOutput, err := awsClient.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-			Identifier: &streamName,
+			Identifier: &resourceName,
 			TypeName:   &resourceType,
 		})
 		require.NoError(t, err)
