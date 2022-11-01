@@ -11,12 +11,7 @@ import (
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-<<<<<<< HEAD:pkg/linkrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
-=======
-	"github.com/project-radius/radius/pkg/connectorrp/datamodel"
->>>>>>> 217d2a49 (Schema changes with x-ms-secret flag):pkg/connectorrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,16 +78,9 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
 		require.Equal(t, "mongo0", *versionedResource.Name)
-<<<<<<< HEAD:pkg/linkrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
-		require.Equal(t, "Applications.Connector/mongoDatabases", *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
-
-=======
 		require.Equal(t, "Applications.Link/mongoDatabases", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
->>>>>>> 217d2a49 (Schema changes with x-ms-secret flag):pkg/connectorrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
 		switch v := versionedResource.Properties.(type) {
 		case *MongoDatabaseResourceProperties:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *v.Resource)
@@ -113,39 +101,6 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 }
 
-<<<<<<< HEAD:pkg/linkrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
-func TestMongoDatabaseResponse_ConvertDataModelToVersioned(t *testing.T) {
-	// arrange
-	rawPayload := loadTestData("mongodatabaseresponseresourcedatamodel.json")
-	resource := &datamodel.MongoDatabase{}
-	err := json.Unmarshal(rawPayload, resource)
-	require.NoError(t, err)
-
-	// act
-	versionedResource := &MongoDatabaseResource{}
-	err = versionedResource.ConvertFrom(resource)
-
-	// assert
-	require.NoError(t, err)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/mongoDatabases/mongo0", *versionedResource.ID)
-	require.Equal(t, "mongo0", *versionedResource.Name)
-	require.Equal(t, "Applications.Connector/mongoDatabases", resource.Type)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
-
-	switch v := versionedResource.Properties.(type) {
-	case *ResourceMongoDatabaseRequestProperties:
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *v.Resource)
-		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-		require.Equal(t, int32(10255), *v.Port)
-		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
-		require.Equal(t, "AzureCosmosAccount", v.Status.OutputResources[0]["LocalID"])
-		require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
-	}
-}
-
-=======
->>>>>>> 217d2a49 (Schema changes with x-ms-secret flag):pkg/connectorrp/api/v20220315privatepreview/mongodatabase_conversion_test.go
 func TestMongoDatabase_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src conv.DataModelInterface

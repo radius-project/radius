@@ -34,9 +34,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		Properties: datamodel.MongoDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: to.String(src.Properties.GetMongoDatabaseProperties().Environment),
-				Application: to.String(src.Properties.GetMongoDatabaseProperties().Environment),
+				Application: to.String(src.Properties.GetMongoDatabaseProperties().Application),
 			},
-			//ProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseProperties().ProvisioningState),
+			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -55,7 +55,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 		//converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
-	case *ValuesMongoDatabaseRequestProperties:
+	case *MongoDatabaseValuesProperties:
 		converted.Properties.MongoDatabaseValuesProperties = datamodel.MongoDatabaseValuesProperties{
 			Host:     to.String(v.Host),
 			Port:     to.Int32(v.Port),
@@ -68,19 +68,19 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		//converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
-	/*case *MongoDatabaseRecipeProperties:
-	converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
-		Recipe: toRecipeDataModel(v.Recipe),
-	}
-	if v.Secrets != nil {
-		converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-			ConnectionString: to.String(v.Secrets.ConnectionString),
-			Username:         to.String(v.Secrets.Username),
-			Password:         to.String(v.Secrets.Password),
+		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
+	case *MongoDatabaseRecipeProperties:
+		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
+			Recipe: toRecipeDataModel(v.Recipe),
 		}
-	}
-	converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)*/
+		if v.Secrets != nil {
+			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+				ConnectionString: to.String(v.Secrets.ConnectionString),
+				Username:         to.String(v.Secrets.Username),
+				Password:         to.String(v.Secrets.Password),
+			}
+		}
+		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 	default:
 		return nil, errors.New("mode of Mongo Database is not specified")
 	}
@@ -146,7 +146,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		}
 		dst.Properties = converted
 	case datamodel.MongoDatabaseModeRecipe:
-		/*converted := &MongoDatabaseRecipeProperties{
+		converted := &MongoDatabaseRecipeProperties{
 			Mode:   fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
 			Recipe: fromRecipeDataModel(mongo.Properties.Recipe),
 			Status: &ResourceStatus{
@@ -163,7 +163,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 				Password:         to.StringPtr(mongo.Properties.Secrets.Password),
 			}
 		}
-		dst.Properties = converted*/
+		dst.Properties = converted
 	default:
 		return errors.New("mode of Mongo Database is not specified")
 	}
