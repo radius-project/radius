@@ -25,7 +25,6 @@ import (
 )
 
 var (
-	errCreateSecretResource      = errors.New("unable to create secret provider class")
 	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )

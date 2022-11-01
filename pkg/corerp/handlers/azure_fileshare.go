@@ -42,7 +42,7 @@ func (handler *azureFileShareHandler) Put(ctx context.Context, options *PutOptio
 	if err != nil {
 		return nil, err
 	}
-	return nil, nil
+	return properties, nil
 }
 
 func (handler *azureFileShareHandler) Delete(ctx context.Context, options *DeleteOptions) error {
