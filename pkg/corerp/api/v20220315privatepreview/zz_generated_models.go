@@ -11,10 +11,42 @@ package v20220315privatepreview
 
 import "time"
 
+// ApplicationKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
+// by all Containers in this Application.
+type ApplicationKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
+func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
+// GetKubernetesMetadataExtension implements the KubernetesMetadataExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
+func (a *ApplicationKubernetesMetadataExtension) GetKubernetesMetadataExtension() *KubernetesMetadataExtension {
+	return &KubernetesMetadataExtension{
+		Annotations: a.Annotations,
+		Labels: a.Labels,
+		Kind: a.Kind,
+	}
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
+
+	// Extensions spec of the resource
+	Extensions []ExtensionClassification `json:"extensions,omitempty"`
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -190,6 +222,35 @@ type Container struct {
 	WorkingDir *string `json:"workingDir,omitempty"`
 }
 
+// ContainerKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created for
+// the Container resource
+type ContainerKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetExtension implements the ExtensionClassification interface for type ContainerKubernetesMetadataExtension.
+func (c *ContainerKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: c.Kind,
+	}
+}
+
+// GetKubernetesMetadataExtension implements the KubernetesMetadataExtensionClassification interface for type ContainerKubernetesMetadataExtension.
+func (c *ContainerKubernetesMetadataExtension) GetKubernetesMetadataExtension() *KubernetesMetadataExtension {
+	return &KubernetesMetadataExtension{
+		Annotations: c.Annotations,
+		Labels: c.Labels,
+		Kind: c.Kind,
+	}
+}
+
 // ContainerPort - Specifies a listening port for the container
 type ContainerPort struct {
 	// REQUIRED; The listening port number
@@ -336,10 +397,42 @@ type EnvironmentCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
 func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
+// EnvironmentKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
+// by all Containers in this Environment.
+type EnvironmentKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetExtension implements the ExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
+func (e *EnvironmentKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: e.Kind,
+	}
+}
+
+// GetKubernetesMetadataExtension implements the KubernetesMetadataExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
+func (e *EnvironmentKubernetesMetadataExtension) GetKubernetesMetadataExtension() *KubernetesMetadataExtension {
+	return &KubernetesMetadataExtension{
+		Annotations: e.Annotations,
+		Labels: e.Labels,
+		Kind: e.Kind,
+	}
+}
+
 // EnvironmentProperties - Application environment properties
 type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
+
+	// Extensions spec of the resource
+	Extensions []ExtensionClassification `json:"extensions,omitempty"`
 
 	// Cloud providers configuration for the environment.
 	Providers *Providers `json:"providers,omitempty"`
@@ -510,7 +603,8 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprSidecarExtension, *Extension, *ManualScalingExtension
+// - *ApplicationKubernetesMetadataExtension, *ContainerKubernetesMetadataExtension, *DaprSidecarExtension, *EnvironmentKubernetesMetadataExtension,
+// - *Extension, *KubernetesMetadataExtension, *ManualScalingExtension
 type ExtensionClassification interface {
 	// GetExtension returns the Extension content of the underlying type.
 	GetExtension() *Extension
@@ -840,6 +934,39 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 		Identity: k.Identity,
 	}
 }
+
+// KubernetesMetadataExtensionClassification provides polymorphic access to related types.
+// Call the interface's GetKubernetesMetadataExtension() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *ApplicationKubernetesMetadataExtension, *ContainerKubernetesMetadataExtension, *EnvironmentKubernetesMetadataExtension,
+// - *KubernetesMetadataExtension
+type KubernetesMetadataExtensionClassification interface {
+	ExtensionClassification
+	// GetKubernetesMetadataExtension returns the KubernetesMetadataExtension content of the underlying type.
+	GetKubernetesMetadataExtension() *KubernetesMetadataExtension
+}
+
+// KubernetesMetadataExtension - Kubernetes Metadata Extension
+type KubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetExtension implements the ExtensionClassification interface for type KubernetesMetadataExtension.
+func (k *KubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: k.Kind,
+	}
+}
+
+// GetKubernetesMetadataExtension implements the KubernetesMetadataExtensionClassification interface for type KubernetesMetadataExtension.
+func (k *KubernetesMetadataExtension) GetKubernetesMetadataExtension() *KubernetesMetadataExtension { return k }
 
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
