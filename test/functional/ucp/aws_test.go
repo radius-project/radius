@@ -37,7 +37,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		// Call UCP Delete AWS Resource API
 		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
 
-		// Remove the stream name from the to form the post URL and add the stream name to the body
+		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
@@ -107,12 +107,16 @@ func Test_AWS_ListResources(t *testing.T) {
 		require.NoError(t, err)
 		listResponse, err := roundTripper.RoundTrip(listRequest)
 		require.NoError(t, err)
+
 		require.Equal(t, http.StatusOK, listResponse.StatusCode)
+
 		payload, err := io.ReadAll(listResponse.Body)
 		require.NoError(t, err)
 		body := map[string][]interface{}{}
 		err = json.Unmarshal(payload, &body)
 		require.NoError(t, err)
+
+		// Verify payload has at least one resource
 		require.Len(t, body, 1)
 		require.GreaterOrEqual(t, len(body["value"]), 1)
 	})
