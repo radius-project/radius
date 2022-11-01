@@ -632,7 +632,7 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "global.json#/definitions/Extension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -648,7 +648,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "global.json#/definitions/Extension"
         }
       ],
       "type": "object",
@@ -726,7 +726,7 @@
         "extensions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Extension"
+            "$ref": "global.json#/definitions/Extension"
           },
           "description": "Extensions spec of the resource"
         }
