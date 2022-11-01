@@ -103,6 +103,7 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 	}
 
 	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
+	// Deleting nonexisting role returns 204 so we do not need to check the existence.
 	_, err = roleAssignmentClient.DeleteByID(ctx, roleID, "")
 	if err != nil {
 		return fmt.Errorf("failed to delete role assignment for role '%s': %w", roleID, err)
