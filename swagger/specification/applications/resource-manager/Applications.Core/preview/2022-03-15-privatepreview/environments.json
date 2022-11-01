@@ -356,7 +356,7 @@
     "EnvironmentKubernetesMetadataExtension": {
       "allOf": [
         {
-          "$ref": "#/definitions/KubernetesMetadataExtension"
+          "$ref": "global.json#/definitions/KubernetesMetadataExtension"
         }
       ],
       "type": "object",
