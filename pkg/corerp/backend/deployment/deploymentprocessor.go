@@ -394,11 +394,11 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	switch env.Properties.Compute.Kind {
 	case datamodel.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
-		if kubeProp.Namespace != "" {
-			envOpts.Namespace = kubeProp.Namespace
-		} else {
-			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified.")
+
+		if kubeProp.Namespace == "" {
+			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified")
 		}
+		envOpts.Namespace = kubeProp.Namespace
 
 	default:
 		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
@@ -668,7 +668,9 @@ func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environment
 	if err != nil {
 		return nil, err
 	}
-	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
+
+	const errMsg = "failed to fetch the environment %q for the resource %q. Error: %w"
+
 	res, err := sc.Get(ctx, envId.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
