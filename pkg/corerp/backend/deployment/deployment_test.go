@@ -12,9 +12,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
-	"github.com/go-logr/logr"
-	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -36,6 +33,10 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/go-logr/logr"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -46,6 +47,7 @@ type SharedMocks struct {
 	resourceHandler    *handlers.MockResourceHandler
 	renderer           *renderers.MockRenderer
 	secretsValueClient *rp.MockSecretValueClient
+	mctrl              *gomock.Controller
 }
 
 func setup(t *testing.T) SharedMocks {
@@ -110,6 +112,7 @@ func setup(t *testing.T) SharedMocks {
 		resourceHandler:    resourceHandler,
 		renderer:           renderer,
 		secretsValueClient: rp.NewMockSecretValueClient(ctrl),
+		mctrl:              ctrl,
 	}
 }
 
@@ -241,11 +244,29 @@ func createContext(t *testing.T) context.Context {
 
 func Test_Render(t *testing.T) {
 	ctx := createContext(t)
-	mocks := setup(t)
 
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+	env := datamodel.Environment{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
+			},
+		},
+		Properties: datamodel.EnvironmentProperties{
+			Compute: datamodel.EnvironmentCompute{
+				Kind: datamodel.KubernetesComputeKind,
+				KubernetesCompute: datamodel.KubernetesComputeProperties{
+					Namespace: "radius-test",
+				},
+			},
+		},
+	}
 
 	t.Run("verify render success", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -284,25 +305,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -355,6 +362,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render success lowercase resourcetype", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getLowerCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -392,25 +404,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -439,6 +437,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render success uppercase resourcetype", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getUpperCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -476,25 +479,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -523,6 +512,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
@@ -558,25 +552,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -604,6 +584,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Failure to get storage client", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -615,6 +600,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Resource not found in data store", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -629,6 +619,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Data store access error", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -642,6 +637,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid resource type", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testInvalidResourceID := "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.foo/foo/foo"
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
@@ -652,6 +652,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid application id", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = "invalid-app-id"
@@ -673,6 +678,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Missing application id", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = ""
@@ -693,6 +703,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid application resource type", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application"
@@ -714,6 +729,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -752,25 +772,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -798,6 +804,11 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -835,25 +846,11 @@ func Test_Render(t *testing.T) {
 			Data: application,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&ar, nil)
-		environment := datamodel.Environment{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
-			},
-			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
-						Namespace: "radius-test",
-					},
-				},
-			},
-		}
 		er := store.Object{
 			Metadata: store.Metadata{
-				ID: environment.ID,
+				ID: env.ID,
 			},
-			Data: environment,
+			Data: env,
 		}
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
 		httprouteA := datamodel.HTTPRoute{
@@ -884,39 +881,46 @@ func Test_Render(t *testing.T) {
 
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
+		kubeProp := map[string]string{
+			handlers.KubernetesKindKey:       resourcekinds.Service,
+			handlers.KubernetesAPIVersionKey: "v1",
+			handlers.KubernetesNamespaceKey:  "test-namespace",
+			handlers.ResourceName:            "test-deployment",
+		}
 
-		/*
-			expectedKubernetesproperties := map[string]string{
-				handlers.KubernetesKindKey:       resourcekinds.Service,
-				handlers.KubernetesAPIVersionKey: "v1",
-				handlers.KubernetesNamespaceKey:  "test-namespace",
-				handlers.ResourceName:            "test-deployment",
-			}
-				expectedIdentity := resourcemodel.ResourceIdentity{
-					ResourceType: &resourcemodel.ResourceType{
-						Type:     resourcekinds.Service,
-						Provider: resourcemodel.ProviderKubernetes,
-					},
-					Data: resourcemodel.KubernetesIdentity{
-						Name:       expectedKubernetesproperties[handlers.ResourceName],
-						Namespace:  expectedKubernetesproperties[handlers.KubernetesNamespaceKey],
-						Kind:       expectedKubernetesproperties[handlers.KubernetesKindKey],
-						APIVersion: expectedKubernetesproperties[handlers.ResourceName],
-					},
-				}
-		*/
-		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(expectedIdentity, nil)
-		//mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(expectedKubernetesproperties, nil)
-		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+		expectedIdentity := resourcemodel.ResourceIdentity{
+			ResourceType: &resourcemodel.ResourceType{
+				Type:     resourcekinds.Service,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			Data: resourcemodel.KubernetesIdentity{
+				Name:       kubeProp[handlers.ResourceName],
+				Namespace:  kubeProp[handlers.KubernetesNamespaceKey],
+				Kind:       kubeProp[handlers.KubernetesKindKey],
+				APIVersion: kubeProp[handlers.ResourceName],
+			},
+		}
+
+		mocks.resourceHandler.
+			EXPECT().
+			Put(gomock.Any(), gomock.Any()).Times(1).
+			DoAndReturn(func(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
+				options.Resource.Identity = expectedIdentity
+				return kubeProp, nil
+			})
 
 		deploymentOutput, err := dp.Deploy(ctx, resourceID, testRendererOutput)
+
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
@@ -924,11 +928,14 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil, errors.New("failed to deploy the resource"))
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
@@ -936,6 +943,11 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -944,14 +956,17 @@ func Test_Deploy(t *testing.T) {
 			{LocalID: ""},
 		}
 
-		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(nil)
-
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
-		require.Error(t, err)
-		require.Equal(t, "missing localID for outputresource", err.Error())
+
+		require.ErrorContains(t, err, "missing localID for outputresource")
 	})
 
 	t.Run("Invalid output resource type", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -959,30 +974,41 @@ func Test_Deploy(t *testing.T) {
 		testRendererOutput.Resources[0].ResourceType.Type = "foo"
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
-		require.Error(t, err)
-		require.Equal(t, "output resource kind 'Provider: kubernetes, Type: foo' is unsupported", err.Error())
+
+		require.ErrorContains(t, err, "output resource kind 'Provider: kubernetes, Type: foo' is unsupported")
 	})
 
 	t.Run("Missing output resource identity", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
 
-		//mocks.resourceHandler.EXPECT().GetResourceIdentity(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, nil)
-		//mocks.resourceHandler.EXPECT().GetResourceNativeIdentityKeyProperties(gomock.Any(), gomock.Any()).Times(1).Return(map[string]string{}, nil)
+		mocks.resourceHandler.
+			EXPECT().
+			Put(gomock.Any(), gomock.Any()).Times(1).
+			DoAndReturn(func(ctx context.Context, options *handlers.PutOptions) (map[string]string, error) {
+				options.Resource.Identity = resourcemodel.ResourceIdentity{}
+				return map[string]string{}, nil
+			})
 
 		_, err := dp.Deploy(ctx, resourceID, testRendererOutput)
-		require.Error(t, err)
-		require.Equal(t, "output resource \"Service\" does not have an identity. This is a bug in the handler", err.Error())
+
+		require.ErrorContains(t, err, `output resource "Service" does not have an identity. This is a bug in the handler`)
 	})
 }
 
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify delete success", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -993,6 +1019,10 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -1003,6 +1033,10 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Status.OutputResources = []outputresource.OutputResource{}
@@ -1075,9 +1109,12 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 func Test_getResourceDataByID(t *testing.T) {
 	ctx := createContext(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
+
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
@@ -1099,9 +1136,12 @@ func Test_getResourceDataByID(t *testing.T) {
 
 func Test_fetchSecrets(t *testing.T) {
 	ctx := createContext(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
+		mocks := setup(t)
+		defer mocks.mctrl.Finish()
+
+		dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
 		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)

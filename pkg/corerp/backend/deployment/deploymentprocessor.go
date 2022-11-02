@@ -173,7 +173,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	}
 
 	if outputResource.Identity.ResourceType == nil {
-		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler or renderer", outputResource.LocalID)
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
 		return nil, err
 	}
 
