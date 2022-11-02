@@ -179,7 +179,7 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 
 func ensureUserRecipesHaveValidNames(userRecipes map[string]datamodel.EnvironmentRecipeProperties, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
 	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
-	for k, _ := range devRecipes {
+	for k := range devRecipes {
 		if v, ok := userRecipes[k]; ok {
 			overlap[k] = v
 		}
