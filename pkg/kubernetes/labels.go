@@ -17,7 +17,6 @@ const (
 	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusResourceType = "radius.dev/resource-type"
-	AnnotationSecretHash    = "radius.dev/secret-hash"
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
@@ -29,6 +28,11 @@ const (
 	// TODO: Are we removing this too?
 	FieldManager = "radius-rp"
 	ControlPlane = "radius-control-plane"
+
+	AnnotationSecretHash = "radius.dev/secret-hash"
+
+	// AnnotationIdentityType is the annotation for supported identity.
+	AnnotationIdentityType = "radius.dev/identity-type"
 )
 
 // NOTE: the difference between descriptive labels and selector labels

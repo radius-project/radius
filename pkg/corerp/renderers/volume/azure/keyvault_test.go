@@ -3,21 +3,20 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package volume
+package azure
 
 import (
 	"context"
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	azcsi "github.com/Azure/secrets-store-csi-driver-provider-azure/pkg/provider/types"
 	"github.com/stretchr/testify/require"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
 func TestGetValuesOrDefaultsForSecrets(t *testing.T) {
@@ -181,13 +180,14 @@ func TestGetKeyVaultObjectsSpec(t *testing.T) {
 	require.Equal(t, expected, serialized)
 }
 
-func TestAzureKeyvaultVolumeRenderer_Render(t *testing.T) {
-	r := AzureKeyvaultVolumeRenderer{}
+func TestKeyVaultRenderer_Render(t *testing.T) {
+	r := KeyVaultRenderer{}
 	ctx := context.Background()
 
 	vol := &datamodel.VolumeResource{}
 	err := json.Unmarshal(radiustesting.ReadFixture("volume-az-kv-systemassigned.json"), vol)
 	require.NoError(t, err)
+	param := "array:\n    - |\n      objectName: mysecret\n      objectAlias: mysecret\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: secret\n      objectFormat: \"\"\n      objectEncoding: base64\n      filePermission: \"\"\n    - |\n      objectName: mykey\n      objectAlias: mykey\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: key\n      objectFormat: \"\"\n      objectEncoding: \"\"\n      filePermission: \"\"\n    - |\n      objectName: mycert\n      objectAlias: myalias\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: certificate\n      objectFormat: pfx\n      objectEncoding: \"\"\n      filePermission: \"\"\n"
 
 	actual, err := r.Render(ctx, vol, &renderers.RenderOptions{
 		Environment: renderers.EnvironmentOptions{
@@ -195,38 +195,6 @@ func TestAzureKeyvaultVolumeRenderer_Render(t *testing.T) {
 		},
 	})
 
-	expectedSpec := &csiv1.SecretProviderClass{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "SecretProviderClass",
-			APIVersion: "secrets-store.csi.x-k8s.io/v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "app0-azkeyvault0",
-			Namespace: "default",
-			Labels: map[string]string{
-				"app.kubernetes.io/managed-by": "radius-rp",
-				"app.kubernetes.io/name":       "azkeyvault0",
-				"app.kubernetes.io/part-of":    "app0",
-				"radius.dev/application":       "app0",
-				"radius.dev/resource":          "azkeyvault0",
-				"radius.dev/resource-type":     "applications.core-volumes",
-			},
-		},
-		Spec: csiv1.SecretProviderClassSpec{
-			Provider: "azure",
-			Parameters: map[string]string{
-				"usePodIdentity":       "false",
-				"useVMManagedIdentity": "true",
-				"clientID":             "",
-				"keyvaultName":         "vault0",
-				"objects":              "array:\n    - |\n      objectName: mysecret\n      objectAlias: mysecret\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: secret\n      objectFormat: \"\"\n      objectEncoding: base64\n      filePermission: \"\"\n    - |\n      objectName: mykey\n      objectAlias: mykey\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: key\n      objectFormat: \"\"\n      objectEncoding: \"\"\n      filePermission: \"\"\n    - |\n      objectName: mycert\n      objectAlias: myalias\n      objectVersion: \"\"\n      objectVersionHistory: 0\n      objectType: certificate\n      objectFormat: pfx\n      objectEncoding: \"\"\n      filePermission: \"\"\n",
-				"tenantID":             "placeholder",
-			},
-		},
-	}
 	require.NoError(t, err)
-
-	spec, ok := actual.Resources[0].Resource.(*csiv1.SecretProviderClass)
-	require.True(t, ok)
-	require.Equal(t, expectedSpec, spec)
+	require.Equal(t, param, actual.ComputedValues[SPCVolumeObjectSpecKey].Value.(string))
 }
