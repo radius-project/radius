@@ -360,7 +360,7 @@
         }
       ]
     },
-    "KubernetesMetadataExtension": {
+    "EnvironmentKubernetesMetadataExtension": {
       "type": "object",
       "allOf": [
         {

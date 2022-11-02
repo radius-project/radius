@@ -696,7 +696,7 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "KubernetesMetadataExtension": {
+    "ContainerKubernetesMetadataExtension": {
       "type": "object",
       "allOf": [
         {
