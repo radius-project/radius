@@ -90,6 +90,10 @@ func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*
 		return nil, errors.New("OIDC Issuer URL is not specified")
 	}
 
+	if envOpt.Namespace != "" {
+		return nil, errors.New("namespace is not specified")
+	}
+
 	subject := handlers.GetKubeAzureSubject(envOpt.Namespace, name)
 	return &outputresource.OutputResource{
 		ResourceType: resourcemodel.ResourceType{
@@ -115,7 +119,7 @@ func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*
 func TransformFederatedIdentitySA(ctx context.Context, options *handlers.PutOptions) error {
 	sa, ok := options.Resource.Resource.(*corev1.ServiceAccount)
 	if !ok {
-		return errors.New("cannot transform service account")
+		return errors.New("invalid output resource type")
 	}
 
 	clientID, tenantID, err := extractIdentityInfo(options)

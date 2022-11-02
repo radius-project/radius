@@ -24,13 +24,18 @@ import (
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
+const (
+	// RadiusIdentityAnnotationKey is the annotation for supported identity.
+	RadiusIdentityAnnotationKey = "radius.dev/identity-type"
+)
+
 var (
 	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
 )
 
 // MakeKeyVaultVolumeSpec builds CSI volume spec for Azure Keyvault.
-func MakeKeyVaultVolumeSpec(volumeName string, keyvaultVolume *datamodel.PersistentVolume, secretProviderClassName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) {
+func MakeKeyVaultVolumeSpec(volumeName string, mountPath, spcName string) (corev1.Volume, corev1.VolumeMount, error) {
 	// Make Volume Spec which uses the SecretProvider created above
 	volumeSpec := corev1.Volume{
 		Name: volumeName,
@@ -40,7 +45,7 @@ func MakeKeyVaultVolumeSpec(volumeName string, keyvaultVolume *datamodel.Persist
 				// We will support only Read operations
 				ReadOnly: to.Ptr(true),
 				VolumeAttributes: map[string]string{
-					"secretProviderClass": secretProviderClassName,
+					"secretProviderClass": spcName,
 				},
 			},
 		},
@@ -49,7 +54,7 @@ func MakeKeyVaultVolumeSpec(volumeName string, keyvaultVolume *datamodel.Persist
 	// Make Volume mount spec
 	volumeMountSpec := corev1.VolumeMount{
 		Name:      volumeName,
-		MountPath: keyvaultVolume.MountPath,
+		MountPath: mountPath,
 		// We will support only reads to the secret store volume
 		ReadOnly: true,
 	}
@@ -64,19 +69,22 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 		return errors.New("cannot transform service account")
 	}
 
-	clientID, tenantID, err := extractIdentityInfo(options)
-	if err != nil {
-		return err
-	}
+	// Update the clientID and tenantID only for azure workload identity.
+	if spc.Annotations != nil && spc.Annotations[RadiusIdentityAnnotationKey] == string(rp.AzureIdentityWorkload) {
+		clientID, tenantID, err := extractIdentityInfo(options)
+		if err != nil {
+			return err
+		}
 
-	spc.Spec.Parameters["clientID"] = clientID
-	spc.Spec.Parameters["tenantID"] = tenantID
+		spc.Spec.Parameters["clientID"] = clientID
+		spc.Spec.Parameters["tenantID"] = tenantID
+	}
 
 	return nil
 }
 
 // MakeKeyVaultSecretProviderClass builds SecretProviderClass CR for keyvault secrets.
-func MakeKeyVaultSecretProviderClass(appName, name, namespace string, res *datamodel.VolumeResource, objSpec string, identity *rp.IdentitySettings) (*outputresource.OutputResource, error) {
+func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.VolumeResource, objSpec string, envOpt *renderers.EnvironmentOptions) (*outputresource.OutputResource, error) {
 	prop := res.Properties.AzureKeyVault
 
 	kvResourceID, err := resources.ParseResource(prop.Resource)
@@ -90,7 +98,7 @@ func MakeKeyVaultSecretProviderClass(appName, name, namespace string, res *datam
 		"objects":        objSpec,
 	}
 
-	switch identity.Kind {
+	switch envOpt.Identity.Kind {
 	case rp.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
@@ -113,8 +121,11 @@ func MakeKeyVaultSecretProviderClass(appName, name, namespace string, res *datam
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
-			Namespace: namespace,
+			Namespace: envOpt.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
+			Annotations: map[string]string{
+				RadiusIdentityAnnotationKey: string(envOpt.Identity.Kind),
+			},
 		},
 		Spec: csiv1.SecretProviderClassSpec{
 			Provider:   "azure",

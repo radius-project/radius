@@ -14,7 +14,7 @@ import (
 )
 
 // MakeAzureFileShareVolumeSpec builds volume spec for Azure file share.
-// TODO: enable it later.
+// TODO: This is unused code now. We will enable file share later.
 func MakeAzureFileShareVolumeSpec(volumeName string, persistentVolume *datamodel.PersistentVolume, applicationName string, options renderers.RenderOptions) (corev1.Volume, corev1.VolumeMount, error) { //nolint:all
 	// Make volume spec
 	volumeSpec := corev1.Volume{}

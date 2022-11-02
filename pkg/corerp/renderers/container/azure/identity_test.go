@@ -7,13 +7,16 @@ package azure
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
+	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
@@ -119,6 +122,92 @@ func TestMakeFederatedIdentitySA(t *testing.T) {
 	require.Equal(t, outputresource.LocalIDFederatedIdentity, fi.Dependencies[0].LocalID)
 }
 
-func TestMakeFederatedIdentity(t *testing.T) {
+func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
+	tests := []struct {
+		desc     string
+		resource any
+		dep      map[string]map[string]string
+		err      error
+	}{
+		{
+			desc:     "invalid resource",
+			resource: struct{}{},
+			err:      errors.New("invalid output resource type"),
+		},
+		{
+			desc:     "missing user managed identity",
+			resource: &corev1.ServiceAccount{},
+			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
+		},
+		{
+			desc:     "missing user managed identity",
+			resource: &corev1.ServiceAccount{},
+			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
+		},
+		{
+			desc:     "missing user managed identity",
+			resource: &corev1.ServiceAccount{},
+			dep: map[string]map[string]string{
+				outputresource.LocalIDUserAssignedManagedIdentity: {
+					handlers.UserAssignedIdentityTenantIDKey: "tenantID",
+				},
+			},
+			err: errors.New("cannot extract Client ID of user assigned managed identity"),
+		},
+		{
+			desc:     "missing user managed identity",
+			resource: &corev1.ServiceAccount{},
+			dep: map[string]map[string]string{
+				outputresource.LocalIDUserAssignedManagedIdentity: {
+					handlers.UserAssignedIdentityClientIDKey: "clientID",
+				},
+			},
+			err: errors.New("cannot extract Tenant ID of user assigned managed identity"),
+		},
+	}
 
+	for _, tc := range tests {
+		t.Run(tc.desc, func(t *testing.T) {
+			err := TransformFederatedIdentitySA(context.Background(), &handlers.PutOptions{
+				Resource:             &outputresource.OutputResource{Resource: tc.resource},
+				DependencyProperties: tc.dep,
+			})
+
+			require.ErrorContains(t, err, tc.err.Error())
+		})
+	}
+}
+
+func TestMakeFederatedIdentity(t *testing.T) {
+	t.Run("invalid environment option", func(t *testing.T) {
+		envOpt := &renderers.EnvironmentOptions{
+			Identity: &rp.IdentitySettings{
+				Kind: rp.AzureIdentityWorkload,
+			},
+		}
+
+		_, err := MakeFederatedIdentity("fi", envOpt)
+		require.Error(t, err)
+	})
+
+	t.Run("valid federated identity", func(t *testing.T) {
+		envOpt := &renderers.EnvironmentOptions{
+			Namespace: "default",
+			Identity: &rp.IdentitySettings{
+				Kind:       rp.AzureIdentityWorkload,
+				OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
+			},
+		}
+
+		or, err := MakeFederatedIdentity("fi", envOpt)
+
+		require.NoError(t, err)
+		require.Equal(t, outputresource.LocalIDFederatedIdentity, or.LocalID)
+		require.Equal(t, outputresource.LocalIDUserAssignedManagedIdentity, or.Dependencies[0].LocalID)
+		require.Equal(t, map[string]string{
+			handlers.FederatedIdentityNameKey:    "fi",
+			handlers.FederatedIdentitySubjectKey: "system:serviceaccount:default:fi",
+			handlers.FederatedIdentityIssuerKey:  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
+		}, or.Resource)
+	})
 }
