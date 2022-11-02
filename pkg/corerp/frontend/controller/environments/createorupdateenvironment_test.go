@@ -393,6 +393,14 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		})
 	}
 
+}
+
+func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
+	mctrl := gomock.NewController(t)
+	defer mctrl.Finish()
+
+	mStorageClient := store.NewMockStorageClient(mctrl)
+	ctx := context.Background()
 	t.Run("Add dev recipes successfully", func(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
@@ -535,12 +543,67 @@ func TestCreateOrUpdateEnvironmentRun_20220315PrivatePreview(t *testing.T) {
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, expectedOutput, actualOutput)
 	})
+
+	t.Run("User recipes conflict with dev recipe names", func(t *testing.T) {
+		envInput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+				return nil, &store.ErrNotFound{}
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewCreateOrUpdateEnvironment(opts)
+		require.NoError(t, err)
+		_, err = ctl.Run(ctx, w, req)
+		require.Error(
+			t,
+			err,
+			"recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0) has a name that is reserved for devRecipes.")
+	})
+
+	t.Run("Existing user recipe conflicts with dev recipe names ", func(t *testing.T) {
+		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
+		w := httptest.NewRecorder()
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
+		ctx := radiustesting.ARMTestContextFromRequest(req)
+
+		mStorageClient.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (res *store.Object, err error) {
+				return &store.Object{
+					Metadata: store.Metadata{ID: id, ETag: "existing-data-model"},
+					Data:     envExistingDataModel,
+				}, nil
+			})
+
+		opts := ctrl.Options{
+			StorageClient: mStorageClient,
+		}
+
+		ctl, err := NewCreateOrUpdateEnvironment(opts)
+		require.NoError(t, err)
+		_, err = ctl.Run(ctx, w, req)
+		require.Error(
+			t,
+			err,
+			"recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0) has a name that is reserved for devRecipes.")
+	})
 }
 
 func TestGetDevRecipes(t *testing.T) {
 	t.Run("Successfully returns dev recipes", func(t *testing.T) {
 		ctx := context.Background()
-		devRecipes, err := getDevRecipes(ctx, nil)
+		devRecipes, err := getDevRecipes(ctx)
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": datamodel.EnvironmentRecipeProperties{
@@ -549,29 +612,6 @@ func TestGetDevRecipes(t *testing.T) {
 			},
 		}
 		require.Equal(t, devRecipes, expectedRecipes)
-	})
-
-	t.Run("Succssfully add dev recipes to existing recipes", func(t *testing.T) {
-		ctx := context.Background()
-		recipes := map[string]datamodel.EnvironmentRecipeProperties{
-			"redis": datamodel.EnvironmentRecipeProperties{
-				LinkType:     "Applications.Link/redisCaches",
-				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
-			},
-		}
-		recipes, err := getDevRecipes(ctx, recipes)
-		require.NoError(t, err)
-		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
-			"redis": datamodel.EnvironmentRecipeProperties{
-				LinkType:     "Applications.Link/redisCaches",
-				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
-			},
-			"mongo-azure": datamodel.EnvironmentRecipeProperties{
-				LinkType:     "Applications.Link/mongoDatabases",
-				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
-			},
-		}
-		require.Equal(t, recipes, expectedRecipes)
 	})
 }
 
@@ -621,4 +661,93 @@ func TestParseRepoPathForMetadata(t *testing.T) {
 			require.Equal(t, tt.expectedProvider, provider)
 		})
 	}
+}
+
+func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
+	t.Run("No overlap between user and dev recipes", func(t *testing.T) {
+		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
+			"redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
+			},
+		}
+		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"user-mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
+			},
+			"user-redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
+			},
+		}
+
+		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		require.NoError(t, err)
+	})
+	t.Run("Single recipe overlap between user and dev recipes", func(t *testing.T) {
+		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
+			"redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
+			},
+		}
+		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
+			},
+			"user-redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
+			},
+		}
+
+		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		require.Error(t, err, fmt.Sprintf(
+			"recipe with name %s (linkType %s and templatePath %s) has a name that is reserved for devRecipes.",
+			"mongo-azure",
+			userRecipes["mongo-azure"].LinkType,
+			userRecipes["mongo-azure"].TemplatePath))
+	})
+	t.Run("Multiple recipe overlap between user and dev recipes", func(t *testing.T) {
+		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+			},
+			"redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/recipes/redis/azure:1.0",
+			},
+		}
+		userRecipes := map[string]datamodel.EnvironmentRecipeProperties{
+			"mongo-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/mongoDatabases",
+				TemplatePath: "radiusdev.azurecr.io/mongo:1.0",
+			},
+			"redis-azure": datamodel.EnvironmentRecipeProperties{
+				LinkType:     "Applications.Link/redisCache",
+				TemplatePath: "radiusdev.azurecr.io/redis:1.0",
+			},
+		}
+
+		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		require.Error(t, err, fmt.Sprintf(
+			"recipe with name %s (linkType %s and templatePath %s), recipe with name %s (linkType %s and templatePath %s) have names that are reserved for devRecipes.",
+			"mongo-azure",
+			userRecipes["mongo-azure"].LinkType,
+			userRecipes["mongo-azure"].TemplatePath,
+			"redis-azure",
+			userRecipes["redis-azure"].LinkType,
+			userRecipes["redis-azure"].TemplatePath))
+	})
 }
