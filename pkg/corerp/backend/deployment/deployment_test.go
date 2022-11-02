@@ -262,8 +262,6 @@ func Test_Render(t *testing.T) {
 	}
 
 	mocks := setup(t)
-	defer mocks.mctrl.Finish()
-
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("verify render success", func(t *testing.T) {
@@ -821,8 +819,6 @@ func Test_Render(t *testing.T) {
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	defer mocks.mctrl.Finish()
-
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
@@ -925,7 +921,6 @@ func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 
 	mocks := setup(t)
-	defer mocks.mctrl.Finish()
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify delete success", func(t *testing.T) {
@@ -1022,8 +1017,6 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 func Test_getResourceDataByID(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
-	defer mocks.mctrl.Finish()
-
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
 
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
@@ -1050,8 +1043,6 @@ func Test_fetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 
 	mocks := setup(t)
-	defer mocks.mctrl.Finish()
-
 	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
