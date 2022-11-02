@@ -628,11 +628,18 @@
         }
       }
     },
+    "ContainerExtension": {
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/Extension"
+        }
+      ]
+    },
     "ManualScalingExtension": {
       "type": "object",
       "allOf": [
         {
-          "$ref": "global.json#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -648,7 +655,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "global.json#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "type": "object",
@@ -689,14 +696,32 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "ContainerKubernetesMetadataExtension": {
+    "KubernetesMetadataExtension": {
+      "type": "object",
       "allOf": [
         {
-          "$ref": "global.json#/definitions/KubernetesMetadataExtension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
-      "type": "object",
-      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource"
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource",
+      "properties": {
+        "annotations": {
+          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "description": "Labels to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-ms-discriminator-value": "kubernetesMetadata"
     },
     "ContainerProperties": {
       "allOf": [

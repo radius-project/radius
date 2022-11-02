@@ -138,33 +138,6 @@
         "kind"
       ],
       "type": "object"
-    },
-    "KubernetesMetadataExtension": {
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Extension"
-        }
-      ],
-      "description": "Kubernetes Metadata Extension",
-      "properties": {
-        "annotations": {
-          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "labels": {
-          "description": "Labels to be applied to the Kubernetes resources output by the resource",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        }
-      },
-      "additionalProperties": false,
-      "x-ms-discriminator-value": "kubernetesMetadata"
     }
   },
   "parameters": {
