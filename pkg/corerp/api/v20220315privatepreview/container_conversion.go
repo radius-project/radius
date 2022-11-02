@@ -81,6 +81,15 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
+	var identity *rp.IdentitySettings
+	if src.Properties.Identity != nil {
+		identity = &rp.IdentitySettings{
+			Kind:       toIdentityKind(src.Properties.Identity.Kind),
+			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
+			// We ignore the resource property since it is readonly.
+		}
+	}
+
 	converted := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -112,6 +121,7 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
+			Identity:   identity,
 		},
 	}
 
@@ -185,6 +195,15 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
+	var identity *IdentitySettings
+	if c.Properties.Identity != nil {
+		identity = &IdentitySettings{
+			Kind:       fromIdentityKind(c.Properties.Identity.Kind),
+			Resource:   azto.Ptr(c.Properties.Identity.Resource),
+			OidcIssuer: azto.Ptr(c.Properties.Identity.OIDCIssuer),
+		}
+	}
+
 	dst.ID = to.StringPtr(c.ID)
 	dst.Name = to.StringPtr(c.Name)
 	dst.Type = to.StringPtr(c.Type)
@@ -210,6 +229,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 			WorkingDir:     to.StringPtr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
+		Identity:   identity,
 	}
 
 	return nil

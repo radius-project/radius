@@ -45,14 +45,6 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 			Resource: to.String(p.Resource),
 		}
 
-		if p.Identity != nil {
-			dm.Identity = rp.IdentitySettings{
-				Kind:       toIdentityKind(p.Identity.Kind),
-				Resource:   to.String(p.Identity.Resource),
-				OIDCIssuer: to.String(p.Identity.OidcIssuer),
-			}
-		}
-
 		if p.Certificates != nil {
 			dm.Certificates = map[string]datamodel.CertificateObjectProperties{}
 			for k, v := range p.Certificates {
@@ -97,13 +89,8 @@ func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(resource.Properties.Status.OutputResources),
 			},
-			Kind:        azto.Ptr(resource.Properties.Kind),
-			Application: azto.Ptr(resource.Properties.Application),
-			Identity: &IdentitySettings{
-				Kind:       fromIdentityKind(azProp.Identity.Kind),
-				Resource:   toStringPtr(azProp.Identity.Resource),
-				OidcIssuer: toStringPtr(azProp.Identity.OIDCIssuer),
-			},
+			Kind:              azto.Ptr(resource.Properties.Kind),
+			Application:       azto.Ptr(resource.Properties.Application),
 			Resource:          azto.Ptr(azProp.Resource),
 			ProvisioningState: fromProvisioningStateDataModel(resource.InternalMetadata.AsyncProvisioningState),
 		}

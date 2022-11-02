@@ -58,6 +58,7 @@ type ContainerProperties struct {
 	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
+	Identity    *rp.IdentitySettings            `json:"identity,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

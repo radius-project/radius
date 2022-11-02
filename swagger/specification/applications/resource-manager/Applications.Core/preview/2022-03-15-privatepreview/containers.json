@@ -748,6 +748,10 @@
           "$ref": "#/definitions/Container",
           "description": "Definition of a container."
         },
+        "identity": {
+          "description": "Configuration for supported external identity providers",
+          "$ref": "global.json#/definitions/IdentitySettings"
+        },
         "extensions": {
           "type": "array",
           "items": {

@@ -137,9 +137,6 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; Configuration for supported external identity providers
-	Identity *IdentitySettings `json:"identity,omitempty"`
-
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
 
@@ -325,6 +322,9 @@ type ContainerProperties struct {
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -972,8 +972,8 @@ type IdentitySettings struct {
 	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string `json:"oidcIssuer,omitempty"`
 
-	// The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
-	Resource *string `json:"resource,omitempty"`
+	// READ-ONLY; The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty" azure:"ro"`
 }
 
 type KeyObjectProperties struct {
