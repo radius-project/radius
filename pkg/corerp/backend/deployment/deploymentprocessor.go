@@ -408,7 +408,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	// Extract identity info.
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
-		logger.V(radlogger.Warn).Info("environment identity is not specified.")
+		logger.V(radlogger.Debug).Info("environment identity is not specified.")
 	}
 
 	if publicEndpointOverride != "" {
