@@ -37,7 +37,7 @@ func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*outp
 			return nil, fmt.Errorf("invalid environment Azure Provider scope: %s", cloudProvider.Azure.Scope)
 		}
 	} else {
-		return nil, errors.New("environment providers is not specified")
+		return nil, errors.New("environment providers are not specified")
 	}
 
 	return &outputresource.OutputResource{

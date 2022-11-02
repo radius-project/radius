@@ -24,11 +24,6 @@ import (
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
-const (
-	// RadiusIdentityAnnotationKey is the annotation for supported identity.
-	RadiusIdentityAnnotationKey = "radius.dev/identity-type"
-)
-
 var (
 	errInvalidKeyVaultResourceID = errors.New("failed to parse KeyVault ResourceID. Unable to create secret provider class")
 	errUnsupportedIdentityKind   = errors.New("unsupported identity kind")
@@ -70,7 +65,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	}
 
 	// Update the clientID and tenantID only for azure workload identity.
-	if spc.Annotations != nil && spc.Annotations[RadiusIdentityAnnotationKey] == string(rp.AzureIdentityWorkload) {
+	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rp.AzureIdentityWorkload) {
 		clientID, tenantID, err := extractIdentityInfo(options)
 		if err != nil {
 			return err
@@ -124,7 +119,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 			Namespace: envOpt.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(appName, res.Name, res.Type),
 			Annotations: map[string]string{
-				RadiusIdentityAnnotationKey: string(envOpt.Identity.Kind),
+				kubernetes.AnnotationIdentityType: string(envOpt.Identity.Kind),
 			},
 		},
 		Spec: csiv1.SecretProviderClassSpec{

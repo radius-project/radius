@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -130,7 +131,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 				require.ErrorIs(t, tc.err, err)
 			} else {
 				r := or.Resource.(*csiv1.SecretProviderClass)
-				require.Equal(t, string(tc.identityKind), r.Annotations[RadiusIdentityAnnotationKey])
+				require.Equal(t, string(tc.identityKind), r.Annotations[kubernetes.AnnotationIdentityType])
 				require.Equal(t, tc.beforeParams, r.Spec.Parameters)
 
 				// Transform

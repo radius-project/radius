@@ -56,7 +56,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 
 	principalID, ok := identityProp[UserAssignedIdentityPrincipalIDKey]
 	if !ok {
-		return nil, errors.New("fails to get identity principal id")
+		return nil, errors.New("missing dependency: Principal ID was not populated in the previous resource handler")
 	}
 
 	// Scope may be a resource ID or an azure scope. We don't really need to know which so we're using the generic 'Parse' function.
