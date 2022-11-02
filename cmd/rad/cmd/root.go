@@ -19,6 +19,7 @@ import (
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/setup"
 
 	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
 	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
@@ -123,6 +124,7 @@ func initSubCommands() {
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
 		NamespaceInterface:  &namespace.Impl{},
+		SetupInterface:      &setup.Impl{},
 	}
 
 	showCmd, _ := resource_show.NewCommand(framework)
