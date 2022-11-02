@@ -28,7 +28,7 @@ const (
 )
 
 // MakeManagedIdentity builds a user-assigned managed identity output resource.
-func MakeManagedIdentity(ctx context.Context, name string, resource *datamodel.ContainerResource, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
+func MakeManagedIdentity(ctx context.Context, name string, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
 	var rID resources.ID
 	var err error
 	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
@@ -36,6 +36,8 @@ func MakeManagedIdentity(ctx context.Context, name string, resource *datamodel.C
 		if err != nil || rID.FindScope(resources.SubscriptionsSegment) == "" || rID.FindScope(resources.ResourceGroupsSegment) == "" {
 			return nil, fmt.Errorf("invalid environment Azure Provider scope: %s", cloudProvider.Azure.Scope)
 		}
+	} else {
+		return nil, errors.New("environment providers is not specified")
 	}
 
 	return &outputresource.OutputResource{

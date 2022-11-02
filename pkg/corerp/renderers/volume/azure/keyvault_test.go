@@ -196,5 +196,5 @@ func TestKeyVaultRenderer_Render(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.Equal(t, param, actual.ComputedValues["csiobjectspec"].Value.(string))
+	require.Equal(t, param, actual.ComputedValues[SPCVolumeObjectSpecKey].Value.(string))
 }

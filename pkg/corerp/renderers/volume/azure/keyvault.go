@@ -20,6 +20,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// SPCVolumeObjectSpecKey represents the key of volume resource computedValues to keep the parameters for SecretProviderClass.
+	SPCVolumeObjectSpecKey = "csiobjectspec"
+)
+
 var (
 	errCreateSecretResource = errors.New("unable to create secret provider class")
 )
@@ -112,7 +117,7 @@ func (r *KeyVaultRenderer) Render(ctx context.Context, resource conv.DataModelIn
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
-		"csiobjectspec": {
+		SPCVolumeObjectSpecKey: {
 			Value: keyVaultObjectsSpec,
 		},
 	}
