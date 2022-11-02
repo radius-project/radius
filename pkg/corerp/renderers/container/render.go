@@ -314,7 +314,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 				// This will add the required managed identity resources.
 				identityRequired = true
 
-				// 2. Prepare role assignments
+				// Prepare role assignments
 				roleNames := []string{}
 				if len(vol.Properties.AzureKeyVault.Secrets) > 0 {
 					roleNames = append(roleNames, AzureKeyVaultSecretsUserRole)
@@ -323,13 +323,13 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 					roleNames = append(roleNames, AzureKeyVaultCryptoUserRole)
 				}
 
-				// 3. Build RoleAssignment output.resource
+				// Build RoleAssignment output.resource
 				kvID := vol.Properties.AzureKeyVault.Resource
 				roleAssignments, raDeps := azrenderer.MakeRoleAssignments(ctx, kvID, roleNames)
 				outputResources = append(outputResources, roleAssignments...)
 				deps = append(deps, raDeps...)
 
-				// 6. Create Per-Pod SecretProviderClass for the selected volume
+				// Create Per-Pod SecretProviderClass for the selected volume
 				// csiobjectspec must be generated when volume is updated.
 				objectSpec, err := handlers.GetString(properties.ComputedValues, azvolrenderer.SPCVolumeObjectSpecKey)
 				if err != nil {
@@ -344,7 +344,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 				outputResources = append(outputResources, *secretProvider)
 				deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDSecretProviderClass})
 
-				// 7. Create volume spec which associated with secretProviderClass.
+				// Create volume spec which associated with secretProviderClass.
 				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent.MountPath, spcName)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
@@ -386,6 +386,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 		podLabels = labels.Merge(routeLabels, podLabels)
 	}
 
+	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
 		managedIdentity, err := azrenderer.MakeManagedIdentity(ctx, defaultIdentityName, options.Environment.CloudProviders)
