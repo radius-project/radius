@@ -8,7 +8,6 @@ package container
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -657,7 +656,6 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 }
 
 func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
-	t.Skipf("Skip Role assignment until we support - https://github.com/project-radius/radius/issues/4395")
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: applicationResourceID,
@@ -704,11 +702,11 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			},
 		},
 	}
-	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies})
+	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
 	require.Empty(t, output.ComputedValues)
 	require.Empty(t, output.SecretValues)
-	require.Len(t, output.Resources, 6)
+	require.Len(t, output.Resources, 7)
 
 	resourceMap := outputResourcesToKindMap(output.Resources)
 
@@ -771,41 +769,40 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			LocalID:  outputresource.LocalIDUserAssignedManagedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
-				handlers.UserAssignedIdentityNameKey: applicationName + "-" + resource.Name + "-msi",
+				"userassignedidentityname":           "test-app-test-container",
+				"userassignedidentitysubscriptionid": "00000000-0000-0000-0000-000000000000",
+				"userassignedidentityresourcegroup":  "testGroup",
 			},
 		},
 	}
 	require.ElementsMatch(t, expected, matches)
 
-	matches = resourceMap[resourcekinds.AzurePodIdentity]
+	matches = resourceMap[resourcekinds.AzureFederatedIdentity]
 	require.Equal(t, 1, len(matches))
 
 	expected = []outputresource.OutputResource{
 		{
-			LocalID:  outputresource.LocalIDAADPodIdentity,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFederatedIdentity,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			LocalID:  outputresource.LocalIDFederatedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
-				handlers.PodIdentityNameKey: fmt.Sprintf("podid-%s-%s", strings.ToLower(applicationName), strings.ToLower(resource.Name)),
-				handlers.PodNamespaceKey:    applicationName,
-			},
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzurePodIdentity,
-				Provider: resourcemodel.ProviderAzureKubernetesService,
+				"federatedidentityname":    "test-app-test-container",
+				"federatedidentitysubject": "system:serviceaccount:default:test-app-test-container",
+				"federatedidentityissuer":  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
 			Dependencies: []outputresource.Dependency{
 				{
 					LocalID: outputresource.LocalIDUserAssignedManagedIdentity,
 				},
-				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole1"),
-				},
-				{
-					LocalID: outputresource.GenerateLocalIDForRoleAssignment(makeResourceID(t, "SomeProvider/TargetResourceType", "TargetResource").String(), "TestRole2"),
-				},
 			},
-		},
-	}
+		}}
 	require.ElementsMatch(t, expected, matches)
+
+	matches = resourceMap[resourcekinds.ServiceAccount]
+	require.Equal(t, 1, len(matches))
 }
 
 func Test_Render_AzureConnection(t *testing.T) {
