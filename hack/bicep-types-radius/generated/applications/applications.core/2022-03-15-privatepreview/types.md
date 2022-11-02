@@ -82,14 +82,6 @@
 * **Discriminator**: kind
 
 ### Base Properties
-### ApplicationKubernetesMetadataExtension
-#### Properties
-* **kind**: 'ApplicationKubernetesMetadataExtension' (Required): Specifies the extensions of a resource.
-
-### ContainerKubernetesMetadataExtension
-#### Properties
-* **kind**: 'ContainerKubernetesMetadataExtension' (Required): Specifies the extensions of a resource.
-
 ### DaprSidecarExtension
 #### Properties
 * **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
@@ -99,15 +91,27 @@
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 
-### EnvironmentKubernetesMetadataExtension
+### ContainerKubernetesMetadataExtension
 #### Properties
-* **kind**: 'EnvironmentKubernetesMetadataExtension' (Required): Specifies the extensions of a resource.
+* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
 
 ### ManualScalingExtension
 #### Properties
 * **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
 * **replicas**: int: Replica count.
 
+
+## ContainerKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ContainerKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
 
 ## SystemData
 ### Properties
