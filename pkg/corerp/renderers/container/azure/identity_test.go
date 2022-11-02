@@ -140,12 +140,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
 		},
 		{
-			desc:     "missing user managed identity",
-			resource: &corev1.ServiceAccount{},
-			err:      errors.New("cannot find LocalIDUserAssignedManagedIdentity"),
-		},
-		{
-			desc:     "missing user managed identity",
+			desc:     "missing client ID",
 			resource: &corev1.ServiceAccount{},
 			dep: map[string]map[string]string{
 				outputresource.LocalIDUserAssignedManagedIdentity: {
@@ -155,7 +150,7 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 			err: errors.New("cannot extract Client ID of user assigned managed identity"),
 		},
 		{
-			desc:     "missing user managed identity",
+			desc:     "missing tenant ID",
 			resource: &corev1.ServiceAccount{},
 			dep: map[string]map[string]string{
 				outputresource.LocalIDUserAssignedManagedIdentity: {

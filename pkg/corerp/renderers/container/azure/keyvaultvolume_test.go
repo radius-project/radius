@@ -93,17 +93,16 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 				"objects":        "params",
 			},
 			afterParams: map[string]string{
-				"usePodIdentity":       "false",
-				"keyvaultName":         "vault0",
-				"objects":              "params",
-				"useVMManagedIdentity": "true",
-				"clientID":             "newClientID",
-				"tenantID":             "newTenantID",
+				"usePodIdentity": "false",
+				"keyvaultName":   "vault0",
+				"objects":        "params",
+				"clientID":       "newClientID",
+				"tenantID":       "newTenantID",
 			},
 		},
 		{
 			desc:         "azure.com.unknown",
-			identityKind: rp.AzureIdentityWorkload,
+			identityKind: "",
 			err:          errUnsupportedIdentityKind,
 		},
 	}
