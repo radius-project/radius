@@ -107,9 +107,9 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
-	if devRecipes == nil {
-		devRecipes = map[string]datamodel.EnvironmentRecipeProperties{}
+func getDevRecipes(ctx context.Context, recipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+	if recipes == nil {
+		recipes = map[string]datamodel.EnvironmentRecipeProperties{}
 	}
 
 	logger := radlogger.GetLogger(ctx)
@@ -133,15 +133,19 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 					default:
 						continue
 					}
-					devRecipes[name] = datamodel.EnvironmentRecipeProperties{
+					recipes[name] = datamodel.EnvironmentRecipeProperties{
 						LinkType:     linkType,
-						TemplatePath: DevRecipesACRPath + "/" + repo,
+						TemplatePath: DevRecipesACRPath + "/" + repo + ":1.0",
 					}
 				}
 			}
 		}
 
-		logger.Info(fmt.Sprintf("pulled %d dev recipes", len(devRecipes)))
+		logger.Info(fmt.Sprintf("pulled %d dev recipes", len(recipes)))
+
+		// This function never returns an error as we currently silently continue on any repositories that don't have the path pattern specified.
+		// It has a definition that specifies an error is returned to match the definition defined by reg.Repositories.
+		// TODO: Add metrics here to identify how long this takes. Long-term, we should ensure the registry only has recipes. #4440
 		return nil
 	})
 
@@ -149,10 +153,10 @@ func getDevRecipes(ctx context.Context, devRecipes map[string]datamodel.Environm
 		return nil, fmt.Errorf("failed to list recipes available in registry at path  %s -  %s", DevRecipesACRPath, err.Error())
 	}
 
-	return devRecipes, nil
+	return recipes, nil
 }
 
-func parseRepoPathForMetadata(repo string) (link string, provider string) {
+func parseRepoPathForMetadata(repo string) (link, provider string) {
 	if strings.HasPrefix(repo, "recipes/") {
 		recipePath := strings.Split(repo, "recipes/")[1]
 		if strings.Count(recipePath, "/") == 1 {
