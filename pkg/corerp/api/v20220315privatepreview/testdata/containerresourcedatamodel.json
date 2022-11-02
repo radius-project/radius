@@ -81,7 +81,20 @@
           "protocol": "http",
           "provides": "provides"
         }
+      },
+      {
+      "extension": {
+        "kind": "kubernetesMetadata"
+      },
+      "annotations": {
+        "prometheus.io/scrape" : "true",
+        "prometheus.io/port": "80" 
+      },
+      "labels": {
+        "mbcp.pt/team" : "Credit",
+        "mbcp.pt/contact": "nunog" 
       }
+    }
     ]
   }
 }

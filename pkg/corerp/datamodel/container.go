@@ -199,15 +199,17 @@ type TCPHealthProbeProperties struct {
 type ExtensionKind string
 
 const (
-	ManualScaling ExtensionKind = "manualScaling"
-	DaprSidecar   ExtensionKind = "daprSidecar"
+	ManualScaling               ExtensionKind = "manualScaling"
+	DaprSidecar                 ExtensionKind = "daprSidecar"
+	ContainerKubernetesMetadata ExtensionKind = "kubernetesMetadata"
 )
 
 // Extension of a resource.
 type Extension struct {
-	Kind          ExtensionKind           `json:"kind,omitempty"`
-	ManualScaling *ManualScalingExtension `json:"manualScaling,omitempty"`
-	DaprSidecar   *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
+	Kind                        ExtensionKind                         `json:"kind,omitempty"`
+	ManualScaling               *ManualScalingExtension               `json:"manualScaling,omitempty"`
+	DaprSidecar                 *DaprSidecarExtension                 `json:"daprSidecar,omitempty"`
+	ContainerKubernetesMetadata *ContainerKubernetesMetadataExtension `json:"kubernetesMetadata,omitempty"`
 }
 
 // ManualScalingExtension - ManualScaling Extension
@@ -222,6 +224,11 @@ type DaprSidecarExtension struct {
 	Config   string   `json:"config,omitempty"`
 	Protocol Protocol `json:"protocol,omitempty"`
 	Provides string   `json:"provides,omitempty"`
+}
+
+// ContainerKubernetesMetadataExtension - Specifies user defined labels and annotations
+type ContainerKubernetesMetadataExtension struct {
+	BaseKubernetesMetadataExtension
 }
 
 // IAMProperties represents the properties of IAM provider.

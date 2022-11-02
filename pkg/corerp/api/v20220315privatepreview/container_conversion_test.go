@@ -48,7 +48,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, int32(8080), tcpProbe.TCP.ContainerPort)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
-	require.Equal(t, 2, len(ct.Properties.Extensions))
+	require.Equal(t, 3, len(ct.Properties.Extensions))
 
 	require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
 	require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
@@ -80,7 +80,7 @@ func TestContainerConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "radius.azurecr.io/webapptutorial-todoapp", r.Properties.Container.Image)
 	require.Equal(t, "Deployment", versioned.Properties.Status.OutputResources[0]["LocalID"])
 	require.Equal(t, "aks", versioned.Properties.Status.OutputResources[0]["Provider"])
-	require.Equal(t, 2, len(versioned.Properties.Extensions))
+	require.Equal(t, 3, len(versioned.Properties.Extensions))
 
 	require.Equal(t, azto.SliceOfPtrs([]string{"/bin/sh"}...), versioned.Properties.Container.Command)
 	require.Equal(t, azto.SliceOfPtrs([]string{"-c", "while true; do echo hello; sleep 10;done"}...), versioned.Properties.Container.Args)
