@@ -88,7 +88,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 	return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 }
 
-// Delete deletes the specified role name to the Identity over the specified scope
+// Delete deletes the specified role name over the specified scope.
 func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error {
 	rID, err := resources.Parse(roleID)
 	if err != nil {

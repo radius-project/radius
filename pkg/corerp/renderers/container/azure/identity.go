@@ -28,7 +28,7 @@ const (
 )
 
 // MakeManagedIdentity builds a user-assigned managed identity output resource.
-func MakeManagedIdentity(ctx context.Context, name string, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
+func MakeManagedIdentity(name string, cloudProvider *datamodel.Providers) (*outputresource.OutputResource, error) {
 	var rID resources.ID
 	var err error
 	if cloudProvider != nil && cloudProvider.Azure.Scope != "" {
@@ -56,7 +56,7 @@ func MakeManagedIdentity(ctx context.Context, name string, cloudProvider *datamo
 }
 
 // MakeRoleAssignments assigns roles/permissions to a specific resource for the managed identity resource.
-func MakeRoleAssignments(ctx context.Context, azResourceID string, roleNames []string) ([]outputresource.OutputResource, []outputresource.Dependency) {
+func MakeRoleAssignments(azResourceID string, roleNames []string) ([]outputresource.OutputResource, []outputresource.Dependency) {
 	deps := []outputresource.Dependency{}
 	outputResources := []outputresource.OutputResource{}
 	for _, roleName := range roleNames {

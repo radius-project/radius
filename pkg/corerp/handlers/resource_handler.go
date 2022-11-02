@@ -48,6 +48,10 @@ type DeleteOptions struct {
 //
 //go:generate mockgen -destination=./mock_resource_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/corerp/handlers github.com/project-radius/radius/pkg/corerp/handlers ResourceHandler
 type ResourceHandler interface {
+	// Put deploys the rendered output resource and returns and populates the properties during deployment,
+	// which can be used by the next resource handlers.
 	Put(ctx context.Context, options *PutOptions) (map[string]string, error)
+
+	// Delete deletes the rendered output resource.
 	Delete(ctx context.Context, options *DeleteOptions) error
 }

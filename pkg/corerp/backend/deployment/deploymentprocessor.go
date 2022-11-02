@@ -13,10 +13,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -26,6 +24,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+
+	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
@@ -42,6 +42,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -151,16 +153,17 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput, deployedOutputResources map[string]map[string]string) (map[string]interface{}, error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, putOptions *handlers.PutOptions) (map[string]interface{}, error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+	or := putOptions.Resource
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
+
+	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
 	if err != nil {
 		return nil, err
 	}
 
-	putOptions := &handlers.PutOptions{Resource: outputResource, DependencyProperties: deployedOutputResources}
 	// Transform resource before deploying resource.
 	if outputResourceModel.ResourceTransformer != nil {
 		if err := outputResourceModel.ResourceTransformer(ctx, putOptions); err != nil {
@@ -172,12 +175,12 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		return nil, err
 	}
 
-	if outputResource.Identity.ResourceType == nil {
-		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", outputResource.LocalID)
+	if or.Identity.ResourceType == nil {
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
 		return nil, err
 	}
 
-	deployedOutputResources[outputResource.LocalID] = properties
+	putOptions.DependencyProperties[or.LocalID] = properties
 
 	// Values consumed by other Radius resource types through connections
 	computedValues := map[string]interface{}{}
@@ -185,19 +188,19 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		// A computed value might be a reference to a 'property' returned in preserved properties
-		if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
+		if or.LocalID == v.LocalID && v.PropertyReference != "" {
 			computedValues[k] = properties[v.PropertyReference]
 			continue
 		}
 
 		// A computed value might be a 'pointer' into the deployed resource
-		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+		if or.LocalID == v.LocalID && v.JSONPointer != "" {
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
 				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
-			value, _, err := pointer.Get(outputResource.Resource)
+			value, _, err := pointer.Get(or.Resource)
 			if err != nil {
 				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
@@ -230,7 +233,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-		deployedComputedValues, err := dp.deployOutputResource(ctx, id, &outputResource, rendererOutput, deployedOutputResourceProperties)
+		deployedComputedValues, err := dp.deployOutputResource(ctx, id, rendererOutput, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rp.DeploymentOutput{}, err
 		}

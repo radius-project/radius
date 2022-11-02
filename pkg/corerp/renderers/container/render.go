@@ -325,7 +325,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 
 				// Build RoleAssignment output.resource
 				kvID := vol.Properties.AzureKeyVault.Resource
-				roleAssignments, raDeps := azrenderer.MakeRoleAssignments(ctx, kvID, roleNames)
+				roleAssignments, raDeps := azrenderer.MakeRoleAssignments(kvID, roleNames)
 				outputResources = append(outputResources, roleAssignments...)
 				deps = append(deps, raDeps...)
 
@@ -389,7 +389,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
-		managedIdentity, err := azrenderer.MakeManagedIdentity(ctx, defaultIdentityName, options.Environment.CloudProviders)
+		managedIdentity, err := azrenderer.MakeManagedIdentity(defaultIdentityName, options.Environment.CloudProviders)
 		if err != nil {
 			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 		}

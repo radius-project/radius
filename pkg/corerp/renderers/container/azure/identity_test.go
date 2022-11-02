@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -29,7 +30,7 @@ const (
 func TestMakeManagedIdentity(t *testing.T) {
 	t.Run("invalid-provider", func(t *testing.T) {
 		provider := &datamodel.Providers{}
-		_, err := MakeManagedIdentity(context.Background(), "mi", provider)
+		_, err := MakeManagedIdentity("mi", provider)
 		require.Error(t, err)
 	})
 
@@ -39,7 +40,7 @@ func TestMakeManagedIdentity(t *testing.T) {
 				Scope: "/resourceGroups/test-group",
 			},
 		}
-		_, err := MakeManagedIdentity(context.Background(), "mi", provider)
+		_, err := MakeManagedIdentity("mi", provider)
 		require.Error(t, err)
 	})
 
@@ -49,7 +50,7 @@ func TestMakeManagedIdentity(t *testing.T) {
 				Scope: "/subscriptions/test-sub-id/resourceGroups/test-group",
 			},
 		}
-		or, err := MakeManagedIdentity(context.Background(), "mi", provider)
+		or, err := MakeManagedIdentity("mi", provider)
 		require.NoError(t, err)
 		require.Equal(t, &outputresource.OutputResource{
 			ResourceType: resourcemodel.ResourceType{
@@ -73,7 +74,7 @@ func TestMakeRoleAssignments(t *testing.T) {
 		"Role2",
 	}
 
-	or, ra := MakeRoleAssignments(context.Background(), miTestResource, roleNames)
+	or, ra := MakeRoleAssignments(miTestResource, roleNames)
 
 	require.Len(t, or, 2)
 	require.Len(t, ra, 2)
