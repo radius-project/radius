@@ -25,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	azrenderer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
+	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -139,26 +140,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	outputResources := []outputresource.OutputResource{}
 	dependencies := options.Dependencies
-	applicationName := appId.Name()
-
-	// Create the deployment as the primary workload
-	deploymentOutput, otherOutputResources, secretData, err := r.makeDeployment(ctx, *resource, applicationName, options)
-	if err != nil {
-		return renderers.RendererOutput{}, err
-	}
-
-	outputResources = append(outputResources, otherOutputResources...)
-
-	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
-	// by the deployment.
-	if len(secretData) > 0 {
-		outputResources = append(outputResources, r.makeSecret(ctx, *resource, applicationName, secretData, options))
-		deploymentOutput.Dependencies = append(deploymentOutput.Dependencies, outputresource.Dependency{
-			LocalID: outputresource.LocalIDSecret,
-		})
-	}
-
-	outputResources = append(outputResources, deploymentOutput)
 
 	// Connections might require a role assignment to grant access.
 	roles := []outputresource.OutputResource{}
@@ -175,18 +156,33 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		roles = append(roles, rbacOutputResources...)
 	}
 
-	// If we created role assigmments then we will need an identity and the mapping of the identity to AKS.
 	if len(roles) > 0 {
 		outputResources = append(outputResources, roles...)
-		// TODO: Enable later - https://github.com/project-radius/radius/issues/4395
-		// outputResources = append(outputResources, r.makeManagedIdentity(ctx, *resource, applicationName))
-		// outputResources = append(outputResources, r.makePodIdentity(ctx, *resource, applicationName, roles))
 	}
+
+	// Create the deployment as the primary workload
+	deploymentOutput, otherOutputResources, secretData, err := r.makeDeployment(ctx, resource, appId.Name(), options, len(roles) > 0)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	outputResources = append(outputResources, otherOutputResources...)
+
+	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
+	// by the deployment.
+	if len(secretData) > 0 {
+		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
+		deploymentOutput.Dependencies = append(deploymentOutput.Dependencies, outputresource.Dependency{
+			LocalID: outputresource.LocalIDSecret,
+		})
+	}
+
+	outputResources = append(outputResources, deploymentOutput)
 
 	return renderers.RendererOutput{Resources: outputResources}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.ContainerResource, applicationName string, options renderers.RenderOptions) (outputresource.OutputResource, []outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, options renderers.RenderOptions, identityRequired bool) (outputresource.OutputResource, []outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -283,6 +279,10 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 	// Add volumes
 	volumes := []corev1.Volume{}
+
+	// Make the default managed identity name.
+	defaultIdentityName := kubernetes.MakeResourceName(applicationName, resource.Name)
+
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
 		switch volumeProperties.Kind {
@@ -311,13 +311,8 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 
 			switch vol.Properties.Kind {
 			case datamodel.AzureKeyVaultVolume:
-				// 1. Create Per-Container managed identity.
-				defaultName := kubernetes.MakeResourceName(applicationName, resource.Name)
-				managedIdentity, err := azrenderer.MakeManagedIdentity(ctx, defaultName, &resource, options.Environment.CloudProviders)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
-				}
-				outputResources = append(outputResources, *managedIdentity)
+				// This will add the required managed identity resources.
+				identityRequired = true
 
 				// 2. Prepare role assignments
 				roleNames := []string{}
@@ -334,27 +329,15 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				outputResources = append(outputResources, roleAssignments...)
 				deps = append(deps, raDeps...)
 
-				// 4. Create Per-container federated identity resource.
-				fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultName, &options.Environment)
-				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
-				}
-				outputResources = append(outputResources, *fedIdentity)
-
-				// 5. Create Per-container service account.
-				podSAName = defaultName
-				saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultName, options.Environment.Namespace, &resource)
-				outputResources = append(outputResources, *saAccount)
-
 				// 6. Create Per-Pod SecretProviderClass for the selected volume
 				// csiobjectspec must be generated when volume is updated.
-				objectSpec, err := handlers.GetString(properties.ComputedValues, "csiobjectspec")
+				objectSpec, err := handlers.GetString(properties.ComputedValues, azvolrenderer.SPCVolumeObjectSpecKey)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
 
-				spcName := kubernetes.MakeResourceName(defaultName, vol.Name)
-				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, options.Environment.Namespace, vol, objectSpec, options.Environment.Identity)
+				spcName := kubernetes.MakeResourceName(defaultIdentityName, vol.Name)
+				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
 				}
@@ -362,7 +345,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 				deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDSecretProviderClass})
 
 				// 7. Create volume spec which associated with secretProviderClass.
-				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent, spcName, options)
+				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent.MountPath, spcName)
 				if err != nil {
 					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
@@ -401,6 +384,27 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	for _, routeInfo := range routes {
 		routeLabels := kubernetes.MakeRouteSelectorLabels(applicationName, routeInfo.Type, routeInfo.Name)
 		podLabels = labels.Merge(routeLabels, podLabels)
+	}
+
+	if identityRequired {
+		// 1. Create Per-Container managed identity.
+		managedIdentity, err := azrenderer.MakeManagedIdentity(ctx, defaultIdentityName, options.Environment.CloudProviders)
+		if err != nil {
+			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+		}
+		outputResources = append(outputResources, *managedIdentity)
+
+		// 2. Create Per-container federated identity resource.
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultIdentityName, &options.Environment)
+		if err != nil {
+			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+		}
+		outputResources = append(outputResources, *fedIdentity)
+
+		// 3. Create Per-container service account.
+		podSAName = defaultIdentityName
+		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultIdentityName, options.Environment.Namespace, resource)
+		outputResources = append(outputResources, *saAccount)
 	}
 
 	deployment := appsv1.Deployment{
@@ -450,7 +454,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource datamodel.Contain
 	return deploymentOutput, outputResources, secretData, nil
 }
 
-func getEnvVarsAndSecretData(resource datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {
+func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {
 	env := map[string]corev1.EnvVar{}
 	secretData := map[string][]byte{}
 	cc := resource.Properties

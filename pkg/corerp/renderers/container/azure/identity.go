@@ -90,7 +90,7 @@ func MakeFederatedIdentity(name string, envOpt *renderers.EnvironmentOptions) (*
 		return nil, errors.New("OIDC Issuer URL is not specified")
 	}
 
-	if envOpt.Namespace != "" {
+	if envOpt.Namespace == "" {
 		return nil, errors.New("namespace is not specified")
 	}
 

@@ -95,6 +95,7 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 		ResourceType: rt,
 		Identity:     resourcemodel.NewKubernetesIdentity(&rt, obj, objectMeta),
 		Resource:     obj,
+		Dependencies: []Dependency{},
 	}
 }
 
