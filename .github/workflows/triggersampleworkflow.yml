@@ -33,6 +33,7 @@ jobs:
         uses: aurelien-baudet/workflow-dispatch@v2
         with:
           workflow: test.yaml
+          wait-for-completion-timeout: 15
           repo: project-radius/samples
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
           ref: ${{ env.REL_CHANNEL }}
