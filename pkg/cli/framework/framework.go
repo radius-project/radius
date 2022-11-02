@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/spf13/cobra"
 )
 
@@ -29,6 +30,7 @@ type Factory interface {
 	GetHelmInterface() helm.Interface
 	GetNamespaceInterface() namespace.Interface
 	GetAppManagementClient() clients.ApplicationsManagementClient
+	GetSetupInterface() setup.Interface
 }
 
 type Impl struct {
@@ -41,6 +43,7 @@ type Impl struct {
 	HelmInterface       helm.Interface
 	NamespaceInterface  namespace.Interface
 	AppManagementClient clients.ApplicationsManagementClient
+	SetupInterface      setup.Interface
 }
 
 func (i *Impl) GetConnectionFactory() connections.Factory {
@@ -82,6 +85,10 @@ func (i *Impl) GetNamespaceInterface() namespace.Interface {
 
 func (i *Impl) GetAppManagementClient() clients.ApplicationsManagementClient {
 	return i.AppManagementClient
+}
+
+func (i *Impl) GetSetupInterface() setup.Interface {
+	return i.SetupInterface
 }
 
 type Runner interface {
