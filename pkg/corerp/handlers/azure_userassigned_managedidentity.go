@@ -97,9 +97,9 @@ func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Conte
 	}
 
 	msiClient := clients.NewUserAssignedIdentitiesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-	resp, err := msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name())
+	_, err = msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name())
 
-	if err != nil || (resp.StatusCode != 200 && resp.StatusCode != 204) {
+	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
 	}
 
