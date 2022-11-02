@@ -7,15 +7,15 @@
             "namespace": "default"
         },
         "recipes": {
-          "redis": {
-            "linkType": "Applications.Link/redisCache",
-            "templatePath": "radiusdev.azurecr.io/redis:1.0"
+            "redis": {
+                "linkType": "Applications.Link/redisCache",
+                "templatePath": "radiusdev.azurecr.io/redis:1.0"
             }
         },
-        "useDevRecipes":true,
+        "useDevRecipes": true,
         "providers": {
             "azure": {
-                "scope" : "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
+                "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"
             }
         }
     }

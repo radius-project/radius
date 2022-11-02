@@ -66,7 +66,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 			return nil, err
 		}
 
-		err = ensureUserRecipesHaveValidNames(newResource.Properties.Recipes, devRecipes)
+		err = ensureUserRecipesNamesAreNotReserved(newResource.Properties.Recipes, devRecipes)
 		if err != nil {
 			return nil, err
 		}
@@ -177,7 +177,7 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 	return link, provider
 }
 
-func ensureUserRecipesHaveValidNames(userRecipes map[string]datamodel.EnvironmentRecipeProperties, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
+func ensureUserRecipesNamesAreNotReserved(userRecipes map[string]datamodel.EnvironmentRecipeProperties, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
 	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
 	for k := range devRecipes {
 		if v, ok := userRecipes[k]; ok {

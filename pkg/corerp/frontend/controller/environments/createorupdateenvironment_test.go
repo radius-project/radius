@@ -686,7 +686,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 			},
 		}
 
-		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
 		require.NoError(t, err)
 	})
 	t.Run("Single recipe overlap between user and dev recipes", func(t *testing.T) {
@@ -711,7 +711,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 			},
 		}
 
-		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
 		require.Error(t, err, fmt.Sprintf(
 			"recipe with name %s (linkType %s and templatePath %s) has a name that is reserved for devRecipes.",
 			"mongo-azure",
@@ -740,7 +740,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 			},
 		}
 
-		err := ensureUserRecipesHaveValidNames(userRecipes, devRecipes)
+		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
 		require.Error(t, err, fmt.Sprintf(
 			"recipe with name %s (linkType %s and templatePath %s), recipe with name %s (linkType %s and templatePath %s) have names that are reserved for devRecipes.",
 			"mongo-azure",
