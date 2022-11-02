@@ -261,12 +261,12 @@ func Test_Render(t *testing.T) {
 		},
 	}
 
+	mocks := setup(t)
+	defer mocks.mctrl.Finish()
+
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+
 	t.Run("verify render success", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -362,11 +362,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render success lowercase resourcetype", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getLowerCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -437,11 +432,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render success uppercase resourcetype", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getUpperCaseTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -512,11 +502,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		depId1, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/httpRoutes/A")
@@ -584,11 +569,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Failure to get storage client", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -600,11 +580,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Resource not found in data store", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -619,11 +594,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Data store access error", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -637,26 +607,15 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid resource type", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testInvalidResourceID := "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.foo/foo/foo"
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testInvalidResourceID)
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err, "radius resource type 'Applications.foo/foo' is unsupported")
-
 	})
 
 	t.Run("Invalid application id", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = "invalid-app-id"
@@ -678,11 +637,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Missing application id", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = ""
@@ -703,11 +657,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Invalid application resource type", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Application = "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application"
@@ -729,11 +678,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -804,11 +748,6 @@ func Test_Render(t *testing.T) {
 	})
 
 	t.Run("Unsupported output resource provider", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -881,13 +820,12 @@ func Test_Render(t *testing.T) {
 
 func Test_Deploy(t *testing.T) {
 	ctx := createContext(t)
+	mocks := setup(t)
+	defer mocks.mctrl.Finish()
+
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
 	t.Run("Verify deploy success", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -928,10 +866,6 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -943,11 +877,6 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -962,11 +891,6 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Invalid output resource type", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -979,10 +903,6 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Missing output resource identity", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 		testResource := getTestResource()
 		testRendererOutput := getTestRendererOutput()
 		resourceID := getTestResourceID(testResource.ID)
@@ -1004,11 +924,11 @@ func Test_Deploy(t *testing.T) {
 func Test_Delete(t *testing.T) {
 	ctx := createContext(t)
 
-	t.Run("Verify delete success", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
+	mocks := setup(t)
+	defer mocks.mctrl.Finish()
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
 
+	t.Run("Verify delete success", func(t *testing.T) {
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -1019,10 +939,6 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 
@@ -1033,10 +949,6 @@ func Test_Delete(t *testing.T) {
 	})
 
 	t.Run("Verify delete with no output resources", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil, nil}
-
 		testResource := getTestResource()
 		resourceID := getTestResourceID(testResource.ID)
 		testResource.Properties.Status.OutputResources = []outputresource.OutputResource{}
@@ -1109,12 +1021,12 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 func Test_getResourceDataByID(t *testing.T) {
 	ctx := createContext(t)
+	mocks := setup(t)
+	defer mocks.mctrl.Finish()
+
+	dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
 
 	t.Run("Get recipe data from connected mongoDB resources", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
-
-		dp := deploymentProcessor{mocks.model, mocks.dbProvider, nil, nil, nil}
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 
 		depId, _ := resources.ParseResource("/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Link/mongoDatabases/test-mongo")
@@ -1137,11 +1049,12 @@ func Test_getResourceDataByID(t *testing.T) {
 func Test_fetchSecrets(t *testing.T) {
 	ctx := createContext(t)
 
-	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
-		mocks := setup(t)
-		defer mocks.mctrl.Finish()
+	mocks := setup(t)
+	defer mocks.mctrl.Finish()
 
-		dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+	dp := deploymentProcessor{mocks.model, nil, mocks.secretsValueClient, nil, nil}
+
+	t.Run("Get secrets from recipe data when resource has associated recipe", func(t *testing.T) {
 		mongoResource := buildMongoDBResourceDataWithRecipeAndSecrets()
 		secret := "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255/db?ssl=true"
 		mocks.secretsValueClient.EXPECT().FetchSecret(ctx, gomock.Any(), mongoResource.SecretValues[linkrp_r.ConnectionStringValue].Action, mongoResource.SecretValues[linkrp_r.ConnectionStringValue].ValueSelector).Times(1).Return(secret, nil)
