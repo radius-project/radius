@@ -108,8 +108,8 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// SQLDatabasePropertiesMode - How to build the connector. Options are to build automatically via 'recipe' or 'resource',
-// or build manually via 'values'. Selection determines which set of fields to additionally require.
+// SQLDatabasePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
 type SQLDatabasePropertiesMode string
 
 const (

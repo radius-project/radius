@@ -337,21 +337,21 @@
 ### SQLRecipeProperties
 #### Properties
 * **database**: string (ReadOnly): The name of the SQL database.
-* **mode**: 'recipe' (Required): How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **server**: string: The fully qualified domain name of the SQL database.
 
 ### SQLResourceProperties
 #### Properties
 * **database**: string (ReadOnly): The name of the SQL database.
-* **mode**: 'resource' (Required): How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with SQL API to use for this link
 * **server**: string: The fully qualified domain name of the SQL database.
 
 ### SQLValueProperties
 #### Properties
 * **database**: string (Required): The name of the SQL database.
-* **mode**: 'values' (Required): How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **server**: string (Required): The fully qualified domain name of the SQL database.
 
 
