@@ -119,7 +119,7 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.Identity = &rp.IdentitySettings{
 			Kind:       toIdentityKind(src.Properties.Identity.Kind),
 			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
-			// We ignore the resource property since it is readonly.
+			Resource:   to.String(src.Properties.Identity.Resource),
 		}
 	}
 

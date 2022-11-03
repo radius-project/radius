@@ -975,8 +975,8 @@ type IdentitySettings struct {
 	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string `json:"oidcIssuer,omitempty"`
 
-	// READ-ONLY; The resource ID of the provisioned identity
-	Resource *string `json:"resource,omitempty" azure:"ro"`
+	// The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty"`
 }
 
 type KeyObjectProperties struct {

@@ -239,7 +239,7 @@
 ### Properties
 * **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
 * **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
-* **resource**: string (ReadOnly): The resource ID of the provisioned identity
+* **resource**: string: The resource ID of the provisioned identity
 
 ## ResourceStatus
 ### Properties

@@ -117,8 +117,7 @@
         },
         "resource": {
           "description": "The resource ID of the provisioned identity",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         }
       },
       "required": [
