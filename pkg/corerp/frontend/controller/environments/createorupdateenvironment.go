@@ -177,7 +177,7 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 	return link, provider
 }
 
-func ensureUserRecipesNamesAreNotReserved(userRecipes map[string]datamodel.EnvironmentRecipeProperties, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
+func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
 	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
 	for k := range devRecipes {
 		if v, ok := userRecipes[k]; ok {
@@ -186,22 +186,17 @@ func ensureUserRecipesNamesAreNotReserved(userRecipes map[string]datamodel.Envir
 	}
 
 	if len(overlap) > 0 {
-		var errorString string
-
+		errorPrefix := "recipe name(s) reserved for devRecipes for: "
+		var errorRecipes string
 		for k, v := range overlap {
-			if errorString != "" {
-				errorString += ", "
+			if errorRecipes != "" {
+				errorRecipes += ", "
 			}
-			errorString += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
+
+			errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
 		}
 
-		if len(overlap) > 1 {
-			errorString += " have names that are reserved for devRecipes."
-		} else {
-			errorString += " has a name that is reserved for devRecipes."
-		}
-
-		return fmt.Errorf(errorString)
+		return fmt.Errorf(errorPrefix + errorPrefix)
 	}
 
 	return nil

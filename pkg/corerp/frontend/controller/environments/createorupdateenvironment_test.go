@@ -713,7 +713,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 
 		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
 		require.Error(t, err, fmt.Sprintf(
-			"recipe with name %s (linkType %s and templatePath %s) has a name that is reserved for devRecipes.",
+			"recipe name(s) reserved for devRecipes for: recipe with name %s (linkType %s and templatePath %s)",
 			"mongo-azure",
 			userRecipes["mongo-azure"].LinkType,
 			userRecipes["mongo-azure"].TemplatePath))
@@ -742,7 +742,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 
 		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
 		require.Error(t, err, fmt.Sprintf(
-			"recipe with name %s (linkType %s and templatePath %s), recipe with name %s (linkType %s and templatePath %s) have names that are reserved for devRecipes.",
+			"recipe name(s) reserved for devRecipes for: recipe with name %s (linkType %s and templatePath %s), recipe with name %s (linkType %s and templatePath %s)",
 			"mongo-azure",
 			userRecipes["mongo-azure"].LinkType,
 			userRecipes["mongo-azure"].TemplatePath,
