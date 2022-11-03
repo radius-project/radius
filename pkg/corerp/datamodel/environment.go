@@ -7,7 +7,7 @@ package datamodel
 
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
+	"github.com/project-radius/radius/pkg/rp"
 )
 
 // EnvironmentComputeKind is the type of compute resource.
@@ -47,7 +47,7 @@ type EnvironmentCompute struct {
 
 	// Environment-level identity that can be used by any resource in the environment.
 	// Resources can specify its own identities and they will override the environment-level identity.
-	Identity *rpidentity.IdentitySettings `json:"identity"`
+	Identity *rp.IdentitySettings `json:"identity"`
 }
 
 // KubernetesComputeProperties represents the kubernetes compute of the environment.

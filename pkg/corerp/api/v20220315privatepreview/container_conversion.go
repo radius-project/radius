@@ -12,7 +12,6 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
@@ -82,9 +81,9 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
-	var identity *rpidentity.IdentitySettings
+	var identity *rp.IdentitySettings
 	if src.Properties.Identity != nil {
-		identity = &rpidentity.IdentitySettings{
+		identity = &rp.IdentitySettings{
 			Kind:       toIdentityKind(src.Properties.Identity.Kind),
 			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
 			// We ignore the resource property since it is readonly.

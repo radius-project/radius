@@ -29,7 +29,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -968,7 +967,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 				KubernetesCompute: datamodel.KubernetesComputeProperties{
 					Namespace: "radius-system",
 				},
-				Identity: &rpidentity.IdentitySettings{},
+				Identity: &rp.IdentitySettings{},
 			},
 			Providers: datamodel.Providers{
 				Azure: datamodel.ProvidersAzure{

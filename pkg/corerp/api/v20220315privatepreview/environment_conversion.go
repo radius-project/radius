@@ -9,7 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -131,9 +131,9 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
-		var identity *rpidentity.IdentitySettings
+		var identity *rp.IdentitySettings
 		if v.Identity != nil {
-			identity = &rpidentity.IdentitySettings{
+			identity = &rp.IdentitySettings{
 				Kind:       toIdentityKind(v.Identity.Kind),
 				Resource:   to.String(v.Identity.Resource),
 				OIDCIssuer: to.String(v.Identity.OidcIssuer),

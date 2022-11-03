@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
@@ -57,8 +56,8 @@ var (
 				Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 			},
 		},
-		Identity: &rpidentity.IdentitySettings{
-			Kind:       rpidentity.AzureIdentityWorkload,
+		Identity: &rp.IdentitySettings{
+			Kind:       rp.AzureIdentityWorkload,
 			OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 		},
 	}

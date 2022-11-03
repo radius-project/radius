@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -59,7 +58,7 @@ type ContainerProperties struct {
 	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
-	Identity    *rpidentity.IdentitySettings    `json:"identity,omitempty"`
+	Identity    *rp.IdentitySettings            `json:"identity,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.

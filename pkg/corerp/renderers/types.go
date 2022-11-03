@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -55,7 +54,7 @@ type EnvironmentOptions struct {
 	// Gateway represents the gateway options.
 	Gateway GatewayOptions
 	// Identity represents identity of the environment.
-	Identity *rpidentity.IdentitySettings
+	Identity *rp.IdentitySettings
 }
 
 type GatewayOptions struct {

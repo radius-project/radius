@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
 
@@ -177,8 +177,8 @@ func TestTransformFederatedIdentitySA_Validation(t *testing.T) {
 func TestMakeFederatedIdentity(t *testing.T) {
 	t.Run("invalid environment option", func(t *testing.T) {
 		envOpt := &renderers.EnvironmentOptions{
-			Identity: &rpidentity.IdentitySettings{
-				Kind: rpidentity.AzureIdentityWorkload,
+			Identity: &rp.IdentitySettings{
+				Kind: rp.AzureIdentityWorkload,
 			},
 		}
 
@@ -189,8 +189,8 @@ func TestMakeFederatedIdentity(t *testing.T) {
 	t.Run("valid federated identity", func(t *testing.T) {
 		envOpt := &renderers.EnvironmentOptions{
 			Namespace: "default",
-			Identity: &rpidentity.IdentitySettings{
-				Kind:       rpidentity.AzureIdentityWorkload,
+			Identity: &rp.IdentitySettings{
+				Kind:       rp.AzureIdentityWorkload,
 				OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
 		}
