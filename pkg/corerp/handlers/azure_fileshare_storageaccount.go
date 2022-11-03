@@ -13,7 +13,6 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -31,46 +30,30 @@ type azureFileShareStorageAccountHandler struct {
 	arm *armauth.ArmConfig
 }
 
-func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
-	identity, err := handler.GetResourceIdentity(ctx, *resource)
-	if err != nil {
-		return err
-	}
-	resource.Identity = identity
-	return nil
-}
-
-func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
-	return nil
-}
-
-func (handler *azureFileShareStorageAccountHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
-	properties, ok := resource.Resource.(map[string]string)
+func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
-		return resourcemodel.ResourceIdentity{}, fmt.Errorf("invalid required properties for resource")
+		return nil, fmt.Errorf("invalid required properties for resource")
 	}
 
 	// This assertion is important so we don't start creating/modifying a resource
 	err := ValidateResourceIDsForResource(properties, FileShareStorageAccountIDKey, FileShareStorageAccountNameKey)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, err
+		return nil, err
 	}
 
 	_, err = getStorageAccountByID(ctx, *handler.arm, properties[FileShareStorageAccountIDKey])
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, err
+		return nil, err
 	}
-	identity := resourcemodel.NewARMIdentity(&resource.ResourceType, properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
-	return identity, nil
+
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+
+	return nil, nil
 }
 
-func (handler *azureFileShareStorageAccountHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
-	properties, ok := resource.Resource.(map[string]string)
-	if !ok {
-		return properties, fmt.Errorf("invalid required properties for resource")
-	}
-
-	return properties, nil
+func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+	return nil
 }
 
 func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {

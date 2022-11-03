@@ -13,18 +13,19 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+
+	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
@@ -41,6 +42,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -101,7 +104,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	namespace, err := dp.getEnvironmentNamespace(ctx, environment, resourceID.String())
+	env, err := dp.fetchEnvironment(ctx, environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -117,7 +120,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	envOptions, err := dp.getEnvOptions(ctx, namespace)
+	envOptions, err := dp.getEnvOptions(ctx, env)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -150,59 +153,62 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, putOptions *handlers.PutOptions) (map[string]interface{}, error) {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+	or := putOptions.Resource
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
+
+	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
 	}
 
-	resourceIdentity, err = outputResourceModel.ResourceHandler.GetResourceIdentity(ctx, outputResource)
+	// Transform resource before deploying resource.
+	if outputResourceModel.ResourceTransformer != nil {
+		if err := outputResourceModel.ResourceTransformer(ctx, putOptions); err != nil {
+			return nil, err
+		}
+	}
+	properties, err := outputResourceModel.ResourceHandler.Put(ctx, putOptions)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return nil, err
 	}
 
-	err = outputResourceModel.ResourceHandler.Put(ctx, &outputResource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+	if or.Identity.ResourceType == nil {
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
+		return nil, err
 	}
 
-	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
+	putOptions.DependencyProperties[or.LocalID] = properties
 
 	// Values consumed by other Radius resource types through connections
-	computedValues = map[string]interface{}{}
+	computedValues := map[string]interface{}{}
 
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		// A computed value might be a reference to a 'property' returned in preserved properties
-		if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
+		if or.LocalID == v.LocalID && v.PropertyReference != "" {
 			computedValues[k] = properties[v.PropertyReference]
 			continue
 		}
 
 		// A computed value might be a 'pointer' into the deployed resource
-		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+		if or.LocalID == v.LocalID && v.JSONPointer != "" {
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
-			value, _, err := pointer.Get(outputResource.Resource)
+			value, _, err := pointer.Get(or.Resource)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 			computedValues[k] = value
 		}
 	}
 
-	return resourceIdentity, computedValues, nil
+	return computedValues, nil
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
@@ -222,16 +228,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	// Values consumed by other Radius resource types through connections
 	computedValues := map[string]interface{}{}
 
+	deployedOutputResourceProperties := map[string]map[string]string{}
+
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
+		deployedComputedValues, err := dp.deployOutputResource(ctx, id, rendererOutput, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rp.DeploymentOutput{}, err
-		}
-
-		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
-			outputResource.Identity = resourceIdentity
 		}
 
 		if outputResource.Identity.ResourceType == nil {
@@ -278,7 +282,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, outputResource)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
 		}
@@ -378,13 +382,40 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
+// TODO: Revisit to remove the datamodel.Environment dependency.
+func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
+	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+	envOpts := renderers.EnvironmentOptions{
+		CloudProviders: &env.Properties.Providers,
+	}
+
+	// Extract compute info
+	switch env.Properties.Compute.Kind {
+	case datamodel.KubernetesComputeKind:
+		kubeProp := &env.Properties.Compute.KubernetesCompute
+
+		if kubeProp.Namespace == "" {
+			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified")
+		}
+		envOpts.Namespace = kubeProp.Namespace
+
+	default:
+		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
+	}
+
+	// Extract identity info.
+	envOpts.Identity = env.Properties.Compute.Identity
+	if envOpts.Identity == nil {
+		logger.V(radlogger.Debug).Info("environment identity is not specified.")
+	}
+
 	if publicEndpointOverride != "" {
 		// Check if publicEndpointOverride contains a scheme,
 		// and if so, throw an error to the user
 		if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
-			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
+			return renderers.EnvironmentOptions{}, errors.New("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		}
 
 		hostname, port, err := net.SplitHostPort(publicEndpointOverride)
@@ -395,14 +426,13 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 			port = ""
 		}
 
-		return renderers.EnvironmentOptions{
-			Gateway: renderers.GatewayOptions{
-				PublicEndpointOverride: true,
-				Hostname:               hostname,
-				Port:                   port,
-			},
-			Namespace: namespace,
-		}, nil
+		envOpts.Gateway = renderers.GatewayOptions{
+			PublicEndpointOverride: true,
+			Hostname:               hostname,
+			Port:                   port,
+		}
+
+		return envOpts, nil
 	}
 
 	if dp.k8sClient != nil {
@@ -416,20 +446,18 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		for _, service := range services.Items {
 			if service.Name == "contour-envoy" {
 				for _, in := range service.Status.LoadBalancer.Ingress {
-					return renderers.EnvironmentOptions{
-						Gateway: renderers.GatewayOptions{
-							PublicEndpointOverride: false,
-							Hostname:               in.Hostname,
-							ExternalIP:             in.IP,
-						},
-						Namespace: namespace,
-					}, nil
+					envOpts.Gateway = renderers.GatewayOptions{
+						PublicEndpointOverride: false,
+						Hostname:               in.Hostname,
+						ExternalIP:             in.IP,
+					}
+					return envOpts, nil
 				}
 			}
 		}
 	}
 
-	return renderers.EnvironmentOptions{Namespace: namespace}, nil
+	return envOpts, nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
@@ -624,38 +652,38 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 	return app.Properties.Environment, nil
 }
 
-// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
+// fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
 	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
+		return nil, err
 	}
 
 	env := &datamodel.Environment{}
+
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
 	}
 
-	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
 	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return nil, err
 	}
+
+	const errMsg = "failed to fetch the environment %q for the resource %q. Error: %w"
+
 	res, err := sc.Get(ctx, envId.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %s does not exist", environmentID, resourceID))
 		}
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-	err = res.As(env)
-	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 
-	if env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
-		return env.Properties.Compute.KubernetesCompute.Namespace, nil
-	} else {
-		return "", fmt.Errorf("cannot find namespace in the environment resource")
+	err = res.As(env)
+	if err != nil {
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
+
+	return env, nil
 }

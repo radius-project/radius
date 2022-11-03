@@ -9,8 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	resourcemodel "github.com/project-radius/radius/pkg/resourcemodel"
-	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // MockResourceHandler is a mock of ResourceHandler interface.
@@ -37,7 +35,7 @@ func (m *MockResourceHandler) EXPECT() *MockResourceHandlerMockRecorder {
 }
 
 // Delete mocks base method.
-func (m *MockResourceHandler) Delete(arg0 context.Context, arg1 outputresource.OutputResource) error {
+func (m *MockResourceHandler) Delete(arg0 context.Context, arg1 *DeleteOptions) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Delete", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -50,42 +48,13 @@ func (mr *MockResourceHandlerMockRecorder) Delete(arg0, arg1 interface{}) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockResourceHandler)(nil).Delete), arg0, arg1)
 }
 
-// GetResourceIdentity mocks base method.
-func (m *MockResourceHandler) GetResourceIdentity(arg0 context.Context, arg1 outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
+// Put mocks base method.
+func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *PutOptions) (map[string]string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResourceIdentity", arg0, arg1)
-	ret0, _ := ret[0].(resourcemodel.ResourceIdentity)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetResourceIdentity indicates an expected call of GetResourceIdentity.
-func (mr *MockResourceHandlerMockRecorder) GetResourceIdentity(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceIdentity", reflect.TypeOf((*MockResourceHandler)(nil).GetResourceIdentity), arg0, arg1)
-}
-
-// GetResourceNativeIdentityKeyProperties mocks base method.
-func (m *MockResourceHandler) GetResourceNativeIdentityKeyProperties(arg0 context.Context, arg1 outputresource.OutputResource) (map[string]string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetResourceNativeIdentityKeyProperties", arg0, arg1)
+	ret := m.ctrl.Call(m, "Put", arg0, arg1)
 	ret0, _ := ret[0].(map[string]string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
-}
-
-// GetResourceNativeIdentityKeyProperties indicates an expected call of GetResourceNativeIdentityKeyProperties.
-func (mr *MockResourceHandlerMockRecorder) GetResourceNativeIdentityKeyProperties(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetResourceNativeIdentityKeyProperties", reflect.TypeOf((*MockResourceHandler)(nil).GetResourceNativeIdentityKeyProperties), arg0, arg1)
-}
-
-// Put mocks base method.
-func (m *MockResourceHandler) Put(arg0 context.Context, arg1 *outputresource.OutputResource) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Put", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
 }
 
 // Put indicates an expected call of Put.

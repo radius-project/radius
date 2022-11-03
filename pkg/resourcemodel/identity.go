@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"go.mongodb.org/mongo-driver/bson"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,8 +30,8 @@ const (
 
 // ResourceType determines the type of the resource and the provider domain for the resource
 type ResourceType struct {
-	Type     string `bson:"type" json:"type"`
-	Provider string `bson:"provider" json:"provider"`
+	Type     string `json:"type"`
+	Provider string `json:"provider"`
 }
 
 func (r ResourceType) String() string {
@@ -43,28 +44,26 @@ func (r ResourceType) String() string {
 //
 // This type supports safe serialization to/from JSON & BSON.
 type ResourceIdentity struct {
-	ResourceType *ResourceType `bson:"resourceType" json:"resourceType"`
-
+	ResourceType *ResourceType `json:"resourceType"`
 	// A polymorphic payload. The fields in this data structure are determined by the provider field in the ResourceType
-	Data interface{} `bson:"data" json:"data"`
+	Data interface{} `json:"data"`
 }
 
 // We just need custom Unmarshaling, default Marshaling is fine.
 var _ json.Unmarshaler = (*ResourceIdentity)(nil)
-var _ bson.Unmarshaler = (*ResourceIdentity)(nil)
 
 // ARMIdentity uniquely identifies an ARM resource
 type ARMIdentity struct {
-	ID         string `bson:"id" json:"id"`
-	APIVersion string `bson:"apiVersion" json:"apiVersion"`
+	ID         string `json:"id"`
+	APIVersion string `json:"apiVersion"`
 }
 
 // KubernetesIdentity uniquely identifies a Kubernetes resource
 type KubernetesIdentity struct {
-	Kind       string `bson:"kind" json:"kind"`
-	APIVersion string `bson:"apiVersion" json:"apiVersion"`
-	Name       string `bson:"name" json:"name"`
-	Namespace  string `bson:"namespace" json:"namespace"`
+	Kind       string `json:"kind"`
+	APIVersion string `json:"apiVersion"`
+	Name       string `json:"name"`
+	Namespace  string `json:"namespace"`
 }
 
 // AzureFederatedIdentity represents the federated identity for OIDC issuer.
@@ -83,14 +82,17 @@ type AzureFederatedIdentity struct {
 
 // AADPodIdentityIdentity uniquely identifies a 'pod identity' psuedo-resource
 type AADPodIdentityIdentity struct {
-	AKSClusterName string `bson:"aksClusterName" json:"aksClusterName"`
-	Name           string `bson:"name" json:"name"`
-	Namespace      string `bson:"namespace" json:"namespace"`
+	AKSClusterName string `json:"aksClusterName"`
+	Name           string `json:"name"`
+	Namespace      string `json:"namespace"`
 }
 
 func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) ResourceIdentity {
 	return ResourceIdentity{
-		ResourceType: resourceType,
+		ResourceType: &ResourceType{
+			Type:     resourceType.Type,
+			Provider: resourceType.Provider,
+		},
 		Data: ARMIdentity{
 			ID:         id,
 			APIVersion: apiVersion,
@@ -100,7 +102,10 @@ func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) Re
 
 func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objectMeta metav1.ObjectMeta) ResourceIdentity {
 	return ResourceIdentity{
-		ResourceType: resourceType,
+		ResourceType: &ResourceType{
+			Type:     resourceType.Type,
+			Provider: resourceType.Provider,
+		},
 		Data: KubernetesIdentity{
 			Kind:       obj.GetObjectKind().GroupVersionKind().Kind,
 			APIVersion: obj.GetObjectKind().GroupVersionKind().GroupVersion().String(),
@@ -112,7 +117,13 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 
 func (r ResourceIdentity) RequireARM() (string, string, error) {
 	if r.ResourceType.Provider == ProviderAzure {
-		data := r.Data.(ARMIdentity)
+		data, ok := r.Data.(ARMIdentity)
+		if !ok {
+			data = ARMIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", "", err
+			}
+		}
 		return data.ID, data.APIVersion, nil
 	}
 
@@ -121,20 +132,17 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
 	if r.ResourceType.Provider == ProviderKubernetes {
-		data := r.Data.(KubernetesIdentity)
+		data, ok := r.Data.(KubernetesIdentity)
+		if !ok {
+			data = KubernetesIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return schema.GroupVersionKind{}, "", "", err
+			}
+		}
 		return schema.FromAPIVersionAndKind(data.APIVersion, data.Kind), data.Namespace, data.Name, nil
 	}
 
 	return schema.GroupVersionKind{}, "", "", fmt.Errorf("expected an %q provider, was %q", ProviderKubernetes, r.ResourceType.Provider)
-}
-
-func (r ResourceIdentity) RequireAADPodIdentity() (string, string, string, error) {
-	if r.ResourceType.Provider == ProviderAzureKubernetesService {
-		data := r.Data.(AADPodIdentityIdentity)
-		return data.AKSClusterName, data.Name, data.Namespace, nil
-	}
-
-	return "", "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
