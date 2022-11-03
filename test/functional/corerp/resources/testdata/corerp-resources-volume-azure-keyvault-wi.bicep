@@ -20,6 +20,7 @@ param port int = 3000
 param rootScope string
 
 @description('Specifies the environment for resources.')
+#disable-next-line no-hardcoded-env-urls
 param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
 @description('Specifies the value of the secret that you want to create.')
