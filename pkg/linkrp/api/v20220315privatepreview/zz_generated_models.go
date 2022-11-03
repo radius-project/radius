@@ -1242,25 +1242,26 @@ type SQLDatabaseList struct {
 	Value []*SQLDatabaseResource `json:"value,omitempty"`
 }
 
+// SQLDatabasePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetSQLDatabaseProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *SQLDatabaseProperties, *SQLRecipeProperties, *SQLResourceProperties, *SQLValueProperties
+type SQLDatabasePropertiesClassification interface {
+	// GetSQLDatabaseProperties returns the SQLDatabaseProperties content of the underlying type.
+	GetSQLDatabaseProperties() *SQLDatabaseProperties
+}
+
 // SQLDatabaseProperties - SQLDatabse link properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The name of the SQL database.
-	Database *string `json:"database,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the SQL database link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with SQL API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// The fully qualified domain name of the SQL database.
-	Server *string `json:"server,omitempty"`
 
 	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1269,13 +1270,16 @@ type SQLDatabaseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
+func (s *SQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties { return s }
+
 // SQLDatabaseResource - SQLDatabse link
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// REQUIRED; SQLDatabse link properties
-	Properties *SQLDatabaseProperties `json:"properties,omitempty"`
+	Properties SQLDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -1311,6 +1315,117 @@ type SQLDatabasesClientGetOptions struct {
 // SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
 type SQLDatabasesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
+}
+
+type SQLRecipeProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the SQL database link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// READ-ONLY; The name of the SQL database.
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLRecipeProperties.
+func (s *SQLRecipeProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: s.ProvisioningState,
+		Mode: s.Mode,
+		Status: s.Status,
+		Environment: s.Environment,
+		Application: s.Application,
+	}
+}
+
+type SQLResourceProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID of a supported resource with SQL API to use for this link
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// READ-ONLY; The name of the SQL database.
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLResourceProperties.
+func (s *SQLResourceProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: s.ProvisioningState,
+		Mode: s.Mode,
+		Status: s.Status,
+		Environment: s.Environment,
+		Application: s.Application,
+	}
+}
+
+type SQLValueProperties struct {
+	// REQUIRED; The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the connector. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLValueProperties.
+func (s *SQLValueProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: s.ProvisioningState,
+		Mode: s.Mode,
+		Status: s.Status,
+		Environment: s.Environment,
+		Application: s.Application,
+	}
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
