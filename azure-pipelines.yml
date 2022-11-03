@@ -24,6 +24,10 @@ variables:
   value: edge
 - name: REL_VERSION
   value: pr-ado-$(Build.BuildNumber)
+- name: DE_IMAGE
+  value: radius.azurecr.io/deployment-engine
+- name: DE_TAG
+  value: latest
 - name: INTEGRATION_TEST_LOGANALYTICS_WORKSPACEID
   value: "/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourcegroups/radiusrplogs/providers/microsoft.operationalinsights/workspaces/rplogs"
 - name: INTEGRATION_TEST_SUBSCRIPTION_ID
@@ -149,6 +153,9 @@ stages:
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
       displayName: rad env init kubernetes
+    - script: |
+        kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
+      condition: always()
     - script: |
         kubectl get pods -n radius-system
         kubectl describe pods -n radius-system
