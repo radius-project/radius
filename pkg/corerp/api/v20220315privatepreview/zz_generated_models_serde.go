@@ -100,7 +100,7 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Environment", &a.Environment)
 				delete(rawMsg, key)
 		case "extensions":
-				a.Extensions, err = unmarshalExtensionClassificationArray(val)
+				a.Extensions, err = unmarshalApplicationExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
@@ -563,7 +563,7 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Environment", &c.Environment)
 				delete(rawMsg, key)
 		case "extensions":
-				c.Extensions, err = unmarshalExtensionClassificationArray(val)
+				c.Extensions, err = unmarshalContainerExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "identity":
 				err = unpopulate(val, "Identity", &c.Identity)
@@ -833,7 +833,7 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 				e.Compute, err = unmarshalEnvironmentComputeClassification(val)
 				delete(rawMsg, key)
 		case "extensions":
-				e.Extensions, err = unmarshalExtensionClassificationArray(val)
+				e.Extensions, err = unmarshalEnvironmentExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "providers":
 				err = unpopulate(val, "Providers", &e.Providers)

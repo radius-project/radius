@@ -69,7 +69,7 @@ type ApplicationProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
-	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+	Extensions []ApplicationExtensionClassification `json:"extensions,omitempty"`
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -323,7 +323,7 @@ type ContainerProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
-	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+	Extensions []ContainerExtensionClassification `json:"extensions,omitempty"`
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings `json:"identity,omitempty"`
@@ -510,7 +510,7 @@ type EnvironmentProperties struct {
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
 	// Extensions spec of the resource
-	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+	Extensions []EnvironmentExtensionClassification `json:"extensions,omitempty"`
 
 	// Cloud providers configuration for the environment.
 	Providers *Providers `json:"providers,omitempty"`

@@ -366,7 +366,7 @@
           "extensions": {
             "type": "array",
             "items": {
-              "$ref": "global.json#/definitions/Extension"
+              "$ref": "#/definitions/ApplicationExtension"
             },
             "description": "Extensions spec of the resource"
           }
