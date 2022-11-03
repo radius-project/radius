@@ -35,7 +35,10 @@ func (is *IdentitySettings) Validate() error {
 
 	if is.Kind == AzureIdentityWorkload {
 		if is.OIDCIssuer == "" {
-			return errors.New("oidcIssuer is required for workload identity")
+			return errors.New(".properties.oidcIssuer is required for workload identity")
+		}
+		if is.Resource != "" {
+			return errors.New(".properties.resource is read-only property")
 		}
 	}
 	return nil

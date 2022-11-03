@@ -81,15 +81,6 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 
-	var identity *rp.IdentitySettings
-	if src.Properties.Identity != nil {
-		identity = &rp.IdentitySettings{
-			Kind:       toIdentityKind(src.Properties.Identity.Kind),
-			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
-			// We ignore the resource property since it is readonly.
-		}
-	}
-
 	converted := &datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -121,7 +112,7 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
-			Identity:   identity,
+			Identity:   nil, // This property is read-only and populated in the deployment.
 		},
 	}
 

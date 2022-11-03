@@ -119,7 +119,7 @@
           "description": "The resource ID of the provisioned identity",
           "type": "string",
           "readOnly": true
-        },
+        }
       },
       "required": [
         "kind"
