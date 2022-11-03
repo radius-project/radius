@@ -5,6 +5,8 @@
 
 package identity
 
+import "errors"
+
 // IdentitySettingKind represents the kind of identity setting.
 type IdentitySettingKind string
 
@@ -25,4 +27,14 @@ type IdentitySettings struct {
 	Resource string `json:"resource,omitempty"`
 	// OIDCIssuer represents the name of OIDC issuer.
 	OIDCIssuer string `json:"oidcIssuer,omitempty"`
+}
+
+// Validate validates IdentitySettings.
+func (i *IdentitySettings) Validate() error {
+	if i.Kind == AzureIdentityWorkload {
+		if i.OIDCIssuer == "" {
+			return errors.New("oidcIssuer is required for workload identity")
+		}
+	}
+	return nil
 }

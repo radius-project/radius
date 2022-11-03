@@ -27,8 +27,7 @@ import (
 )
 
 var (
-	resourceID     = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
-	testIdentityID = "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
+	resourceID = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
 )
 
 func mustParseResourceID(id string) resources.ID {
@@ -73,32 +72,6 @@ func TestValidateRequest(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "unsuppoted-operation",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodDelete,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind: rpidentity.AzureIdentitySystemAssigned,
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    nil,
-			wantErr: nil,
-		},
-		{
 			name: "invalid-kind",
 			args: args{
 				ctx: v1.WithARMRequestContext(
@@ -122,89 +95,6 @@ func TestValidateRequest(t *testing.T) {
 				},
 			},
 			want:    rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", "unsupported-kind")),
-			wantErr: nil,
-		},
-		{
-			name: "workload-issuer-empty",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind:       rpidentity.AzureIdentityWorkload,
-								OIDCIssuer: "",
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    rest.NewBadRequestResponse("oidcIssuer is required for workload identity."),
-			wantErr: nil,
-		},
-		{
-			name: "workload-invalid-resource-id",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind:       rpidentity.AzureIdentityWorkload,
-								OIDCIssuer: "https://issuerurl",
-								Resource:   "invalid-id",
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    rest.NewBadRequestResponse("'invalid-id' is invalid resource for workload identity"),
-			wantErr: nil,
-		},
-		{
-			name: "valid-workload-identity",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind:       rpidentity.AzureIdentityWorkload,
-								OIDCIssuer: "https://issuerurl",
-								Resource:   testIdentityID,
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: crdFakeClient,
-				},
-			},
-			want:    nil,
 			wantErr: nil,
 		},
 		{

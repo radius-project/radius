@@ -12,7 +12,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,12 +27,6 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource,
 
 	switch newResource.Properties.Kind {
 	case datamodel.AzureKeyVaultVolume:
-		identity := newResource.Properties.AzureKeyVault.Identity
-		if identity.Kind == rpidentity.AzureIdentityWorkload {
-			if identity.OIDCIssuer == "" {
-				return rest.NewBadRequestResponse("oidcIssuer is required for workload identity."), nil
-			}
-		}
 		csiCRDValidationRequired = true
 	default:
 		return rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", newResource.Properties.Kind)), nil
