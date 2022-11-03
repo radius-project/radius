@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -63,27 +64,6 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 		beforeParams map[string]string
 		afterParams  map[string]string
 	}{
-		{
-			desc:         "azure.com.systemassigned",
-			identityKind: rp.AzureIdentitySystemAssigned,
-			err:          nil,
-			beforeParams: map[string]string{
-				"usePodIdentity":       "false",
-				"keyvaultName":         "vault0",
-				"objects":              "params",
-				"useVMManagedIdentity": "true",
-				"clientID":             "",
-				"tenantID":             "placeholder",
-			},
-			afterParams: map[string]string{
-				"usePodIdentity":       "false",
-				"keyvaultName":         "vault0",
-				"objects":              "params",
-				"useVMManagedIdentity": "true",
-				"clientID":             "",
-				"tenantID":             "placeholder",
-			},
-		},
 		{
 			desc:         "azure.com.workload",
 			identityKind: rp.AzureIdentityWorkload,

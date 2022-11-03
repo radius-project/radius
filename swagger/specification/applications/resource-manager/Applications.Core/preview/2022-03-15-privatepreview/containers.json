@@ -314,6 +314,8 @@
       }
     },
     "IamProperties": {
+      "description": "The properties of IAM",
+      "type": "object",
       "properties": {
         "kind": {
           "description": "The kind of IAM provider to configure",
@@ -747,6 +749,10 @@
         "container": {
           "$ref": "#/definitions/Container",
           "description": "Definition of a container."
+        },
+        "identity": {
+          "description": "Configuration for supported external identity providers",
+          "$ref": "global.json#/definitions/IdentitySettings"
         },
         "extensions": {
           "type": "array",

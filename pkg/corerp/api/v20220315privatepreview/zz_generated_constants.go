@@ -90,15 +90,15 @@ func PossibleFormatValues() []Format {
 type IdentitySettingKind string
 
 const (
+	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
 	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
-	IdentitySettingKindAzureComSystemassigned IdentitySettingKind = "azure.com.systemassigned"
 )
 
 // PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
 func PossibleIdentitySettingKindValues() []IdentitySettingKind {
 	return []IdentitySettingKind{	
+		IdentitySettingKindUndefined,
 		IdentitySettingKindAzureComWorkload,
-		IdentitySettingKindAzureComSystemassigned,
 	}
 }
 

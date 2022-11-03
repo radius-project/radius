@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
@@ -27,8 +26,8 @@ import (
 )
 
 var (
-	resourceID     = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
-	testIdentityID = "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
+	resourceID = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
+	keyvaultID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0"
 )
 
 func mustParseResourceID(id string) resources.ID {
@@ -73,32 +72,6 @@ func TestValidateRequest(t *testing.T) {
 		wantErr error
 	}{
 		{
-			name: "unsuppoted-operation",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodDelete,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind: rp.AzureIdentitySystemAssigned,
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    nil,
-			wantErr: nil,
-		},
-		{
 			name: "invalid-kind",
 			args: args{
 				ctx: v1.WithARMRequestContext(
@@ -108,12 +81,8 @@ func TestValidateRequest(t *testing.T) {
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
-						Kind: "unsupported-kind",
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind: rp.AzureIdentitySystemAssigned,
-							},
-						},
+						Kind:          "unsupported-kind",
+						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{},
 					},
 				},
 				oldResource: &datamodel.VolumeResource{},
@@ -122,89 +91,6 @@ func TestValidateRequest(t *testing.T) {
 				},
 			},
 			want:    rest.NewBadRequestResponse(fmt.Sprintf("invalid resource kind: %s", "unsupported-kind")),
-			wantErr: nil,
-		},
-		{
-			name: "workload-issuer-empty",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind:       rp.AzureIdentityWorkload,
-								OIDCIssuer: "",
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    rest.NewBadRequestResponse("oidcIssuer is required for workload identity."),
-			wantErr: nil,
-		},
-		{
-			name: "workload-invalid-resource-id",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind:       rp.AzureIdentityWorkload,
-								OIDCIssuer: "https://issuerurl",
-								Resource:   "invalid-id",
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: defaultFakeClient,
-				},
-			},
-			want:    rest.NewBadRequestResponse("'invalid-id' is invalid resource for workload identity"),
-			wantErr: nil,
-		},
-		{
-			name: "valid-workload-identity",
-			args: args{
-				ctx: v1.WithARMRequestContext(
-					context.Background(), &v1.ARMRequestContext{
-						ResourceID: mustParseResourceID(resourceID),
-						HTTPMethod: http.MethodPut,
-					}),
-				newResource: &datamodel.VolumeResource{
-					Properties: datamodel.VolumeResourceProperties{
-						Kind: datamodel.AzureKeyVaultVolume,
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind:       rp.AzureIdentityWorkload,
-								OIDCIssuer: "https://issuerurl",
-								Resource:   testIdentityID,
-							},
-						},
-					},
-				},
-				oldResource: &datamodel.VolumeResource{},
-				options: &controller.Options{
-					KubeClient: crdFakeClient,
-				},
-			},
-			want:    nil,
 			wantErr: nil,
 		},
 		{
@@ -219,9 +105,7 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind: rp.AzureIdentitySystemAssigned,
-							},
+							Resource: keyvaultID,
 						},
 					},
 				},
@@ -245,9 +129,7 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rp.IdentitySettings{
-								Kind: rp.AzureIdentitySystemAssigned,
-							},
+							Resource: keyvaultID,
 						},
 					},
 				},

@@ -38,6 +38,11 @@
         }
       }
     },
+    "identity": {
+      "kind": "azure.com.workload",
+      "oidcIssuer": "https://oidcuri/id",
+      "resource": "resourceid"
+    },
     "container": {
       "image": "radius.azurecr.io/webapptutorial-todoapp",
       "livenessProbe": {

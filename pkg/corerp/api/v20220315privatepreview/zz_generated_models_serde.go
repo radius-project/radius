@@ -201,7 +201,6 @@ func (a AzureKeyVaultVolumeProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", a.Application)
 	populate(objectMap, "certificates", a.Certificates)
 	populate(objectMap, "environment", a.Environment)
-	populate(objectMap, "identity", a.Identity)
 	populate(objectMap, "keys", a.Keys)
 	objectMap["kind"] = "azure.com.keyvault"
 	populate(objectMap, "provisioningState", a.ProvisioningState)
@@ -228,9 +227,6 @@ func (a *AzureKeyVaultVolumeProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
-				delete(rawMsg, key)
-		case "identity":
-				err = unpopulate(val, "Identity", &a.Identity)
 				delete(rawMsg, key)
 		case "keys":
 				err = unpopulate(val, "Keys", &a.Keys)
@@ -539,6 +535,7 @@ func (c ContainerProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "container", c.Container)
 	populate(objectMap, "environment", c.Environment)
 	populate(objectMap, "extensions", c.Extensions)
+	populate(objectMap, "identity", c.Identity)
 	populate(objectMap, "provisioningState", c.ProvisioningState)
 	populate(objectMap, "status", c.Status)
 	return json.Marshal(objectMap)
@@ -567,6 +564,9 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "extensions":
 				c.Extensions, err = unmarshalExtensionClassificationArray(val)
+				delete(rawMsg, key)
+		case "identity":
+				err = unpopulate(val, "Identity", &c.Identity)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &c.ProvisioningState)

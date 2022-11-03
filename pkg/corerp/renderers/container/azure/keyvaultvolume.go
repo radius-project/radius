@@ -94,14 +94,6 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 	}
 
 	switch envOpt.Identity.Kind {
-	case rp.AzureIdentitySystemAssigned:
-		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
-		params["useVMManagedIdentity"] = "true"
-		// clientID must be empty for system assigned managed identity
-		params["clientID"] = ""
-		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
-		params["tenantID"] = "placeholder"
-
 	case rp.AzureIdentityWorkload:
 		break
 

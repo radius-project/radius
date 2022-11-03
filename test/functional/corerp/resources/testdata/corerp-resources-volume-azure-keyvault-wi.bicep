@@ -1,9 +1,9 @@
 // This is the template to create keyvault volume with workload identity specified in radius volume resource.
 //
-// 1. Create User assigned managed identity and keyvault resource
-// 2. Assign User assigned managed identity to Keyvault resource as Keyvault admin role.
-// 3. Create Radius Volume resource with workload identity for the keyvault created by step 1.
-// 4. Associate Radius volume to Container resource.
+// 1. Create the keyvault resource and test secret
+// 2. Create the environment with workload identity and root scope where radius will create managed identity.
+// 3. Create Keyvault volume.
+// 4. Create container which associated keyvault volume.
 
 import radius as radius
 
@@ -16,11 +16,12 @@ param magpieimage string
 @description('Specifies the port of the container resource.')
 param port int = 3000
 
-@description('Specifies the environment for resources.')
-param environment string
+@description('Specifies the scope of azure resources.')
+param rootScope string
 
 @description('Specifies the environment for resources.')
-param oidcIssuer string = 'https://radiusworkload-test'
+#disable-next-line no-hardcoded-env-urls
+param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
 @description('Specifies the value of the secret that you want to create.')
 @secure()
@@ -29,16 +30,33 @@ param mySecretValue string = newGuid()
 @description('Specifies the value of tenantId.')
 param keyvaultTenantID string = subscription().tenantId
 
-@description('Specifies the value of keyvault admin role.')
-param keyvaultAdminRoleDefinitionId string = '/providers/Microsoft.Authorization/roleDefinitions/00482a5a-887f-4fb3-b363-3b7fe8e74483'
 
-
+resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
+  name: 'corerp-azure-workload-env'
+  location: location
+  properties: {
+    compute: {
+      kind: 'kubernetes'
+      resourceId: 'self'
+      namespace: 'corerp-azure-workload-env'
+      identity: {
+        kind: 'azure.com.workload'
+        oidcIssuer: oidcIssuer
+      }
+    }
+    providers: {
+      azure: {
+        scope: rootScope
+      }
+    }
+  }
+}
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-volume-azkv'
   location: location
   properties: {
-    environment: environment
+    environment: env.id
   }
 }
 
@@ -48,11 +66,6 @@ resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = 
   properties: {
     application: app.id
     kind: 'azure.com.keyvault'
-    identity: {
-      kind: 'azure.com.workload'
-      resource: kvVolIdentity.id
-      oidcIssuer: oidcIssuer
-    }
     resource: azTestKeyvault.id
     secrets: {
       mysecret: {
@@ -105,16 +118,6 @@ resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
       name: 'standard'
       family: 'A'
     }
-  }
-}
-
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-04-01-preview' = {
-  scope: azTestKeyvault
-  name: guid(azTestKeyvault.id, kvVolIdentity.id, keyvaultAdminRoleDefinitionId)
-  properties: {
-    roleDefinitionId: keyvaultAdminRoleDefinitionId
-    principalId: kvVolIdentity.properties.principalId
-    principalType: 'ServicePrincipal'
   }
 }
 

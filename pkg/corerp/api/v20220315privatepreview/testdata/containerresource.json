@@ -47,6 +47,11 @@
       ],
       "workingDir": "/app"
     },
+    "identity": {
+      "kind": "azure.com.workload",
+      "oidcIssuer": "https://oidcuri/id",
+      "resource": "resourceid"
+    },
     "extensions": [
       {
         "extension": {

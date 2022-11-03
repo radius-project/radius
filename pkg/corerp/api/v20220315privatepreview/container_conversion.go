@@ -115,6 +115,14 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 	}
 
+	if src.Properties.Identity != nil {
+		converted.Properties.Identity = &rp.IdentitySettings{
+			Kind:       toIdentityKind(src.Properties.Identity.Kind),
+			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
+			Resource:   to.String(src.Properties.Identity.Resource),
+		}
+	}
+
 	return converted, nil
 }
 
@@ -185,6 +193,15 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
+	var identity *IdentitySettings
+	if c.Properties.Identity != nil {
+		identity = &IdentitySettings{
+			Kind:       fromIdentityKind(c.Properties.Identity.Kind),
+			Resource:   azto.Ptr(c.Properties.Identity.Resource),
+			OidcIssuer: azto.Ptr(c.Properties.Identity.OIDCIssuer),
+		}
+	}
+
 	dst.ID = to.StringPtr(c.ID)
 	dst.Name = to.StringPtr(c.Name)
 	dst.Type = to.StringPtr(c.Type)
@@ -210,6 +227,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 			WorkingDir:     to.StringPtr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
+		Identity:   identity,
 	}
 
 	return nil

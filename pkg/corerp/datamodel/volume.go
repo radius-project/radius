@@ -60,8 +60,6 @@ type VolumeResourceProperties struct {
 
 // AzureKeyVaultVolumeProperties represents the volume for Azure Keyvault.
 type AzureKeyVaultVolumeProperties struct {
-	// The identity is to access keyvault
-	Identity rp.IdentitySettings `json:"identity"`
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]CertificateObjectProperties `json:"certificates,omitempty"`
 	// The KeyVault keys that this volume exposes

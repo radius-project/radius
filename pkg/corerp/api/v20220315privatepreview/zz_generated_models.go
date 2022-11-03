@@ -137,9 +137,6 @@ type AzureKeyVaultVolumeProperties struct {
 	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
-	// REQUIRED; Configuration for supported external identity providers
-	Identity *IdentitySettings `json:"identity,omitempty"`
-
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
 
@@ -212,6 +209,8 @@ type ConnectionProperties struct {
 	// REQUIRED; The source of the connection
 	Source *string `json:"source,omitempty"`
 	DisableDefaultEnvVars *bool `json:"disableDefaultEnvVars,omitempty"`
+
+	// The properties of IAM
 	Iam *IamProperties `json:"iam,omitempty"`
 }
 
@@ -325,6 +324,9 @@ type ContainerProperties struct {
 
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -957,6 +959,7 @@ type HealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties { return h }
 
+// IamProperties - The properties of IAM
 type IamProperties struct {
 	// REQUIRED; The kind of IAM provider to configure
 	Kind *Kind `json:"kind,omitempty"`
@@ -972,7 +975,7 @@ type IdentitySettings struct {
 	// The URI for your compute platform's OIDC issuer
 	OidcIssuer *string `json:"oidcIssuer,omitempty"`
 
-	// The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
+	// The resource ID of the provisioned identity
 	Resource *string `json:"resource,omitempty"`
 }
 
