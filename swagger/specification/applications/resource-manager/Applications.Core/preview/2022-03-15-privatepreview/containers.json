@@ -314,6 +314,8 @@
       }
     },
     "IamProperties": {
+      "description": "The properties of IAM",
+      "type": "object",
       "properties": {
         "kind": {
           "description": "The kind of IAM provider to configure",
@@ -750,7 +752,8 @@
         },
         "identity": {
           "description": "Configuration for supported external identity providers",
-          "$ref": "global.json#/definitions/IdentitySettings"
+          "$ref": "global.json#/definitions/IdentitySettings",
+          "readOnly": true
         },
         "extensions": {
           "type": "array",

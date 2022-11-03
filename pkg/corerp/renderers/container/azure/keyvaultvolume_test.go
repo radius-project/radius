@@ -65,27 +65,6 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 		afterParams  map[string]string
 	}{
 		{
-			desc:         "azure.com.systemassigned",
-			identityKind: rpidentity.AzureIdentitySystemAssigned,
-			err:          nil,
-			beforeParams: map[string]string{
-				"usePodIdentity":       "false",
-				"keyvaultName":         "vault0",
-				"objects":              "params",
-				"useVMManagedIdentity": "true",
-				"clientID":             "",
-				"tenantID":             "placeholder",
-			},
-			afterParams: map[string]string{
-				"usePodIdentity":       "false",
-				"keyvaultName":         "vault0",
-				"objects":              "params",
-				"useVMManagedIdentity": "true",
-				"clientID":             "",
-				"tenantID":             "placeholder",
-			},
-		},
-		{
 			desc:         "azure.com.workload",
 			identityKind: rpidentity.AzureIdentityWorkload,
 			err:          nil,

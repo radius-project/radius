@@ -1087,7 +1087,6 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					},
 					Kind: datamodel.AzureKeyVaultVolume,
 					AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-						Identity: rpidentity.IdentitySettings{Kind: rpidentity.AzureIdentitySystemAssigned},
 						Resource: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
 						Secrets: map[string]datamodel.SecretObjectProperties{
 							"my-secret": {

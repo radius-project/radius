@@ -78,8 +78,6 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 
 func fromIdentityKind(kind rpidentity.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
-	case rpidentity.AzureIdentitySystemAssigned:
-		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
 	case rpidentity.AzureIdentityWorkload:
 		return azto.Ptr(IdentitySettingKindAzureComWorkload)
 	default:
@@ -93,8 +91,6 @@ func toIdentityKind(kind *IdentitySettingKind) rpidentity.IdentitySettingKind {
 	}
 
 	switch *kind {
-	case IdentitySettingKindAzureComSystemassigned:
-		return rpidentity.AzureIdentitySystemAssigned
 	case IdentitySettingKindAzureComWorkload:
 		return rpidentity.AzureIdentityWorkload
 	default:

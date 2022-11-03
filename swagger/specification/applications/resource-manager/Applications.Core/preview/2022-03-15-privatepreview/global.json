@@ -102,8 +102,8 @@
           "description": "Configuration for supported external identity providers",
           "type": "string",
           "enum": [
-            "azure.com.workload",
-            "azure.com.systemassigned"
+            "undefined",
+            "azure.com.workload"
           ],
           "default": "azure.com.workload",
           "x-ms-enum": {

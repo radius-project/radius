@@ -8,7 +8,6 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
@@ -61,8 +60,6 @@ type VolumeResourceProperties struct {
 
 // AzureKeyVaultVolumeProperties represents the volume for Azure Keyvault.
 type AzureKeyVaultVolumeProperties struct {
-	// The identity is to access keyvault
-	Identity rpidentity.IdentitySettings `json:"identity"`
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]CertificateObjectProperties `json:"certificates,omitempty"`
 	// The KeyVault keys that this volume exposes

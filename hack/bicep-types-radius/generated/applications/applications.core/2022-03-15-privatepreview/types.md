@@ -134,7 +134,7 @@
 * **container**: [Container](#container) (Required): Definition of a container.
 * **environment**: string: The resource id of the environment linked to the resource
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
-* **identity**: [IdentitySettings](#identitysettings)
+* **identity**: [IdentitySettings](#identitysettings) (ReadOnly)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -146,7 +146,7 @@
 ## ConnectionProperties
 ### Properties
 * **disableDefaultEnvVars**: bool
-* **iam**: [IamProperties](#iamproperties)
+* **iam**: [IamProperties](#iamproperties): The properties of IAM
 * **source**: string (Required): The source of the connection
 
 ## IamProperties
@@ -237,7 +237,7 @@
 
 ## IdentitySettings
 ### Properties
-* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
+* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
 * **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
 * **resource**: string (ReadOnly): The resource ID of the provisioned identity
 

@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
@@ -28,6 +27,7 @@ import (
 
 var (
 	resourceID = "/subscriptions/test-subscription-id/resourceGroups/test-resource-group/providers/applications.core/volumes/test-volume"
+	keyvaultID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0"
 )
 
 func mustParseResourceID(id string) resources.ID {
@@ -81,12 +81,8 @@ func TestValidateRequest(t *testing.T) {
 					}),
 				newResource: &datamodel.VolumeResource{
 					Properties: datamodel.VolumeResourceProperties{
-						Kind: "unsupported-kind",
-						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind: rpidentity.AzureIdentitySystemAssigned,
-							},
-						},
+						Kind:          "unsupported-kind",
+						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{},
 					},
 				},
 				oldResource: &datamodel.VolumeResource{},
@@ -109,9 +105,7 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind: rpidentity.AzureIdentitySystemAssigned,
-							},
+							Resource: keyvaultID,
 						},
 					},
 				},
@@ -135,9 +129,7 @@ func TestValidateRequest(t *testing.T) {
 					Properties: datamodel.VolumeResourceProperties{
 						Kind: datamodel.AzureKeyVaultVolume,
 						AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-							Identity: rpidentity.IdentitySettings{
-								Kind: rpidentity.AzureIdentitySystemAssigned,
-							},
+							Resource: keyvaultID,
 						},
 					},
 				},

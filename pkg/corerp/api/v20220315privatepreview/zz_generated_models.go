@@ -209,6 +209,8 @@ type ConnectionProperties struct {
 	// REQUIRED; The source of the connection
 	Source *string `json:"source,omitempty"`
 	DisableDefaultEnvVars *bool `json:"disableDefaultEnvVars,omitempty"`
+
+	// The properties of IAM
 	Iam *IamProperties `json:"iam,omitempty"`
 }
 
@@ -323,8 +325,8 @@ type ContainerProperties struct {
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
 
-	// Configuration for supported external identity providers
-	Identity *IdentitySettings `json:"identity,omitempty"`
+	// READ-ONLY; Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty" azure:"ro"`
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -957,6 +959,7 @@ type HealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties { return h }
 
+// IamProperties - The properties of IAM
 type IamProperties struct {
 	// REQUIRED; The kind of IAM provider to configure
 	Kind *Kind `json:"kind,omitempty"`
