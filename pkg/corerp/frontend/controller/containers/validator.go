@@ -16,7 +16,7 @@ import (
 // ValidateRequest validates and mutate the incoming request.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.ContainerResource, oldResource *datamodel.ContainerResource, options *controller.Options) (rest.Response, error) {
 	if newResource.Properties.Identity != nil {
-		return rest.NewBadRequestResponse("The user-defined identity in Applications.Core/containers is not supported now."), nil
+		return rest.NewBadRequestResponse("User-defined identity in Applications.Core/containers is not supported."), nil
 	}
 
 	if oldResource != nil {
