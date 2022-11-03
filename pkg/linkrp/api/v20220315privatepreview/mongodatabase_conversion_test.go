@@ -61,6 +61,32 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
+func TestMongoDatabase_InvalidConvertVersionedToDataModel(t *testing.T) {
+	testset := []string{"mongodatabaseresource_invalidmode.json", "mongodatabaseresource_invalidmode2.json", "mongodatabaseresource_invalidmode3.json"}
+	for _, payload := range testset {
+		// arrange
+		rawPayload := loadTestData(payload)
+		versionedResource := &MongoDatabaseResource{}
+		err := json.Unmarshal(rawPayload, versionedResource)
+		require.NoError(t, err)
+		var expectedErr conv.ErrClientRP
+		if payload == "mongodatabaseresource_invalidmode.json" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "Invalid Mode for mongo database"
+		}
+		if payload == "mongodatabaseresource_invalidmode2.json" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "resource is a required properties"
+		}
+		if payload == "mongodatabaseresource_invalidmode3.json" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "recipe is a required properties"
+		}
+		_, err = versionedResource.ConvertTo()
+		require.Equal(t, &expectedErr, err)
+	}
+}
+
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	testset := []string{"mongodatabaseresourcedatamodel2.json"}
 	for _, payload := range testset {

@@ -48,18 +48,12 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	case datamodel.MongoDatabaseModeResource:
 		// Source resource identifier is provided
 		// Currently only Azure resources are supported with non empty resource id
-		if resource.Properties.Resource == "" {
-			return renderers.RendererOutput{}, nil
-		}
 		rendererOutput, err := RenderAzureResource(resource.Properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		return rendererOutput, nil
 	case datamodel.MongoDatabaseModeValues:
-		if resource.Properties.Host == "" || resource.Properties.Port == 0 {
-			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("host/port are required properties")
-		}
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{

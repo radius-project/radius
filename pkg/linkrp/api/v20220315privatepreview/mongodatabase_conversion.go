@@ -41,6 +41,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	}
 	switch v := src.Properties.(type) {
 	case *MongoDatabaseResourceProperties:
+		if v.Resource == nil {
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("resource is a required properties")
+		}
 		converted.Properties.MongoDatabaseResourceProperties = datamodel.MongoDatabaseResourceProperties{
 			Resource: to.String(v.Resource),
 		}
@@ -56,6 +59,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 	case *MongoDatabaseValuesProperties:
+		if v.Host == nil || v.Port == nil {
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("host/port are required properties")
+		}
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Database = to.String(v.Database)
@@ -68,6 +74,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 	case *MongoDatabaseRecipeProperties:
+		if v.Recipe == nil {
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("recipe is a required properties")
+		}
 		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
 		}
