@@ -10,9 +10,10 @@ import (
 	"encoding/json"
 	"testing"
 
+	rp_testing "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/stretchr/testify/require"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"k8s.io/kubectl/pkg/scheme"
 )
 
 const (
@@ -21,55 +22,115 @@ const (
 
 func Test_Save(t *testing.T) {
 	k8sFakeClient := Client{
-		K8sClient: fake.NewClientBuilder().Build(),
+		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
 	}
-	runTests(t, &k8sFakeClient)
-}
-
-func runTests(t *testing.T, k8sClient *Client) {
 	ctx := context.Background()
 	secretValue, err := json.Marshal("test_secret_value")
 	require.NoError(t, err)
+	updatedSecretValue, err := json.Marshal("updated_secret_value")
+	require.NoError(t, err)
+	tests := []struct {
+		testName    string
+		secretName  string
+		secretValue []byte
+		update      bool
+		err         error
+	}{
+		{"save-new-secret", SecretName, secretValue, false, nil},
+		{"update-secret", SecretName, secretValue, true, nil},
+		{"save-with-invalid-name", "", secretValue, false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
+		{"save-with-empty-secret", SecretName, nil, false, &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}},
+	}
 
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			err := k8sFakeClient.Save(ctx, tt.secretName, tt.secretValue)
+			require.Equal(t, err, tt.err)
+			if tt.update {
+				err := k8sFakeClient.Save(ctx, tt.secretName, updatedSecretValue)
+				require.Equal(t, err, tt.err)
+			}
+			// if save is expected to succeed, then compare saved secret and delete after test
+			if tt.err == nil {
+				res, err := k8sFakeClient.Get(ctx, tt.secretName)
+				require.NoError(t, err)
+				if tt.update {
+					require.Equal(t, res, updatedSecretValue)
+				} else {
+					require.Equal(t, res, secretValue)
+				}
+				err = k8sFakeClient.Delete(ctx, tt.secretName)
+				require.NoError(t, err)
+			}
+		})
+	}
+}
+
+func Test_Get(t *testing.T) {
+	k8sFakeClient := Client{
+		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
+	}
+	ctx := context.Background()
+	secretValue, err := json.Marshal("test_secret_value")
+	require.NoError(t, err)
 	tests := []struct {
 		testName   string
 		secretName string
-		secret     []byte
 		save       bool
-		saveAgain  bool
-		get        bool
-		delete     bool
 		err        error
 	}{
-		{"save-new-secret-success", SecretName, secretValue, true, false, true, true, nil},
-		{"update-existing-secret-success", SecretName, secretValue, true, true, true, true, nil},
-		{"get-non-existent-secret", SecretName, secretValue, false, false, true, false, &secret.ErrNotFound{}},
-		{"delete-non-existent-secret", SecretName, secretValue, false, false, false, true, &secret.ErrNotFound{}},
-		{"save-with-invalid-name", "", secretValue, true, false, false, false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
-		{"save-with-empty-secret", SecretName, nil, true, false, false, false, &secret.ErrInvalid{Message: "invalid argument. 'value' is required"}},
+		{"get-secret", SecretName, true, nil},
+		{"get-non-existent-secret", SecretName, false, &secret.ErrNotFound{}},
+		{"get-with-invalid-name", "", false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.testName, func(t *testing.T) {
 			if tt.save {
-				err := k8sClient.Save(ctx, tt.secretName, tt.secret)
-				require.Equal(t, err, tt.err)
-			}
-			if tt.saveAgain {
-				err := k8sClient.Save(ctx, tt.secretName, tt.secret)
+				err := k8sFakeClient.Save(ctx, tt.secretName, secretValue)
 				require.NoError(t, err)
 			}
-			if tt.get {
-				res, err := k8sClient.Get(ctx, tt.secretName)
-				require.Equal(t, err, tt.err)
-				if tt.err == nil {
-					require.Equal(t, res, secretValue)
-				}
+			res, err := k8sFakeClient.Get(ctx, tt.secretName)
+			require.Equal(t, err, tt.err)
+			// if the get is successful then compare for values
+			if tt.err == nil {
+				require.Equal(t, res, secretValue)
 			}
-			if tt.delete {
-				err := k8sClient.Delete(ctx, tt.secretName)
-				require.Equal(t, err, tt.err)
+			// if secret is saved, cleanup secret at the end
+			if tt.save {
+				err = k8sFakeClient.Delete(ctx, tt.secretName)
+				require.NoError(t, err)
 			}
+		})
+	}
+}
+
+func Test_Delete(t *testing.T) {
+	k8sFakeClient := Client{
+		K8sClient: rp_testing.NewFakeKubeClient(scheme.Scheme),
+	}
+	ctx := context.Background()
+	secretValue, err := json.Marshal("test_secret_value")
+	require.NoError(t, err)
+	tests := []struct {
+		testName   string
+		secretName string
+		save       bool
+		err        error
+	}{
+		{"delete-secret", SecretName, true, nil},
+		{"delete-non-existent-secret", SecretName, false, &secret.ErrNotFound{}},
+		{"delete-with-invalid-name", "", false, &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.testName, func(t *testing.T) {
+			if tt.save {
+				err := k8sFakeClient.Save(ctx, tt.secretName, secretValue)
+				require.NoError(t, err)
+			}
+			err = k8sFakeClient.Delete(ctx, tt.secretName)
+			require.Equal(t, err, tt.err)
 		})
 	}
 }

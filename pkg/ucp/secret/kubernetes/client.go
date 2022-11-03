@@ -66,6 +66,9 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 
 // Delete deletes the secret resource with id.
 func (c *Client) Delete(ctx context.Context, name string) error {
+	if name == "" {
+		return &secret.ErrInvalid{Message: "invalid argument. 'name' is required"}
+	}
 	secretName := util.NormalizeStringToLower(name)
 	secretObject := &corev1.Secret{
 		ObjectMeta: v1.ObjectMeta{
@@ -78,6 +81,7 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 		if is404Error(err) {
 			return &secret.ErrNotFound{}
 		}
+		return err
 	}
 	return nil
 }
