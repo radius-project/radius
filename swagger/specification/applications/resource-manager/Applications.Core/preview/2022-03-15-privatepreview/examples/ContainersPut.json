@@ -22,10 +22,6 @@
             "while true; do echo hello; sleep 10;done"
           ],
           "workingDir": "/app"
-        },
-        "identity": {
-          "kind": "azure.com.workload",
-          "oidcIssuer": "https://oidcissuer/oidc"
         }
       }
     }
