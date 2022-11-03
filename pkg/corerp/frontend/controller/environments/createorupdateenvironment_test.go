@@ -564,10 +564,10 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		ctl, err := NewCreateOrUpdateEnvironment(opts)
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, w, req)
-		require.Error(
+		require.ErrorContains(
 			t,
 			err,
-			"recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0) has a name that is reserved for devRecipes.")
+			"recipe name(s) reserved for devRecipes for: recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0)")
 	})
 
 	t.Run("Existing user recipe conflicts with dev recipe names ", func(t *testing.T) {
@@ -593,10 +593,10 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		ctl, err := NewCreateOrUpdateEnvironment(opts)
 		require.NoError(t, err)
 		_, err = ctl.Run(ctx, w, req)
-		require.Error(
+		require.ErrorContains(
 			t,
 			err,
-			"recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0) has a name that is reserved for devRecipes.")
+			"recipe name(s) reserved for devRecipes for: recipe with name mongo-azure (linkType Applications.Link/mongoDatabases and templatePath radiusdev.azurecr.io/mongo:1.0)")
 	})
 }
 
@@ -663,7 +663,7 @@ func TestParseRepoPathForMetadata(t *testing.T) {
 	}
 }
 
-func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
+func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 	t.Run("No overlap between user and dev recipes", func(t *testing.T) {
 		devRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
@@ -712,7 +712,7 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 		}
 
 		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
-		require.Error(t, err, fmt.Sprintf(
+		require.ErrorContains(t, err, fmt.Sprintf(
 			"recipe name(s) reserved for devRecipes for: recipe with name %s (linkType %s and templatePath %s)",
 			"mongo-azure",
 			userRecipes["mongo-azure"].LinkType,
@@ -741,11 +741,16 @@ func TestEnsureUserRecipesHaveValidNames(t *testing.T) {
 		}
 
 		err := ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes)
-		require.Error(t, err, fmt.Sprintf(
-			"recipe name(s) reserved for devRecipes for: recipe with name %s (linkType %s and templatePath %s), recipe with name %s (linkType %s and templatePath %s)",
+		require.ErrorContains(t, err, "recipe name(s) reserved for devRecipes for:")
+
+		require.ErrorContains(t, err, fmt.Sprintf(
+			"recipe with name %s (linkType %s and templatePath %s)",
 			"mongo-azure",
 			userRecipes["mongo-azure"].LinkType,
-			userRecipes["mongo-azure"].TemplatePath,
+			userRecipes["mongo-azure"].TemplatePath))
+
+		require.ErrorContains(t, err, fmt.Sprintf(
+			"recipe with name %s (linkType %s and templatePath %s)",
 			"redis-azure",
 			userRecipes["redis-azure"].LinkType,
 			userRecipes["redis-azure"].TemplatePath))

@@ -196,7 +196,7 @@ func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]dat
 			errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
 		}
 
-		return fmt.Errorf(errorPrefix + errorPrefix)
+		return fmt.Errorf(errorPrefix + errorRecipes)
 	}
 
 	return nil
