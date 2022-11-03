@@ -316,17 +316,10 @@
           "example": [
             "account::mongodb.id"
           ]
-        },
-        "secrets": {
-          "type": "object",
-          "x-ms-secret": true,
-          "description": "Secrets values provided for the resource",
-          "$ref": "#/definitions/MongoDatabaseSecrets"
         }
       },
       "required": [
-        "resource",
-        "mode"
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "resource"
@@ -338,8 +331,7 @@
           "$ref": "#/definitions/MongoDatabaseProperties"
         },
         {
-          "$ref": "#/definitions/MongoDatabaseValues",
-          "readOnly": true
+          "$ref": "#/definitions/MongoDatabaseValues"
         }
       ],
       "properties": { 
@@ -347,17 +339,9 @@
           "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link",
           "type": "object",
           "$ref": "global.json#/definitions/Recipe"
-        },
-        "secrets": {
-          "type": "object",
-          "description": "Secrets values provided for the resource",
-          "readOnly": true,
-          "x-ms-secret": true,
-          "$ref": "#/definitions/MongoDatabaseSecrets"
         }
       },
       "required": [
-        "mode",
         "recipe"
       ],
       "type": "object",
@@ -373,26 +357,15 @@
           "$ref": "#/definitions/MongoDatabaseValues"
         }
       ],
-      "properties": {
-        "secrets": {
-          "x-ms-secret": true,
-          "type": "object",
-          "description": "Secrets values provided for the resource",
-          "$ref": "#/definitions/MongoDatabaseSecrets"
-        }
-      },
       "required": [
         "host",
-        "port",
-        "database",
-        "mode"
+        "port"
       ],
       "type": "object",
       "x-ms-discriminator-value": "values"
     },
     "MongoDatabaseValues": {
       "additionalProperties": false,
-      "type": "object",
       "properties": {
         "host": {
           "description": "Host name of the target Mongo database",
@@ -407,6 +380,7 @@
         },
         "database": {
           "description": "Database name of the target Mongo database",
+          "readOnly": true,
           "type": "string"
         }
       }
@@ -434,6 +408,12 @@
             "recipe",
             "values"
           ] 
+        },
+        "secrets": {
+          "x-ms-secret": true,
+          "type": "object",
+          "description": "Secrets values provided for the resource",
+          "$ref": "#/definitions/MongoDatabaseSecrets"
         }    
       },
       "required": [

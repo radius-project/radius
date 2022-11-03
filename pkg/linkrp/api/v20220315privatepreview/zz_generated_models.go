@@ -788,6 +788,9 @@ type MongoDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -812,20 +815,20 @@ type MongoDatabaseRecipeProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
@@ -836,6 +839,7 @@ func (m *MongoDatabaseRecipeProperties) GetMongoDatabaseProperties() *MongoDatab
 	return &MongoDatabaseProperties{
 		ProvisioningState: m.ProvisioningState,
 		Mode: m.Mode,
+		Secrets: m.Secrets,
 		Status: m.Status,
 		Environment: m.Environment,
 		Application: m.Application,
@@ -880,9 +884,6 @@ type MongoDatabaseResourceProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -891,6 +892,9 @@ type MongoDatabaseResourceProperties struct {
 
 	// Secrets values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -904,6 +908,7 @@ func (m *MongoDatabaseResourceProperties) GetMongoDatabaseProperties() *MongoDat
 	return &MongoDatabaseProperties{
 		ProvisioningState: m.ProvisioningState,
 		Mode: m.Mode,
+		Secrets: m.Secrets,
 		Status: m.Status,
 		Environment: m.Environment,
 		Application: m.Application,
@@ -923,14 +928,14 @@ type MongoDatabaseSecrets struct {
 }
 
 type MongoDatabaseValues struct {
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
 	// Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 }
 
 type MongoDatabaseValuesProperties struct {
@@ -944,9 +949,6 @@ type MongoDatabaseValuesProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Database name of the target Mongo database
-	Database *string `json:"database,omitempty"`
-
 	// Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
@@ -955,6 +957,9 @@ type MongoDatabaseValuesProperties struct {
 
 	// Secrets values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -968,6 +973,7 @@ func (m *MongoDatabaseValuesProperties) GetMongoDatabaseProperties() *MongoDatab
 	return &MongoDatabaseProperties{
 		ProvisioningState: m.ProvisioningState,
 		Mode: m.Mode,
+		Secrets: m.Secrets,
 		Status: m.Status,
 		Environment: m.Environment,
 		Application: m.Application,

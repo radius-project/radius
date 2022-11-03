@@ -1305,6 +1305,7 @@ func (m MongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", m.Environment)
 	objectMap["mode"] = m.Mode
 	populate(objectMap, "provisioningState", m.ProvisioningState)
+	populate(objectMap, "secrets", m.Secrets)
 	populate(objectMap, "status", m.Status)
 	return json.Marshal(objectMap)
 }
@@ -1329,6 +1330,9 @@ func (m *MongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &m.ProvisioningState)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, "Secrets", &m.Secrets)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &m.Status)

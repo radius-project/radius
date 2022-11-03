@@ -54,13 +54,11 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		//converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
+		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 	case *MongoDatabaseValuesProperties:
-		converted.Properties.MongoDatabaseValuesProperties = datamodel.MongoDatabaseValuesProperties{
-			Host:     to.String(v.Host),
-			Port:     to.Int32(v.Port),
-			Database: to.String(v.Database),
-		}
+		converted.Properties.Host = to.String(v.Host)
+		converted.Properties.Port = to.Int32(v.Port)
+		converted.Properties.Database = to.String(v.Database)
 		if v.Secrets != nil {
 			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
@@ -73,6 +71,10 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
 		}
+		converted.Properties.Host = to.String(v.Host)
+		converted.Properties.Port = to.Int32(v.Port)
+		converted.Properties.Database = to.String(v.Database)
+		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 		if v.Secrets != nil {
 			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
@@ -80,9 +82,8 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
 	default:
-		return nil, errors.New("mode of Mongo Database is not specified")
+		return datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("Invalid Mode for mongo database")
 	}
 	return converted, nil
 }
@@ -116,13 +117,6 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
-		if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
-			converted.Secrets = &MongoDatabaseSecrets{
-				ConnectionString: to.StringPtr(mongo.Properties.Secrets.ConnectionString),
-				Username:         to.StringPtr(mongo.Properties.Secrets.Username),
-				Password:         to.StringPtr(mongo.Properties.Secrets.Password),
-			}
-		}
 		dst.Properties = converted
 	case datamodel.MongoDatabaseModeValues:
 		converted := &MongoDatabaseValuesProperties{
@@ -137,31 +131,20 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
-		if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
-			converted.Secrets = &MongoDatabaseSecrets{
-				ConnectionString: to.StringPtr(mongo.Properties.Secrets.ConnectionString),
-				Username:         to.StringPtr(mongo.Properties.Secrets.Username),
-				Password:         to.StringPtr(mongo.Properties.Secrets.Password),
-			}
-		}
 		dst.Properties = converted
 	case datamodel.MongoDatabaseModeRecipe:
 		converted := &MongoDatabaseRecipeProperties{
-			Mode:   fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
-			Recipe: fromRecipeDataModel(mongo.Properties.Recipe),
+			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
+			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
+			Host:     to.StringPtr(mongo.Properties.Host),
+			Port:     to.Int32Ptr(mongo.Properties.Port),
+			Database: to.StringPtr(mongo.Properties.Database),
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
 			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
-		}
-		if (mongo.Properties.Secrets != datamodel.MongoDatabaseSecrets{}) {
-			converted.Secrets = &MongoDatabaseSecrets{
-				ConnectionString: to.StringPtr(mongo.Properties.Secrets.ConnectionString),
-				Username:         to.StringPtr(mongo.Properties.Secrets.Username),
-				Password:         to.StringPtr(mongo.Properties.Secrets.Password),
-			}
 		}
 		dst.Properties = converted
 	default:
@@ -208,36 +191,13 @@ func fromMongoDatabaseModeDataModel(mode datamodel.MongoDatabaseMode) *MongoData
 	return &convertedMode
 }
 
-func fromMongoDatabaseModeResponseDataModel(mode datamodel.MongoDatabaseMode) string {
-	switch mode {
-	case datamodel.MongoDatabaseModeResource:
-		return "resource"
-	case datamodel.MongoDatabaseModeRecipe:
-		return "recipe"
-	case datamodel.MongoDatabaseModeValues:
-		return "values"
-	}
-	return ""
-}
-func toMongoDatabaseModeResponseDataModel(mode *string) datamodel.MongoDatabaseMode {
-	switch mode {
-	case to.StringPtr("resource"):
-		return datamodel.MongoDatabaseModeResource
-	case to.StringPtr("recipe"):
-		return datamodel.MongoDatabaseModeRecipe
-	case to.StringPtr("values"):
-		return datamodel.MongoDatabaseModeValues
-	}
-	return ""
-}
-
 func toMongoDatabaseModeDataModel(mode *MongoDatabasePropertiesMode) datamodel.MongoDatabaseMode {
 	var converted datamodel.MongoDatabaseMode
 	switch *mode {
 	case MongoDatabasePropertiesModeRecipe:
-		converted = datamodel.MongoDatabaseModeResource
-	case MongoDatabasePropertiesModeResource:
 		converted = datamodel.MongoDatabaseModeRecipe
+	case MongoDatabasePropertiesModeResource:
+		converted = datamodel.MongoDatabaseModeResource
 	case MongoDatabasePropertiesModeValues:
 		converted = datamodel.MongoDatabaseModeValues
 	}

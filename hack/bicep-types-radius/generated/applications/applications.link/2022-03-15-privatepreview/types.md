@@ -267,23 +267,21 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### MongoDatabaseRecipeProperties
 #### Properties
 * **mode**: 'recipe' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (ReadOnly): The secret values for the given Mongo database resource
 
 ### MongoDatabaseResourceProperties
 #### Properties
 * **mode**: 'resource' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 
 ### MongoDatabaseValuesProperties
 #### Properties
 * **mode**: 'values' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 
 
 ## MongoDatabaseSecrets

@@ -7,7 +7,6 @@ package mongodatabases
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -58,6 +57,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		}
 		return rendererOutput, nil
 	case datamodel.MongoDatabaseModeValues:
+		if resource.Properties.Host == "" || resource.Properties.Port == 0 {
+			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("host/port are required properties")
+		}
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -68,7 +70,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			SecretValues: getProvidedSecretValues(resource.Properties),
 		}, nil
 	default:
-		return renderers.RendererOutput{}, errors.New("invalid mode")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("invalid mode")
 	}
 }
 
