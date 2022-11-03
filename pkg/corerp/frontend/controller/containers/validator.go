@@ -16,7 +16,9 @@ import (
 // ValidateRequest validates and mutate the incoming request.
 func ValidateAndMutateRequest(ctx context.Context, newResource *datamodel.ContainerResource, oldResource *datamodel.ContainerResource, options *controller.Options) (rest.Response, error) {
 	if oldResource != nil {
-		// Populate the existing identity.
+		// Identity property is readonly property and populated during deployment.
+		// Model converter will not convert .Properties.Identity to datamodel so that newResource.Properties.Identity is always nil.
+		// This will populate the existing identity to new resource to keep the identity info.
 		newResource.Properties.Identity = oldResource.Properties.Identity
 	}
 
