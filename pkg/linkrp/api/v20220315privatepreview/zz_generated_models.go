@@ -776,7 +776,7 @@ type MongoDatabasePropertiesClassification interface {
 	GetMongoDatabaseProperties() *MongoDatabaseProperties
 }
 
-// MongoDatabaseProperties - Mongo database link request properties
+// MongoDatabaseProperties - Mongo database link properties
 type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -851,7 +851,7 @@ type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; Mongo database link request properties
+	// REQUIRED; Mongo database link properties
 	Properties MongoDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.

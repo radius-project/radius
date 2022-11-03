@@ -26,9 +26,6 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     container: {
       image: magpieimage
-      env: {
-        host: db.properties.host
-      }
       readinessProbe:{
         kind:'httpGet'
         containerPort:3000

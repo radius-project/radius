@@ -372,11 +372,11 @@
           "type": "string"
         },
         "port": {
-         "description": "Port value of the target Mongo database",
-         "type": "integer",
-         "example": [
-           27017
-         ]
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
         },
         "database": {
           "description": "Database name of the target Mongo database",
@@ -386,7 +386,7 @@
       }
     },
     "MongoDatabaseProperties": {
-      "description": "Mongo database link request properties",
+      "description": "Mongo database link properties",
       "type": "object",
       "allOf": [
         {

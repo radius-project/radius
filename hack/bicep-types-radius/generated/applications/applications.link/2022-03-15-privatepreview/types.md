@@ -67,7 +67,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): Mongo database link request properties
+* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): Mongo database link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
