@@ -75,40 +75,26 @@
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
-* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
+* **extensions**: [ApplicationExtension](#applicationextension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 
-## Extension
+## ApplicationExtension
 * **Discriminator**: kind
 
 ### Base Properties
-### DaprSidecarExtension
+### ApplicationKubernetesMetadataExtension
 #### Properties
-* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
-* **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
-* **config**: string: Specifies the Dapr configuration to use for the resource.
-* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
-* **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
-
-### ContainerKubernetesMetadataExtension
-#### Properties
-* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **annotations**: [ApplicationKubernetesMetadataExtensionAnnotations](#applicationkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
 * **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
-* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
-
-### ManualScalingExtension
-#### Properties
-* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
-* **replicas**: int: Replica count.
+* **labels**: [ApplicationKubernetesMetadataExtensionLabels](#applicationkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
 
 
-## ContainerKubernetesMetadataExtensionAnnotations
+## ApplicationKubernetesMetadataExtensionAnnotations
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## ContainerKubernetesMetadataExtensionLabels
+## ApplicationKubernetesMetadataExtensionLabels
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
@@ -133,8 +119,12 @@
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
 * **environment**: string: The resource id of the environment linked to the resource
+<<<<<<< HEAD
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings)
+=======
+* **extensions**: [ContainerExtension](#containerextension)[]: Extensions spec of the resource
+>>>>>>> 206a15cf (Updating generation)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -241,6 +231,41 @@
 * **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
 * **resource**: string: The resource ID of the provisioned identity
 
+## ContainerExtension
+* **Discriminator**: kind
+
+### Base Properties
+### DaprSidecarExtension
+#### Properties
+* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
+* **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
+* **config**: string: Specifies the Dapr configuration to use for the resource.
+* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
+* **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
+* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
+
+### ContainerKubernetesMetadataExtension
+#### Properties
+* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
+### ManualScalingExtension
+#### Properties
+* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
+* **replicas**: int: Replica count.
+
+
+## ContainerKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ContainerKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
 ## ResourceStatus
 ### Properties
 * **outputResources**: any[]: Array of AnyObject
@@ -253,7 +278,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
-* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
+* **extensions**: [EnvironmentExtension](#environmentextension)[]: Extensions spec of the resource
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
@@ -271,6 +296,36 @@
 * **namespace**: string (Required): The namespace to use for the environment.
 
 
+<<<<<<< HEAD
+=======
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
+
+## EnvironmentExtension
+* **Discriminator**: kind
+
+### Base Properties
+### EnvironmentKubernetesMetadataExtension
+#### Properties
+* **annotations**: [EnvironmentKubernetesMetadataExtensionAnnotations](#environmentkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [EnvironmentKubernetesMetadataExtensionLabels](#environmentkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
+
+## EnvironmentKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## EnvironmentKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+>>>>>>> 206a15cf (Updating generation)
 ## Providers
 ### Properties
 * **azure**: [ProvidersAzure](#providersazure): Azure cloud provider configuration
