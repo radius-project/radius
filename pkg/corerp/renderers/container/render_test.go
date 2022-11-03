@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
@@ -56,8 +57,8 @@ var (
 				Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 			},
 		},
-		Identity: &rp.IdentitySettings{
-			Kind:       rp.AzureIdentityWorkload,
+		Identity: &rpidentity.IdentitySettings{
+			Kind:       rpidentity.AzureIdentityWorkload,
 			OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 		},
 	}
@@ -1086,7 +1087,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					},
 					Kind: datamodel.AzureKeyVaultVolume,
 					AzureKeyVault: &datamodel.AzureKeyVaultVolumeProperties{
-						Identity: rp.IdentitySettings{Kind: rp.AzureIdentitySystemAssigned},
+						Identity: rpidentity.IdentitySettings{Kind: rpidentity.AzureIdentitySystemAssigned},
 						Resource: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
 						Secrets: map[string]datamodel.SecretObjectProperties{
 							"my-secret": {

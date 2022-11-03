@@ -12,7 +12,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/stretchr/testify/require"
 
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -47,8 +47,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
-						Identity: &rp.IdentitySettings{
-							Kind:       rp.AzureIdentityWorkload,
+						Identity: &rpidentity.IdentitySettings{
+							Kind:       rpidentity.AzureIdentityWorkload,
 							Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 							OIDCIssuer: "https://oidcurl/guid",
 						},
@@ -185,12 +185,12 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 
-	require.Equal(t, &rp.IdentitySettings{
-		Kind:       rp.AzureIdentityWorkload,
+	require.Equal(t, &rpidentity.IdentitySettings{
+		Kind:       rpidentity.AzureIdentityWorkload,
 		Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
 		OIDCIssuer: "https://oidcurl/guid",
 	}, r.Properties.Compute.Identity)
-	require.Equal(t, rp.AzureIdentityWorkload, r.Properties.Compute.Identity.Kind)
+	require.Equal(t, rpidentity.AzureIdentityWorkload, r.Properties.Compute.Identity.Kind)
 	require.Equal(t, "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app", r.Properties.Compute.Identity.Resource)
 	require.Equal(t, "https://oidcurl/guid", r.Properties.Compute.Identity.OIDCIssuer)
 }

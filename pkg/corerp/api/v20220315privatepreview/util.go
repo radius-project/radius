@@ -11,7 +11,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/rp"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 )
 
 func toProvisioningStateDataModel(state *ProvisioningState) v1.ProvisioningState {
@@ -76,29 +76,29 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 	}
 }
 
-func fromIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
+func fromIdentityKind(kind rpidentity.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
-	case rp.AzureIdentitySystemAssigned:
+	case rpidentity.AzureIdentitySystemAssigned:
 		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
-	case rp.AzureIdentityWorkload:
+	case rpidentity.AzureIdentityWorkload:
 		return azto.Ptr(IdentitySettingKindAzureComWorkload)
 	default:
 		return nil
 	}
 }
 
-func toIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
+func toIdentityKind(kind *IdentitySettingKind) rpidentity.IdentitySettingKind {
 	if kind == nil {
-		return rp.IdentityNone
+		return rpidentity.IdentityNone
 	}
 
 	switch *kind {
 	case IdentitySettingKindAzureComSystemassigned:
-		return rp.AzureIdentitySystemAssigned
+		return rpidentity.AzureIdentitySystemAssigned
 	case IdentitySettingKindAzureComWorkload:
-		return rp.AzureIdentityWorkload
+		return rpidentity.AzureIdentityWorkload
 	default:
-		return rp.IdentityNone
+		return rpidentity.IdentityNone
 	}
 }
 

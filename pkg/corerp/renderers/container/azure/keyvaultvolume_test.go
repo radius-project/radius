@@ -15,9 +15,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/rp"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
+
 	corev1 "k8s.io/api/core/v1"
 	csiv1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
@@ -49,15 +50,15 @@ func TestMakeKeyVaultVolumeSpec(t *testing.T) {
 func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 	envOpt := &renderers.EnvironmentOptions{
 		Namespace: "default",
-		Identity: &rp.IdentitySettings{
-			Kind:       rp.AzureIdentityWorkload,
+		Identity: &rpidentity.IdentitySettings{
+			Kind:       rpidentity.AzureIdentityWorkload,
 			OIDCIssuer: "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 		},
 	}
 
 	spcTests := []struct {
 		desc         string
-		identityKind rp.IdentitySettingKind
+		identityKind rpidentity.IdentitySettingKind
 
 		err          error
 		beforeParams map[string]string
@@ -65,7 +66,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 	}{
 		{
 			desc:         "azure.com.systemassigned",
-			identityKind: rp.AzureIdentitySystemAssigned,
+			identityKind: rpidentity.AzureIdentitySystemAssigned,
 			err:          nil,
 			beforeParams: map[string]string{
 				"usePodIdentity":       "false",
@@ -86,7 +87,7 @@ func TestMakeKeyVaultSecretProviderClass(t *testing.T) {
 		},
 		{
 			desc:         "azure.com.workload",
-			identityKind: rp.AzureIdentityWorkload,
+			identityKind: rpidentity.AzureIdentityWorkload,
 			err:          nil,
 			beforeParams: map[string]string{
 				"usePodIdentity": "false",

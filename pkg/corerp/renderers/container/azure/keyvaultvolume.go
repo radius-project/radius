@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/rp"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
@@ -65,7 +65,7 @@ func TransformSecretProviderClass(ctx context.Context, options *handlers.PutOpti
 	}
 
 	// Update the clientID and tenantID only for azure workload identity.
-	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rp.AzureIdentityWorkload) {
+	if spc.Annotations != nil && spc.Annotations[kubernetes.AnnotationIdentityType] == string(rpidentity.AzureIdentityWorkload) {
 		clientID, tenantID, err := extractIdentityInfo(options)
 		if err != nil {
 			return err
@@ -94,7 +94,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 	}
 
 	switch envOpt.Identity.Kind {
-	case rp.AzureIdentitySystemAssigned:
+	case rpidentity.AzureIdentitySystemAssigned:
 		// https://azure.github.io/secrets-store-csi-driver-provider-azure/docs/configurations/identity-access-modes/system-assigned-msi-mode/
 		params["useVMManagedIdentity"] = "true"
 		// clientID must be empty for system assigned managed identity
@@ -102,7 +102,7 @@ func MakeKeyVaultSecretProviderClass(appName, name string, res *datamodel.Volume
 		// tenantID is a fake id to bypass crd validation because CSI doesn't require a tenant ID for System/User assigned managed identity.
 		params["tenantID"] = "placeholder"
 
-	case rp.AzureIdentityWorkload:
+	case rpidentity.AzureIdentityWorkload:
 		break
 
 	default:

@@ -8,14 +8,11 @@ package volumes
 import (
 	"context"
 	"fmt"
-	"net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
+	rpidentity "github.com/project-radius/radius/pkg/rp/identity"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,25 +24,14 @@ const (
 
 // ValidateRequest validates the resource in the incoming request.
 func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource, oldResource *datamodel.VolumeResource, options *controller.Options) (rest.Response, error) {
-	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	// Bypass the validation unless HTTP Method is PUT or PATCH
-	if serviceCtx.HTTPMethod != http.MethodPut && serviceCtx.HTTPMethod != http.MethodPatch {
-		return nil, nil
-	}
-
 	csiCRDValidationRequired := false
 
 	switch newResource.Properties.Kind {
 	case datamodel.AzureKeyVaultVolume:
 		identity := newResource.Properties.AzureKeyVault.Identity
-		if identity.Kind == rp.AzureIdentityWorkload {
+		if identity.Kind == rpidentity.AzureIdentityWorkload {
 			if identity.OIDCIssuer == "" {
 				return rest.NewBadRequestResponse("oidcIssuer is required for workload identity."), nil
-			}
-			_, err := resources.ParseResource(identity.Resource)
-			if err != nil {
-				return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is invalid resource for workload identity", identity.Resource)), nil
 			}
 		}
 		csiCRDValidationRequired = true
