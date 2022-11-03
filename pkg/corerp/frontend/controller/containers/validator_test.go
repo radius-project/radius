@@ -9,6 +9,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/stretchr/testify/require"
@@ -20,6 +21,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 		newResource     *datamodel.ContainerResource
 		oldResource     *datamodel.ContainerResource
 		mutatedResource *datamodel.ContainerResource
+		resp            rest.Response
 	}{
 		{
 			desc: "nil identity",
@@ -32,6 +34,19 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			mutatedResource: &datamodel.ContainerResource{
 				Properties: datamodel.ContainerProperties{},
 			},
+			resp: nil,
+		},
+		{
+			desc: "user defined identity not supported",
+			newResource: &datamodel.ContainerResource{
+				Properties: datamodel.ContainerProperties{
+					Identity: &rp.IdentitySettings{
+						Kind:       rp.AzureIdentityWorkload,
+						OIDCIssuer: "https://issuer",
+					},
+				},
+			},
+			resp: rest.NewBadRequestResponse("The user-defined identity in Applications.Core/containers is not supported now."),
 		},
 		{
 			desc: "valid identity",
@@ -56,6 +71,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 					},
 				},
 			},
+			resp: nil,
 		},
 	}
 
@@ -64,9 +80,12 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 			r, err := ValidateAndMutateRequest(context.Background(), tc.newResource, tc.oldResource, nil)
 
 			require.NoError(t, err)
-			require.Nil(t, r)
-
-			require.Equal(t, tc.mutatedResource, tc.newResource)
+			if tc.resp != nil {
+				require.Equal(t, tc.resp, r)
+			} else {
+				require.Nil(t, r)
+				require.Equal(t, tc.mutatedResource, tc.newResource)
+			}
 		})
 	}
 }

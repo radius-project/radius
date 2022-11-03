@@ -325,8 +325,8 @@ type ContainerProperties struct {
 	// Extensions spec of the resource
 	Extensions []ExtensionClassification `json:"extensions,omitempty"`
 
-	// READ-ONLY; Configuration for supported external identity providers
-	Identity *IdentitySettings `json:"identity,omitempty" azure:"ro"`
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

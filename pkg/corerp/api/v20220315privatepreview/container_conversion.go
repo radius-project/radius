@@ -112,8 +112,15 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
-			Identity:   nil, // This property is read-only and populated in the deployment.
 		},
+	}
+
+	if src.Properties.Identity != nil {
+		converted.Properties.Identity = &rp.IdentitySettings{
+			Kind:       toIdentityKind(src.Properties.Identity.Kind),
+			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
+			// We ignore the resource property since it is readonly.
+		}
 	}
 
 	return converted, nil

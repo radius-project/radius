@@ -752,8 +752,7 @@
         },
         "identity": {
           "description": "Configuration for supported external identity providers",
-          "$ref": "global.json#/definitions/IdentitySettings",
-          "readOnly": true
+          "$ref": "global.json#/definitions/IdentitySettings"
         },
         "extensions": {
           "type": "array",
