@@ -20,6 +20,12 @@
                 "namespace": "default"
             }
         },
+        "recipes": {
+            "mongo-azure": {
+                "linkType": "Applications.Link/mongoDatabases",
+                "templatePath": "radiusdev.azurecr.io/mongo:1.0"
+            }
+        },
         "useDevRecipes": false,
         "providers": {
             "azure": {

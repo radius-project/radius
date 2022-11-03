@@ -19,6 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -60,10 +61,20 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 	// Update Recipes mapping with dev recipes.
 	if newResource.Properties.UseDevRecipes {
-		newResource.Properties.Recipes, err = getDevRecipes(ctx, newResource.Properties.Recipes)
+		devRecipes, err := getDevRecipes(ctx)
 		if err != nil {
 			return nil, err
 		}
+
+		err = ensureUserRecipesNamesAreNotReserved(newResource.Properties.Recipes, devRecipes)
+		if err != nil {
+			return nil, err
+		}
+
+		if newResource.Properties.Recipes == nil {
+			newResource.Properties.Recipes = map[string]datamodel.EnvironmentRecipeProperties{}
+		}
+		maps.Copy(newResource.Properties.Recipes, devRecipes)
 	}
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
@@ -107,10 +118,8 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 	return e.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
 }
 
-func getDevRecipes(ctx context.Context, recipes map[string]datamodel.EnvironmentRecipeProperties) (map[string]datamodel.EnvironmentRecipeProperties, error) {
-	if recipes == nil {
-		recipes = map[string]datamodel.EnvironmentRecipeProperties{}
-	}
+func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
+	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
 
 	logger := radlogger.GetLogger(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
@@ -166,4 +175,29 @@ func parseRepoPathForMetadata(repo string) (link, provider string) {
 	}
 
 	return link, provider
+}
+
+func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]datamodel.EnvironmentRecipeProperties) error {
+	overlap := map[string]datamodel.EnvironmentRecipeProperties{}
+	for k := range devRecipes {
+		if v, ok := userRecipes[k]; ok {
+			overlap[k] = v
+		}
+	}
+
+	if len(overlap) > 0 {
+		errorPrefix := "recipe name(s) reserved for devRecipes for: "
+		var errorRecipes string
+		for k, v := range overlap {
+			if errorRecipes != "" {
+				errorRecipes += ", "
+			}
+
+			errorRecipes += fmt.Sprintf("recipe with name %s (linkType %s and templatePath %s)", k, v.LinkType, v.TemplatePath)
+		}
+
+		return fmt.Errorf(errorPrefix + errorPrefix)
+	}
+
+	return nil
 }
