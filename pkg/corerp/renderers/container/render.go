@@ -414,10 +414,10 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
 
-		computedValues[handlers.EnvironmentIdentity] = rp.ComputedValueReference{
+		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
 			Value: options.Environment.Identity,
 			Transformer: func(r conv.DataModelInterface, value *rp.ComputedValueReference) error {
-				ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.EnvironmentIdentity)
+				ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.IdentityProperties)
 				if err != nil {
 					return err
 				}

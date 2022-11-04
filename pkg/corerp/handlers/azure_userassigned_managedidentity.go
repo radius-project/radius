@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	EnvironmentIdentity                = "identityproperties"
+	IdentityProperties                 = "identityproperties"
 	UserAssignedIdentityNameKey        = "userassignedidentityname"
 	UserAssignedIdentityIDKey          = "userassignedidentityid"
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"

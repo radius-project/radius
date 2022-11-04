@@ -40,6 +40,13 @@ func TestGetMapValue(t *testing.T) {
 			key:       "key1",
 		},
 		{
+			in: map[string]any{
+				"hello": false,
+			},
+			errString: "value is not string type",
+			key:       "hello",
+		},
+		{
 			in:        "invalid_type",
 			errString: "unsupported type",
 		},

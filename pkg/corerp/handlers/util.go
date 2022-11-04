@@ -45,7 +45,7 @@ func GetMapValue[T any](collection any, key string) (T, error) {
 		}
 		s, ok := val.(T)
 		if !ok {
-			return defaultValue, errors.New("value is not string type")
+			return defaultValue, fmt.Errorf("value is not %T type", *new(T))
 		}
 		return s, nil
 	}
