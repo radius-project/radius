@@ -53,26 +53,26 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	logger := radlogger.GetLogger(ctx)
 
 	// Get dependencies
-	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
-	if !ok {
+	identityProp, err := GetMapValue[map[string]map[string]string](options.DependencyProperties, outputresource.LocalIDUserAssignedManagedIdentity)
+	if err != nil {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 
-	identityID, ok := identityProp[UserAssignedIdentityIDKey]
-	if !ok {
+	identityID, err := GetMapValue[string](identityProp, UserAssignedIdentityIDKey)
+	if err != nil {
 		return nil, errors.New("fails to get identity resource id")
 	}
 
 	rs := options.Resource.Resource
-	federatedName, err := GetString(rs, FederatedIdentityNameKey)
+	federatedName, err := GetMapValue[string](rs, FederatedIdentityNameKey)
 	if err != nil {
 		return nil, err
 	}
-	issuer, err := GetString(rs, FederatedIdentityIssuerKey)
+	issuer, err := GetMapValue[string](rs, FederatedIdentityIssuerKey)
 	if err != nil {
 		return nil, err
 	}
-	subject, err := GetString(rs, FederatedIdentitySubjectKey)
+	subject, err := GetMapValue[string](rs, FederatedIdentitySubjectKey)
 	if err != nil {
 		return nil, err
 	}

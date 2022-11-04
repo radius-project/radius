@@ -704,7 +704,9 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+	require.Len(t, output.ComputedValues, 2)
+	require.Equal(t, output.ComputedValues[handlers.EnvironmentIdentity].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 	require.Empty(t, output.SecretValues)
 	require.Len(t, output.Resources, 7)
 
@@ -836,7 +838,11 @@ func Test_Render_AzureConnection(t *testing.T) {
 
 	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+
+	require.Len(t, output.ComputedValues, 2)
+	require.Equal(t, output.ComputedValues[handlers.EnvironmentIdentity].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
+
 	require.Empty(t, output.SecretValues)
 	require.Len(t, output.Resources, 5)
 
@@ -1124,7 +1130,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Lenf(t, renderOutput.Resources, 7, "expected 7 output resources, instead got %+v", len(renderOutput.Resources))
 
 	// Verify deployment
-	deploymentSpec := renderOutput.Resources[6]
+	deploymentSpec := renderOutput.Resources[5]
 	require.Equal(t, outputresource.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
 
 	// Verify volume spec
@@ -1432,4 +1438,8 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 
 		require.Equal(t, expectedLivenessProbe, container.LivenessProbe)
 	})
+}
+
+func TestTransformContainerResource(t *testing.T) {
+
 }

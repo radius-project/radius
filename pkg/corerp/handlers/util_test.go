@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetString(t *testing.T) {
+func TestGetMapValue(t *testing.T) {
 	propertyTests := []struct {
 		in        any
 		errString string
@@ -46,7 +46,7 @@ func TestGetString(t *testing.T) {
 	}
 
 	for _, tc := range propertyTests {
-		val, err := GetString(tc.in, tc.key)
+		val, err := GetMapValue[string](tc.in, tc.key)
 		if tc.errString != "" {
 			require.ErrorContains(t, err, tc.errString)
 		} else {
