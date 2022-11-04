@@ -21,7 +21,9 @@ import (
 )
 
 const (
-	KinesisResourceType = "AWS.Kinesis/Stream"
+	KinesisResourceType    = "AWS.Kinesis/Stream"
+	MemoryDBResourceType   = "AWS.MemoryDB/Cluster"
+	DBInstanceResourceType = "AWS.RDS/DBInstance"
 )
 
 type AWSResource struct {

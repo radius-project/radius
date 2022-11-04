@@ -22,12 +22,15 @@ import (
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/wI2L/jsondiff"
+	"golang.org/x/exp/slices"
 )
 
 type ResourceTypeSchema struct {
 	Properties           map[string]interface{} `json:"properties,omitempty"`
 	ReadOnlyProperties   []string               `json:"readOnlyProperties,omitempty"`
 	CreateOnlyProperties []string               `json:"createOnlyProperties,omitempty"`
+	WriteOnlyProperties  []string               `json:"writeOnlyProperties,omitempty"`
 }
 
 func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
@@ -181,4 +184,67 @@ func unflattenProperties(state map[string]interface{}) map[string]interface{} {
 	}
 
 	return unflattenedState
+}
+
+// generatePatch generates a JSON patch based on a given current state, desired state, and resource type schema
+func generatePatch(currentState []byte, desiredState []byte, schema []byte) (jsondiff.Patch, error) {
+	// See: https://github.com/project-radius/radius/blob/main/docs/adr/ucp/001-aws-resource-updating.md
+
+	// Get the resource type schema - this will tell us the properties of the
+	// resource as well as which properties are read-only, create-only, etc.
+	var resourceTypeSchema ResourceTypeSchema
+	err := json.Unmarshal(schema, &resourceTypeSchema)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the current state of the resource
+	var currentStateObject map[string]interface{}
+	err = json.Unmarshal(currentState, &currentStateObject)
+	if err != nil {
+		return nil, err
+	}
+	flattenedCurrentStateObject := flattenProperties(currentStateObject)
+
+	// Get the desired state of the resource
+	var desiredStateObject map[string]interface{}
+	err = json.Unmarshal(desiredState, &desiredStateObject)
+	if err != nil {
+		return nil, err
+	}
+	flattenedDesiredStateObject := flattenProperties(desiredStateObject)
+
+	// Add read-only and create-only properties from current state to the desired state
+	for k, v := range flattenedCurrentStateObject {
+		property := fmt.Sprintf("/properties/%s", k)
+
+		isCreateOnlyProperty := slices.Contains(resourceTypeSchema.CreateOnlyProperties, property)
+		isWriteOnlyProperty := slices.Contains(resourceTypeSchema.WriteOnlyProperties, property)
+
+		// If the property is create-only and write-only, then upsert it to the desired state.
+		// this will cause a no-op in the patch since it will exactly match the current state
+		if isWriteOnlyProperty && isCreateOnlyProperty {
+			flattenedDesiredStateObject[k] = v
+		} else if _, exists := flattenedDesiredStateObject[k]; !exists {
+			// Add the property (if not exists already) to the desired state if it is a read-only or create-only
+			// property. This ensures that these types of properties result in a no-op in the patch if they aren't
+			// updated in the desired state
+			isReadOnlyProperty := slices.Contains(resourceTypeSchema.ReadOnlyProperties, property)
+			if isReadOnlyProperty || isCreateOnlyProperty {
+				flattenedDesiredStateObject[k] = v
+			}
+		}
+	}
+
+	// Convert desired patch state back into unflattened object
+	unflattenedDesiredStateObject := unflattenProperties(flattenedDesiredStateObject)
+
+	// Marshal desired state into bytes
+	updatedDesiredState, err := json.Marshal(unflattenedDesiredStateObject)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate the patch based on the current state and the updated desired state
+	return jsondiff.CompareJSON(currentState, updatedDesiredState)
 }

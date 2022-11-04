@@ -68,7 +68,7 @@ Note that AWS properties can be nested (such as `/properties/ClusterEndpoint/Add
 
 ### Property Types
 
-[Reference](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-schema.html#schema-properties-conditionalcreateonlyproperties)
+[Reference](https://docs.aws.amazon.com/cloudformation-cli/latest/userguide/resource-type-schema.html)
 
 There are different types of properties that can exist on an AWS resource type:
 
@@ -172,13 +172,16 @@ out := Unflatten(in)
 ### Property Handling
 
 #### Create-Only Properties
-Create-only properties from the current state are added to the desired state so that when the desired state is compared to the current state, no patch is generated.
+Create-only properties from the current state are added (if not present) to the desired state so that when the desired state is compared to the current state, no patch is generated.
 
 #### Read-Only Properties
-Read-only properties from the current state are added to the desired state so that when the desired state is compared to the current state, no patch is generated.
+Read-only properties from the current state are added (if not present) to the desired state so that when the desired state is compared to the current state, no patch is generated.
 
 #### Conditional Create-Only Properties
 We will intentionally not do any validation on conditional create-only properties because the value may be valid as an update. If it is invalid, CloudControl will send back an error to the user and perform no updates to the resource.
+
+#### Write-Only Properties
+Write-only properties are never returned as part of the GetResource response. This means that we cannot create a diff against write-only properties.
 
 
 ## Consequences
@@ -188,3 +191,6 @@ Flattening the current and desired states allows for each of the special propert
 
 ### Update logic is more complicated
 Introducing the flatten/unflatten code makes the update code more complicated and prone to bugs. Extra unit tests must also be run to validate that this behavior works correctly.
+
+### Create-And-Write-Only properties cannot be updated
+Since write-only properties cannot come back as a response from AWS, they cannot be compared to the user's desired state. Therefore, on update requests, we ignore create-and-write-only properties. This means that a user could create a resource, update a create-and-write-only property, try to update the resource, and see that this property update is not reflected in the resource state.
