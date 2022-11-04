@@ -31,7 +31,7 @@ jobs:
           path: temp/project-radius/docs
           ref: edge
 
-      - name: Clone https://github.com/project-radius/samples
+      - name: Clone samples repo
         uses: actions/checkout@v3
         with:
           token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
