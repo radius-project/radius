@@ -34,7 +34,7 @@ func TestMongoDatabaseDataModelToVersioned(t *testing.T) {
 		err           error
 	}{
 		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresourcedatamodel2.json",
+			"../../api/v20220315privatepreview/testdata/mongodatabaseresourcedatamodel.json",
 			"2022-03-15-privatepreview",
 			&v20220315privatepreview.MongoDatabaseResource{},
 			nil,
