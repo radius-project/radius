@@ -15,7 +15,8 @@
         "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
         "database": "testDatabase",
         "server": "testAccount1.sql.cosmos.azure.com",
-        "provisioningState": "Succeeded"
+        "provisioningState": "Succeeded",
+        "mode": "resource"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

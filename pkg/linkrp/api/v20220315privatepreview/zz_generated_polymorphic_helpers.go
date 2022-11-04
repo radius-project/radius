@@ -53,3 +53,25 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 	return b, json.Unmarshal(rawMsg, b)
 }
 
+func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b SQLDatabasePropertiesClassification
+	switch m["mode"] {
+	case string(SQLDatabasePropertiesModeRecipe):
+		b = &SQLRecipeProperties{}
+	case string(SQLDatabasePropertiesModeResource):
+		b = &SQLResourceProperties{}
+	case string(SQLDatabasePropertiesModeValues):
+		b = &SQLValueProperties{}
+	default:
+		b = &SQLDatabaseProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+

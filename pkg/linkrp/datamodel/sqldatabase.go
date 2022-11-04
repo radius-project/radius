@@ -10,6 +10,15 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
+type SQLDatabasePropertiesMode string
+
+const (
+	SQLDatabasePropertiesModeRecipe   SQLDatabasePropertiesMode = "recipe"
+	SQLDatabasePropertiesModeResource SQLDatabasePropertiesMode = "resource"
+	SQLDatabasePropertiesModeValues   SQLDatabasePropertiesMode = "values"
+	SQLDatabasePropertiesModeUnknown  SQLDatabasePropertiesMode = "unknown"
+)
+
 // SqlDatabase represents SqlDatabase link resource.
 type SqlDatabase struct {
 	v1.TrackedResource
@@ -33,9 +42,10 @@ func (sql SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-	Resource          string               `json:"resource,omitempty"`
-	Database          string               `json:"database,omitempty"`
-	Server            string               `json:"server,omitempty"`
+	ProvisioningState v1.ProvisioningState      `json:"provisioningState,omitempty"`
+	Recipe            LinkRecipe                `json:"recipe,omitempty"`
+	Resource          string                    `json:"resource,omitempty"`
+	Database          string                    `json:"database,omitempty"`
+	Server            string                    `json:"server,omitempty"`
+	Mode              SQLDatabasePropertiesMode `json:"mode,omitempty"`
 }
