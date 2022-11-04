@@ -263,8 +263,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 
 	// Transform Radius resource with computedValues
 	if rendererOutput.ResourceTransformer != nil {
-		err := rendererOutput.ResourceTransformer(ctx, rendererOutput.RadiusResource, computedValues)
-		if err != nil {
+		if err := rendererOutput.ResourceTransformer(ctx, rendererOutput.RadiusResource, computedValues); err != nil {
 			return rp.DeploymentOutput{}, err
 		}
 	}
