@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -179,7 +180,48 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 	outputResources = append(outputResources, deploymentOutput)
 
-	return renderers.RendererOutput{Resources: outputResources}, nil
+	computedValues := map[string]rp.ComputedValueReference{
+		handlers.EnvironmentIdentity: {
+			Value: options.Environment.Identity,
+		},
+		handlers.UserAssignedIdentityIDKey: {
+			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
+			PropertyReference: handlers.UserAssignedIdentityIDKey,
+		},
+	}
+
+	return renderers.RendererOutput{
+		Resources:           outputResources,
+		ComputedValues:      computedValues,
+		ResourceTransformer: transformContainerResource,
+	}, nil
+}
+
+func transformContainerResource(ctx context.Context, dest conv.DataModelInterface, computedValues map[string]any) error {
+	res, ok := dest.(*datamodel.ContainerResource)
+	if !ok {
+		return errors.New("resource must be ContainerResource")
+	}
+
+	envIdentity, ok := computedValues[handlers.EnvironmentIdentity]
+	if !ok {
+		return nil
+	}
+
+	resourceID := ""
+	if id, ok := computedValues[handlers.UserAssignedIdentityIDKey]; ok {
+		resourceID = id.(string)
+	}
+
+	ei := envIdentity.(*rp.IdentitySettings)
+
+	res.Properties.Identity = &rp.IdentitySettings{
+		Kind:       ei.Kind,
+		OIDCIssuer: ei.OIDCIssuer,
+		Resource:   resourceID,
+	}
+
+	return nil
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, options renderers.RenderOptions, identityRequired bool) (outputresource.OutputResource, []outputresource.OutputResource, map[string][]byte, error) {
