@@ -38,7 +38,6 @@ jobs:
           repository: project-radius/samples
           path: temp/project-radius/samples
           ref: edge
-
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
       - name: az Login
