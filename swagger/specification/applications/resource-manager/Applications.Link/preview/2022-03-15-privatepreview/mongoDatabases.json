@@ -299,17 +299,30 @@
         }
       }
     },
-    "MongoDatabaseResourceProperties": {
+    "ResourceMongoDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        },
-        {
-          "$ref": "#/definitions/MongoDatabaseValues"
         }
       ],
       "properties": { 
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "readOnly": true,
+          "type": "string"
+        },
         "resource": {
           "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link",
           "type": "string",
@@ -324,17 +337,30 @@
       "type": "object",
       "x-ms-discriminator-value": "resource"
     },
-    "MongoDatabaseRecipeProperties": {
+    "RecipeMongoDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        },
-        {
-          "$ref": "#/definitions/MongoDatabaseValues"
         }
       ],
       "properties": { 
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "readOnly": true,
+          "type": "string"
+        },
         "recipe": {
           "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link",
           "type": "object",
@@ -347,25 +373,13 @@
       "type": "object",
       "x-ms-discriminator-value": "recipe"
     },
-    "MongoDatabaseValuesProperties": {
+    "ValuesMongoDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
-        },
-        {
-          "$ref": "#/definitions/MongoDatabaseValues"
         }
       ],
-      "required": [
-        "host",
-        "port"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "values"
-    },
-    "MongoDatabaseValues": {
-      "additionalProperties": false,
       "properties": {
         "host": {
           "description": "Host name of the target Mongo database",
@@ -383,7 +397,13 @@
           "readOnly": true,
           "type": "string"
         }
-      }
+      },
+      "required": [
+        "host",
+        "port"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
     },
     "MongoDatabaseProperties": {
       "description": "Mongo database link properties",
@@ -414,7 +434,7 @@
           "type": "object",
           "description": "Secrets values provided for the resource",
           "$ref": "#/definitions/MongoDatabaseSecrets"
-        }    
+        }
       },
       "required": [
         "environment",

@@ -40,7 +40,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 	}
 	switch v := src.Properties.(type) {
-	case *MongoDatabaseResourceProperties:
+	case *ResourceMongoDatabaseProperties:
 		if v.Resource == nil {
 			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("resource is a required properties")
 		}
@@ -58,7 +58,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
-	case *MongoDatabaseValuesProperties:
+	case *ValuesMongoDatabaseProperties:
 		if v.Host == nil || v.Port == nil {
 			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("host/port are required properties")
 		}
@@ -73,7 +73,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
-	case *MongoDatabaseRecipeProperties:
+	case *RecipeMongoDatabaseProperties:
 		if v.Recipe == nil {
 			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("recipe is a required properties")
 		}
@@ -112,8 +112,8 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	dst.Tags = *to.StringMapPtr(mongo.Tags)
 
 	switch mongo.Properties.Mode {
-	case datamodel.MongoDatabaseModeResource:
-		converted := &MongoDatabaseResourceProperties{
+	case datamodel.LinkModeResource:
+		converted := &ResourceMongoDatabaseProperties{
 			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
 			Resource: to.StringPtr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
 			Host:     to.StringPtr(mongo.Properties.Host),
@@ -127,8 +127,8 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
 		dst.Properties = converted
-	case datamodel.MongoDatabaseModeValues:
-		converted := &MongoDatabaseValuesProperties{
+	case datamodel.LinkModeValues:
+		converted := &ValuesMongoDatabaseProperties{
 			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
 			Host:     to.StringPtr(mongo.Properties.Host),
 			Port:     to.Int32Ptr(mongo.Properties.Port),
@@ -141,8 +141,8 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
 		dst.Properties = converted
-	case datamodel.MongoDatabaseModeRecipe:
-		converted := &MongoDatabaseRecipeProperties{
+	case datamodel.LinkModeRecipe:
+		converted := &RecipeMongoDatabaseProperties{
 			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
 			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
 			Host:     to.StringPtr(mongo.Properties.Host),
@@ -187,28 +187,28 @@ func (src *MongoDatabaseSecrets) ConvertTo() (conv.DataModelInterface, error) {
 	return converted, nil
 }
 
-func fromMongoDatabaseModeDataModel(mode datamodel.MongoDatabaseMode) *MongoDatabasePropertiesMode {
+func fromMongoDatabaseModeDataModel(mode datamodel.LinkMode) *MongoDatabasePropertiesMode {
 	var convertedMode MongoDatabasePropertiesMode
 	switch mode {
-	case datamodel.MongoDatabaseModeResource:
+	case datamodel.LinkModeResource:
 		convertedMode = MongoDatabasePropertiesModeResource
-	case datamodel.MongoDatabaseModeRecipe:
+	case datamodel.LinkModeRecipe:
 		convertedMode = MongoDatabasePropertiesModeRecipe
-	case datamodel.MongoDatabaseModeValues:
+	case datamodel.LinkModeValues:
 		convertedMode = MongoDatabasePropertiesModeValues
 	}
 	return &convertedMode
 }
 
-func toMongoDatabaseModeDataModel(mode *MongoDatabasePropertiesMode) datamodel.MongoDatabaseMode {
-	var converted datamodel.MongoDatabaseMode
+func toMongoDatabaseModeDataModel(mode *MongoDatabasePropertiesMode) datamodel.LinkMode {
+	var converted datamodel.LinkMode
 	switch *mode {
 	case MongoDatabasePropertiesModeRecipe:
-		converted = datamodel.MongoDatabaseModeRecipe
+		converted = datamodel.LinkModeRecipe
 	case MongoDatabasePropertiesModeResource:
-		converted = datamodel.MongoDatabaseModeResource
+		converted = datamodel.LinkModeResource
 	case MongoDatabasePropertiesModeValues:
-		converted = datamodel.MongoDatabaseModeValues
+		converted = datamodel.LinkModeValues
 	}
 	return converted
 }

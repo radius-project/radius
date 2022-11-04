@@ -10,14 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-type MongoDatabaseMode string
-
-const (
-	MongoDatabaseModeRecipe   MongoDatabaseMode = "recipe"
-	MongoDatabaseModeResource MongoDatabaseMode = "resource"
-	MongoDatabaseModeValues   MongoDatabaseMode = "values"
-)
-
 type MongoDatabase struct {
 	v1.BaseResource
 
@@ -36,7 +28,7 @@ type MongoDatabaseProperties struct {
 	MongoDatabaseValuesProperties
 	Secrets           MongoDatabaseSecrets `json:"secrets,omitempty"`
 	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Mode              MongoDatabaseMode    `json:"mode"`
+	Mode              LinkMode             `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

@@ -108,14 +108,14 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetMongoDatabaseProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetMongoDatabaseProperties().Environment)
 		switch v := versionedResource.Properties.(type) {
-		case *MongoDatabaseResourceProperties:
+		case *ResourceMongoDatabaseProperties:
 			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", *v.Resource)
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
-		case *MongoDatabaseRecipeProperties:
+		case *RecipeMongoDatabaseProperties:
 			require.Equal(t, "cosmosdb", *v.Recipe.Name)
 			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
-		case *MongoDatabaseValuesProperties:
+		case *ValuesMongoDatabaseProperties:
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
 			require.Equal(t, "test-connection-string", *v.Secrets.ConnectionString)

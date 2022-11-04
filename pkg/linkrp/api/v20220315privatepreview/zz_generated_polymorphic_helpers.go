@@ -64,11 +64,11 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	var b MongoDatabasePropertiesClassification
 	switch m["mode"] {
 	case string(MongoDatabasePropertiesModeRecipe):
-		b = &MongoDatabaseRecipeProperties{}
+		b = &RecipeMongoDatabaseProperties{}
 	case string(MongoDatabasePropertiesModeResource):
-		b = &MongoDatabaseResourceProperties{}
+		b = &ResourceMongoDatabaseProperties{}
 	case string(MongoDatabasePropertiesModeValues):
-		b = &MongoDatabaseValuesProperties{}
+		b = &ValuesMongoDatabaseProperties{}
 	default:
 		b = &MongoDatabaseProperties{}
 	}

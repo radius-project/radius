@@ -269,19 +269,28 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### MongoDatabaseRecipeProperties
+### RecipeMongoDatabaseProperties
 #### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
 * **mode**: 'recipe' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 
-### MongoDatabaseResourceProperties
+### ResourceMongoDatabaseProperties
 #### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
 * **mode**: 'resource' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
 
-### MongoDatabaseValuesProperties
+### ValuesMongoDatabaseProperties
 #### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string (Required): Host name of the target Mongo database
 * **mode**: 'values' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int (Required): Port value of the target Mongo database
 
 
 ## MongoDatabaseSecrets

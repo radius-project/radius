@@ -39,13 +39,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	switch resource.Properties.Mode {
-	case datamodel.MongoDatabaseModeRecipe:
+	case datamodel.LinkModeRecipe:
 		rendererOutput, err := RenderAzureRecipe(resource, options)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		return rendererOutput, nil
-	case datamodel.MongoDatabaseModeResource:
+	case datamodel.LinkModeResource:
 		// Source resource identifier is provided
 		// Currently only Azure resources are supported with non empty resource id
 		rendererOutput, err := RenderAzureResource(resource.Properties)
@@ -53,7 +53,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			return renderers.RendererOutput{}, err
 		}
 		return rendererOutput, nil
-	case datamodel.MongoDatabaseModeValues:
+	case datamodel.LinkModeValues:
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -101,7 +101,6 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderers.RendererOutput, error) {
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
-
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}

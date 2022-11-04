@@ -770,7 +770,7 @@ type MongoDatabaseList struct {
 // MongoDatabasePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetMongoDatabaseProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *MongoDatabaseProperties, *MongoDatabaseRecipeProperties, *MongoDatabaseResourceProperties, *MongoDatabaseValuesProperties
+// - *MongoDatabaseProperties, *RecipeMongoDatabaseProperties, *ResourceMongoDatabaseProperties, *ValuesMongoDatabaseProperties
 type MongoDatabasePropertiesClassification interface {
 	// GetMongoDatabaseProperties returns the MongoDatabaseProperties content of the underlying type.
 	GetMongoDatabaseProperties() *MongoDatabaseProperties
@@ -801,51 +801,6 @@ type MongoDatabaseProperties struct {
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseProperties.
 func (m *MongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties { return m }
 
-type MongoDatabaseRecipeProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
-
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseRecipeProperties.
-func (m *MongoDatabaseRecipeProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		ProvisioningState: m.ProvisioningState,
-		Mode: m.Mode,
-		Secrets: m.Secrets,
-		Status: m.Status,
-		Environment: m.Environment,
-		Application: m.Application,
-	}
-}
-
 // MongoDatabaseResource - MongoDatabase link
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
@@ -870,51 +825,6 @@ type MongoDatabaseResource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-type MongoDatabaseResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
-
-	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseResourceProperties.
-func (m *MongoDatabaseResourceProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		ProvisioningState: m.ProvisioningState,
-		Mode: m.Mode,
-		Secrets: m.Secrets,
-		Status: m.Status,
-		Environment: m.Environment,
-		Application: m.Application,
-	}
-}
-
 // MongoDatabaseSecrets - The secret values for the given Mongo database resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
@@ -925,59 +835,6 @@ type MongoDatabaseSecrets struct {
 
 	// Username to use when connecting to the target Mongo database
 	Username *string `json:"username,omitempty"`
-}
-
-type MongoDatabaseValues struct {
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-}
-
-type MongoDatabaseValuesProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseValuesProperties.
-func (m *MongoDatabaseValuesProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
-	return &MongoDatabaseProperties{
-		ProvisioningState: m.ProvisioningState,
-		Mode: m.Mode,
-		Secrets: m.Secrets,
-		Status: m.Status,
-		Environment: m.Environment,
-		Application: m.Application,
-	}
 }
 
 // MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
@@ -1150,6 +1007,51 @@ type Recipe struct {
 
 	// Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type RecipeMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
+func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
 }
 
 type RecipeSQLDatabaseProperties struct {
@@ -1356,6 +1258,51 @@ type Resource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+type ResourceMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
+func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 type ResourceSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1521,6 +1468,48 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValuesMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
+func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Secrets: v.Secrets,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+	}
 }
 
 type ValuesSQLDatabaseProperties struct {
