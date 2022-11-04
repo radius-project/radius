@@ -182,36 +182,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	return renderers.RendererOutput{
-		Resources:           outputResources,
-		ComputedValues:      computedValues,
-		ResourceTransformer: transformContainerResource,
+		Resources:      outputResources,
+		ComputedValues: computedValues,
 	}, nil
-}
-
-// transformContainerResource updates Container resources with computedValues.
-func transformContainerResource(ctx context.Context, dest conv.DataModelInterface, computedValues map[string]any) error {
-	res, ok := dest.(*datamodel.ContainerResource)
-	if !ok {
-		return errors.New("resource must be ContainerResource")
-	}
-
-	ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.EnvironmentIdentity)
-	if err != nil {
-		return nil
-	}
-
-	resourceID, err := handlers.GetMapValue[string](computedValues, handlers.UserAssignedIdentityIDKey)
-	if err != nil {
-		resourceID = ""
-	}
-
-	res.Properties.Identity = &rp.IdentitySettings{
-		Kind:       ei.Kind,
-		OIDCIssuer: ei.OIDCIssuer,
-		Resource:   resourceID,
-	}
-
-	return nil
 }
 
 func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, identityRequired bool) ([]outputresource.OutputResource, map[string][]byte, error) {
@@ -443,11 +416,42 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		computedValues[handlers.EnvironmentIdentity] = rp.ComputedValueReference{
 			Value: options.Environment.Identity,
+			Transformer: func(r conv.DataModelInterface, value *rp.ComputedValueReference) error {
+				ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.EnvironmentIdentity)
+				if err != nil {
+					return err
+				}
+				res, ok := r.(*datamodel.ContainerResource)
+				if !ok {
+					return errors.New("resource must be ContainerResource")
+				}
+				if res.Properties.Identity == nil {
+					res.Properties.Identity = &rp.IdentitySettings{}
+				}
+				res.Properties.Identity.Kind = ei.Kind
+				res.Properties.Identity.OIDCIssuer = ei.OIDCIssuer
+				return nil
+			},
 		}
 
 		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
 			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
 			PropertyReference: handlers.UserAssignedIdentityIDKey,
+			Transformer: func(r conv.DataModelInterface, value *rp.ComputedValueReference) error {
+				resourceID, err := handlers.GetMapValue[string](computedValues, handlers.UserAssignedIdentityIDKey)
+				if err != nil {
+					return err
+				}
+				res, ok := r.(*datamodel.ContainerResource)
+				if !ok {
+					return errors.New("resource must be ContainerResource")
+				}
+				if res.Properties.Identity == nil {
+					res.Properties.Identity = &rp.IdentitySettings{}
+				}
+				res.Properties.Identity.Resource = resourceID
+				return nil
+			},
 		}
 	}
 

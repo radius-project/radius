@@ -71,7 +71,4 @@ type RendererOutput struct {
 
 	// RadiusResource is the original Radius resource model.
 	RadiusResource conv.DataModelInterface
-
-	// ResourceTransformer transforms Radius resource at the end of deployment.
-	ResourceTransformer func(context.Context, conv.DataModelInterface, map[string]any) error
 }
