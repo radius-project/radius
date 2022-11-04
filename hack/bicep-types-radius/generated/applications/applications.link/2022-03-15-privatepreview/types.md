@@ -336,14 +336,14 @@
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeSQLDatabaseProperties
 #### Properties
-* **database**: string (ReadOnly): The name of the SQL database.
+* **database**: string: The name of the SQL database.
 * **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **server**: string: The fully qualified domain name of the SQL database.
 
 ### ResourceSQLDatabaseProperties
 #### Properties
-* **database**: string (ReadOnly): The name of the SQL database.
+* **database**: string: The name of the SQL database.
 * **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with SQL API to use for this link
 * **server**: string: The fully qualified domain name of the SQL database.

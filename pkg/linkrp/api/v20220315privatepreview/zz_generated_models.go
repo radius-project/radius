@@ -1076,11 +1076,11 @@ type RecipeSQLDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
 	// The fully qualified domain name of the SQL database.
 	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; The name of the SQL database.
-	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1280,11 +1280,11 @@ type ResourceSQLDatabaseProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
 	// The fully qualified domain name of the SQL database.
 	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; The name of the SQL database.
-	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

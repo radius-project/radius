@@ -273,8 +273,7 @@
         },
         "database": {
           "description": "The name of the SQL database.",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         },
         "server": {
           "description": "The fully qualified domain name of the SQL database.",
@@ -301,8 +300,7 @@
         },
         "database": {
           "description": "The name of the SQL database.",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         },
         "server": {
           "description": "The fully qualified domain name of the SQL database.",
