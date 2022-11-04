@@ -203,17 +203,15 @@ func transformContainerResource(ctx context.Context, dest conv.DataModelInterfac
 		return errors.New("resource must be ContainerResource")
 	}
 
-	envIdentity, ok := computedValues[handlers.EnvironmentIdentity]
-	if !ok {
+	ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.EnvironmentIdentity)
+	if err != nil {
 		return nil
 	}
 
-	resourceID := ""
-	if id, ok := computedValues[handlers.UserAssignedIdentityIDKey]; ok {
-		resourceID = id.(string)
+	resourceID, err := handlers.GetMapValue[string](computedValues, handlers.UserAssignedIdentityIDKey)
+	if err != nil {
+		resourceID = ""
 	}
-
-	ei := envIdentity.(*rp.IdentitySettings)
 
 	res.Properties.Identity = &rp.IdentitySettings{
 		Kind:       ei.Kind,
