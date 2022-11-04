@@ -200,13 +200,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The DaprStateStore connector was successfully deleted."
+            "description": "The DaprStateStore link was successfully deleted."
           },
           "202": {
-            "description": "The DaprStateStore connector will be deleted asynchronously."
+            "description": "The DaprStateStore link will be deleted asynchronously."
           },
           "204": {
-            "description": "The DaprStateStore connector does not exist."
+            "description": "The DaprStateStore link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -237,7 +237,7 @@
       }
     },
     "DaprStateStoreResource": {
-      "description": "DaprStateStore connector",
+      "description": "DaprStateStore link",
       "type": "object",
       "allOf": [
         {
@@ -331,7 +331,7 @@
       "x-ms-discriminator-value": "generic"
     },
     "DaprStateStoreProperties": {
-      "description": "DaprStateStore connector properties",
+      "description": "DaprStateStore link properties",
       "type": "object",
       "allOf": [
         {
@@ -346,7 +346,7 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the daprStateStore connector at the time the operation was called"
+          "description": "Provisioning state of the daprStateStore link at the time the operation was called"
         },
         "kind": {
           "description": "The Dapr StateStore kind",
@@ -358,7 +358,7 @@
           ]
         },
         "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore connector",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"
@@ -372,7 +372,7 @@
   },
   "parameters": {
     "DaprStateStoreNameParameter": {
-      "description": "The name of the daprStateStore connector resource",
+      "description": "The name of the daprStateStore link resource",
       "name": "daprStateStoreName",
       "in": "path",
       "required": true,

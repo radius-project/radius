@@ -58,6 +58,7 @@ resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
     application: app.id
     environment: environment
     resource: server::dbinner.id
+    mode: 'resource'
   }
 }
 

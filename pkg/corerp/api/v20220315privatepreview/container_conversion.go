@@ -6,12 +6,12 @@
 package v20220315privatepreview
 
 import (
+	azto "github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
-
-	"github.com/Azure/go-autorest/autorest/to"
 )
 
 // ConvertTo converts from the versioned Container resource to version-agnostic datamodel.
@@ -107,9 +107,20 @@ func (src *ContainerResource) ConvertTo() (conv.DataModelInterface, error) {
 				Ports:          ports,
 				ReadinessProbe: readinessProbe,
 				Volumes:        volumes,
+				Command:        stringSlice(src.Properties.Container.Command),
+				Args:           stringSlice(src.Properties.Container.Args),
+				WorkingDir:     to.String(src.Properties.Container.WorkingDir),
 			},
 			Extensions: extensions,
 		},
+	}
+
+	if src.Properties.Identity != nil {
+		converted.Properties.Identity = &rp.IdentitySettings{
+			Kind:       toIdentityKind(src.Properties.Identity.Kind),
+			OIDCIssuer: to.String(src.Properties.Identity.OidcIssuer),
+			Resource:   to.String(src.Properties.Identity.Resource),
+		}
 	}
 
 	return converted, nil
@@ -182,6 +193,15 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
+	var identity *IdentitySettings
+	if c.Properties.Identity != nil {
+		identity = &IdentitySettings{
+			Kind:       fromIdentityKind(c.Properties.Identity.Kind),
+			Resource:   azto.Ptr(c.Properties.Identity.Resource),
+			OidcIssuer: azto.Ptr(c.Properties.Identity.OIDCIssuer),
+		}
+	}
+
 	dst.ID = to.StringPtr(c.ID)
 	dst.Name = to.StringPtr(c.Name)
 	dst.Type = to.StringPtr(c.Type)
@@ -202,8 +222,12 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 			Ports:          ports,
 			ReadinessProbe: readinessProbe,
 			Volumes:        volumes,
+			Command:        azto.SliceOfPtrs(c.Properties.Container.Command...),
+			Args:           azto.SliceOfPtrs(c.Properties.Container.Args...),
+			WorkingDir:     to.StringPtr(c.Properties.Container.WorkingDir),
 		},
 		Extensions: extensions,
+		Identity:   identity,
 	}
 
 	return nil

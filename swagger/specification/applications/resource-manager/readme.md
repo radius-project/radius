@@ -33,8 +33,8 @@ openapi-type: arm
 tag: package-core-2022-03-15-privatepreview
 ```
 
-``` yaml $(package-connector)
-tag: package-connector-2022-03-15-privatepreview
+``` yaml $(package-link)
+tag: package-link-2022-03-15-privatepreview
 ```
 
 ### Tag: package-core-2022-03-15-privatepreview
@@ -52,11 +52,11 @@ input-file:
   - Applications.Core/preview/2022-03-15-privatepreview/volumes.json
 ```
 
-### Tag: package-connector-2022-03-15-privatepreview
+### Tag: package-link-2022-03-15-privatepreview
 
-These settings apply only when `--tag=package-connector-2022-03-15-privatepreview` is specified on the command line.
+These settings apply only when `--tag=package-link-2022-03-15-privatepreview` is specified on the command line.
 
-``` yaml $(tag) == 'package-connector-2022-03-15-privatepreview'
+``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
 input-file:
   - Applications.Link/preview/2022-03-15-privatepreview/global.json
   - Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
@@ -83,11 +83,11 @@ swagger-to-sdk:
   - repo: azure-sdk-for-python-track2
     after_scripts:
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#core
-      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#connector  
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#link  
   - repo: azure-sdk-for-python
     after_scripts:
       - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#core
-      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#connector
+      - python ./scripts/multiapi_init_gen.py azure-mgmt-applications#link
   - repo: azure-sdk-for-java
   - repo: azure-sdk-for-go
   - repo: azure-sdk-for-js

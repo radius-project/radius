@@ -18,8 +18,8 @@ import (
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
-	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/setup"
 
 	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
 	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
@@ -32,6 +32,11 @@ import (
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
+	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
+	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
+	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
+	workspace_show "github.com/project-radius/radius/pkg/cli/cmd/workspace/show"
+	workspace_switch "github.com/project-radius/radius/pkg/cli/cmd/workspace/switch"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -119,6 +124,7 @@ func initSubCommands() {
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
 		NamespaceInterface:  &namespace.Impl{},
+		SetupInterface:      &setup.Impl{},
 	}
 
 	showCmd, _ := resource_show.NewCommand(framework)
@@ -154,6 +160,18 @@ func initSubCommands() {
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
 
+	workspaceDeleteCmd, _ := workspace_delete.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceDeleteCmd)
+
+	workspaceListCmd, _ := workspace_list.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceListCmd)
+
+	workspaceShowCmd, _ := workspace_show.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceShowCmd)
+
+	workspaceSwitchCmd, _ := workspace_switch.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceSwitchCmd)
+
 	appSwitchCmd, _ := appSwitch.NewCommand(framework)
 	applicationCmd.AddCommand(appSwitchCmd)
 
@@ -177,7 +195,7 @@ func initConfig() {
 	ConfigHolder.Config = v
 }
 
-//TODO: Deprecate once all the commands are moved to new framework
+// TODO: Deprecate once all the commands are moved to new framework
 func ConfigFromContext(ctx context.Context) *viper.Viper {
 	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
 	if holder == nil {

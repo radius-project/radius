@@ -23,7 +23,7 @@
               "provider": "Applications.Link",
               "resource": "mongoDatabases",
               "operation": "Get/List mongoDatabases",
-              "description": "Gets/Lists mongo database connector(s)"
+              "description": "Gets/Lists mongo database link(s)"
             }
           },
           {
@@ -33,7 +33,7 @@
               "provider": "Applications.Link",
               "resource": "mongoDatabases",
               "operation": "Create/Update mongoDatabases",
-              "description": "Creates or updates a mongo database connector"
+              "description": "Creates or updates a mongo database link"
             }
           },
           {
@@ -43,7 +43,7 @@
               "provider": "Applications.Link",
               "resource": "mongoDatabases",
               "operation": "Delete mongoDatabases",
-              "description": "Deletes a mongo database connector"
+              "description": "Deletes a mongo database link"
             }
           },
           {

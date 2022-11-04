@@ -75,7 +75,43 @@
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
+* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+
+## Extension
+* **Discriminator**: kind
+
+### Base Properties
+### DaprSidecarExtension
+#### Properties
+* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
+* **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
+* **config**: string: Specifies the Dapr configuration to use for the resource.
+* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
+* **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
+* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
+
+### ContainerKubernetesMetadataExtension
+#### Properties
+* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
+### ManualScalingExtension
+#### Properties
+* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
+* **replicas**: int: Replica count.
+
+
+## ContainerKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ContainerKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
 
 ## SystemData
 ### Properties
@@ -98,6 +134,7 @@
 * **container**: [Container](#container) (Required): Definition of a container.
 * **environment**: string: The resource id of the environment linked to the resource
 * **extensions**: [Extension](#extension)[]: Extensions spec of the resource
+* **identity**: [IdentitySettings](#identitysettings)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -109,7 +146,7 @@
 ## ConnectionProperties
 ### Properties
 * **disableDefaultEnvVars**: bool
-* **iam**: [IamProperties](#iamproperties)
+* **iam**: [IamProperties](#iamproperties): The properties of IAM
 * **source**: string (Required): The source of the connection
 
 ## IamProperties
@@ -119,12 +156,15 @@
 
 ## Container
 ### Properties
+* **args**: string[]: Arguments to the entrypoint. Overrides the container image's CMD
+* **command**: string[]: Entrypoint array. Overrides the container image's ENTRYPOINT
 * **env**: [ContainerEnv](#containerenv): Dictionary of <string>
 * **image**: string (Required): The registry and image to download and run in your container
 * **livenessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **ports**: [ContainerPorts](#containerports): Dictionary of <ContainerPort>
 * **readinessProbe**: [HealthProbeProperties](#healthprobeproperties): Properties for readiness/liveness probe
 * **volumes**: [ContainerVolumes](#containervolumes): Dictionary of <Volume>
+* **workingDir**: string: Working directory for the container
 
 ## ContainerEnv
 ### Properties
@@ -195,24 +235,11 @@
 * **source**: string (Required): The source of the volume
 
 
-## Extension
-* **Discriminator**: kind
-
-### Base Properties
-### DaprSidecarExtension
-#### Properties
-* **appId**: string (Required): The Dapr appId. Specifies the identifier used by Dapr for service invocation.
-* **appPort**: int: The Dapr appPort. Specifies the internal listening port for the application to handle requests from the Dapr sidecar.
-* **config**: string: Specifies the Dapr configuration to use for the resource.
-* **kind**: 'daprSidecar' (Required): Specifies the extensions of a resource.
-* **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
-* **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
-
-### ManualScalingExtension
-#### Properties
-* **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
-* **replicas**: int: Replica count.
-
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the provisioned identity
 
 ## ResourceStatus
 ### Properties
@@ -226,6 +253,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
+* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
@@ -243,12 +271,6 @@
 * **namespace**: string (Required): The namespace to use for the environment.
 
 
-## IdentitySettings
-### Properties
-* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
-* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
-* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
-
 ## Providers
 ### Properties
 * **azure**: [ProvidersAzure](#providersazure): Azure cloud provider configuration
@@ -264,7 +286,7 @@
 
 ## EnvironmentRecipeProperties
 ### Properties
-* **connectorType**: string (Required): Type of the connector this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+* **linkType**: string (Required): Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
 ## TrackedResourceTags
@@ -326,7 +348,6 @@
 ### AzureKeyVaultVolumeProperties
 #### Properties
 * **certificates**: [AzureKeyVaultVolumePropertiesCertificates](#azurekeyvaultvolumepropertiescertificates): The KeyVault certificates that this volume exposes
-* **identity**: [IdentitySettings](#identitysettings) (Required)
 * **keys**: [AzureKeyVaultVolumePropertiesKeys](#azurekeyvaultvolumepropertieskeys): The KeyVault keys that this volume exposes
 * **kind**: 'azure.com.keyvault' (Required): The volume kind
 * **resource**: string (Required): The ID of the keyvault to use for this volume resource

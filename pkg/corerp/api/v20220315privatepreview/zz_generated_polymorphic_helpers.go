@@ -39,8 +39,16 @@ func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassifi
 	}
 	var b ExtensionClassification
 	switch m["kind"] {
+	case "ApplicationExtension":
+		b = &ApplicationExtension{}
+	case "ContainerExtension":
+		b = &ContainerExtension{}
+	case "EnvironmentExtension":
+		b = &EnvironmentExtension{}
 	case "daprSidecar":
 		b = &DaprSidecarExtension{}
+	case "kubernetesMetadata":
+		b = &ContainerKubernetesMetadataExtension{}
 	case "manualScaling":
 		b = &ManualScalingExtension{}
 	default:

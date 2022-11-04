@@ -465,10 +465,6 @@
         }
       ],
       "properties": {
-        "identity": {
-          "description": "Configuration for supported external identity providers",
-          "$ref": "global.json#/definitions/IdentitySettings"
-        },
         "certificates": {
           "additionalProperties": {
             "$ref": "#/definitions/CertificateObjectProperties"
@@ -497,7 +493,6 @@
       },
       "required": [
         "kind",
-        "identity",
         "resource"
       ],
       "type": "object",

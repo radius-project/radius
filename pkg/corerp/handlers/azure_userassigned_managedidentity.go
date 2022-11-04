@@ -10,12 +10,13 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 const (
@@ -24,6 +25,8 @@ const (
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
 	UserAssignedIdentityClientIDKey    = "userassignedidentityclientid"
 	UserAssignedIdentityTenantIDKey    = "userassignedidentitytenantid"
+	UserAssignedIdentitySubscriptionID = "userassignedidentitysubscriptionid"
+	UserAssignedIdentityResourceGroup  = "userassignedidentityresourcegroup"
 )
 
 // NewAzureUserAssignedManagedIdentityHandler initializes a new handler for resources of kind UserAssignedManagedIdentity
@@ -33,68 +36,72 @@ func NewAzureUserAssignedManagedIdentityHandler(arm *armauth.ArmConfig) Resource
 
 type azureUserAssignedManagedIdentityHandler struct {
 	arm *armauth.ArmConfig
-
-	// TODO: this code has been written to assume that we work with a single subscription/resourceGroup
-	// for a single instance of the Radius control plane. This code is also non-functional. If we bring
-	// back this functionality, we need to rework these semantics. Users should configure these details as
-	// part of the environment configuration, and not as a static "one-per-control-plane" setting.
-	SubscriptionID string
-	ResourceGroup  string
 }
 
-func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
+func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	logger := radlogger.GetLogger(ctx)
-	resource_identity, err := handler.GetResourceIdentity(ctx, *resource)
-	if err != nil {
-		return err
-	}
 
-	resource.Identity = resource_identity
-	id := resource_identity.Data.(resourcemodel.ARMIdentity)
-	logger.WithValues(
-		radlogger.LogFieldResourceID, id,
-		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
-
-	return nil
-}
-
-func (handler *azureUserAssignedManagedIdentityHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
-	properties, err := handler.GetResourceNativeIdentityKeyProperties(ctx, resource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, err
-	}
-
-	identity := resourcemodel.NewARMIdentity(&resource.ResourceType, properties[UserAssignedIdentityIDKey], clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
-
-	return identity, nil
-}
-
-func (handler *azureUserAssignedManagedIdentityHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
-	properties, ok := resource.Resource.(map[string]string)
+	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, handler.SubscriptionID, handler.ResourceGroup)
+	identityName, err := GetString(properties, UserAssignedIdentityNameKey)
+	if err != nil {
+		return nil, err
+	}
+
+	subID, err := GetString(properties, UserAssignedIdentitySubscriptionID)
+	if err != nil {
+		return nil, err
+	}
+
+	rgName, err := GetString(properties, UserAssignedIdentityResourceGroup)
+	if err != nil {
+		return nil, err
+	}
+
+	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, subID, rgName)
 	if err != nil {
 		return properties, err
 	}
 
-	identityName := properties[UserAssignedIdentityNameKey]
-	msiClient := clients.NewUserAssignedIdentitiesClient(handler.SubscriptionID, handler.arm.Auth)
-	identity, err := msiClient.CreateOrUpdate(context.Background(), handler.ResourceGroup, identityName, msi.Identity{
-		Location: to.Ptr(*rgLocation),
-	})
+	msiClient := clients.NewUserAssignedIdentitiesClient(subID, handler.arm.Auth)
+	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, msi.Identity{Location: rgLocation})
 	if err != nil {
 		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
-	properties[UserAssignedIdentityIDKey] = *identity.ID
+
+	properties[UserAssignedIdentityIDKey] = to.String(identity.ID)
 	properties[UserAssignedIdentityPrincipalIDKey] = identity.PrincipalID.String()
 	properties[UserAssignedIdentityClientIDKey] = identity.ClientID.String()
+	properties[UserAssignedIdentityTenantIDKey] = identity.TenantID.String()
+
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
+	logger.WithValues(
+		radlogger.LogFieldResourceID, *identity.ID,
+		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
 
 	return properties, nil
 }
 
-func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
+	msiResourceID, _, err := options.Resource.Identity.RequireARM()
+	if err != nil {
+		return err
+	}
+
+	parsed, err := resources.ParseResource(msiResourceID)
+	if err != nil {
+		return err
+	}
+
+	msiClient := clients.NewUserAssignedIdentitiesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+	_, err = msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name())
+
+	if err != nil {
+		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
+	}
+
 	return nil
 }

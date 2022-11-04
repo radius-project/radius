@@ -7,6 +7,7 @@ package radcli
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"testing"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -36,6 +38,7 @@ type ValidateInput struct {
 	HelmInterface       helm.Interface
 	ConnectionFactory   *connections.MockFactory
 	NamespaceInterface  namespace.Interface
+	SetupInterface      setup.Interface
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -59,9 +62,11 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				Prompter:            testcase.Prompter,
 				HelmInterface:       testcase.HelmInterface,
 				NamespaceInterface:  testcase.NamespaceInterface,
+				SetupInterface:      testcase.SetupInterface,
 			}
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
+			cmd.SetContext(context.Background())
 
 			err := cmd.ParseFlags(testcase.Input)
 			require.NoError(t, err, "flag parsing failed")

@@ -200,13 +200,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The Extender connector was successfully deleted."
+            "description": "The Extender link was successfully deleted."
           },
           "202": {
-            "description": "The Extender connector will be deleted asynchronously."
+            "description": "The Extender link will be deleted asynchronously."
           },
           "204": {
-            "description": "The Extender connector does not exist."
+            "description": "The Extender link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -279,7 +279,7 @@
       }
     },
     "ExtenderResource": {
-      "description": "Extender connector",
+      "description": "Extender link",
       "type": "object",
       "allOf": [
         {
@@ -300,7 +300,7 @@
       }
     },
     "ExtenderResponseResource": {
-      "description": "Extender connector",
+      "description": "Extender link",
       "type": "object",
       "allOf": [
         {
@@ -330,7 +330,7 @@
       "properties": {}
     },
     "ExtenderResponseProperties": {
-      "description": "Extender connector properties",
+      "description": "Extender link properties",
       "type": "object",
       "allOf": [
         {
@@ -342,7 +342,7 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the extender connector at the time the operation was called"
+          "description": "Provisioning state of the extender link at the time the operation was called"
         }
       },
       "required": [
@@ -350,7 +350,7 @@
       ]
     },
     "ExtenderProperties": {
-      "description": "Extender connector properties",
+      "description": "Extender link properties",
       "type": "object",
       "allOf": [
         {
@@ -367,7 +367,7 @@
   },
   "parameters": {
     "ExtenderNameParameter": {
-      "description": "The name of the Extender connector resource",
+      "description": "The name of the Extender link resource",
       "name": "extenderName",
       "in": "path",
       "required": true,

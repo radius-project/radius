@@ -25,11 +25,6 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.KeyVault/vaults/vault0",
         "kind": "azure.com.keyvault",
-        "identity": {
-            "kind": "azure.com.workload",
-            "oidcIssuer": "https://oidcurl/guid",
-            "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
-        },
         "secrets": {
             "mysecret-1": {
                 "name": "mysecret-1",

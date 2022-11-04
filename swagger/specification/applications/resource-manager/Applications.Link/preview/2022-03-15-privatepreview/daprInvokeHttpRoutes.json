@@ -200,13 +200,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The DaprInvokeHttpRoute connector was successfully deleted."
+            "description": "The DaprInvokeHttpRoute link was successfully deleted."
           },
           "202": {
-            "description": "The DaprInvokeHttpRoute connector will be deleted asynchronously."
+            "description": "The DaprInvokeHttpRoute link will be deleted asynchronously."
           },
           "204": {
-            "description": "The DaprInvokeHttpRoute connector does not exist."
+            "description": "The DaprInvokeHttpRoute link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -237,7 +237,7 @@
       }
     },
     "DaprInvokeHttpRouteResource": {
-      "description": "DaprInvokeHttpRoute connector",
+      "description": "DaprInvokeHttpRoute link",
       "type": "object",
       "allOf": [
         {
@@ -258,7 +258,7 @@
       }
     },
     "DaprInvokeHttpRouteProperties": {
-      "description": "DaprInvokeHttpRoute connector properties",
+      "description": "DaprInvokeHttpRoute link properties",
       "type": "object",
       "allOf": [
         {
@@ -269,14 +269,14 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the daprInvokeHttpRoute connector at the time the operation was called"
+          "description": "Provisioning state of the daprInvokeHttpRoute link at the time the operation was called"
         },
         "appId": {
           "description": "The Dapr appId used for the route",
           "type": "string"
         },
         "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute connector",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link",
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"
@@ -290,7 +290,7 @@
   },
   "parameters": {
     "DaprInvokeHttpRouteNameParameter": {
-      "description": "The name of the DaprInvokeHttpRoute connector resource",
+      "description": "The name of the DaprInvokeHttpRoute link resource",
       "name": "daprInvokeHttpRouteName",
       "in": "path",
       "required": true,

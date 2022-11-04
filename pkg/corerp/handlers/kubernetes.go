@@ -45,28 +45,49 @@ type kubernetesHandler struct {
 	clientSet k8s.Interface
 }
 
-func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresource.OutputResource) error {
-	item, err := convertToUnstructured(*resource)
+func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
+	item, err := convertToUnstructured(*options.Resource)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
+	properties := map[string]string{
+		KubernetesKindKey:       item.GetKind(),
+		KubernetesAPIVersionKey: item.GetAPIVersion(),
+		KubernetesNamespaceKey:  item.GetNamespace(),
+		ResourceName:            item.GetName(),
 	}
 
 	err = handler.PatchNamespace(ctx, item.GetNamespace())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if resource.Deployed {
-		return nil
+	if options.Resource.Deployed {
+		return properties, nil
 	}
 
 	err = handler.client.Patch(ctx, &item, client.Apply, &client.PatchOptions{FieldManager: kubernetes.FieldManager})
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	options.Resource.Identity = resourcemodel.ResourceIdentity{
+		ResourceType: &resourcemodel.ResourceType{
+			Type:     options.Resource.ResourceType.Type,
+			Provider: resourcemodel.ProviderKubernetes,
+		},
+		Data: resourcemodel.KubernetesIdentity{
+			Name:       item.GetName(),
+			Namespace:  item.GetNamespace(),
+			Kind:       item.GetKind(),
+			APIVersion: item.GetAPIVersion(),
+		},
 	}
 
 	if !strings.EqualFold(item.GetKind(), "Deployment") {
-		return nil // only checking further the Deployment output resource status
+		return properties, nil // only checking further the Deployment output resource status
 	}
 
 	timeout := DefaultDeploymentTimeout
@@ -90,7 +111,7 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 		// Get the final deployment status
 		dep, err := handler.clientSet.AppsV1().Deployments(item.GetNamespace()).Get(ctx, item.GetName(), metav1.GetOptions{})
 		if err != nil {
-			return fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
+			return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, error occured while fetching latest status: %w", item.GetName(), item.GetNamespace(), err)
 		}
 		// Now get the latest available observation of deployment current state
 		// note that there can be a race condition here, by the time it fetches the latest status, deployment might be succeeded
@@ -99,51 +120,12 @@ func (handler *kubernetesHandler) Put(ctx context.Context, resource *outputresou
 			status = dep.Status.Conditions[len(dep.Status.Conditions)-1]
 		}
 
-		return fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
+		return nil, fmt.Errorf("deployment timed out, name: %s, namespace %s, status: %s, reason: %s", item.GetName(), item.GetNamespace(), status.Message, status.Reason)
 	case <-readinessCh:
-		return nil
+		return properties, nil
 	case <-watchErrorCh:
-		return err
-	}
-}
-
-func (handler *kubernetesHandler) GetResourceIdentity(ctx context.Context, resource outputresource.OutputResource) (resourcemodel.ResourceIdentity, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, err
-	}
-
-	identity := resourcemodel.ResourceIdentity{
-		ResourceType: &resourcemodel.ResourceType{
-			Type:     resource.ResourceType.Type,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
-		Data: resourcemodel.KubernetesIdentity{
-			Name:       item.GetName(),
-			Namespace:  item.GetNamespace(),
-			Kind:       item.GetKind(),
-			APIVersion: item.GetAPIVersion(),
-		},
-	}
-
-	return identity, err
-}
-
-func (handler *kubernetesHandler) GetResourceNativeIdentityKeyProperties(ctx context.Context, resource outputresource.OutputResource) (map[string]string, error) {
-	item, err := convertToUnstructured(resource)
-	if err != nil {
 		return nil, err
 	}
-
-	// For a Kubernetes resource we only need to store the ObjectMeta and TypeMeta data
-	properties := map[string]string{
-		KubernetesKindKey:       item.GetKind(),
-		KubernetesAPIVersionKey: item.GetAPIVersion(),
-		KubernetesNamespaceKey:  item.GetNamespace(),
-		ResourceName:            item.GetName(),
-	}
-
-	return properties, err
 }
 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
@@ -170,9 +152,9 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 	return nil
 }
 
-func (handler *kubernetesHandler) Delete(ctx context.Context, resource outputresource.OutputResource) error {
+func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
+	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
 		return err
 	}
 

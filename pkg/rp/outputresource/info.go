@@ -17,18 +17,18 @@ import (
 // OutputResource represents the output of rendering a resource
 type OutputResource struct {
 	// LocalID is a logical identifier scoped to the owning Radius resource.
-	LocalID string
+	LocalID string `json:"localID"`
 
 	// Identity uniquely identifies the underlying resource within its platform..
-	Identity resourcemodel.ResourceIdentity
+	Identity resourcemodel.ResourceIdentity `json:"identity"`
 
 	// Resource type specifies the 'provider' and 'kind' used to look up the resource handler for processing
-	ResourceType resourcemodel.ResourceType
+	ResourceType resourcemodel.ResourceType `json:"resourceType"`
 
-	Deployed     bool
-	Resource     interface{}
-	Dependencies []Dependency // resources that are required to be deployed before this resource can be deployed
-	Status       OutputResourceStatus
+	Deployed     bool                 `json:"deployed"`
+	Resource     interface{}          `json:"resource,omitempty"`
+	Dependencies []Dependency         // resources that are required to be deployed before this resource can be deployed
+	Status       OutputResourceStatus `json:"status,omitempty"`
 }
 
 type Dependency struct {
@@ -38,8 +38,8 @@ type Dependency struct {
 
 // OutputResourceStatus represents the status of the Output Resource
 type OutputResourceStatus struct {
-	ProvisioningState        string `bson:"provisioningState"`
-	ProvisioningErrorDetails string `bson:"provisioningErrorDetails"`
+	ProvisioningState        string `json:"provisioningState"`
+	ProvisioningErrorDetails string `json:"provisioningErrorDetails"`
 }
 
 // Key localID of the output resource is used as the key in DependencyItem for output resources.
@@ -95,6 +95,7 @@ func NewKubernetesOutputResource(resourceType string, localID string, obj runtim
 		ResourceType: rt,
 		Identity:     resourcemodel.NewKubernetesIdentity(&rt, obj, objectMeta),
 		Resource:     obj,
+		Dependencies: []Dependency{},
 	}
 }
 

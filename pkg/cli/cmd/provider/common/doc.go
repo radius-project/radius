@@ -10,7 +10,7 @@ package common
 const LongDescriptionBlurb = `
 
 Radius cloud provider integrations enable Radius to deploy cloud resources using Bicep, and for Radius
-environments and connectors to integrate with those cloud resources. Radius also stores credentials for
+environments and links to integrate with those cloud resources. Radius also stores credentials for
 use when accessing cloud resources.
 
 Cloud providers are configured per-Radius-installation. Configuration commands will use the current workspace

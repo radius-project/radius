@@ -200,13 +200,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The RedisCache connector was successfully deleted."
+            "description": "The RedisCache link was successfully deleted."
           },
           "202": {
-            "description": "The RedisCache connector will be deleted asynchronously."
+            "description": "The RedisCache link will be deleted asynchronously."
           },
           "204": {
-            "description": "The RedisCache connector does not exist."
+            "description": "The RedisCache link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -279,7 +279,7 @@
       }
     },
     "RedisCacheResource": {
-      "description": "RedisCache connector",
+      "description": "RedisCache link",
       "type": "object",
       "allOf": [
         {
@@ -300,7 +300,7 @@
       }
     },
     "RedisCacheResponseResource": {
-      "description": "RedisCache connector",
+      "description": "RedisCache link",
       "type": "object",
       "allOf": [
         {
@@ -342,7 +342,7 @@
       }
     },
     "RedisCacheResponseProperties": {
-      "description": "RedisCache connector properties",
+      "description": "RedisCache link properties",
       "type": "object",
       "allOf": [
         {
@@ -353,10 +353,10 @@
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the redis cache connector at the time the operation was called"
+          "description": "Provisioning state of the redis cache link at the time the operation was called"
         },
         "resource": {
-          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this connector",
+          "description": "Fully qualified resource ID of a supported resource with Redis API to use for this link",
           "type": "string",
           "example": [
             "account::redis.id"
@@ -384,7 +384,7 @@
           "readOnly": true
         },
         "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache connector",
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscache link",
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"
@@ -395,7 +395,7 @@
       ]
     },
     "RedisCacheProperties": {
-      "description": "RedisCache connector properties",
+      "description": "RedisCache link properties",
       "type": "object",
       "allOf": [
         {
@@ -413,7 +413,7 @@
   },
   "parameters": {
     "RedisCacheNameParameter": {
-      "description": "The name of the RedisCache connector resource",
+      "description": "The name of the RedisCache link resource",
       "name": "redisCacheName",
       "in": "path",
       "required": true,

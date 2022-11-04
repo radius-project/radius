@@ -33,7 +33,7 @@ This command is intended for scripting or advanced use-cases. See 'rad init' for
 to configure these settings.
 
 Radius will use the provided service principal for all interations with Azure, including Bicep deployment, 
-Radius environments, and Radius connectors. 
+Radius environments, and Radius links. 
 
 Radius will use the provided subscription and resource group as the default target scope for Bicep deployment.
 The provided service principal must have the Contributor or Owner role assigned for the provided resource group

@@ -63,6 +63,10 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, w http.ResponseWriter
 		return r, err
 	}
 
+	if r, err := ValidateAndMutateRequest(ctx, newResource, old, e.Options()); r != nil || err != nil {
+		return r, err
+	}
+
 	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutContainerOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
 

@@ -78,8 +78,6 @@ func fromSystemDataModel(s v1.SystemData) *SystemData {
 
 func fromIdentityKind(kind rp.IdentitySettingKind) *IdentitySettingKind {
 	switch kind {
-	case rp.AzureIdentitySystemAssigned:
-		return azto.Ptr(IdentitySettingKindAzureComSystemassigned)
 	case rp.AzureIdentityWorkload:
 		return azto.Ptr(IdentitySettingKindAzureComWorkload)
 	default:
@@ -93,11 +91,20 @@ func toIdentityKind(kind *IdentitySettingKind) rp.IdentitySettingKind {
 	}
 
 	switch *kind {
-	case IdentitySettingKindAzureComSystemassigned:
-		return rp.AzureIdentitySystemAssigned
 	case IdentitySettingKindAzureComWorkload:
 		return rp.AzureIdentityWorkload
 	default:
 		return rp.IdentityNone
 	}
+}
+
+func stringSlice(s []*string) []string {
+	if s == nil {
+		return nil
+	}
+	var r []string
+	for _, v := range s {
+		r = append(r, *v)
+	}
+	return r
 }

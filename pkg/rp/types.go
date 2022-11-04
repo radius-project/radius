@@ -151,7 +151,7 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 }
 
 // RadiusResourceModel represents the interface of radius resource type.
-// TODO: Replace DeploymentDataModel with RadiusResourceModel later when connector rp leverages generic.
+// TODO: Replace DeploymentDataModel with RadiusResourceModel later when link rp leverages generic.
 type RadiusResourceModel interface {
 	conv.ResourceDataModel
 
@@ -159,22 +159,4 @@ type RadiusResourceModel interface {
 	OutputResources() []outputresource.OutputResource
 
 	ResourceMetadata() *BasicResourceProperties
-}
-
-type IdentitySettingKind string
-
-const (
-	IdentityNone                IdentitySettingKind = "None"
-	AzureIdentityWorkload       IdentitySettingKind = "azure.com.workload"
-	AzureIdentitySystemAssigned IdentitySettingKind = "azure.com.systemassigned"
-)
-
-// IdentitySettings represents the identity info to access azure resource, such as Key vault.
-type IdentitySettings struct {
-	// Kind represents the type of authentication.
-	Kind IdentitySettingKind `json:"kind"`
-	// Resource represents the resource id of managed identity.
-	Resource string `json:"resource,omitempty"`
-	// OIDCIssuer represents the name of OIDC issuer.
-	OIDCIssuer string `json:"oidcIssuer,omitempty"`
 }

@@ -16,7 +16,11 @@
               "compute": {
                 "kind": "Kubernetes",
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
-                "namespace": "default"
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
               }
             }
           },
@@ -29,7 +33,12 @@
               "compute": {
                 "kind": "Kubernetes",
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster1",
-                "namespace": "default"
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc",
+                  "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app"
+                }
               }
             }
           }

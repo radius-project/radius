@@ -74,8 +74,8 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
-							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 					Compute: &v20220315privatepreview.KubernetesCompute{
@@ -116,8 +116,8 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
-							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},
@@ -155,8 +155,8 @@ func Test_Run(t *testing.T) {
 					UseDevRecipes: to.Ptr(true),
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {
-							ConnectorType: to.Ptr("Applications.Link/mongoDatabases"),
-							TemplatePath:  to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
+							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
+							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
 						},
 					},
 				},

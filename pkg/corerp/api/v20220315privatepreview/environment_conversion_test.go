@@ -60,8 +60,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							ConnectorType: "Applications.Link/mongoDatabases",
-							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+							LinkType:     "Applications.Link/mongoDatabases",
+							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
 				},
@@ -99,8 +99,8 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
-							ConnectorType: "Applications.Link/mongoDatabases",
-							TemplatePath:  "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+							LinkType:     "Applications.Link/mongoDatabases",
+							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
 				},
@@ -157,7 +157,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 	require.Equal(t, 1, len(r.Properties.Recipes))
-	require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].ConnectorType)
+	require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].LinkType)
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 }
@@ -181,7 +181,7 @@ func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
 	require.Equal(t, "kubernetes", string(r.Properties.Compute.Kind))
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster", r.Properties.Compute.KubernetesCompute.ResourceID)
 	require.Equal(t, 1, len(r.Properties.Recipes))
-	require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].ConnectorType)
+	require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].LinkType)
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 

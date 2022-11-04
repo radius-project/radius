@@ -58,8 +58,8 @@ type KubernetesComputeProperties struct {
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
 type EnvironmentRecipeProperties struct {
-	ConnectorType string `json:"connectorType,omitempty"`
-	TemplatePath  string `json:"templatePath,omitempty"`
+	LinkType     string `json:"linkType,omitempty"`
+	TemplatePath string `json:"templatePath,omitempty"`
 }
 
 // Providers represents configs for providers for the environment, eg azure
