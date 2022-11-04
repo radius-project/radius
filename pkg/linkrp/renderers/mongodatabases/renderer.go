@@ -64,7 +64,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			SecretValues: getProvidedSecretValues(resource.Properties),
 		}, nil
 	default:
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("invalid mode")
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
 	}
 }
 

@@ -121,6 +121,10 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
 			Mode: datamodel.LinkModeValues,
+			MongoDatabaseValuesProperties: datamodel.MongoDatabaseValuesProperties{
+				Host: "testAccount1.mongo.cosmos.azure.com",
+				Port: 1234,
+			},
 			Secrets: datamodel.MongoDatabaseSecrets{
 				Username:         userName,
 				Password:         password,
@@ -260,6 +264,36 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_InvalidMode(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Link/mongoDatabases",
+			},
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: "abcd",
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "unsupported mode abcd", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Recipe_Success(t *testing.T) {

@@ -180,6 +180,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
+			Mode: "recipe",
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp_dm.RecipeData{
@@ -339,6 +340,7 @@ func Test_Render(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
+				Mode: "resource",
 			},
 		}
 		mr := store.Object{

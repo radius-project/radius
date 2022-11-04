@@ -61,7 +61,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 	}
 }
 
-func TestMongoDatabase_InvalidConvertVersionedToDataModel(t *testing.T) {
+func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
 	testset := []string{"mongodatabaseresource_invalidmode.json", "mongodatabaseresource_invalidmode2.json", "mongodatabaseresource_invalidmode3.json"}
 	for _, payload := range testset {
 		// arrange
@@ -76,11 +76,15 @@ func TestMongoDatabase_InvalidConvertVersionedToDataModel(t *testing.T) {
 		}
 		if payload == "mongodatabaseresource_invalidmode2.json" {
 			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "resource is a required properties"
+			expectedErr.Message = "resource is a required property for mode \"resource\""
 		}
 		if payload == "mongodatabaseresource_invalidmode3.json" {
 			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "recipe is a required properties"
+			expectedErr.Message = "recipe is a required property for mode \"recipe\""
+		}
+		if payload == "mongodatabaseresource_invalidmode4.json" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "rhost and port are required properties for mode \"values\""
 		}
 		_, err = versionedResource.ConvertTo()
 		require.Equal(t, &expectedErr, err)
@@ -88,7 +92,7 @@ func TestMongoDatabase_InvalidConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"mongodatabaseresourcedatamodel2.json"}
+	testset := []string{"mongodatabaseresourcedatamodel.json", "mongodatabaseresourcedatamodel2.json", "mongodatabaseresourcedatamodel_recipe.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -118,9 +122,6 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 		case *ValuesMongoDatabaseProperties:
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
-			require.Equal(t, "test-connection-string", *v.Secrets.ConnectionString)
-			require.Equal(t, "testUser", *v.Secrets.Username)
-			require.Equal(t, "testPassword", *v.Secrets.Password)
 			require.Equal(t, "AzureCosmosAccount", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
 		}

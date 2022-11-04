@@ -7,6 +7,7 @@ package v20220315privatepreview
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -42,11 +43,9 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceMongoDatabaseProperties:
 		if v.Resource == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("resource is a required properties")
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", "resource"))
 		}
-		converted.Properties.MongoDatabaseResourceProperties = datamodel.MongoDatabaseResourceProperties{
-			Resource: to.String(v.Resource),
-		}
+		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Database = to.String(v.Database)
@@ -57,10 +56,10 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
+		converted.Properties.Mode = datamodel.LinkModeResource
 	case *ValuesMongoDatabaseProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("host/port are required properties")
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", "values"))
 		}
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
@@ -72,10 +71,10 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Password:         to.String(v.Secrets.Password),
 			}
 		}
-		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
+		converted.Properties.Mode = datamodel.LinkModeValues
 	case *RecipeMongoDatabaseProperties:
 		if v.Recipe == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest("recipe is a required properties")
+			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", "recipe"))
 		}
 		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
@@ -83,7 +82,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Database = to.String(v.Database)
-		converted.Properties.Mode = toMongoDatabaseModeDataModel(src.Properties.GetMongoDatabaseProperties().Mode)
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 		if v.Secrets != nil {
 			converted.Properties.Secrets = datamodel.MongoDatabaseSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
@@ -113,8 +112,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 
 	switch mongo.Properties.Mode {
 	case datamodel.LinkModeResource:
+		var mode MongoDatabasePropertiesMode
+		mode = MongoDatabasePropertiesModeResource
 		converted := &ResourceMongoDatabaseProperties{
-			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
+			Mode:     &mode,
 			Resource: to.StringPtr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
 			Host:     to.StringPtr(mongo.Properties.Host),
 			Port:     to.Int32Ptr(mongo.Properties.Port),
@@ -128,8 +129,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		}
 		dst.Properties = converted
 	case datamodel.LinkModeValues:
+		var mode MongoDatabasePropertiesMode
+		mode = MongoDatabasePropertiesModeValues
 		converted := &ValuesMongoDatabaseProperties{
-			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
+			Mode:     &mode,
 			Host:     to.StringPtr(mongo.Properties.Host),
 			Port:     to.Int32Ptr(mongo.Properties.Port),
 			Database: to.StringPtr(mongo.Properties.Database),
@@ -142,8 +145,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		}
 		dst.Properties = converted
 	case datamodel.LinkModeRecipe:
+		var mode MongoDatabasePropertiesMode
+		mode = MongoDatabasePropertiesModeRecipe
 		converted := &RecipeMongoDatabaseProperties{
-			Mode:     fromMongoDatabaseModeDataModel(mongo.Properties.Mode),
+			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
 			Host:     to.StringPtr(mongo.Properties.Host),
 			Port:     to.Int32Ptr(mongo.Properties.Port),
@@ -185,30 +190,4 @@ func (src *MongoDatabaseSecrets) ConvertTo() (conv.DataModelInterface, error) {
 		Password:         to.String(src.Password),
 	}
 	return converted, nil
-}
-
-func fromMongoDatabaseModeDataModel(mode datamodel.LinkMode) *MongoDatabasePropertiesMode {
-	var convertedMode MongoDatabasePropertiesMode
-	switch mode {
-	case datamodel.LinkModeResource:
-		convertedMode = MongoDatabasePropertiesModeResource
-	case datamodel.LinkModeRecipe:
-		convertedMode = MongoDatabasePropertiesModeRecipe
-	case datamodel.LinkModeValues:
-		convertedMode = MongoDatabasePropertiesModeValues
-	}
-	return &convertedMode
-}
-
-func toMongoDatabaseModeDataModel(mode *MongoDatabasePropertiesMode) datamodel.LinkMode {
-	var converted datamodel.LinkMode
-	switch *mode {
-	case MongoDatabasePropertiesModeRecipe:
-		converted = datamodel.LinkModeRecipe
-	case MongoDatabasePropertiesModeResource:
-		converted = datamodel.LinkModeResource
-	case MongoDatabasePropertiesModeValues:
-		converted = datamodel.LinkModeValues
-	}
-	return converted
 }

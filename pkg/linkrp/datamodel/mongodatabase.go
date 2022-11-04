@@ -10,6 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
+// MongoDatabase represents MongoDatabase link resource.
 type MongoDatabase struct {
 	v1.BaseResource
 
