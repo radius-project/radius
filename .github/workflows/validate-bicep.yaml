@@ -30,7 +30,6 @@ jobs:
           repository: project-radius/docs
           path: temp/project-radius/docs
           ref: edge
-
       - name: Clone samples repo
         uses: actions/checkout@v3
         with:
