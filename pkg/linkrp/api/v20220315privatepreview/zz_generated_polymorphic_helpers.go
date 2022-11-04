@@ -64,11 +64,11 @@ func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDa
 	var b SQLDatabasePropertiesClassification
 	switch m["mode"] {
 	case string(SQLDatabasePropertiesModeRecipe):
-		b = &SQLRecipeProperties{}
+		b = &RecipeSQLDatabaseProperties{}
 	case string(SQLDatabasePropertiesModeResource):
-		b = &SQLResourceProperties{}
+		b = &ResourceSQLDatabaseProperties{}
 	case string(SQLDatabasePropertiesModeValues):
-		b = &SQLValueProperties{}
+		b = &ValuesSQLDatabaseProperties{}
 	default:
 		b = &SQLDatabaseProperties{}
 	}
