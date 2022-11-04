@@ -148,32 +148,6 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 	require.Equal(t, expectedSecretValues, output.SecretValues)
 }
 
-func Test_Render_NoResourceSpecified(t *testing.T) {
-	ctx := context.Background()
-	renderer := Renderer{}
-
-	mongoDBResource := datamodel.MongoDatabase{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
-				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
-			},
-		},
-		Properties: datamodel.MongoDatabaseProperties{
-			BasicResourceProperties: rp.BasicResourceProperties{
-				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-			},
-			Mode: datamodel.LinkModeValues,
-		},
-	}
-
-	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
-	require.NoError(t, err)
-	require.Equal(t, 0, len(output.Resources))
-}
-
 func Test_Render_InvalidResourceModel(t *testing.T) {
 	ctx := context.Background()
 	renderer := Renderer{}
