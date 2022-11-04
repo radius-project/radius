@@ -64,6 +64,23 @@ func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKi
 	}
 }
 
+// DaprSecretStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+type DaprSecretStorePropertiesMode string
+
+const (
+	DaprSecretStorePropertiesModeRecipe DaprSecretStorePropertiesMode = "recipe"
+	DaprSecretStorePropertiesModeValues DaprSecretStorePropertiesMode = "values"
+)
+
+// PossibleDaprSecretStorePropertiesModeValues returns the possible values for the DaprSecretStorePropertiesMode const type.
+func PossibleDaprSecretStorePropertiesModeValues() []DaprSecretStorePropertiesMode {
+	return []DaprSecretStorePropertiesMode{	
+		DaprSecretStorePropertiesModeRecipe,
+		DaprSecretStorePropertiesModeValues,
+	}
+}
+
 // DaprStateStorePropertiesKind - The Dapr StateStore kind
 type DaprStateStorePropertiesKind string
 

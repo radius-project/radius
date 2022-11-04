@@ -54,5 +54,6 @@ resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privateprevi
       vaultName: 'test'
     }
     version: 'v1'
+    mode: 'values'
   }
 }

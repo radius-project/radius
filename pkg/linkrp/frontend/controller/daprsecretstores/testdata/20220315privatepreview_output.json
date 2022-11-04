@@ -18,6 +18,7 @@
         "metadata": {
             "foo": "bar"
         },
+        "mode": "values",
         "provisioningState": "Succeeded",
         "componentName": "test-app-test-secret-store"
     },
