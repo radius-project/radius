@@ -119,12 +119,8 @@
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
 * **environment**: string: The resource id of the environment linked to the resource
-<<<<<<< HEAD
-* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
-* **identity**: [IdentitySettings](#identitysettings)
-=======
 * **extensions**: [ContainerExtension](#containerextension)[]: Extensions spec of the resource
->>>>>>> 206a15cf (Updating generation)
+* **identity**: [IdentitySettings](#identitysettings)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
@@ -225,12 +221,6 @@
 * **source**: string (Required): The source of the volume
 
 
-## IdentitySettings
-### Properties
-* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
-* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
-* **resource**: string: The resource ID of the provisioned identity
-
 ## ContainerExtension
 * **Discriminator**: kind
 
@@ -266,6 +256,12 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the provisioned identity
+
 ## ResourceStatus
 ### Properties
 * **outputResources**: any[]: Array of AnyObject
@@ -296,14 +292,6 @@
 * **namespace**: string (Required): The namespace to use for the environment.
 
 
-<<<<<<< HEAD
-=======
-## IdentitySettings
-### Properties
-* **kind**: 'azure.com.systemassigned' | 'azure.com.workload' (Required): Configuration for supported external identity providers
-* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
-* **resource**: string: The resource ID of the Azure AD user-assigned managed identity to use when 'kind' of 'azure.com.workload' is specified
-
 ## EnvironmentExtension
 * **Discriminator**: kind
 
@@ -325,7 +313,6 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
->>>>>>> 206a15cf (Updating generation)
 ## Providers
 ### Properties
 * **azure**: [ProvidersAzure](#providersazure): Azure cloud provider configuration
