@@ -100,34 +100,6 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	return cliErr
 }
 
-func (cli *CLI) ApplicationDeploy(ctx context.Context) error {
-	command := "application"
-
-	args := []string{
-		command,
-		"deploy",
-	}
-
-	_, err := cli.RunCommand(ctx, args)
-	return err
-}
-
-func (cli *CLI) ApplicationInit(ctx context.Context, applicationName string) error {
-	command := "application"
-
-	args := []string{
-		command,
-		"init",
-	}
-
-	if applicationName != "" {
-		args = append(args, applicationName)
-	}
-
-	_, err := cli.RunCommand(ctx, args)
-	return err
-}
-
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
 

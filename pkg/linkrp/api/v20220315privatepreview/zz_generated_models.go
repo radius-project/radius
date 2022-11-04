@@ -1062,6 +1062,44 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
+type RecipeSQLDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
+// Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the SQL database link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type RecipeSQLDatabaseProperties.
+func (r *RecipeSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 // RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
 type RedisCacheList struct {
 	// The link used to fetch the next page of RedisCache list.
@@ -1228,6 +1266,44 @@ type Resource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+type ResourceSQLDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
+// Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID of a supported resource with SQL API to use for this link
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ResourceSQLDatabaseProperties.
+func (r *ResourceSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
@@ -1242,25 +1318,26 @@ type SQLDatabaseList struct {
 	Value []*SQLDatabaseResource `json:"value,omitempty"`
 }
 
-// SQLDatabaseProperties - SQLDatabse link properties
+// SQLDatabasePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetSQLDatabaseProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *RecipeSQLDatabaseProperties, *ResourceSQLDatabaseProperties, *SQLDatabaseProperties, *ValuesSQLDatabaseProperties
+type SQLDatabasePropertiesClassification interface {
+	// GetSQLDatabaseProperties returns the SQLDatabaseProperties content of the underlying type.
+	GetSQLDatabaseProperties() *SQLDatabaseProperties
+}
+
+// SQLDatabaseProperties - SQLDatabase link properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
+// Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The name of the SQL database.
-	Database *string `json:"database,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the SQL database link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with SQL API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// The fully qualified domain name of the SQL database.
-	Server *string `json:"server,omitempty"`
 
 	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -1269,13 +1346,16 @@ type SQLDatabaseProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
+func (s *SQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties { return s }
+
 // SQLDatabaseResource - SQLDatabse link
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; SQLDatabse link properties
-	Properties *SQLDatabaseProperties `json:"properties,omitempty"`
+	// REQUIRED; SQLDatabase link properties
+	Properties SQLDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -1351,5 +1431,40 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValuesSQLDatabaseProperties struct {
+	// REQUIRED; The name of the SQL database.
+	Database *string `json:"database,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
+// Selection determines which set of fields to additionally require.
+	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The fully qualified domain name of the SQL database.
+	Server *string `json:"server,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ValuesSQLDatabaseProperties.
+func (v *ValuesSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
+	return &SQLDatabaseProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+	}
 }
 

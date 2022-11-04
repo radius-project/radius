@@ -1846,6 +1846,61 @@ func (r *Recipe) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type RecipeSQLDatabaseProperties.
+func (r RecipeSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "database", r.Database)
+	populate(objectMap, "environment", r.Environment)
+	objectMap["mode"] = SQLDatabasePropertiesModeRecipe
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "recipe", r.Recipe)
+	populate(objectMap, "server", r.Server)
+	populate(objectMap, "status", r.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeSQLDatabaseProperties.
+func (r *RecipeSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &r.Application)
+				delete(rawMsg, key)
+		case "database":
+				err = unpopulate(val, "Database", &r.Database)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &r.Environment)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
+				delete(rawMsg, key)
+		case "server":
+				err = unpopulate(val, "Server", &r.Server)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type RedisCacheList.
 func (r RedisCacheList) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -2167,6 +2222,61 @@ func (r *Resource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// MarshalJSON implements the json.Marshaller interface for type ResourceSQLDatabaseProperties.
+func (r ResourceSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "database", r.Database)
+	populate(objectMap, "environment", r.Environment)
+	objectMap["mode"] = SQLDatabasePropertiesModeResource
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "resource", r.Resource)
+	populate(objectMap, "server", r.Server)
+	populate(objectMap, "status", r.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceSQLDatabaseProperties.
+func (r *ResourceSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &r.Application)
+				delete(rawMsg, key)
+		case "database":
+				err = unpopulate(val, "Database", &r.Database)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &r.Environment)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, "Resource", &r.Resource)
+				delete(rawMsg, key)
+		case "server":
+				err = unpopulate(val, "Server", &r.Server)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
 // MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
 func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -2229,12 +2339,9 @@ func (s *SQLDatabaseList) UnmarshalJSON(data []byte) error {
 func (s SQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", s.Application)
-	populate(objectMap, "database", s.Database)
 	populate(objectMap, "environment", s.Environment)
+	objectMap["mode"] = s.Mode
 	populate(objectMap, "provisioningState", s.ProvisioningState)
-	populate(objectMap, "recipe", s.Recipe)
-	populate(objectMap, "resource", s.Resource)
-	populate(objectMap, "server", s.Server)
 	populate(objectMap, "status", s.Status)
 	return json.Marshal(objectMap)
 }
@@ -2251,23 +2358,14 @@ func (s *SQLDatabaseProperties) UnmarshalJSON(data []byte) error {
 		case "application":
 				err = unpopulate(val, "Application", &s.Application)
 				delete(rawMsg, key)
-		case "database":
-				err = unpopulate(val, "Database", &s.Database)
-				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &s.Environment)
 				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &s.Mode)
+				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &s.ProvisioningState)
-				delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &s.Recipe)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, "Resource", &s.Resource)
-				delete(rawMsg, key)
-		case "server":
-				err = unpopulate(val, "Server", &s.Server)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &s.Status)
@@ -2312,7 +2410,7 @@ func (s *SQLDatabaseResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &s.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &s.Properties)
+				s.Properties, err = unmarshalSQLDatabasePropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &s.SystemData)
@@ -2416,6 +2514,57 @@ func (t *TrackedResource) UnmarshalJSON(data []byte) error {
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", t, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ValuesSQLDatabaseProperties.
+func (v ValuesSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", v.Application)
+	populate(objectMap, "database", v.Database)
+	populate(objectMap, "environment", v.Environment)
+	objectMap["mode"] = SQLDatabasePropertiesModeValues
+	populate(objectMap, "provisioningState", v.ProvisioningState)
+	populate(objectMap, "server", v.Server)
+	populate(objectMap, "status", v.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesSQLDatabaseProperties.
+func (v *ValuesSQLDatabaseProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", v, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &v.Application)
+				delete(rawMsg, key)
+		case "database":
+				err = unpopulate(val, "Database", &v.Database)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &v.Environment)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &v.Mode)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)
+				delete(rawMsg, key)
+		case "server":
+				err = unpopulate(val, "Server", &v.Server)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &v.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", v, err)
 		}
 	}
 	return nil

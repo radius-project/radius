@@ -26,23 +26,43 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment: to.String(src.Properties.GetSQLDatabaseProperties().Environment),
+				Application: to.String(src.Properties.GetSQLDatabaseProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			Resource:          to.String(src.Properties.Resource),
-			Database:          to.String(src.Properties.Database),
-			Server:            to.String(src.Properties.Server),
+			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetSQLDatabaseProperties().ProvisioningState),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
 
-	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
+	switch v := src.Properties.(type) {
+	case *ResourceSQLDatabaseProperties:
+		if v.Resource == nil {
+			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
+		}
+		converted.Properties.Resource = to.String(v.Resource)
+		converted.Properties.Database = to.String(v.Database)
+		converted.Properties.Server = to.String(v.Server)
+		converted.Properties.Mode = datamodel.SQLDatabasePropertiesModeResource
+	case *ValuesSQLDatabaseProperties:
+		if v.Database == nil || v.Server == nil {
+			return nil, conv.NewClientErrInvalidRequest("database/server are required properties for mode 'values'")
+		}
+		converted.Properties.Database = to.String(v.Database)
+		converted.Properties.Server = to.String(v.Server)
+		converted.Properties.Mode = datamodel.SQLDatabasePropertiesModeValues
+	case *RecipeSQLDatabaseProperties:
+		if v.Recipe == nil {
+			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
+		}
+		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+		converted.Properties.Database = to.String(v.Database)
+		converted.Properties.Server = to.String(v.Server)
+		converted.Properties.Mode = datamodel.SQLDatabasePropertiesModeRecipe
+	default:
+		return nil, conv.NewClientErrInvalidRequest("Invalid Mode for mongo database")
 	}
-
 	return converted, nil
 }
 
@@ -59,21 +79,53 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.SystemData = fromSystemDataModel(sql.SystemData)
 	dst.Location = to.StringPtr(sql.Location)
 	dst.Tags = *to.StringMapPtr(sql.Tags)
-	dst.Properties = &SQLDatabaseProperties{
-		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
-		},
-		ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
-		Environment:       to.StringPtr(sql.Properties.Environment),
-		Application:       to.StringPtr(sql.Properties.Application),
-		Resource:          to.StringPtr(sql.Properties.Resource),
-		Database:          to.StringPtr(sql.Properties.Database),
-		Server:            to.StringPtr(sql.Properties.Server),
-	}
+	switch sql.Properties.Mode {
+	case datamodel.SQLDatabasePropertiesModeResource:
+		mode := SQLDatabasePropertiesModeResource
+		dst.Properties = &ResourceSQLDatabaseProperties{
+			Status: &ResourceStatus{
+				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+			},
+			Mode:              &mode,
+			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			Environment:       to.StringPtr(sql.Properties.Environment),
+			Application:       to.StringPtr(sql.Properties.Application),
+			Resource:          to.StringPtr(sql.Properties.Resource),
+			Database:          to.StringPtr(sql.Properties.Database),
+			Server:            to.StringPtr(sql.Properties.Server),
+		}
+	case datamodel.SQLDatabasePropertiesModeValues:
+		mode := SQLDatabasePropertiesModeValues
+		dst.Properties = &ValuesSQLDatabaseProperties{
+			Status: &ResourceStatus{
+				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+			},
+			Mode:              &mode,
+			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			Environment:       to.StringPtr(sql.Properties.Environment),
+			Application:       to.StringPtr(sql.Properties.Application),
+			Database:          to.StringPtr(sql.Properties.Database),
+			Server:            to.StringPtr(sql.Properties.Server),
+		}
+	case datamodel.SQLDatabasePropertiesModeRecipe:
+		mode := SQLDatabasePropertiesModeRecipe
+		var recipe *Recipe
+		if sql.Properties.Recipe.Name != "" {
+			recipe = fromRecipeDataModel(sql.Properties.Recipe)
+		}
+		dst.Properties = &RecipeSQLDatabaseProperties{
+			Status: &ResourceStatus{
+				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
+			},
+			Mode:              &mode,
+			ProvisioningState: fromProvisioningStateDataModel(sql.Properties.ProvisioningState),
+			Environment:       to.StringPtr(sql.Properties.Environment),
+			Application:       to.StringPtr(sql.Properties.Application),
+			Recipe:            recipe,
+			Database:          to.StringPtr(sql.Properties.Database),
+			Server:            to.StringPtr(sql.Properties.Server),
+		}
 
-	if sql.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = fromRecipeDataModel(sql.Properties.Recipe)
 	}
-
 	return nil
 }

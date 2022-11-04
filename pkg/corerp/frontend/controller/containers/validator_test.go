@@ -46,7 +46,7 @@ func TestValidateAndMutateRequest_IdentityProperty(t *testing.T) {
 					},
 				},
 			},
-			resp: rest.NewBadRequestResponse("The user-defined identity in Applications.Core/containers is not supported now."),
+			resp: rest.NewBadRequestResponse("User-defined identity in Applications.Core/containers is not supported."),
 		},
 		{
 			desc: "valid identity",

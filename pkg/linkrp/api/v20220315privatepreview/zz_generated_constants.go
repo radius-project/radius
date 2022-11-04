@@ -108,3 +108,22 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// SQLDatabasePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+type SQLDatabasePropertiesMode string
+
+const (
+	SQLDatabasePropertiesModeRecipe SQLDatabasePropertiesMode = "recipe"
+	SQLDatabasePropertiesModeResource SQLDatabasePropertiesMode = "resource"
+	SQLDatabasePropertiesModeValues SQLDatabasePropertiesMode = "values"
+)
+
+// PossibleSQLDatabasePropertiesModeValues returns the possible values for the SQLDatabasePropertiesMode const type.
+func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
+	return []SQLDatabasePropertiesMode{	
+		SQLDatabasePropertiesModeRecipe,
+		SQLDatabasePropertiesModeResource,
+		SQLDatabasePropertiesModeValues,
+	}
+}
+
