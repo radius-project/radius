@@ -32,10 +32,6 @@ func (f *MockFactory) CreateApplicationsManagementClient(ctx context.Context, wo
 	return f.ApplicationsManagementClient, nil
 }
 
-func (f *MockFactory) CreateServerLifecycleClient(ctx context.Context, workspace workspaces.Workspace) (clients.ServerLifecycleClient, error) {
-	return nil, nil
-}
-
 func (f *MockFactory) CreateCloudProviderManagementClient(ctx context.Context, workspace workspaces.Workspace) (clients.CloudProviderManagementClient, error) {
 	return f.CloudProviderManagementClient, nil
 }

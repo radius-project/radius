@@ -6,19 +6,13 @@
 package environments
 
 import (
-	"context"
-	"fmt"
-
 	"github.com/project-radius/radius/pkg/cli/aws"
 	"github.com/project-radius/radius/pkg/cli/azure"
-	"github.com/project-radius/radius/pkg/cli/clients"
 )
 
 const (
 	KindAzureCloud                   = "azure"
-	KindDev                          = "dev"
 	KindKubernetes                   = "kubernetes"
-	KindLocalRP                      = "localrp"
 	EnvironmentKeyDefaultApplication = "defaultapplication"
 )
 
@@ -54,59 +48,4 @@ type Registry struct {
 type Providers struct {
 	AzureProvider *azure.Provider `mapstructure:"azure,omitempty"`
 	AWSProvider   *aws.Provider   `mapstructure:"aws,omitempty"`
-}
-
-type DeploymentEnvironment interface {
-	CreateDeploymentClient(ctx context.Context) (clients.DeploymentClient, error)
-}
-
-func CreateDeploymentClient(ctx context.Context, env Environment) (clients.DeploymentClient, error) {
-	de, ok := env.(DeploymentEnvironment)
-	if !ok {
-		return nil, fmt.Errorf("an environment of kind '%s' does not support deployment", env.GetKind())
-	}
-
-	return de.CreateDeploymentClient(ctx)
-}
-
-type DiagnosticsEnvironment interface {
-	CreateDiagnosticsClient(ctx context.Context) (clients.DiagnosticsClient, error)
-}
-
-func CreateDiagnosticsClient(ctx context.Context, env Environment) (clients.DiagnosticsClient, error) {
-	de, ok := env.(DiagnosticsEnvironment)
-	if !ok {
-		return nil, fmt.Errorf("an environment of kind '%s' does not support diagnostics operations", env.GetKind())
-	}
-
-	return de.CreateDiagnosticsClient(ctx)
-}
-
-type LegacyManagementEnvironment interface {
-}
-
-type ApplicationsManagementEnvironment interface {
-	CreateApplicationsManagementClient(ctx context.Context) (clients.ApplicationsManagementClient, error)
-}
-
-func CreateApplicationsManagementClient(ctx context.Context, env Environment) (clients.ApplicationsManagementClient, error) {
-	me, ok := env.(ApplicationsManagementEnvironment)
-	if !ok {
-		return nil, fmt.Errorf("an environment of kind '%s' does not support management operations", env.GetKind())
-	}
-
-	return me.CreateApplicationsManagementClient(ctx)
-}
-
-type ServerLifecycleEnvironment interface {
-	CreateServerLifecycleClient(ctx context.Context) (clients.ServerLifecycleClient, error)
-}
-
-func CreateServerLifecycleClient(ctx context.Context, env Environment) (clients.ServerLifecycleClient, error) {
-	me, ok := env.(ServerLifecycleEnvironment)
-	if !ok {
-		return nil, fmt.Errorf("an environment of kind '%s' does not support server operations", env.GetKind())
-	}
-
-	return me.CreateServerLifecycleClient(ctx)
 }
