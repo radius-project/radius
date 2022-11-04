@@ -1132,6 +1132,10 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	// Verify deployment
 	deploymentSpec := renderOutput.Resources[5]
 	require.Equal(t, outputresource.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
+	require.Contains(t, deploymentSpec.Dependencies[0].LocalID, "RoleAssignment")
+	require.Equal(t, deploymentSpec.Dependencies[1].LocalID, "SecretProviderClass")
+	require.Equal(t, deploymentSpec.Dependencies[2].LocalID, "ServiceAccount")
+	require.Equal(t, deploymentSpec.Dependencies[3].LocalID, "Secret")
 
 	// Verify volume spec
 	volumes := deploymentSpec.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes

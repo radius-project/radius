@@ -173,12 +173,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
-		// The last output resource is K8s deployement resource.
-		deploy := deploymentResources[len(deploymentResources)-1]
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
-		deploy.Dependencies = append(deploy.Dependencies, outputresource.Dependency{
-			LocalID: outputresource.LocalIDSecret,
-		})
 	}
 
 	return renderers.RendererOutput{
@@ -495,6 +490,9 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	if len(secretData) > 0 {
 		hash := r.hashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
+		deps = append(deps, outputresource.Dependency{
+			LocalID: outputresource.LocalIDSecret,
+		})
 	}
 
 	deploymentOutput := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
