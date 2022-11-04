@@ -257,20 +257,43 @@
         }
       }
     },
-    "SQLDatabaseProperties": {
-      "description": "SQLDatabse link properties",
-      "type": "object",
+    "RecipeSQLDatabaseProperties": {
+      "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "global.json#/definitions/BasicResourceProperties"
+          "$ref": "#/definitions/SQLDatabaseProperties"
         }
       ],
       "properties": {
-        "provisioningState": {
-          "readOnly": true,
-          "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the SQL database link at the time the operation was called"
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         },
+        "database": {
+          "description": "The name of the SQL database.",
+          "type": "string"
+        },
+        "server": {
+          "description": "The fully qualified domain name of the SQL database.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "recipe"
+    },
+    "ResourceSQLDatabaseProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/SQLDatabaseProperties"
+        }
+      ],
+      "properties": {
         "resource": {
           "description": "Fully qualified resource ID of a supported resource with SQL API to use for this link",
           "type": "string"
@@ -282,16 +305,66 @@
         "server": {
           "description": "The fully qualified domain name of the SQL database.",
           "type": "string"
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the SQL database link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
-        "environment"
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "resource"
+    },
+    "ValuesSQLDatabaseProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/SQLDatabaseProperties"
+        }
+      ],
+      "properties": {
+        "database": {
+          "description": "The name of the SQL database.",
+          "type": "string"
+        },
+        "server": {
+          "description": "The fully qualified domain name of the SQL database.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "server",
+        "database"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
+    },
+    "SQLDatabaseProperties": {
+      "description": "SQLDatabase link properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "mode",
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the SQL database link at the time the operation was called"
+        },
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.",
+          "type": "string",
+          "enum": [
+            "resource",
+            "recipe",
+            "values"
+          ]
+        }
+      },
+      "required": [
+        "environment",
+        "mode"
       ]
     }
   },

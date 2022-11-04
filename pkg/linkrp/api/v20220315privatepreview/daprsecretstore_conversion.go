@@ -38,14 +38,14 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		},
 	}
 	switch v := src.Properties.(type) {
-	case *DaprSecretStoreValuesProperties:
+	case *ValuesDaprSecretStoreProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-	case *DaprSecretStoreRecipeProperties:
+	case *RecipeDaprSecretStoreProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
@@ -74,7 +74,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
 	case datamodel.DaprSecretStorePropertiesModeValues:
-		dst.Properties = &DaprSecretStoreValuesProperties{
+		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
@@ -93,7 +93,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 		if daprSecretStore.Properties.Recipe.Name != "" {
 			recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 		}
-		dst.Properties = &DaprSecretStoreRecipeProperties{
+		dst.Properties = &RecipeDaprSecretStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
 			},
