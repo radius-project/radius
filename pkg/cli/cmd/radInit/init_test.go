@@ -246,7 +246,6 @@ func initMocksWithCloudProvider(kubernetesMock *kubernetes.MockInterface, prompt
 	initPromptYes(prompterMock)
 	initSelectCloudProvider(prompterMock)
 	initParseCloudProvider(azureMock, prompterMock)
-	initAddCloudProviderPromptNo(prompterMock) // N dont add another cloud provider
 }
 
 func initParseCloudProvider(azureMock *setup.MockInterface, prompterMock *prompt.MockInterface) {

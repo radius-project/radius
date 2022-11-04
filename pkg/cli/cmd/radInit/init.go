@@ -154,35 +154,22 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName),
 	}
 
-	// This loop is required for adding multiple cloud providers
-	// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
-	addingAnotherProvider := "y"
-	for strings.ToLower(addingAnotherProvider) == "y" && r.Reinstall {
-		var cloudProvider int
-		// This loop is required to move up a level when the user selects [back] as an option
-		// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
-		addingCloudProvider := true
-		for addingCloudProvider {
-			cloudProviderPrompter, err := prompt.YesOrNoPrompter("Add cloud providers for cloud resources [y/N]?", "N", r.Prompter)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading cloud provider"}
-			}
-			if strings.ToLower(cloudProviderPrompter) == "n" {
-				cloudProvider = -1
-				break
-			}
-			cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading cloud provider"}
-			}
-			// cloudProvider being -1 represents the user doesn't wants to add one
-			if cloudProvider != -1 {
-				addingCloudProvider = false
-			}
+	var cloudProvider int
+	// This loop is required to move up a level when the user selects [back] as an option
+	// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
+	addingCloudProvider := true
+	for addingCloudProvider {
+		cloudProviderPrompter, err := prompt.YesOrNoPrompter("Add cloud providers for cloud resources [y/N]?", "N", r.Prompter)
+		if err != nil {
+			return &cli.FriendlyError{Message: "Error reading cloud provider"}
 		}
-		// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
-		if cloudProvider == -1 {
+		if strings.ToLower(cloudProviderPrompter) == "n" {
+			cloudProvider = -1
 			break
+		}
+		cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
+		if err != nil {
+			return &cli.FriendlyError{Message: "Error reading cloud provider"}
 		}
 		switch cloudProvider {
 		case Azure:
@@ -192,6 +179,10 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 			}
 		case AWS:
 			r.Output.LogInfo("AWS is not supported")
+		}
+		// cloudProvider being -1 represents the user doesn't wants to add one
+		if cloudProvider != -1 {
+			addingCloudProvider = false
 		}
 	}
 
