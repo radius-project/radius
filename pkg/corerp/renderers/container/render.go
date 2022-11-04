@@ -416,8 +416,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
 			Value: options.Environment.Identity,
-			Transformer: func(r conv.DataModelInterface, value *rp.ComputedValueReference) error {
-				ei, err := handlers.GetMapValue[*rp.IdentitySettings](computedValues, handlers.IdentityProperties)
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
 				if err != nil {
 					return err
 				}
@@ -437,8 +437,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
 			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
 			PropertyReference: handlers.UserAssignedIdentityIDKey,
-			Transformer: func(r conv.DataModelInterface, value *rp.ComputedValueReference) error {
-				resourceID, err := handlers.GetMapValue[string](computedValues, handlers.UserAssignedIdentityIDKey)
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				resourceID, err := handlers.GetMapValue[string](cv, handlers.UserAssignedIdentityIDKey)
 				if err != nil {
 					return err
 				}

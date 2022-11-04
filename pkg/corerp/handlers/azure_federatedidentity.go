@@ -53,8 +53,8 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	logger := radlogger.GetLogger(ctx)
 
 	// Get dependencies
-	identityProp, err := GetMapValue[map[string]map[string]string](options.DependencyProperties, outputresource.LocalIDUserAssignedManagedIdentity)
-	if err != nil {
+	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]
+	if !ok {
 		return nil, errors.New("missing dependency: a user assigned identity is required to create role assignment")
 	}
 

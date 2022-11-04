@@ -41,7 +41,7 @@ type ComputedValueReference struct {
 	JSONPointer string
 
 	// Transformer transforms datamodel resource with the current computed value.
-	Transformer func(conv.DataModelInterface, *ComputedValueReference) error
+	Transformer func(conv.DataModelInterface, map[string]any) error
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources
