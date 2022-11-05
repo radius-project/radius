@@ -68,6 +68,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
 	format, err := cmd.Flags().GetString("output")
 	if err != nil {
 		return err

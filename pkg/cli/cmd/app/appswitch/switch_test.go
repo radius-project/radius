@@ -38,6 +38,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Switch Command with non-editable workspace invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
+		},
+		{
 			Name:          "Switch Command with non-existent app",
 			Input:         []string{"nonExistentApp"},
 			ExpectedValid: false,

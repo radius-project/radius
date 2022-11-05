@@ -39,12 +39,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without workspace",
+			Name:          "Create Command with fallback workspace",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

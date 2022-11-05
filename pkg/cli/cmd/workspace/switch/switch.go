@@ -13,6 +13,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -50,15 +51,27 @@ func NewRunner(factory framework.Factory) *Runner {
 }
 
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	// We don't actually need the workspace, but we want to make sure it exists.
-	//
-	// So this is being called for the side-effect of running the validation.
-	workspace, err := cli.RequireWorkspaceArgs(cmd, r.ConfigHolder.Config, args)
+	// We read the name explicitly rather than calling RequireWorkspace
+	// because we require a workspace to be specified. RequireWorkspace would
+	// apply our defaulting logic and miss some error cases.
+	workspaceName, err := cli.ReadWorkspaceNameArgs(cmd, args)
 	if err != nil {
 		return err
 	}
 
-	r.WorkspaceName = workspace.Name
+	if workspaceName == "" {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
+	// We don't actually need the workspace, but we want to make sure it exists.
+	//
+	// So this is being called for the side-effect of running the validation.
+	_, err = cli.GetWorkspace(r.ConfigHolder.Config, workspaceName)
+	if err != nil {
+		return err
+	}
+
+	r.WorkspaceName = workspaceName
 
 	return nil
 }

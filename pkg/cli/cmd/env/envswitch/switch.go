@@ -67,6 +67,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
+	if !r.Workspace.IsEditableWorkspace() {
+		// Only workspaces stored in configuration can be modified.
+		return workspaces.ErrEditableWorkspaceRequired
+	}
+
 	r.EnvironmentName, err = cli.RequireEnvironmentNameArgs(cmd, args, *r.Workspace)
 	if err != nil {
 		return err
