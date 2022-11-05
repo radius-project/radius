@@ -266,6 +266,36 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
 }
 
+func Test_Render_NoResourceSpecified(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Link/mongoDatabases",
+			},
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+		},
+	}
+	expectedErr := &conv.ErrClientRP{
+		Code:    "BadRequest",
+		Message: "the 'resource' field must be a valid resource id",
+	}
+
+	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.Equal(t, expectedErr, err)
+	require.Equal(t, 0, len(output.Resources))
+}
+
 func Test_Render_InvalidMode(t *testing.T) {
 	ctx := context.Background()
 	renderer := Renderer{}

@@ -30,7 +30,7 @@ func loadTestData(testfile string) []byte {
 }
 
 func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
-	testset := []string{"mongodatabaseresource.json", "mongodatabaseresource_recipe.json"}
+	testset := []string{"mongodatabaseresource2.json", "mongodatabaseresource_recipe.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
@@ -50,13 +50,11 @@ func TestMongoDatabase_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
+		require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
+		require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		if payload == "mongodatabaseresource_recipe.json" {
 			require.Equal(t, "cosmosdb", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
-		} else {
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.DocumentDB/databaseAccounts/testAccount/mongodbDatabases/db", convertedResource.Properties.Resource)
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", convertedResource.Properties.Host)
-			require.Equal(t, int32(10255), convertedResource.Properties.Port)
 		}
 	}
 }
@@ -72,7 +70,7 @@ func TestMongoDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) 
 		var expectedErr conv.ErrClientRP
 		if payload == "mongodatabaseresource_invalidmode.json" {
 			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "Invalid Mode for mongo database"
+			expectedErr.Message = "Unsupported mode abc"
 		}
 		if payload == "mongodatabaseresource_invalidmode2.json" {
 			expectedErr.Code = "BadRequest"
@@ -117,6 +115,8 @@ func TestMongoDatabase_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
 		case *RecipeMongoDatabaseProperties:
+			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
+			require.Equal(t, int32(10255), *v.Port)
 			require.Equal(t, "cosmosdb", *v.Recipe.Name)
 			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
 		case *ValuesMongoDatabaseProperties:
