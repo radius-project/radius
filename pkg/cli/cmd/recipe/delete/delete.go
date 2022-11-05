@@ -35,6 +35,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("name", "", "specify the name of the recipe")
+	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
 }

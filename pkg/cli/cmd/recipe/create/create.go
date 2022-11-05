@@ -37,8 +37,11 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("template-path", "", "specify the path to the template provided by the recipe.")
+	_ = cmd.MarkFlagRequired("template-path")
 	cmd.Flags().String("link-type", "", "specify the type of the link this recipe can be consumed by")
+	_ = cmd.MarkFlagRequired("link-type")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
+	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
 }

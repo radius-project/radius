@@ -27,7 +27,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Create Command",
@@ -39,21 +38,30 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Create Command without workspace",
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadConfigWithoutWorkspace(t),
+			},
+		},
+		{
 			Name:          "Create Command without name",
 			Input:         []string{"--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 		{
-			Name:          "Create Command without link-type",
+			Name:          "Create Command without template path",
 			Input:         []string{"--name", "test_recipe", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 		{
@@ -62,7 +70,7 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 		{

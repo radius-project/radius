@@ -9,6 +9,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
@@ -24,6 +25,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
@@ -79,6 +81,14 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				return
 			}
 
+			err = validateRequiredFlags(cmd)
+			if err != nil && testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have failed but it passed")
+			} else if err != nil {
+				// We expected this to fail, so it's OK if it does. No need to run Validate.
+				return
+			}
+
 			err = runner.Validate(cmd, cmd.Flags().Args())
 			if testcase.ExpectedValid {
 				require.NoError(t, err, "validation should have passed but it failed")
@@ -87,6 +97,28 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			}
 		})
 	}
+}
+
+// This is really unfortunate. There's no way to have Cobra validate required flags
+// without calling Run() on the command, which we don't want to do. Our workaround is to
+// duplicate their logic.
+func validateRequiredFlags(c *cobra.Command) error {
+	flags := c.Flags()
+	missingFlagNames := []string{}
+	flags.VisitAll(func(f *pflag.Flag) {
+		requiredAnnotation, found := f.Annotations[cobra.BashCompOneRequiredFlag]
+		if !found {
+			return
+		}
+		if (requiredAnnotation[0] == "true") && !f.Changed {
+			missingFlagNames = append(missingFlagNames, f.Name)
+		}
+	})
+
+	if len(missingFlagNames) > 0 {
+		return fmt.Errorf(`required flag(s) "%s" not set`, strings.Join(missingFlagNames, `", "`))
+	}
+	return nil
 }
 
 const (
