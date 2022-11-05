@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -162,7 +161,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 		}
 		dst.Properties = converted
 	default:
-		return errors.New(fmt.Sprintf("Unsupported mode %s", mongo.Properties.Mode))
+		return fmt.Errorf("Unsupported mode %s", mongo.Properties.Mode)
 	}
 
 	return nil
