@@ -103,7 +103,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 		return nil, err
 	}
 
-	// Populating the federated identity credendial changes takes some time. Therefore, POD will take some time to start.
+	// Populating the federated identity credential changes takes some time. Therefore, POD will take some time to start.
 	_, err = client.CreateOrUpdate(ctx, rgName, rID.Name(), federatedName, params, nil)
 	if err != nil {
 		return nil, err

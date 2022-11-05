@@ -33,7 +33,7 @@ type GenericResourcesClient struct {
 }
 
 // NewGenericResourcesClient creates a new instance of GenericResourcesClient with the specified values.
-// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
 // resourceType - The azure resource type. For example RedisCache, RabbitMQ and other
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
