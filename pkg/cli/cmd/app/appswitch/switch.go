@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -38,20 +37,18 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder        *framework.ConfigHolder
-	Output              output.Interface
-	Workspace           *workspaces.Workspace
-	ApplicationName     string
-	ConnectionFactory   connections.Factory
-	AppManagementClient clients.ApplicationsManagementClient
+	ConfigHolder      *framework.ConfigHolder
+	Output            output.Interface
+	Workspace         *workspaces.Workspace
+	ApplicationName   string
+	ConnectionFactory connections.Factory
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:        factory.GetConfigHolder(),
-		Output:              factory.GetOutput(),
-		ConnectionFactory:   factory.GetConnectionFactory(),
-		AppManagementClient: factory.GetAppManagementClient(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
@@ -75,13 +72,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	r.AppManagementClient, err = r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
 
 	// Validate that the application exists
-	_, err = r.AppManagementClient.ShowApplication(cmd.Context(), r.ApplicationName)
+	_, err = client.ShowApplication(cmd.Context(), r.ApplicationName)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch applications as the requested application %s does not exist.\n", r.ApplicationName)}
 	} else if err != nil {

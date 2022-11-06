@@ -14,7 +14,6 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -60,7 +59,6 @@ type Runner struct {
 	ConfigFileInterface framework.ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	NamespaceInterface  namespace.Interface
-	AppManagementClient clients.ApplicationsManagementClient
 	SkipDevRecipes      bool
 }
 
@@ -72,7 +70,6 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		NamespaceInterface:  factory.GetNamespaceInterface(),
-		AppManagementClient: factory.GetAppManagementClient(),
 	}
 }
 
@@ -125,12 +122,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Workspace.Scope = "/planes/radius/local/resourcegroups/" + r.UCPResourceGroup
 	}
 
-	r.AppManagementClient, err = r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
 
-	_, err = r.AppManagementClient.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
+	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
 	} else if err != nil {
@@ -152,7 +149,13 @@ func (r *Runner) Run(ctx context.Context) error {
 		(r.Workspace.ProviderConfig.Azure.SubscriptionID != "" && r.Workspace.ProviderConfig.Azure.ResourceGroup != "") {
 		providers = cmd.CreateEnvAzureProvider(r.Workspace.ProviderConfig.Azure.SubscriptionID, r.Workspace.ProviderConfig.Azure.ResourceGroup)
 	}
-	isEnvCreated, err := r.AppManagementClient.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+	if err != nil {
+		return err
+	}
+
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvironmentName, v1.LocationGlobal, r.Namespace, "Kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
 	if err != nil || !isEnvCreated {
 		return err
 	}
