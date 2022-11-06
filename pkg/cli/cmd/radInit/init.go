@@ -8,6 +8,8 @@ package radInit
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
@@ -37,10 +39,12 @@ const (
 	Azure int = iota
 	AWS
 
-	confirmCloudProviderPrompt   = "Add cloud providers for cloud resources [y/N]?"
-	confirmReinstallRadiusPrompt = "Would you like to reinstall Radius control plane and configure cloud providers [N/y]?"
-	selectKubeContextPrompt      = "Select the kubeconfig context to install Radius into"
-	selectCloudProviderPrompt    = "Select your cloud provider"
+	confirmCloudProviderPrompt    = "Add cloud providers for cloud resources [y/N]?"
+	confirmReinstallRadiusPrompt  = "Would you like to reinstall Radius control plane and configure cloud providers [N/y]?"
+	confirmSetupApplicationPrompt = "Setup application in the current directory [Y/n]?"
+	enterApplicationName          = "Choose an application name"
+	selectKubeContextPrompt       = "Select the kubeconfig context to install Radius into"
+	selectCloudProviderPrompt     = "Select your cloud provider"
 )
 
 const (
@@ -72,26 +76,29 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 // Runner is the runner implementation for the `rad init` command.
 type Runner struct {
-	ConfigHolder        *framework.ConfigHolder
-	Output              output.Interface
-	Format              string
-	Workspace           *workspaces.Workspace
-	ServicePrincipal    *azure.ServicePrincipal
-	ConnectionFactory   connections.Factory
-	KubeContext         string
-	ExistingEnvironment bool
-	EnvName             string
-	Namespace           string
-	AzureCloudProvider  *azure.Provider
-	RadiusInstalled     bool
-	Reinstall           bool
-	Prompter            prompt.Interface
 	ConfigFileInterface framework.ConfigFileInterface
-	KubernetesInterface kubernetes.Interface
+	ConfigHolder        *framework.ConfigHolder
+	ConnectionFactory   connections.Factory
 	HelmInterface       helm.Interface
-	SkipDevRecipes      bool
+	KubernetesInterface kubernetes.Interface
+	Output              output.Interface
+	Prompter            prompt.Interface
 	SetupInterface      setup.Interface
-	Dev                 bool
+
+	Format                  string
+	AzureCloudProvider      *azure.Provider
+	ExistingEnvironment     bool
+	EnvName                 string
+	KubeContext             string
+	Namespace               string
+	RadiusInstalled         bool
+	Reinstall               bool
+	ScaffoldApplication     bool
+	ScaffoldApplicationName string
+	ServicePrincipal        *azure.ServicePrincipal
+	SkipDevRecipes          bool
+	Workspace               *workspaces.Workspace
+	Dev                     bool
 }
 
 // NewRunner creates a new instance of the `rad init` runner.
@@ -272,7 +279,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 						cloudProvider = -1
 						break
 					}
-					cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
+					cloudProvider, err = selectCloudProvider(r.Prompter)
 					if err != nil {
 						return &cli.FriendlyError{Message: "Error reading cloud provider"}
 					}
@@ -302,6 +309,20 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace.Name = r.EnvName
 	r.Workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", r.EnvName, r.EnvName)
 	r.Workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName)
+
+	result, err := prompt.YesOrNoPrompter(confirmSetupApplicationPrompt, "Y", r.Prompter)
+	if err != nil {
+		return err
+	}
+
+	r.ScaffoldApplication = strings.EqualFold(result, "Y")
+
+	if r.ScaffoldApplication {
+		r.ScaffoldApplicationName, err = chooseApplicationName(r.Prompter)
+		if err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
@@ -366,6 +387,36 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
+	if r.ScaffoldApplication {
+		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+		if err != nil {
+			return err
+		}
+
+		// Initialize the application resource if it's not found. This supports the scenario where the application
+		// resource is not defined in bicep.
+		err = client.CreateApplicationIfNotFound(ctx, r.ScaffoldApplicationName, corerp.ApplicationResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Properties: &corerp.ApplicationProperties{
+				Environment: &r.Workspace.Environment,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		// Scaffold application files in the current directory
+		wd, err := os.Getwd()
+		if err != nil {
+			return err
+		}
+
+		err = setup.ScaffoldApplication(r.Output, wd, r.ScaffoldApplicationName)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -416,7 +467,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 }
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
-func selectCloudProvider(output output.Interface, prompter prompt.Interface) (int, error) {
+func selectCloudProvider(prompter prompt.Interface) (int, error) {
 	values := []string{"Azure", "AWS", "[back]"}
 	cloudProviderSelector := promptui.Select{
 		Label: selectCloudProviderPrompt,
@@ -430,4 +481,25 @@ func selectCloudProvider(output output.Interface, prompter prompt.Interface) (in
 		return -1, nil
 	}
 	return index, nil
+}
+
+func chooseApplicationName(prompter prompt.Interface) (string, error) {
+	// We might have to prompt for an application name if the current directory is not a valid application name.
+	// These cases should be rare but just in case...
+	wd, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	directory := filepath.Base(wd)
+	valid, _, err := prompt.ResourceName(directory)
+	if err != nil {
+		return "", err
+	}
+
+	if valid {
+		return directory, nil
+	}
+
+	return prompter.RunPrompt(prompt.TextPromptWithDefault(enterApplicationName, directory, prompt.ResourceName))
 }
