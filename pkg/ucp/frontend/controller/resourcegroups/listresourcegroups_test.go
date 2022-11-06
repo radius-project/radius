@@ -48,9 +48,10 @@ func Test_ListResourceGroups(t *testing.T) {
 
 	rg := datamodel.ResourceGroup{
 		TrackedResource: v1.TrackedResource{
-			ID:   testResourceGroupID,
-			Name: testResourceGroupName,
-			Type: ResourceGroupType,
+			ID:       testResourceGroupID,
+			Name:     testResourceGroupName,
+			Type:     ResourceGroupType,
+			Location: v1.LocationGlobal,
 		},
 	}
 
@@ -70,11 +71,17 @@ func Test_ListResourceGroups(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceGroup := v20220901privatepreview.ResourceGroupResource{
-		ID:   &testResourceGroupID,
-		Name: &testResourceGroupName,
-		Type: to.Ptr(ResourceGroupType),
+		ID:       &testResourceGroupID,
+		Name:     &testResourceGroupName,
+		Type:     to.Ptr(ResourceGroupType),
+		Location: to.Ptr(v1.LocationGlobal),
+		Tags:     *to.Ptr(map[string]*string{}),
 	}
-	expectedResourceGroupList := []interface{}{&resourceGroup}
+	expectedResourceGroupList := &v1.PaginatedList{
+		Value: []interface{}{
+			&resourceGroup,
+		},
+	}
 	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroupList)
 
 	assert.DeepEqual(t, expectedResponse, actualResponse)

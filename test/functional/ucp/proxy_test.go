@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/stretchr/testify/require"
@@ -45,7 +46,7 @@ func Test_ProxyOperations(t *testing.T) {
 			ID:       to.Ptr(nonNativePlaneID),
 			Type:     to.Ptr("System.Planes/testnonnativetype"),
 			Name:     to.Ptr("nonnativeplane"),
-			Location: to.Ptr("global"),
+			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220901privatepreview.PlaneResourceProperties{
 				Kind: to.Ptr(v20220901privatepreview.PlaneKindAWS),
 				URL:  to.Ptr(fmt.Sprintf("http://%s.%s:%d", TestRPServiceName, RadiusNamespace, TestRPPortNumber)),

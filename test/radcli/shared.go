@@ -14,6 +14,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -169,7 +170,7 @@ func Create404Error() error {
 
 func CreateResource(resourceType string, resourceName string) generated.GenericResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/test-environment/providers/%s/%s", resourceType, resourceName)
-	location := "global"
+	location := v1.LocationGlobal
 
 	return generated.GenericResource{
 		ID:       &id,

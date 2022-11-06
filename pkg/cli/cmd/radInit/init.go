@@ -10,7 +10,9 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/manifoldco/promptui"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd"
@@ -218,14 +220,18 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 	//ignore the id of the resource group created
-	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{})
+	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil || !isGroupCreated {
 		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
 	}
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return err
 	}
@@ -235,7 +241,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	if r.AzureCloudProvider != nil {
 		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
 	}
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, "global", r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: "Failed to create radius environment"}
 	}

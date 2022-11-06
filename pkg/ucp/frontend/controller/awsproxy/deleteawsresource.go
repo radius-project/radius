@@ -11,6 +11,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/google/uuid"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
@@ -58,6 +59,6 @@ func (p *DeleteAWSResource) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	resp := armrpc_rest.NewAsyncOperationResponse(map[string]interface{}{}, "global", 202, id, operation, "", id.RootScope(), p.Options.BasePath)
+	resp := armrpc_rest.NewAsyncOperationResponse(map[string]interface{}{}, v1.LocationGlobal, 202, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
 }
