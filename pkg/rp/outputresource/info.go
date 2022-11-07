@@ -25,9 +25,12 @@ type OutputResource struct {
 	// Resource type specifies the 'provider' and 'kind' used to look up the resource handler for processing
 	ResourceType resourcemodel.ResourceType `json:"resourceType"`
 
+	// Resource type defined by the provider for this resource. Example for Azure, a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
+	ProviderResourceType string
+
 	Deployed     bool                 `json:"deployed"`
 	Resource     interface{}          `json:"resource,omitempty"`
-	Dependencies []Dependency         // resources that are required to be deployed before this resource can be deployed
+	Dependencies []Dependency         // resources that are required to be deployed before this resource can be deployed - used for parent/child resources.
 	Status       OutputResourceStatus `json:"status,omitempty"`
 }
 

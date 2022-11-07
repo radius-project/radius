@@ -12,6 +12,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -319,6 +320,26 @@ func Test_Render_Recipe_Success(t *testing.T) {
 		},
 	}
 
+	expectedOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+		},
+	}
+
 	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{
 		RecipeProperties: datamodel.RecipeProperties{
 			LinkRecipe: datamodel.LinkRecipe{
@@ -328,15 +349,24 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			LinkType:     ResourceType,
 		}})
 	require.NoError(t, err)
+	// Recipe properties
 	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
 	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
+
+	// Secrets
+	require.Equal(t, 1, len(output.SecretValues))
+	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
-	require.Equal(t, "Microsoft.DocumentDB/databaseAccounts", output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
-	require.Equal(t, 1, len(output.SecretValues))
+	require.Equal(t, azresources.DocumentDBDatabaseAccounts, output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
+
+	// Computed Values
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	// Output resources
+	require.Equal(t, 2, len(output.Resources))
+	require.Equal(t, expectedOutputResources, output.Resources)
 }
 
 func Test_Render_Recipe_InvalidLinkType(t *testing.T) {

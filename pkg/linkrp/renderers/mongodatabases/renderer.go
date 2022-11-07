@@ -89,9 +89,30 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		},
 	}
 
+	// Build expected output resources
+	expectedCosmosAccount := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureCosmosAccount,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosAccount,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+	}
+
+	expectedMongoDBResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosDBMongo,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+		Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+	}
+
 	return renderers.RendererOutput{
 		ComputedValues:       computedValues,
 		SecretValues:         secretValues,
+		Resources:            []outputresource.OutputResource{expectedCosmosAccount, expectedMongoDBResource},
 		RecipeData:           recipeData,
 		EnvironmentProviders: options.EnvironmentProviders,
 	}, nil
