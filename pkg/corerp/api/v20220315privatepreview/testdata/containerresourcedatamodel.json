@@ -68,13 +68,13 @@
     "extensions": [
       {
         "kind": "manualScaling",
-        "manualScaling": {
+        "ManualScaling":{
           "replicas": 2
         }
       },
       {
         "kind": "daprSidecar",
-        "daprSidecar": {
+        "DaprSidecar": {
           "appId": "app-id",
           "appPort": 80,
           "config": "config",
@@ -84,15 +84,15 @@
       },
       {
         "kind": "kubernetesMetadata",
-        "KubernetesMetadata": {
-          "annotations": {
-          "prometheus.io/scrape" : "true",
-          "prometheus.io/port": "80" 
-          },
-          "labels": {
+        "kubernetesmetadata": {
+            "annotations": {
+            "prometheus.io/scrape" : "true",
+            "prometheus.io/port": "80" 
+            },
+            "labels": {
             "mbcp.pt/team" : "Credit",
             "mbcp.pt/contact": "radiususer" 
-          }
+            }
         }
       }
     ]

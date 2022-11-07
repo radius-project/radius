@@ -465,7 +465,7 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 }
 
 // toExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
+func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
 		converted := &datamodel.Extension{

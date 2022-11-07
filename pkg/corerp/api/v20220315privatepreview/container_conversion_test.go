@@ -140,7 +140,7 @@ func TestContainerConvertFromValidation(t *testing.T) {
 }
 
 func GetContainerExtensions(t *testing.T) []datamodel.Extension {
-	var replicavalue int32 = 3
+	var replicavalue int32 = 2
 	ptrreplicaval := &replicavalue
 	extensions := []datamodel.Extension{
 		{

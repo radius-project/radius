@@ -28,6 +28,7 @@ func (e *Application) ResourceTypeName() string {
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
 	rp.BasicResourceProperties
+	Extensions []Extension `json:"extensions,omitempty"`
 }
 
 // ApplicationMetadataExtension - Specifies user defined labels and annotations

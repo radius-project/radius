@@ -19,75 +19,55 @@ import (
 )
 
 func TestConvertVersionedToDataModel(t *testing.T) {
-	/*
-		envExt := datamodel.BaseKubernetesMetadataExtension{
-			Annotations: map[string]string{
-				"prometheus.io/scrape": "true",
-				"prometheus.io/port":   "80",
-			},
-			Labels: map[string]string{
-				"mbcp.pt/team":    "Credit",
-				"mbcp.pt/contact": "nunog",
-			},
-		}
-		xyz := datamodel.Extension{
-			Kind:               "",
-			KubernetesMetadata: &envExt,
-		}
-	*/
-	xyz := datamodel.Extension{
-		Kind: datamodel.KubernetesMetadata,
-	}
-
 	conversionTests := []struct {
 		filename string
 		expected *datamodel.Environment
 		err      error
-	}{ /*
-			{
-				filename: "environmentresource-with-workload-identity.json",
-				expected: &datamodel.Environment{
-					BaseResource: v1.BaseResource{
-						TrackedResource: v1.TrackedResource{
-							ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-							Name: "env0",
-							Type: "Applications.Core/environments",
-							Tags: map[string]string{},
+	}{
+		{
+			filename: "environmentresource-with-workload-identity.json",
+			expected: &datamodel.Environment{
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+						Name: "env0",
+						Type: "Applications.Core/environments",
+						Tags: map[string]string{},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						CreatedAPIVersion:      "2022-03-15-privatepreview",
+						UpdatedAPIVersion:      "2022-03-15-privatepreview",
+						AsyncProvisioningState: v1.ProvisioningStateAccepted,
+					},
+				},
+				Properties: datamodel.EnvironmentProperties{
+					Compute: datamodel.EnvironmentCompute{
+						Kind: "kubernetes",
+						KubernetesCompute: datamodel.KubernetesComputeProperties{
+							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
+							Namespace:  "default",
 						},
-						InternalMetadata: v1.InternalMetadata{
-							CreatedAPIVersion:      "2022-03-15-privatepreview",
-							UpdatedAPIVersion:      "2022-03-15-privatepreview",
-							AsyncProvisioningState: v1.ProvisioningStateAccepted,
+						Identity: &rp.IdentitySettings{
+							Kind:       rp.AzureIdentityWorkload,
+							Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
+							OIDCIssuer: "https://oidcurl/guid",
 						},
 					},
-					Properties: datamodel.EnvironmentProperties{
-						Compute: datamodel.EnvironmentCompute{
-							Kind: "kubernetes",
-							KubernetesCompute: datamodel.KubernetesComputeProperties{
-								ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
-								Namespace:  "default",
-							},
-							Identity: &rp.IdentitySettings{
-								Kind:       rp.AzureIdentityWorkload,
-								Resource:   "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/radius-mi-app",
-								OIDCIssuer: "https://oidcurl/guid",
-							},
+					Providers: datamodel.Providers{
+						Azure: datamodel.ProvidersAzure{
+							Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
 						},
-						Providers: datamodel.Providers{
-							Azure: datamodel.ProvidersAzure{
-								Scope: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
-							},
-						},
-						Recipes: map[string]datamodel.EnvironmentRecipeProperties{
-							"cosmos-recipe": {
-								LinkType:     "Applications.Link/mongoDatabases",
-								TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
-							},
+					},
+					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
+						"cosmos-recipe": {
+							LinkType:     "Applications.Link/mongoDatabases",
+							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
 				},
-				err: nil,
-			},*/
+			},
+			err: nil,
+		},
 		{
 			filename: "environmentresource.json",
 			expected: &datamodel.Environment{
@@ -123,19 +103,19 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
-					Extensions: []datamodel.Extension{xyz},
+					Extensions: GetTestKubernetesMetadataExtensions(t),
 				},
 			},
 			err: nil,
-		}, /*
-			{
-				filename: "environmentresource-invalid-missing-namespace.json",
-				err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
-			},
-			{
-				filename: "environmentresource-invalid-namespace.json",
-				err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
-			},*/
+		},
+		{
+			filename: "environmentresource-invalid-missing-namespace.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+		},
+		{
+			filename: "environmentresource-invalid-namespace.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+		},
 	}
 
 	for _, tt := range conversionTests {
@@ -181,6 +161,8 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].LinkType)
 	require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
+	require.Equal(t, 1, len(versioned.Properties.Extensions))
+
 }
 
 func TestConvertDataModelWithIdentityToVersioned(t *testing.T) {
@@ -284,4 +266,24 @@ func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 		sc := fromEnvironmentComputeKind(tt.datamodel)
 		require.Equal(t, tt.versioned, *sc)
 	}
+}
+
+func GetTestKubernetesMetadataExtensions(t *testing.T) []datamodel.Extension {
+	extensions := []datamodel.Extension{
+		{
+			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				Annotations: map[string]string{
+					"prometheus.io/scrape": "true",
+					"prometheus.io/port":   "80",
+				},
+				Labels: map[string]string{
+					"mbcp.pt/team":    "Credit",
+					"mbcp.pt/contact": "radiususer",
+				},
+			},
+		},
+	}
+
+	return extensions
 }

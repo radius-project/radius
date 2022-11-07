@@ -33,6 +33,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "Applications.Core/applications", ct.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", ct.Properties.Environment)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
+	require.Equal(t, GetTestKubernetesMetadataExtensions(t), ct.Properties.Extensions)
 
 }
 
@@ -53,6 +54,7 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 	require.Equal(t, "app0", r.Name)
 	require.Equal(t, "Applications.Core/applications", r.Type)
 	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", r.Properties.Environment)
+	require.Equal(t, 1, len(versioned.Properties.Extensions))
 }
 
 func TestApplicationConvertFromValidation(t *testing.T) {
