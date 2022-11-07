@@ -35,7 +35,7 @@ func NewGetAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.Controller,
 
 func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.GetLogger(ctx)
-	cloudControlClient, cloudFormationClient, resourceType, id, err := uest(ctx, p.Options, req)
+	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}

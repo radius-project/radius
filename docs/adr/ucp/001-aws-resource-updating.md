@@ -194,3 +194,6 @@ Introducing the flatten/unflatten code makes the update code more complicated an
 
 ### Create-And-Write-Only properties cannot be updated
 Since write-only properties cannot come back as a response from AWS, they cannot be compared to the user's desired state. Therefore, on update requests, we ignore create-and-write-only properties. This means that a user could create a resource, update a create-and-write-only property, try to update the resource, and see that this property update is not reflected in the resource state.
+
+### Array properties will currently be unsupported
+Some properties can be specified under an array entry. For example, `/properties/DefaultActions/*/TargetGroupArn` under the AWS::ElasticLoadBalancingV2::Listener resource. This behavior will currently be unsupported by this design.

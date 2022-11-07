@@ -17,6 +17,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 )
@@ -116,7 +117,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		// Generate patch
 		currentState := []byte(*getResponse.ResourceDescription.Properties)
 		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
-		patch, err := generatePatch(currentState, desiredState, resourceTypeSchema)
+		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
