@@ -36,12 +36,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command without workspace",
+			Name:          "Delete Command with fallback workspace",
 			Input:         []string{"Azure"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{
