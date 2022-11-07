@@ -49,7 +49,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, 3, len(ct.Properties.Extensions))
-	require.Equal(t, GetContainerExtensions(t), ct.Properties.Extensions)
+	require.Equal(t, GetTestContainerExtensions(t), ct.Properties.Extensions)
 
 	require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
 	require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
@@ -139,7 +139,7 @@ func TestContainerConvertFromValidation(t *testing.T) {
 	}
 }
 
-func GetContainerExtensions(t *testing.T) []datamodel.Extension {
+func GetTestContainerExtensions(t *testing.T) []datamodel.Extension {
 	var replicavalue int32 = 2
 	ptrreplicaval := &replicavalue
 	extensions := []datamodel.Extension{
