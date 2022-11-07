@@ -144,6 +144,12 @@ func GetContainerExtensions(t *testing.T) []datamodel.Extension {
 	ptrreplicaval := &replicavalue
 	extensions := []datamodel.Extension{
 		{
+			Kind: datamodel.ManualScaling,
+			ManualScaling: &datamodel.ManualScalingExtension{
+				Replicas: ptrreplicaval,
+			},
+		},
+		{
 			Kind: datamodel.DaprSidecar,
 			DaprSidecar: &datamodel.DaprSidecarExtension{
 				AppID:    "app-id",
@@ -151,12 +157,6 @@ func GetContainerExtensions(t *testing.T) []datamodel.Extension {
 				Config:   "config",
 				Protocol: "http",
 				Provides: "provides",
-			},
-		},
-		{
-			Kind: datamodel.ManualScaling,
-			ManualScaling: &datamodel.ManualScalingExtension{
-				Replicas: ptrreplicaval,
 			},
 		},
 		{
