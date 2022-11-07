@@ -100,11 +100,47 @@ stages:
         rad bicep download
       displayName: rad bicep download
     - script: | 
+        echo $OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+        echo $OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
         mkdir -p kind/
         curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
         chmod +x "kind/kind"
-        kind create cluster --name radius --wait 60s
-      displayName: create kind cluster
+        # Create KinD cluster with OIDC Issuer keys
+        cat <<EOF | kind create cluster --name radius --config=-
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraMounts:
+            - hostPath: ./sa.pub
+              containerPath: /etc/kubernetes/pki/sa.pub
+            - hostPath: ./sa.key
+              containerPath: /etc/kubernetes/pki/sa.key
+          kubeadmConfigPatches:
+          - |
+            kind: ClusterConfiguration
+            apiServer:
+              extraArgs:
+                service-account-issuer: $OIDC_ISSUER
+                service-account-key-file: /etc/kubernetes/pki/sa.pub
+                service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+            controllerManager:
+              extraArgs:
+                service-account-private-key-file: /etc/kubernetes/pki/sa.key
+        EOF
+      env:
+        OIDC_ISSUER: $(OIDC_ISSUER)
+        OIDC_ISSUER_PUBLIC_KEY: $(OIDC_ISSUER_PUBLIC_KEY)
+        OIDC_ISSUER_PRIVATE_KEY: $(OIDC_ISSUER_PRIVATE_KEY)
+      displayName: Create KinD Cluster
+    - script: |
+        helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+        helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure
+        helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
+        helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --set azureTenantID=$INTEGRATION_TEST_TENANT_ID
+      env:
+        INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
+      displayName: Install Secret Store CSI and Workload Identity Webhook
     - script: |
         az login --service-principal \
           --username $(INTEGRATION_TEST_SP_APP_ID) \
