@@ -278,8 +278,8 @@ func getTestKubernetesMetadataExtensions(t *testing.T) []datamodel.Extension {
 					"prometheus.io/port":   "80",
 				},
 				Labels: map[string]string{
-					"mbcp.pt/team":    "Credit",
-					"mbcp.pt/contact": "radiususer",
+					"foo/bar/team":    "credit",
+					"foo/bar/contact": "radiususer",
 				},
 			},
 		},

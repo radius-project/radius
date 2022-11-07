@@ -31,7 +31,7 @@ type ApplicationProperties struct {
 	Extensions []Extension `json:"extensions,omitempty"`
 }
 
-// ApplicationMetadataExtension - Specifies user defined labels and annotations
-type ApplicationMetadataExtension struct {
+// ApplicationKubernetesMetadataExtension - Specifies user defined labels and annotations
+type ApplicationKubernetesMetadataExtension struct {
 	BaseKubernetesMetadataExtension
 }

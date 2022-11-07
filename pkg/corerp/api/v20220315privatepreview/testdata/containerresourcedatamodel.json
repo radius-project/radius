@@ -68,7 +68,7 @@
     "extensions": [
       {
         "kind": "manualScaling",
-        "manualScaling":{
+        "manualScaling": {
           "replicas": 2
         }
       },
@@ -85,14 +85,14 @@
       {
         "kind": "kubernetesMetadata",
         "kubernetesmetadata": {
-            "annotations": {
-            "prometheus.io/scrape" : "true",
-            "prometheus.io/port": "80" 
-            },
-            "labels": {
-            "mbcp.pt/team" : "Credit",
-            "mbcp.pt/contact": "radiususer" 
-            }
+          "annotations": {
+            "prometheus.io/scrape": "true",
+            "prometheus.io/port": "80"
+          },
+          "labels": {
+            "foo/bar/team": "credit",
+            "foo/bar/contact": "radiususer"
+          }
         }
       }
     ]
