@@ -273,27 +273,19 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	// Loop over each output resource and delete in reverse dependency order
 	for i := len(orderedOutputResources) - 1; i >= 0; i-- {
 		outputResource := orderedOutputResources[i]
+		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
 		outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
 		if err != nil {
 			return err
 		}
 
-		logger.Info(fmt.Sprintf("Deleting output resource: %v, LocalID: %s, resource type: %s\n", outputResource.Identity, outputResource.LocalID, outputResource.ResourceType.Type))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
-		if err != nil {
-			return err
+		if outputResource.IsRadiusManaged() {
+			err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
+			if err != nil {
+				return err
+			}
 		}
-	}
-
-	// Delete resources deployed as part of recipe deployment
-	resourceIds := resourceData.RecipeData.Resources
-	for i := len(resourceIds) - 1; i >= 0; i-- {
-		id := resourceIds[i]
-		logger.Info(fmt.Sprintf("Deleting recipe resource: %s", id))
-		err = dp.appmodel.GetRecipeModel().RecipeHandler.Delete(ctx, id, resourceData.RecipeData.APIVersion)
-		if err != nil {
-			return err
-		}
+		logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
 	}
 
 	return nil

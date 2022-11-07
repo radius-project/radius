@@ -55,6 +55,27 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 }
 
 func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+	id, apiVersion, err := resource.Identity.RequireARM()
+	if err != nil {
+		return err
+	}
+
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
+	logger.Info("Deleting ARM resource")
+	parsed, err := ucpresources.ParseResource(id)
+	if err != nil {
+		return err
+	}
+
+	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
+	_, err = rc.DeleteByID(ctx, id, apiVersion)
+	if err != nil {
+		if !clients.Is404Error(err) {
+			return fmt.Errorf("failed to delete resource %q: %w", id, err)
+		}
+		logger.Info(fmt.Sprintf("Resource %s does not exist: %s", id, err.Error()))
+	}
+
 	return nil
 }
 

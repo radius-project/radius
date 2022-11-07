@@ -91,7 +91,12 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 	return
 }
 
-func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
+func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
+	radiusManaged := false
+	if mode == modeRecipe {
+		radiusManaged = true
+	}
+
 	accountResourceType := resourcemodel.ResourceType{
 		Type:     resourcekinds.AzureCosmosAccount,
 		Provider: resourcemodel.ProviderAzure,
@@ -100,7 +105,8 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		Type:     resourcekinds.AzureCosmosDBMongo,
 		Provider: resourcemodel.ProviderAzure,
 	}
-	azureMongoOutputResources := []outputresource.OutputResource{
+
+	return []outputresource.OutputResource{
 		{
 			LocalID:              outputresource.LocalIDAzureCosmosAccount,
 			ResourceType:         accountResourceType,
@@ -112,6 +118,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
+			RadiusManaged: &radiusManaged,
 		},
 		{
 			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
@@ -131,12 +138,30 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 					},
 				},
 			},
-			Dependencies: []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+			RadiusManaged: &radiusManaged,
+			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 		},
+	}
+}
+
+func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
+	recipeData := datamodel.RecipeData{}
+	if mode == modeRecipe {
+		recipeData = datamodel.RecipeData{
+			RecipeProperties: datamodel.RecipeProperties{
+				LinkRecipe: datamodel.LinkRecipe{
+					Name:       recipeName,
+					Parameters: recipeParams,
+				},
+				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
+			},
+			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+			Provider:   resourcemodel.ProviderAzure,
+		}
 	}
 
 	rendererOutput = renderers.RendererOutput{
-		Resources: azureMongoOutputResources,
+		Resources: buildOutputResourcesMongo(mode),
 		SecretValues: map[string]rp.SecretValueReference{
 			renderers.ConnectionStringValue: {
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
@@ -159,20 +184,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 				Value: 8080,
 			},
 		},
-	}
-
-	if mode == modeRecipe {
-		rendererOutput.RecipeData = datamodel.RecipeData{
-			RecipeProperties: datamodel.RecipeProperties{
-				LinkRecipe: datamodel.LinkRecipe{
-					Name:       recipeName,
-					Parameters: recipeParams,
-				},
-				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
-			},
-			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
-			Provider:   resourcemodel.ProviderAzure,
-		}
+		RecipeData: recipeData,
 	}
 
 	return
@@ -647,11 +659,11 @@ func Test_Deploy(t *testing.T) {
 		resources := []string{"invalid-id"}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
+		expectedErr := conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
-		require.Equal(t, "code BadRequest: err failed to parse id \"invalid-id\" of the resource deployed by recipe \"testRecipe\" for resource "+
-			"\"/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0\": 'invalid-id' is not a valid resource id", err.Error())
+		require.Equal(t, expectedErr, err)
 	})
 }
 
@@ -736,9 +748,10 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
+	expectedErr := fmt.Sprintf("failed to parse JSON pointer \".ddkfkdk\" for computed value \"test-value\" for link \"%s\": JSON pointer must be empty or start with a \"/", mongoLinkResourceID)
 	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
-	require.Equal(t, "failed to parse JSON pointer \".ddkfkdk\" for computed value \"test-value\" for link \"/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0\": JSON pointer must be empty or start with a \"/", err.Error())
+	require.Equal(t, expectedErr, err.Error())
 }
 
 func Test_Deploy_MissingJsonPointer(t *testing.T) {
@@ -772,13 +785,14 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 			},
 		},
 	}
+	expectedErr := conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer \"/some-other-data\" to fetch computed value \"test-value\". Output resource identity: %v. Link id: \"%s\": object has no key \"some-other-data\"",
+		outputResource.Identity.Data, mongoLinkResourceID))
 
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
-	require.Equal(t, "code BadRequest: err failed to process JSON pointer \"/some-other-data\" to fetch computed value \"test-value\". "+
-		"Output resource identity: {test }. Link id: \"/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0\": object has no key \"some-other-data\"", err.Error())
+	require.Equal(t, expectedErr, err)
 }
 
 func Test_Delete(t *testing.T) {
@@ -786,77 +800,33 @@ func Test_Delete(t *testing.T) {
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
-	testOutputResources := []outputresource.OutputResource{
-		{
-			LocalID: outputresource.LocalIDAzureCosmosAccount,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosAccount,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureCosmosAccount,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Data: resourcemodel.ARMIdentity{},
-			},
-		},
-		{
-			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureCosmosDBMongo,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			Identity: resourcemodel.ResourceIdentity{
-				ResourceType: &resourcemodel.ResourceType{
-					Type:     resourcekinds.AzureCosmosDBMongo,
-					Provider: resourcemodel.ProviderAzure,
-				},
-				Data: resourcemodel.ARMIdentity{},
-			},
-			Dependencies: []outputresource.Dependency{
-				{
-					LocalID: outputresource.LocalIDAzureCosmosAccount,
-				},
-			},
-		},
+	testOutputResources := buildOutputResourcesMongo(modeRecipe)
+	testResourceData := ResourceData{
+		ID:              mongoLinkResourceID,
+		OutputResources: testOutputResources,
 	}
 
-	t.Run("Verify delete success", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
-
+	t.Run("Verify skip resource deletion for resource based links", func(t *testing.T) {
+		outputResources := buildOutputResourcesMongo(modeResource)
 		resourceData := ResourceData{
 			ID:              mongoLinkResourceID,
-			OutputResources: testOutputResources,
+			OutputResources: outputResources,
 		}
 		err := dp.Delete(ctx, resourceData)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete success with recipe resources", func(t *testing.T) {
-		mocks.recipeHandler.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Times(2).Return(nil)
-		rendererOutput := buildRendererOutputMongo(modeResource)
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(2).Return(nil)
 
-		resourceData := ResourceData{
-			ID: mongoLinkResourceID,
-			RecipeData: datamodel.RecipeData{
-				RecipeProperties: rendererOutput.RecipeData.RecipeProperties,
-				APIVersion:       rendererOutput.RecipeData.APIVersion,
-				Resources:        []string{cosmosAccountID, cosmosMongoID},
-			},
-		}
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, testResourceData)
 		require.NoError(t, err)
 	})
 
 	t.Run("Verify delete failure", func(t *testing.T) {
 		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
 
-		resourceData := ResourceData{
-			ID:              mongoLinkResourceID,
-			OutputResources: testOutputResources,
-		}
-		err := dp.Delete(ctx, resourceData)
+		err := dp.Delete(ctx, testResourceData)
 		require.Error(t, err)
 	})
 
