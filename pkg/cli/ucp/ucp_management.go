@@ -16,6 +16,7 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -323,7 +324,7 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
 	envResourceList := []v20220315privatepreview.EnvironmentResource{}
 
 	envClient, err := v20220315privatepreview.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -344,7 +345,49 @@ func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]v202
 	}
 
 	return envResourceList, nil
+}
 
+func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+	// This is inefficient, but we haven't yet implemented plane-scoped list APIs for our resources yet.
+
+	groupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	scope, err := resources.ParseScope("/" + amc.RootScope)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	response, err := groupClient.List(ctx, "radius", scope.FindScope("radius"), nil)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	envResourceList := []v20220315privatepreview.EnvironmentResource{}
+	for _, group := range response.Value {
+		// Now query environments inside each group.
+		envClient, err := v20220315privatepreview.NewEnvironmentsClient(*group.ID, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+		if err != nil {
+			return []v20220315privatepreview.EnvironmentResource{}, err
+		}
+
+		pager := envClient.NewListByScopePager(&v20220315privatepreview.EnvironmentsClientListByScopeOptions{})
+		for pager.More() {
+			nextPage, err := pager.NextPage(ctx)
+			if err != nil {
+				return []v20220315privatepreview.EnvironmentResource{}, err
+			}
+
+			applicationList := nextPage.EnvironmentResourceList.Value
+			for _, application := range applicationList {
+				envResourceList = append(envResourceList, *application)
+			}
+		}
+	}
+
+	return envResourceList, nil
 }
 
 func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (v20220315privatepreview.EnvironmentResource, error) {

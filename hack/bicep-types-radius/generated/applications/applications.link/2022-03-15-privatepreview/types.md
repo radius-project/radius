@@ -103,7 +103,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabse link properties
+* **properties**: [SQLDatabaseProperties](#sqldatabaseproperties) (Required): SQLDatabase link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/sqlDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -334,21 +334,21 @@
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### SQLRecipeProperties
+### RecipeSQLDatabaseProperties
 #### Properties
-* **database**: string (ReadOnly): The name of the SQL database.
+* **database**: string: The name of the SQL database.
 * **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **server**: string: The fully qualified domain name of the SQL database.
 
-### SQLResourceProperties
+### ResourceSQLDatabaseProperties
 #### Properties
-* **database**: string (ReadOnly): The name of the SQL database.
+* **database**: string: The name of the SQL database.
 * **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with SQL API to use for this link
 * **server**: string: The fully qualified domain name of the SQL database.
 
-### SQLValueProperties
+### ValuesSQLDatabaseProperties
 #### Properties
 * **database**: string (Required): The name of the SQL database.
 * **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.

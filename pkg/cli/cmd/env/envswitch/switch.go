@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -41,23 +40,21 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 }
 
 type Runner struct {
-	ConfigHolder        *framework.ConfigHolder
-	Output              output.Interface
-	Workspace           *workspaces.Workspace
-	ApplicationName     string
-	EnvironmentId       resources.ID
-	EnvironmentName     string
-	Scope               resources.ID
-	ConnectionFactory   connections.Factory
-	AppManagementClient clients.ApplicationsManagementClient
+	ConfigHolder      *framework.ConfigHolder
+	Output            output.Interface
+	Workspace         *workspaces.Workspace
+	ApplicationName   string
+	EnvironmentId     resources.ID
+	EnvironmentName   string
+	Scope             resources.ID
+	ConnectionFactory connections.Factory
 }
 
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		ConfigHolder:        factory.GetConfigHolder(),
-		Output:              factory.GetOutput(),
-		ConnectionFactory:   factory.GetConnectionFactory(),
-		AppManagementClient: factory.GetAppManagementClient(),
+		ConfigHolder:      factory.GetConfigHolder(),
+		Output:            factory.GetOutput(),
+		ConnectionFactory: factory.GetConnectionFactory(),
 	}
 }
 
@@ -89,14 +86,13 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	r.AppManagementClient, err = r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
 	if err != nil {
 		return err
 	}
 
 	// Validate that the environment exists
-	_, err = r.AppManagementClient.GetEnvDetails(cmd.Context(), r.EnvironmentName)
-
+	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
 	if cli.Is404ErrorForAzureError(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch environments as requested environment %s does not exist.\n", r.EnvironmentName)}
 	} else if err != nil {

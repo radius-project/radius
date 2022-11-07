@@ -257,7 +257,7 @@
         }
       }
     },
-    "SQLRecipeProperties": {
+    "RecipeSQLDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -273,8 +273,7 @@
         },
         "database": {
           "description": "The name of the SQL database.",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         },
         "server": {
           "description": "The fully qualified domain name of the SQL database.",
@@ -287,7 +286,7 @@
       "type": "object",
       "x-ms-discriminator-value": "recipe"
     },
-    "SQLResourceProperties": {
+    "ResourceSQLDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -301,8 +300,7 @@
         },
         "database": {
           "description": "The name of the SQL database.",
-          "type": "string",
-          "readOnly": true
+          "type": "string"
         },
         "server": {
           "description": "The fully qualified domain name of the SQL database.",
@@ -315,7 +313,7 @@
       "type": "object",
       "x-ms-discriminator-value": "resource"
     },
-    "SQLValueProperties": {
+    "ValuesSQLDatabaseProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -340,7 +338,7 @@
       "x-ms-discriminator-value": "values"
     },
     "SQLDatabaseProperties": {
-      "description": "SQLDatabse link properties",
+      "description": "SQLDatabase link properties",
       "type": "object",
       "allOf": [
         {

@@ -8,6 +8,8 @@ package create
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/group/common"
@@ -93,14 +95,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return err
 	}
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return err
 	}

@@ -14,14 +14,13 @@ import (
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -52,11 +51,10 @@ type EnvKind int
 
 const (
 	Kubernetes EnvKind = iota
-	Dev
 )
 
 func (k EnvKind) String() string {
-	return [...]string{"Kubernetes", "Dev"}[k]
+	return [...]string{"Kubernetes"}[k]
 }
 
 func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
@@ -97,8 +95,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var defaultEnvName string
 
 	switch kind {
-	case Dev:
-		defaultEnvName = "dev"
 	case Kubernetes:
 		k8sConfig, err := kubernetes.ReadKubeConfig()
 		if err != nil {
@@ -113,13 +109,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
-	}
-
-	params := &EnvironmentParams{
-		Name: environmentName,
-		Providers: &environments.Providers{
-			AzureProvider: azProvider,
-			AWSProvider:   awsProvider},
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -142,26 +131,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var contextName string
 	var registry *workspaces.Registry
 	switch kind {
-	case Dev:
-		// Create environment
-		step := output.BeginStep("Creating Cluster...")
-		cluster, err := k3d.CreateCluster(cmd.Context(), params.Name)
-		if err != nil {
-			return err
-		}
-		output.CompleteStep(step)
-		k8sGoClient, _, _, err = kubernetes.CreateKubernetesClients(cluster.ContextName)
-		if err != nil {
-			return err
-		}
-		clusterOptions.Contour.HostNetwork = true
-		clusterOptions.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
-		contextName = cluster.ContextName
-		registry = &workspaces.Registry{
-			PushEndpoint: cluster.RegistryPushEndpoint,
-			PullEndpoint: cluster.RegistryPullEndpoint,
-		}
-
 	case Kubernetes:
 		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
 		if err != nil {
@@ -199,7 +168,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	matched, msg, _ := prompt.ResourceName(workspaceName)
 	if !matched {
-		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name.", workspaceName, msg)
+		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name", workspaceName, msg)
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -378,11 +347,11 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}
 
-	loc := "global"
 	id := "self"
+	location := v1.LocationGlobal
 
 	toCreate := coreRpApps.EnvironmentResource{
-		Location: &loc,
+		Location: &location,
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.KubernetesCompute{
 				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),
@@ -395,7 +364,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 	if subscriptionID != "" && resourceGroup != "" {
 		toCreate.Properties.Providers = &coreRpApps.Providers{
 			Azure: &coreRpApps.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
+				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroups/" + resourceGroup),
 			},
 		}
 	}

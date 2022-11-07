@@ -9,10 +9,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/golang/mock/gomock"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -24,21 +28,26 @@ import (
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
 )
 
 type ValidateInput struct {
-	Name                string
-	Input               []string
-	ExpectedValid       bool
-	ConfigHolder        framework.ConfigHolder
-	KubernetesInterface kubernetes.Interface
-	Prompter            prompt.Interface
-	HelmInterface       helm.Interface
-	ConnectionFactory   *connections.MockFactory
-	NamespaceInterface  namespace.Interface
-	SetupInterface      setup.Interface
+	Name           string
+	Input          []string
+	ExpectedValid  bool
+	ConfigHolder   framework.ConfigHolder
+	ConfigureMocks func(mocks ValidateMocks)
+}
+
+type ValidateMocks struct {
+	Kubernetes                  *kubernetes.MockInterface
+	Namespace                   *namespace.MockInterface
+	Prompter                    *prompt.MockInterface
+	Helm                        *helm.MockInterface
+	Setup                       *setup.MockInterface
+	ApplicationManagementClient *clients.MockApplicationsManagementClient
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -54,16 +63,35 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
 			framework := &framework.Impl{
-				ConnectionFactory:   testcase.ConnectionFactory,
-				ConfigHolder:        &testcase.ConfigHolder,
-				Output:              &output.MockOutput{},
-				KubernetesInterface: testcase.KubernetesInterface,
-				Prompter:            testcase.Prompter,
-				HelmInterface:       testcase.HelmInterface,
-				NamespaceInterface:  testcase.NamespaceInterface,
-				SetupInterface:      testcase.SetupInterface,
+				ConfigHolder: &testcase.ConfigHolder,
+				Output:       &output.MockOutput{},
 			}
+
+			if testcase.ConfigureMocks != nil {
+				mocks := ValidateMocks{
+					Kubernetes:                  kubernetes.NewMockInterface(ctrl),
+					Namespace:                   namespace.NewMockInterface(ctrl),
+					Prompter:                    prompt.NewMockInterface(ctrl),
+					Helm:                        helm.NewMockInterface(ctrl),
+					Setup:                       setup.NewMockInterface(ctrl),
+					ApplicationManagementClient: clients.NewMockApplicationsManagementClient(ctrl),
+				}
+
+				testcase.ConfigureMocks(mocks)
+
+				framework.KubernetesInterface = mocks.Kubernetes
+				framework.NamespaceInterface = mocks.Namespace
+				framework.Prompter = mocks.Prompter
+				framework.HelmInterface = mocks.Helm
+				framework.SetupInterface = mocks.Setup
+				framework.ConnectionFactory = &connections.MockFactory{
+					ApplicationsManagementClient: mocks.ApplicationManagementClient,
+				}
+			}
+
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
 			cmd.SetContext(context.Background())
@@ -79,6 +107,14 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				return
 			}
 
+			err = validateRequiredFlags(cmd)
+			if err != nil && testcase.ExpectedValid {
+				require.NoError(t, err, "validation should have failed but it passed")
+			} else if err != nil {
+				// We expected this to fail, so it's OK if it does. No need to run Validate.
+				return
+			}
+
 			err = runner.Validate(cmd, cmd.Flags().Args())
 			if testcase.ExpectedValid {
 				require.NoError(t, err, "validation should have passed but it failed")
@@ -87,6 +123,28 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 			}
 		})
 	}
+}
+
+// This is really unfortunate. There's no way to have Cobra validate required flags
+// without calling Run() on the command, which we don't want to do. Our workaround is to
+// duplicate their logic.
+func validateRequiredFlags(c *cobra.Command) error {
+	flags := c.Flags()
+	missingFlagNames := []string{}
+	flags.VisitAll(func(f *pflag.Flag) {
+		requiredAnnotation, found := f.Annotations[cobra.BashCompOneRequiredFlag]
+		if !found {
+			return
+		}
+		if (requiredAnnotation[0] == "true") && !f.Changed {
+			missingFlagNames = append(missingFlagNames, f.Name)
+		}
+	})
+
+	if len(missingFlagNames) > 0 {
+		return fmt.Errorf(`required flag(s) "%s" not set`, strings.Join(missingFlagNames, `", "`))
+	}
+	return nil
 }
 
 const (
@@ -137,7 +195,7 @@ func Create404Error() error {
 
 func CreateResource(resourceType string, resourceName string) generated.GenericResource {
 	id := fmt.Sprintf("/planes/radius/local/resourcegroups/test-environment/providers/%s/%s", resourceType, resourceName)
-	location := "global"
+	location := v1.LocationGlobal
 
 	return generated.GenericResource{
 		ID:       &id,

@@ -51,9 +51,6 @@ model EnvironmentProperties {
 
   @doc("The compute resource used by application environment.")
   compute: EnvironmentCompute;
-
-  @doc("Extensions spec of the resource")
-  extensions: Extension[];
 }
 
 model EnvironmentResource is TrackedResource<EnvironmentProperties> {

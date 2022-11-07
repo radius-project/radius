@@ -28,7 +28,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name: "Valid Azure command",
@@ -52,7 +51,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadConfigWithoutWorkspace(t)},
 		},
 		{
 			Name: "Azure command with too many positional args",
@@ -65,7 +64,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command without client-id",
@@ -76,7 +75,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command without client-secret",
@@ -87,7 +86,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command without tenant-id",
@@ -98,7 +97,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command without subscription",
@@ -109,7 +108,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command without resource group",
@@ -121,7 +120,7 @@ func Test_Validate(t *testing.T) {
 				"--subscription", "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
 			Name: "Azure command with invalid subscription id",
@@ -133,7 +132,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: configWithoutWorkspace},
+			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

@@ -29,6 +29,7 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -160,29 +161,28 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		outputResources = append(outputResources, roles...)
 	}
 
+	computedValues := map[string]rp.ComputedValueReference{}
+
 	// Create the deployment as the primary workload
-	deploymentOutput, otherOutputResources, secretData, err := r.makeDeployment(ctx, resource, appId.Name(), options, len(roles) > 0)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, len(roles) > 0)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
-
-	outputResources = append(outputResources, otherOutputResources...)
+	outputResources = append(outputResources, deploymentResources...)
 
 	// If there are secrets we'll use a Kubernetes secret to hold them. This is already referenced
 	// by the deployment.
 	if len(secretData) > 0 {
 		outputResources = append(outputResources, r.makeSecret(ctx, *resource, appId.Name(), secretData, options))
-		deploymentOutput.Dependencies = append(deploymentOutput.Dependencies, outputresource.Dependency{
-			LocalID: outputresource.LocalIDSecret,
-		})
 	}
 
-	outputResources = append(outputResources, deploymentOutput)
-
-	return renderers.RendererOutput{Resources: outputResources}, nil
+	return renderers.RendererOutput{
+		Resources:      outputResources,
+		ComputedValues: computedValues,
+	}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.ContainerResource, applicationName string, options renderers.RenderOptions, identityRequired bool) (outputresource.OutputResource, []outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, identityRequired bool) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
@@ -197,7 +197,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 		if provides := port.Provides; provides != "" {
 			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
+				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 			}
 
 			routeName := resourceId.Name()
@@ -243,13 +243,13 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 	if !cc.Container.ReadinessProbe.IsEmpty() {
 		container.ReadinessProbe, err = r.makeHealthProbe(cc.Container.ReadinessProbe)
 		if err != nil {
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
+			return []outputresource.OutputResource{}, nil, fmt.Errorf("readiness probe encountered errors: %w ", err)
 		}
 	}
 	if !cc.Container.LivenessProbe.IsEmpty() {
 		container.LivenessProbe, err = r.makeHealthProbe(cc.Container.LivenessProbe)
 		if err != nil {
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
+			return []outputresource.OutputResource{}, nil, fmt.Errorf("liveness probe encountered errors: %w ", err)
 		}
 	}
 
@@ -289,7 +289,7 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 		case datamodel.Ephemeral:
 			volumeSpec, volumeMountSpec, err := makeEphemeralVolume(volumeName, volumeProperties.Ephemeral)
 			if err != nil {
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
+				return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create ephemeral volume spec for volume: %s - %w", volumeName, err)
 			}
 			// Add the volume mount to the Container spec
 			container.VolumeMounts = append(container.VolumeMounts, volumeMountSpec)
@@ -301,12 +301,12 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 
 			properties, ok := dependencies[volumeProperties.Persistent.Source]
 			if !ok {
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("volume dependency resource not found")
+				return []outputresource.OutputResource{}, nil, errors.New("volume dependency resource not found")
 			}
 
 			vol, ok := properties.Resource.(*datamodel.VolumeResource)
 			if !ok {
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, errors.New("invalid dependency resource")
+				return []outputresource.OutputResource{}, nil, errors.New("invalid dependency resource")
 			}
 
 			switch vol.Properties.Kind {
@@ -331,15 +331,15 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 
 				// Create Per-Pod SecretProviderClass for the selected volume
 				// csiobjectspec must be generated when volume is updated.
-				objectSpec, err := handlers.GetString(properties.ComputedValues, azvolrenderer.SPCVolumeObjectSpecKey)
+				objectSpec, err := handlers.GetMapValue[string](properties.ComputedValues, azvolrenderer.SPCVolumeObjectSpecKey)
 				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+					return []outputresource.OutputResource{}, nil, err
 				}
 
 				spcName := kubernetes.MakeResourceName(defaultIdentityName, vol.Name)
 				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+					return []outputresource.OutputResource{}, nil, err
 				}
 				outputResources = append(outputResources, *secretProvider)
 				deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDSecretProviderClass})
@@ -347,10 +347,10 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 				// Create volume spec which associated with secretProviderClass.
 				volumeSpec, volumeMountSpec, err = azrenderer.MakeKeyVaultVolumeSpec(volumeName, volumeProperties.Persistent.MountPath, spcName)
 				if err != nil {
-					return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
+					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
 			default:
-				return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, GetSupportedKinds()))
+				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, GetSupportedKinds()))
 			}
 
 			// Add the volume mount to the Container spec
@@ -368,14 +368,14 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
 					r, err := resources.ParseResource(id)
 					if err != nil {
-						return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
+						return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
 					}
 					value = r.Name()
 				}
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, secretData, conv.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
+			return []outputresource.OutputResource{}, secretData, conv.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
 	}
 
@@ -391,14 +391,14 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 		// 1. Create Per-Container managed identity.
 		managedIdentity, err := azrenderer.MakeManagedIdentity(defaultIdentityName, options.Environment.CloudProviders)
 		if err != nil {
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
 		fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultIdentityName, &options.Environment)
 		if err != nil {
-			return outputresource.OutputResource{}, []outputresource.OutputResource{}, nil, err
+			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
@@ -406,6 +406,48 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 		podSAName = defaultIdentityName
 		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultIdentityName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
+
+		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
+
+		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
+			Value: options.Environment.Identity,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
+				if err != nil {
+					return err
+				}
+				res, ok := r.(*datamodel.ContainerResource)
+				if !ok {
+					return errors.New("resource must be ContainerResource")
+				}
+				if res.Properties.Identity == nil {
+					res.Properties.Identity = &rp.IdentitySettings{}
+				}
+				res.Properties.Identity.Kind = ei.Kind
+				res.Properties.Identity.OIDCIssuer = ei.OIDCIssuer
+				return nil
+			},
+		}
+
+		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
+			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
+			PropertyReference: handlers.UserAssignedIdentityIDKey,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				resourceID, err := handlers.GetMapValue[string](cv, handlers.UserAssignedIdentityIDKey)
+				if err != nil {
+					return err
+				}
+				res, ok := r.(*datamodel.ContainerResource)
+				if !ok {
+					return errors.New("resource must be ContainerResource")
+				}
+				if res.Properties.Identity == nil {
+					res.Properties.Identity = &rp.IdentitySettings{}
+				}
+				res.Properties.Identity.Resource = resourceID
+				return nil
+			},
+		}
 	}
 
 	deployment := appsv1.Deployment{
@@ -448,11 +490,16 @@ func (r Renderer) makeDeployment(ctx context.Context, resource *datamodel.Contai
 	if len(secretData) > 0 {
 		hash := r.hashSecretData(secretData)
 		deployment.Spec.Template.ObjectMeta.Annotations[kubernetes.AnnotationSecretHash] = hash
+		deps = append(deps, outputresource.Dependency{
+			LocalID: outputresource.LocalIDSecret,
+		})
 	}
 
 	deploymentOutput := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)
 	deploymentOutput.Dependencies = deps
-	return deploymentOutput, outputResources, secretData, nil
+
+	outputResources = append(outputResources, deploymentOutput)
+	return outputResources, secretData, nil
 }
 
 func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationName string, dependencies map[string]renderers.RendererDependency) (map[string]corev1.EnvVar, map[string][]byte) {

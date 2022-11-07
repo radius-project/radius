@@ -124,20 +124,6 @@
         "kind"
       ],
       "type": "object"
-    },
-    "Extension": {
-      "description": "Extension of a resource.",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "description": "Specifies the extensions of a resource.",
-          "type": "string"
-        }
-      },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
     }
   },
   "parameters": {
@@ -146,7 +132,7 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}",
       "minLength": 1,
       "x-ms-skip-url-encoding": true
     }

@@ -20,6 +20,7 @@ import (
 )
 
 const (
+	IdentityProperties                 = "identityproperties"
 	UserAssignedIdentityNameKey        = "userassignedidentityname"
 	UserAssignedIdentityIDKey          = "userassignedidentityid"
 	UserAssignedIdentityPrincipalIDKey = "userassignedidentityprincipalid"
@@ -46,17 +47,17 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return properties, fmt.Errorf("invalid required properties for resource")
 	}
 
-	identityName, err := GetString(properties, UserAssignedIdentityNameKey)
+	identityName, err := GetMapValue[string](properties, UserAssignedIdentityNameKey)
 	if err != nil {
 		return nil, err
 	}
 
-	subID, err := GetString(properties, UserAssignedIdentitySubscriptionID)
+	subID, err := GetMapValue[string](properties, UserAssignedIdentitySubscriptionID)
 	if err != nil {
 		return nil, err
 	}
 
-	rgName, err := GetString(properties, UserAssignedIdentityResourceGroup)
+	rgName, err := GetMapValue[string](properties, UserAssignedIdentityResourceGroup)
 	if err != nil {
 		return nil, err
 	}

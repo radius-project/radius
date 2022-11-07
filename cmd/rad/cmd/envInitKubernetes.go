@@ -11,10 +11,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	CORE_RP_API_VERSION = "2022-03-15-privatepreview"
-)
-
 func init() {
 	envInitCmd.AddCommand(envInitKubernetesCmd)
 }

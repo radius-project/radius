@@ -704,7 +704,9 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	}
 	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+	require.Len(t, output.ComputedValues, 2)
+	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 	require.Empty(t, output.SecretValues)
 	require.Len(t, output.Resources, 7)
 
@@ -836,7 +838,11 @@ func Test_Render_AzureConnection(t *testing.T) {
 
 	output, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 	require.NoError(t, err)
-	require.Empty(t, output.ComputedValues)
+
+	require.Len(t, output.ComputedValues, 2)
+	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
+	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
+
 	require.Empty(t, output.SecretValues)
 	require.Len(t, output.Resources, 5)
 
@@ -1124,8 +1130,12 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Lenf(t, renderOutput.Resources, 7, "expected 7 output resources, instead got %+v", len(renderOutput.Resources))
 
 	// Verify deployment
-	deploymentSpec := renderOutput.Resources[6]
+	deploymentSpec := renderOutput.Resources[5]
 	require.Equal(t, outputresource.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
+	require.Contains(t, deploymentSpec.Dependencies[0].LocalID, "RoleAssignment")
+	require.Equal(t, deploymentSpec.Dependencies[1].LocalID, "SecretProviderClass")
+	require.Equal(t, deploymentSpec.Dependencies[2].LocalID, "ServiceAccount")
+	require.Equal(t, deploymentSpec.Dependencies[3].LocalID, "Secret")
 
 	// Verify volume spec
 	volumes := deploymentSpec.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes

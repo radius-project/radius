@@ -232,19 +232,34 @@ func (mr *MockApplicationsManagementClientMockRecorder) ListApplications(arg0 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListApplications", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListApplications), arg0)
 }
 
-// ListEnv mocks base method.
-func (m *MockApplicationsManagementClient) ListEnv(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+// ListEnvironmentsAll mocks base method.
+func (m *MockApplicationsManagementClient) ListEnvironmentsAll(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEnv", arg0)
+	ret := m.ctrl.Call(m, "ListEnvironmentsAll", arg0)
 	ret0, _ := ret[0].([]v20220315privatepreview.EnvironmentResource)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListEnv indicates an expected call of ListEnv.
-func (mr *MockApplicationsManagementClientMockRecorder) ListEnv(arg0 interface{}) *gomock.Call {
+// ListEnvironmentsAll indicates an expected call of ListEnvironmentsAll.
+func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsAll(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnv", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnv), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsAll", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsAll), arg0)
+}
+
+// ListEnvironmentsInResourceGroup mocks base method.
+func (m *MockApplicationsManagementClient) ListEnvironmentsInResourceGroup(arg0 context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEnvironmentsInResourceGroup", arg0)
+	ret0, _ := ret[0].([]v20220315privatepreview.EnvironmentResource)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEnvironmentsInResourceGroup indicates an expected call of ListEnvironmentsInResourceGroup.
+func (mr *MockApplicationsManagementClientMockRecorder) ListEnvironmentsInResourceGroup(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEnvironmentsInResourceGroup", reflect.TypeOf((*MockApplicationsManagementClient)(nil).ListEnvironmentsInResourceGroup), arg0)
 }
 
 // ListUCPGroup mocks base method.

@@ -11,7 +11,6 @@ import (
 	"os"
 
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
-	"github.com/project-radius/radius/pkg/cli/output"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	ucp_v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -133,7 +132,11 @@ type ApplicationsManagementClient interface {
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
 	CreateEnvironment(ctx context.Context, envName, location, namespace, envKind, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers, useDevRecipes bool) (bool, error)
-	ListEnv(ctx context.Context) ([]corerp.EnvironmentResource, error)
+	// ListEnvironmentsInResourceGroup lists all environments in the configured scope (assumes configured scope is a resource group)
+	ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerp.EnvironmentResource, error)
+
+	// ListEnvironmentsAll lists all environments across resource groups.
+	ListEnvironmentsAll(ctx context.Context) ([]corerp.EnvironmentResource, error)
 	GetEnvDetails(ctx context.Context, envName string) (corerp.EnvironmentResource, error)
 	DeleteEnv(ctx context.Context, envName string) (bool, error)
 	CreateUCPGroup(ctx context.Context, planeType string, planeName string, resourceGroupName string, resourceGroup ucp_v20220901privatepreview.ResourceGroupResource) (bool, error)
@@ -187,11 +190,4 @@ func ShallowCopy(params DeploymentParameters) DeploymentParameters {
 	}
 
 	return copy
-}
-
-type ServerLifecycleClient interface {
-	GetStatus(ctx context.Context) (interface{}, []output.Column, error)
-	IsRunning(ctx context.Context) (bool, error)
-	EnsureStarted(ctx context.Context) error
-	EnsureStopped(ctx context.Context) error
 }
