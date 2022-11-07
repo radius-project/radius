@@ -28,25 +28,26 @@ func ValidateResourceIDsForResource(properties map[string]string, keys ...string
 	return fmt.Errorf("missing required properties %v for resource", strings.Join(missing, ", "))
 }
 
-// GetString gets value for key in collection.
-func GetString(collection any, key string) (string, error) {
+// GetMapValue extracts the value for key from collection.
+func GetMapValue[T any](collection any, key string) (T, error) {
+	var defaultValue T
 	switch c := collection.(type) {
-	case map[string]string:
+	case map[string]T:
 		val, ok := c[key]
 		if !ok {
-			return "", fmt.Errorf("%s not found", key)
+			return defaultValue, fmt.Errorf("%s not found", key)
 		}
 		return val, nil
 	case map[string]any:
 		val, ok := c[key]
 		if !ok {
-			return "", fmt.Errorf("%s not found", key)
+			return defaultValue, fmt.Errorf("%s not found", key)
 		}
-		s, ok := val.(string)
+		s, ok := val.(T)
 		if !ok {
-			return "", errors.New("value is not string type")
+			return defaultValue, fmt.Errorf("value is not %T type", *new(T))
 		}
 		return s, nil
 	}
-	return "", errors.New("unsupported type")
+	return defaultValue, errors.New("unsupported type")
 }

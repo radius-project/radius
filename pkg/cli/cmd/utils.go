@@ -14,7 +14,7 @@ import (
 func CreateEnvAzureProvider(subscriptionID, resourceGroup string) corerp.Providers {
 	providers := corerp.Providers{
 		Azure: &corerp.ProvidersAzure{
-			Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
+			Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroups/" + resourceGroup),
 		},
 	}
 	return providers

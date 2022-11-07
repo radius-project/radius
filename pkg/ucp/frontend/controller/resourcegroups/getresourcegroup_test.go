@@ -40,9 +40,11 @@ func Test_GetResourceGroupByID(t *testing.T) {
 	path := testResourceGroupID + "?api-version=2022-09-01-privatepreview"
 	rg := datamodel.ResourceGroup{
 		TrackedResource: v1.TrackedResource{
-			ID:   testResourceGroupID,
-			Name: testResourceGroupName,
-			Type: ResourceGroupType,
+			ID:       testResourceGroupID,
+			Name:     testResourceGroupName,
+			Type:     ResourceGroupType,
+			Location: v1.LocationGlobal,
+			Tags:     map[string]string{},
 		},
 	}
 
@@ -59,9 +61,11 @@ func Test_GetResourceGroupByID(t *testing.T) {
 
 	require.NoError(t, err)
 	expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
-		ID:   &testResourceGroupID,
-		Name: &testResourceGroupName,
-		Type: to.Ptr(ResourceGroupType),
+		ID:       &testResourceGroupID,
+		Name:     &testResourceGroupName,
+		Type:     to.Ptr(ResourceGroupType),
+		Location: to.Ptr(v1.LocationGlobal),
+		Tags:     *to.Ptr(map[string]*string{}),
 	}
 	expectedResponse := armrpc_rest.NewOKResponse(&expectedResourceGroup)
 	assert.DeepEqual(t, expectedResponse, actualResponse)

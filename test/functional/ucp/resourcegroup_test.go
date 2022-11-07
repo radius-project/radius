@@ -6,15 +6,16 @@
 package ucp
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"testing"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
 	"gotest.tools/assert"
 )
@@ -36,13 +37,16 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		// List Resource Groups
 		listRGsURL := fmt.Sprintf("%s%s?api-version=%s", url, "/planes/radius/local/resourceGroups", apiVersion)
 		rgs := listResourceGroups(t, roundTripper, listRGsURL)
-		require.GreaterOrEqual(t, len(rgs), 1)
+		require.GreaterOrEqual(t, len(rgs.Value), 1)
 
 		// Get Resource Group
 		rg, statusCode := getResourceGroup(t, roundTripper, rgURL)
-		expectedResourceGroup := rest.ResourceGroup{
-			ID:   rgID,
-			Name: "test-rg",
+		expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
+			ID:       to.Ptr(rgID),
+			Name:     to.Ptr("test-rg"),
+			Tags:     map[string]*string{},
+			Type:     to.Ptr("System.Resources/resourceGroups"),
+			Location: to.Ptr(v1.LocationGlobal),
 		}
 		require.Equal(t, http.StatusOK, statusCode)
 		assert.DeepEqual(t, expectedResourceGroup, rg)
@@ -58,11 +62,19 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 }
 
 func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) {
+	model := v20220901privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	}
+
+	b, err := json.Marshal(&model)
+	if err != nil {
+		require.NoError(t, err, "failed to marshal resource group")
+	}
+
 	createRequest, err := http.NewRequest(
 		http.MethodPut,
 		url,
-		strings.NewReader(`{}`),
-	)
+		bytes.NewBuffer(b))
 	require.NoError(t, err, "")
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -72,7 +84,7 @@ func createResourceGroup(t *testing.T, roundTripper http.RoundTripper, url strin
 	t.Logf("Resource group: %s created/updated successfully", url)
 }
 
-func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) []interface{} {
+func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.ResourceGroupResourceList {
 	listRgsRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -89,14 +101,14 @@ func listResourceGroups(t *testing.T, roundTripper http.RoundTripper, url string
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
 
-	var listOfResourceGroups []interface{}
-	err = json.Unmarshal(payload, &listOfResourceGroups)
+	items := v20220901privatepreview.ResourceGroupResourceList{}
+	err = json.Unmarshal(payload, &items)
 	require.NoError(t, err)
 
-	return listOfResourceGroups
+	return items
 }
 
-func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (rest.ResourceGroup, int) {
+func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) (v20220901privatepreview.ResourceGroupResource, int) {
 	getRgRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -111,7 +123,8 @@ func getResourceGroup(t *testing.T, roundTripper http.RoundTripper, url string) 
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var resourceGroup rest.ResourceGroup
+
+	resourceGroup := v20220901privatepreview.ResourceGroupResource{}
 	err = json.Unmarshal(payload, &resourceGroup)
 	require.NoError(t, err)
 

@@ -68,4 +68,7 @@ type RendererOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]rp.ComputedValueReference
 	SecretValues   map[string]rp.SecretValueReference
+
+	// RadiusResource is the original Radius resource model.
+	RadiusResource conv.DataModelInterface
 }

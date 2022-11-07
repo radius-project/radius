@@ -37,6 +37,7 @@ func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
 	return ok
 }
 
+// TODO remove this when envInit is removed. DO NOT add new uses of this function. Use the generated client.
 func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {
@@ -67,7 +68,9 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
 		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, v20220901privatepreview.Version),
-		strings.NewReader(`{}`))
+		strings.NewReader(`{
+			"location": "global"
+		}`))
 
 	if err != nil {
 		return "", &ErrUCPResourceGroupCreationFailed{nil, err}

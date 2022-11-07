@@ -970,7 +970,7 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 			},
 			Providers: datamodel.Providers{
 				Azure: datamodel.ProvidersAzure{
-					Scope: "/subscriptions/subid/resourceGroup/rgName",
+					Scope: "/subscriptions/subid/resourceGroups/rgName",
 				},
 			},
 		},

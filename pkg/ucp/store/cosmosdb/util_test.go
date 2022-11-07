@@ -56,7 +56,7 @@ func TestEscapedStorageKey(t *testing.T) {
 	}{
 		{"testgroup", "testgroup"},
 		{"test-group", "test:2Dgroup"},
-		{"/subscriptions/sub/resourceGroup/rgname", ":2Fsubscriptions:2Fsub:2FresourceGroup:2Frgname"},
+		{"/subscriptions/sub/resourceGroups/rgname", ":2Fsubscriptions:2Fsub:2FresourceGroups:2Frgname"},
 	}
 
 	for _, tc := range escapedTests {
