@@ -82,7 +82,7 @@ func TestGetRabbitMQMessageQueue_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResponseResource{}
+		actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedOutput, actualOutput)

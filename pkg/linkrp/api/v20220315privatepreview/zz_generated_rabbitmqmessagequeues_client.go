@@ -99,7 +99,7 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx conte
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *RabbitMQMessageQueuesClient) createOrUpdateHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientCreateOrUpdateResponse, error) {
 	result := RabbitMQMessageQueuesClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
 		return RabbitMQMessageQueuesClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
@@ -188,7 +188,7 @@ func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context,
 // getHandleResponse handles the Get response.
 func (client *RabbitMQMessageQueuesClient) getHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientGetResponse, error) {
 	result := RabbitMQMessageQueuesClientGetResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResponseResource); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
 		return RabbitMQMessageQueuesClientGetResponse{}, err
 	}
 	return result, nil
