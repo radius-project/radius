@@ -30,18 +30,7 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-
-	ctrl := gomock.NewController(t)
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-	namespaceClient := namespace.NewMockInterface(ctrl)
 	testResourceGroup := v20220901privatepreview.ResourceGroupResource{}
-
-	// Valid create command
-	createMocksWithValidCommand(namespaceClient, appManagementClient, testResourceGroup)
-	// Invalid resource group
-	createShowUCPError(appManagementClient, testResourceGroup)
-	// Invalid create command with invalid namespace
-	createMocksWithInvalidResourceGroup(namespaceClient, appManagementClient, testResourceGroup)
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -52,8 +41,10 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Valid create command
+				createMocksWithValidCommand(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
 		},
 		{
 			Name:          "Create command with invalid resource group",
@@ -63,8 +54,10 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Invalid resource group
+				createShowUCPError(mocks.ApplicationManagementClient, testResourceGroup)
+			},
 		},
 		{
 			Name:          "Create command with invalid namespace",
@@ -74,8 +67,10 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Invalid create command with invalid namespace
+				createMocksWithInvalidResourceGroup(mocks.Namespace, mocks.ApplicationManagementClient, testResourceGroup)
+			},
 		},
 		{
 			Name:          "Create command without workspace",
@@ -85,8 +80,6 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         radcli.LoadConfigWithoutWorkspace(t),
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
 		},
 		{
 			Name:          "Create command with invalid environment",
@@ -96,8 +89,6 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
 		},
 		{
 			Name:          "Create command with invalid workspace",
@@ -107,8 +98,6 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory:  &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			NamespaceInterface: namespaceClient,
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -151,7 +140,6 @@ func Test_Run(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				AppManagementClient: appManagementClient,
 				SkipDevRecipes:      true,
 			}
 
@@ -196,7 +184,6 @@ func Test_RunWithoutAzureProvider(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				AppManagementClient: appManagementClient,
 			}
 
 			err := runner.Run(context.Background())
@@ -236,7 +223,6 @@ func Test_Run_WithoutProvider(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				AppManagementClient: appManagementClient,
 			}
 
 			err := runner.Run(context.Background())
@@ -276,7 +262,6 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				AppManagementClient: appManagementClient,
 				SkipDevRecipes:      true,
 			}
 
@@ -313,7 +298,6 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 				Namespace:           "default",
 				NamespaceInterface:  namespaceClient,
 				ConfigFileInterface: configFileInterface,
-				AppManagementClient: appManagementClient,
 				SkipDevRecipes:      false,
 			}
 

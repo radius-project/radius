@@ -32,7 +32,7 @@ func getEnvConfigs(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	envList, err := client.ListEnv(cmd.Context())
+	envList, err := client.ListEnvironmentsInResourceGroup(cmd.Context())
 	if err != nil {
 		return err
 	}
