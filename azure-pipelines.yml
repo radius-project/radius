@@ -151,7 +151,7 @@ stages:
       displayName: rad env init kubernetes
     - script: |
         kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
-      condition: always()
+      condition: and(ne($(DE_IMAGE), ""), ne($(DE_TAG), ""))
     - script: |
         kubectl get pods -n radius-system
         kubectl describe pods -n radius-system
