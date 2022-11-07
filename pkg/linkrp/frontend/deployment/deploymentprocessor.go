@@ -146,16 +146,41 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	// Deploy
 	logger.Info("Deploying radius resource")
 
+	// Deploy recipe
+	if rendererOutput.RecipeData.Name != "" {
+		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
+		if err != nil {
+			return DeploymentOutput{}, err
+		}
+		rendererOutput.RecipeData.Resources = deployedRecipeResourceIDs
+	}
+
 	// Order output resources in deployment dependency order
 	orderedOutputResources, err := outputresource.OrderOutputResources(rendererOutput.Resources)
 	if err != nil {
 		return DeploymentOutput{}, err
 	}
 
+	// Recipe based links - Add resource id to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
+	// Resource id based links - Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
+	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource.
 	updatedOutputResources := []outputresource.OutputResource{}
 	computedValues := make(map[string]interface{})
-
 	for _, outputResource := range orderedOutputResources {
+		// Add resources deployed by recipe to output resources identity
+		for _, id := range rendererOutput.RecipeData.Resources {
+			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
+				parsedID, err := resources.ParseResource(id)
+				if err != nil {
+					return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
+				}
+
+				if outputResource.ProviderResourceType == parsedID.Type() {
+					outputResource.Identity = resourcemodel.NewARMIdentity(&outputResource.ResourceType, id, rendererOutput.RecipeData.APIVersion)
+				}
+			}
+		}
+
 		deployedComputedValues, err := dp.deployOutputResource(ctx, resourceID, &outputResource, rendererOutput)
 		if err != nil {
 			return DeploymentOutput{}, err
@@ -166,45 +191,6 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		for k, computedValue := range deployedComputedValues {
 			if computedValue != nil {
 				computedValues[k] = computedValue
-			}
-		}
-	}
-
-	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResources, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders)
-		if err != nil {
-			return DeploymentOutput{}, err
-		}
-		rendererOutput.RecipeData.Resources = deployedRecipeResources
-
-		// Populate expected computed values using deployed resource information
-		for _, id := range deployedRecipeResources {
-			parsed, err := resources.ParseResource(id)
-			if err != nil {
-				return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
-			}
-
-			for k, v := range rendererOutput.ComputedValues {
-				if v.ProviderResourceType == parsed.Type() && v.JSONPointer != "" {
-					// Get deployed resource information
-					resource, err := dp.appmodel.GetRecipeModel().RecipeHandler.GetResource(ctx, rendererOutput.RecipeData.Provider, id, rendererOutput.RecipeData.APIVersion)
-					if err != nil {
-						return DeploymentOutput{}, err
-					}
-					logger.Info(fmt.Sprintf("Parsing json pointer %q from deployed recipe resource %v for computed value %q", v.JSONPointer, resource, k))
-
-					pointer, err := jsonpointer.New(v.JSONPointer)
-					if err != nil {
-						return DeploymentOutput{}, fmt.Errorf("failed to parse JSON pointer %q for computed value %q for link %q: %w", v.JSONPointer, k, resourceID.String(), err)
-					}
-
-					value, _, err := pointer.Get(resource)
-					if err != nil {
-						return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer %q to fetch value %q for deployed resource %q for link %q: %s", v.JSONPointer, k, id, resourceID.String(), err.Error()))
-					}
-
-					computedValues[k] = value
-				}
 			}
 		}
 	}
@@ -262,14 +248,12 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 			logger.Info(fmt.Sprintf("Parsing json pointer %q, output resource local id: %v", v.JSONPointer, outputResource.LocalID))
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return nil, err
+				return nil, fmt.Errorf("failed to parse JSON pointer %q for computed value %q for link %q: %w", v.JSONPointer, k, id.String(), err)
 			}
 
 			value, _, err := pointer.Get(outputResource.Resource)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return nil, err
+				return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer %q to fetch computed value %q. Output resource identity: %v. Link id: %q: %s", v.JSONPointer, k, outputResource.Identity.Data, id.String(), err.Error()))
 			}
 			computedValues[k] = value
 		}
