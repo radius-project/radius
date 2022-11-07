@@ -74,6 +74,7 @@ resource daprBackend 'Applications.Link/daprInvokeHttpRoutes@2022-03-15-privatep
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     appId: 'backend'
   }
 }

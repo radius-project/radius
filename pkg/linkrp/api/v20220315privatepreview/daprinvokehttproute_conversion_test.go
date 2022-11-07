@@ -35,16 +35,16 @@ func TestDaprInvokeHttpRoute_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Link/daprInvokeHttpRoutes", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, "daprAppId", string(convertedResource.Properties.AppId))
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
-
-		if payload == "daprinvokehttprouteresource.json" {
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		}
-
-		if payload == "daprinvokehttprouteresource_recipe.json" {
+		switch versionedResource.Properties.(type) {
+		case *ValuesDaprInvokeHTTPRouteProperties:
+			require.Equal(t, "daprAppId", string(convertedResource.Properties.AppId))
+			require.Equal(t, "values", string(convertedResource.Properties.Mode))
+		case *RecipeDaprInvokeHTTPRouteProperties:
+			require.Equal(t, "recipe", string(convertedResource.Properties.Mode))
 			require.Equal(t, "dapr-test", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
+			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		}
 	}
 }
@@ -67,18 +67,18 @@ func TestDaprInvokeHttpRoute_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0", *versionedResource.ID)
 		require.Equal(t, "daprHttpRoute0", *versionedResource.Name)
 		require.Equal(t, "Applications.Link/daprInvokeHttpRoutes", *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		require.Equal(t, "daprAppId", string(*versionedResource.Properties.AppID))
-
-		if payload == "daprinvokehttprouteresource.json" {
-			require.Equal(t, "Deployment", versionedResource.Properties.Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "ExtenderProvider", versionedResource.Properties.Status.OutputResources[0]["Provider"])
-		}
-
-		if payload == "daprinvokehttprouteresourcedatamodel_recipe.json" {
-			require.Equal(t, "dapr-test", *versionedResource.Properties.Recipe.Name)
-			require.Equal(t, "bar", versionedResource.Properties.Recipe.Parameters["foo"])
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetDaprInvokeHTTPRouteProperties().Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetDaprInvokeHTTPRouteProperties().Environment)
+		switch v := versionedResource.Properties.(type) {
+		case *ValuesDaprInvokeHTTPRouteProperties:
+			require.Equal(t, "values", string(*v.Mode))
+			require.Equal(t, "daprAppId", string(*v.AppID))
+		case *RecipeDaprInvokeHTTPRouteProperties:
+			require.Equal(t, "recipe", string(*v.Mode))
+			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
+			require.Equal(t, "DaprInvokeHttpRouteProvider", v.Status.OutputResources[0]["Provider"])
+			require.Equal(t, "dapr-test", *v.Recipe.Name)
+			require.Equal(t, "bar", v.Recipe.Parameters["foo"])
 		}
 	}
 }

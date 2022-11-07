@@ -129,22 +129,33 @@
 * **Output**: [ExtenderSecrets](#extendersecrets)
 
 ## DaprInvokeHttpRouteProperties
-### Properties
-* **appId**: string (Required): The Dapr appId used for the route
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeDaprInvokeHttpRouteProperties
+#### Properties
+* **appId**: string: The Dapr appId used for the route
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ValuesDaprInvokeHttpRouteProperties
+#### Properties
+* **appId**: string (Required): The Dapr appId used for the route
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+
+
+## ResourceStatus
+### Properties
+* **outputResources**: any[]: Array of AnyObject
 
 ## Recipe
 ### Properties
 * **name**: string (Required): The name of the recipe within the environment to use
 * **parameters**: any: Any object
-
-## ResourceStatus
-### Properties
-* **outputResources**: any[]: Array of AnyObject
 
 ## SystemData
 ### Properties

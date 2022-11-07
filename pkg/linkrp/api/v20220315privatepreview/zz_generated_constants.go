@@ -34,6 +34,23 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
+// DaprInvokeHTTPRoutePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+type DaprInvokeHTTPRoutePropertiesMode string
+
+const (
+	DaprInvokeHTTPRoutePropertiesModeRecipe DaprInvokeHTTPRoutePropertiesMode = "recipe"
+	DaprInvokeHTTPRoutePropertiesModeValues DaprInvokeHTTPRoutePropertiesMode = "values"
+)
+
+// PossibleDaprInvokeHTTPRoutePropertiesModeValues returns the possible values for the DaprInvokeHTTPRoutePropertiesMode const type.
+func PossibleDaprInvokeHTTPRoutePropertiesModeValues() []DaprInvokeHTTPRoutePropertiesMode {
+	return []DaprInvokeHTTPRoutePropertiesMode{	
+		DaprInvokeHTTPRoutePropertiesModeRecipe,
+		DaprInvokeHTTPRoutePropertiesModeValues,
+	}
+}
+
 // DaprPubSubBrokerPropertiesKind - The DaprPubSubProperties kind
 type DaprPubSubBrokerPropertiesKind string
 

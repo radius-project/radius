@@ -3,6 +3,7 @@
     "name": "daprHttpRoute0",
     "type": "Applications.Link/daprInvokeHttpRoutes",
     "properties": {
+        "mode":"values",
         "appId": 123456
     }
 }

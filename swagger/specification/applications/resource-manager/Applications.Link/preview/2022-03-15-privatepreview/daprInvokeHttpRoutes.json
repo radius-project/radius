@@ -257,6 +257,50 @@
         }
       }
     },
+    "ValuesDaprInvokeHttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprInvokeHttpRouteProperties"
+        }
+      ],
+      "properties": {
+        "appId": {
+          "description": "The Dapr appId used for the route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "appId"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
+    },
+    "RecipeDaprInvokeHttpRouteProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprInvokeHttpRouteProperties"
+        }
+      ],
+      "properties": {
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        },
+        "appId": {
+          "description": "The Dapr appId used for the route",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "recipe"
+    },
     "DaprInvokeHttpRouteProperties": {
       "description": "DaprInvokeHttpRoute link properties",
       "type": "object",
@@ -265,25 +309,24 @@
           "$ref": "global.json#/definitions/BasicResourceProperties"
         }
       ],
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprInvokeHttpRoute link at the time the operation was called"
         },
-        "appId": {
-          "description": "The Dapr appId used for the route",
-          "type": "string"
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.",
+          "type": "string",
+          "enum": [
+            "recipe",
+            "values"
+          ]
         }
       },
       "required": [
-        "appId",
+        "mode",
         "environment"
       ]
     }

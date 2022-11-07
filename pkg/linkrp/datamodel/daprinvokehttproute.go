@@ -10,6 +10,14 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
+type DaprInvokeHTTPRoutePropertiesMode string
+
+const (
+	DaprInvokeHTTPRoutePropertiesModeRecipe  DaprInvokeHTTPRoutePropertiesMode = "recipe"
+	DaprInvokeHTTPRoutePropertiesModeValues  DaprInvokeHTTPRoutePropertiesMode = "values"
+	DaprInvokeHTTPRoutePropertiesModeUnknown DaprInvokeHTTPRoutePropertiesMode = "unknown"
+)
+
 // DaprInvokeHttpRoute represents DaprInvokeHttpRoute link resource.
 type DaprInvokeHttpRoute struct {
 	v1.TrackedResource
@@ -33,7 +41,8 @@ func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
 // DaprInvokeHttpRouteProperties represents the properties of DaprInvokeHttpRoute resource.
 type DaprInvokeHttpRouteProperties struct {
 	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-	AppId             string               `json:"appId"`
+	ProvisioningState v1.ProvisioningState              `json:"provisioningState,omitempty"`
+	Mode              DaprInvokeHTTPRoutePropertiesMode `json:"mode,omitempty"`
+	Recipe            LinkRecipe                        `json:"recipe,omitempty"`
+	AppId             string                            `json:"appId"`
 }

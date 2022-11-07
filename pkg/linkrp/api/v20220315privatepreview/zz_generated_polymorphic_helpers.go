@@ -11,6 +11,26 @@ package v20220315privatepreview
 
 import "encoding/json"
 
+func unmarshalDaprInvokeHTTPRoutePropertiesClassification(rawMsg json.RawMessage) (DaprInvokeHTTPRoutePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b DaprInvokeHTTPRoutePropertiesClassification
+	switch m["mode"] {
+	case string(DaprInvokeHTTPRoutePropertiesModeRecipe):
+		b = &RecipeDaprInvokeHTTPRouteProperties{}
+	case string(DaprInvokeHTTPRoutePropertiesModeValues):
+		b = &ValuesDaprInvokeHTTPRouteProperties{}
+	default:
+		b = &DaprInvokeHTTPRouteProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (DaprPubSubBrokerPropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

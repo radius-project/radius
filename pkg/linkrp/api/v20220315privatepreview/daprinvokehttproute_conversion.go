@@ -26,19 +26,31 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
-				Environment: to.String(src.Properties.Environment),
-				Application: to.String(src.Properties.Application),
+				Environment: to.String(src.Properties.GetDaprInvokeHTTPRouteProperties().Environment),
+				Application: to.String(src.Properties.GetDaprInvokeHTTPRouteProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			AppId:             to.String(src.Properties.AppID),
+			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprInvokeHTTPRouteProperties().ProvisioningState),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
 		},
 	}
-
-	if src.Properties.Recipe != nil {
-		converted.Properties.Recipe = toRecipeDataModel(src.Properties.Recipe)
+	switch v := src.Properties.(type) {
+	case *ValuesDaprInvokeHTTPRouteProperties:
+		if v.AppID == nil {
+			return nil, conv.NewClientErrInvalidRequest("appId is a required property for mode 'values'")
+		}
+		converted.Properties.AppId = to.String(v.AppID)
+		converted.Properties.Mode = datamodel.DaprInvokeHTTPRoutePropertiesModeValues
+	case *RecipeDaprInvokeHTTPRouteProperties:
+		if v.Recipe == nil {
+			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
+		}
+		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+		converted.Properties.AppId = to.String(v.AppID)
+		converted.Properties.Mode = datamodel.DaprInvokeHTTPRoutePropertiesModeRecipe
+	default:
+		return nil, conv.NewClientErrInvalidRequest("Invalid Mode for mongo database")
 	}
 
 	return converted, nil
@@ -57,18 +69,36 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 	dst.SystemData = fromSystemDataModel(daprHttpRoute.SystemData)
 	dst.Location = to.StringPtr(daprHttpRoute.Location)
 	dst.Tags = *to.StringMapPtr(daprHttpRoute.Tags)
-	dst.Properties = &DaprInvokeHTTPRouteProperties{
-		Status: &ResourceStatus{
-			OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
-		},
-		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
-		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
-		Application:       to.StringPtr(daprHttpRoute.Properties.Application),
-		AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),
-	}
-
-	if daprHttpRoute.Properties.Recipe.Name != "" {
-		dst.Properties.Recipe = fromRecipeDataModel(daprHttpRoute.Properties.Recipe)
+	switch daprHttpRoute.Properties.Mode {
+	case datamodel.DaprInvokeHTTPRoutePropertiesModeValues:
+		mode := DaprInvokeHTTPRoutePropertiesModeValues
+		dst.Properties = &ValuesDaprInvokeHTTPRouteProperties{
+			Status: &ResourceStatus{
+				OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
+			Application:       to.StringPtr(daprHttpRoute.Properties.Application),
+			Mode:              &mode,
+			AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),
+		}
+	case datamodel.DaprInvokeHTTPRoutePropertiesModeRecipe:
+		mode := DaprInvokeHTTPRoutePropertiesModeRecipe
+		var recipe *Recipe
+		if daprHttpRoute.Properties.Recipe.Name != "" {
+			recipe = fromRecipeDataModel(daprHttpRoute.Properties.Recipe)
+		}
+		dst.Properties = &RecipeDaprInvokeHTTPRouteProperties{
+			Status: &ResourceStatus{
+				OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
+			},
+			ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
+			Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
+			Application:       to.StringPtr(daprHttpRoute.Properties.Application),
+			Mode:              &mode,
+			Recipe:            recipe,
+			AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),
+		}
 	}
 
 	return nil

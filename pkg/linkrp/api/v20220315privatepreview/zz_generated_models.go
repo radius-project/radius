@@ -39,19 +39,26 @@ type DaprInvokeHTTPRouteList struct {
 	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
 }
 
+// DaprInvokeHTTPRoutePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetDaprInvokeHTTPRouteProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *DaprInvokeHTTPRouteProperties, *RecipeDaprInvokeHTTPRouteProperties, *ValuesDaprInvokeHTTPRouteProperties
+type DaprInvokeHTTPRoutePropertiesClassification interface {
+	// GetDaprInvokeHTTPRouteProperties returns the DaprInvokeHTTPRouteProperties content of the underlying type.
+	GetDaprInvokeHTTPRouteProperties() *DaprInvokeHTTPRouteProperties
+}
+
 // DaprInvokeHTTPRouteProperties - DaprInvokeHttpRoute link properties
 type DaprInvokeHTTPRouteProperties struct {
-	// REQUIRED; The Dapr appId used for the route
-	AppID *string `json:"appId,omitempty"`
-
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprInvokeHTTPRoutePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link
-	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -60,13 +67,16 @@ type DaprInvokeHTTPRouteProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetDaprInvokeHTTPRouteProperties implements the DaprInvokeHTTPRoutePropertiesClassification interface for type DaprInvokeHTTPRouteProperties.
+func (d *DaprInvokeHTTPRouteProperties) GetDaprInvokeHTTPRouteProperties() *DaprInvokeHTTPRouteProperties { return d }
+
 // DaprInvokeHTTPRouteResource - DaprInvokeHttpRoute link
 type DaprInvokeHTTPRouteResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// REQUIRED; DaprInvokeHttpRoute link properties
-	Properties *DaprInvokeHTTPRouteProperties `json:"properties,omitempty"`
+	Properties DaprInvokeHTTPRoutePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -1062,6 +1072,41 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
+type RecipeDaprInvokeHTTPRouteProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprInvokeHTTPRoutePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprInvokeHttpRoute link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// The Dapr appId used for the route
+	AppID *string `json:"appId,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprInvokeHTTPRouteProperties implements the DaprInvokeHTTPRoutePropertiesClassification interface for type RecipeDaprInvokeHTTPRouteProperties.
+func (r *RecipeDaprInvokeHTTPRouteProperties) GetDaprInvokeHTTPRouteProperties() *DaprInvokeHTTPRouteProperties {
+	return &DaprInvokeHTTPRouteProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 type RecipeSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1431,6 +1476,38 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValuesDaprInvokeHTTPRouteProperties struct {
+	// REQUIRED; The Dapr appId used for the route
+	AppID *string `json:"appId,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprInvokeHTTPRoutePropertiesMode `json:"mode,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprInvokeHTTPRouteProperties implements the DaprInvokeHTTPRoutePropertiesClassification interface for type ValuesDaprInvokeHTTPRouteProperties.
+func (v *ValuesDaprInvokeHTTPRouteProperties) GetDaprInvokeHTTPRouteProperties() *DaprInvokeHTTPRouteProperties {
+	return &DaprInvokeHTTPRouteProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+	}
 }
 
 type ValuesSQLDatabaseProperties struct {
