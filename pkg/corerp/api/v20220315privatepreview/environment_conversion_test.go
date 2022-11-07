@@ -103,7 +103,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
 						},
 					},
-					Extensions: GetTestKubernetesMetadataExtensions(t),
+					Extensions: getTestKubernetesMetadataExtensions(t),
 				},
 			},
 			err: nil,
@@ -268,7 +268,7 @@ func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	}
 }
 
-func GetTestKubernetesMetadataExtensions(t *testing.T) []datamodel.Extension {
+func getTestKubernetesMetadataExtensions(t *testing.T) []datamodel.Extension {
 	extensions := []datamodel.Extension{
 		{
 			Kind: datamodel.KubernetesMetadata,

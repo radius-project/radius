@@ -68,13 +68,13 @@
     "extensions": [
       {
         "kind": "manualScaling",
-        "ManualScaling":{
+        "manualScaling":{
           "replicas": 2
         }
       },
       {
         "kind": "daprSidecar",
-        "DaprSidecar": {
+        "daprSidecar": {
           "appId": "app-id",
           "appPort": 80,
           "config": "config",
