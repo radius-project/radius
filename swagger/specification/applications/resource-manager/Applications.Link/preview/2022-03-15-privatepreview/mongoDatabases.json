@@ -36,7 +36,7 @@
   "paths": {
     "/{rootScope}/providers/Applications.Link/mongoDatabases": {
       "get": {
-        "description": "Lists information about all Mongo databases resources in the given root scope",
+        "description": "Lists information about all Mongo database resources in the given root scope",
         "operationId": "MongoDatabases_ListByRootScope",
         "produces": [
           "application/json"
@@ -79,7 +79,7 @@
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}": {
       "get": {
-        "description": "Retrieves information about a Mongo databases resource",
+        "description": "Retrieves information about a Mongo database resource",
         "operationId": "MongoDatabases_Get",
         "produces": [
           "application/json"

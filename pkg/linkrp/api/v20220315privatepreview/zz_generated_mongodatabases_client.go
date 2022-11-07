@@ -144,7 +144,7 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mon
 	return req, nil
 }
 
-// Get - Retrieves information about a Mongo databases resource
+// Get - Retrieves information about a Mongo database resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // mongoDatabaseName - The name of the Mongo database link resource
@@ -192,7 +192,7 @@ func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response) (Mong
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all Mongo databases resources in the given root scope
+// NewListByRootScopePager - Lists information about all Mongo database resources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
 // options - MongoDatabasesClientListByRootScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByRootScope
 // method.
