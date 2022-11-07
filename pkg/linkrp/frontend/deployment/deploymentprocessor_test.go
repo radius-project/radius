@@ -45,12 +45,15 @@ const (
 	mongoLinkID   = "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
 	mongoLinkType = "applications.link/mongodatabases"
 
-	cosmosAccountID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account"
-	cosmosMongoID   = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
+	cosmosAccountID        = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account"
+	cosmosMongoID          = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
+	cosmosConnectionString = "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
 
-	recipeName   = "testRecipe"
+	recipeName = "testRecipe"
+
 	modeRecipe   = "recipe"
 	modeResource = "resource"
+	modeValues   = "values"
 )
 
 var (
@@ -85,6 +88,12 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 		testResource.Properties.Recipe = datamodel.LinkRecipe{
 			Name:       recipeName,
 			Parameters: recipeParams,
+		}
+	} else if mode == modeValues {
+		testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
+			Username:         "testUser",
+			Password:         "testPassword",
+			ConnectionString: cosmosConnectionString,
 		}
 	}
 
@@ -145,6 +154,46 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 }
 
 func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOutput) {
+	computedValues := map[string]renderers.ComputedValueReference{}
+	secretValues := map[string]rp.SecretValueReference{}
+	if mode == modeResource || mode == modeRecipe {
+		computedValues = map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+				JSONPointer:          "/properties/resource/id",
+			},
+			renderers.Host: {
+				Value: 8080,
+			},
+		}
+
+		secretValues = map[string]rp.SecretValueReference{
+			renderers.ConnectionStringValue: {
+				LocalID: outputresource.LocalIDAzureCosmosAccount,
+				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				Action:        "listConnectionStrings",
+				ValueSelector: "/connectionStrings/0/connectionString",
+				Transformer: resourcemodel.ResourceType{
+					Provider: resourcemodel.ProviderAzure,
+					Type:     resourcekinds.AzureCosmosDBMongo,
+				},
+			},
+		}
+	} else if mode == modeValues {
+		computedValues = map[string]renderers.ComputedValueReference{
+			renderers.DatabaseNameValue: {
+				Value: mongoLinkName,
+			},
+		}
+
+		secretValues = map[string]rp.SecretValueReference{
+			renderers.UsernameStringValue:   {Value: "testUser"},
+			renderers.PasswordStringHolder:  {Value: "testPassword"},
+			renderers.ConnectionStringValue: {Value: cosmosConnectionString},
+		}
+	}
+
 	recipeData := datamodel.RecipeData{}
 	if mode == modeRecipe {
 		recipeData = datamodel.RecipeData{
@@ -161,65 +210,13 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	}
 
 	rendererOutput = renderers.RendererOutput{
-		Resources: buildOutputResourcesMongo(mode),
-		SecretValues: map[string]rp.SecretValueReference{
-			renderers.ConnectionStringValue: {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-				Action:        "listConnectionStrings",
-				ValueSelector: "/connectionStrings/0/connectionString",
-				Transformer: resourcemodel.ResourceType{
-					Provider: resourcemodel.ProviderAzure,
-					Type:     resourcekinds.AzureCosmosDBMongo,
-				},
-			},
-		},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			renderers.DatabaseNameValue: {
-				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-				JSONPointer:          "/properties/resource/id",
-			},
-			renderers.Host: {
-				Value: 8080,
-			},
-		},
-		RecipeData: recipeData,
+		Resources:      buildOutputResourcesMongo(mode),
+		SecretValues:   secretValues,
+		ComputedValues: computedValues,
+		RecipeData:     recipeData,
 	}
 
 	return
-}
-
-func buildFetchSecretsInput(mode string) ResourceData {
-	var testResource datamodel.MongoDatabase
-	var rendererOutput renderers.RendererOutput
-	if mode == modeRecipe {
-		testResource = buildInputResourceMongo(modeRecipe)
-		rendererOutput = buildRendererOutputMongo(modeRecipe)
-	} else if mode == modeResource {
-		testResource = buildInputResourceMongo(modeResource)
-		rendererOutput = buildRendererOutputMongo(modeResource)
-	}
-	testResource.Properties.Secrets = datamodel.MongoDatabaseSecrets{
-		Username:         "testUser",
-		Password:         "testPassword",
-		ConnectionString: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255",
-	}
-
-	secretValues := map[string]rp.SecretValueReference{
-		renderers.UsernameStringValue:   {Value: "testUser"},
-		renderers.PasswordStringHolder:  {Value: "testPassword"},
-		renderers.ConnectionStringValue: {Value: "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"},
-	}
-
-	computedValues := map[string]interface{}{
-		renderers.DatabaseNameValue: "db",
-	}
-
-	testResource.ComputedValues = computedValues
-	testResource.SecretValues = secretValues
-
-	return ResourceData{mongoLinkResourceID, testResource, rendererOutput.Resources, computedValues, secretValues, rendererOutput.RecipeData}
 }
 
 func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) store.Object {
@@ -298,7 +295,8 @@ func setup(t *testing.T) SharedMocks {
 					Type:     resourcekinds.AzureCosmosDBMongo,
 					Provider: resourcemodel.ProviderAzure,
 				},
-				ResourceHandler: mockResourceHandler,
+				ResourceHandler:        mockResourceHandler,
+				SecretValueTransformer: &mongodatabases.AzureTransformer{},
 			},
 		},
 		map[string]bool{
@@ -785,14 +783,14 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 			},
 		},
 	}
-	expectedErr := conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer \"/some-other-data\" to fetch computed value \"test-value\". Output resource identity: %v. Link id: \"%s\": object has no key \"some-other-data\"",
-		outputResource.Identity.Data, mongoLinkResourceID))
+	expectedErr := fmt.Sprintf("failed to process JSON pointer \"/some-other-data\" to fetch computed value \"test-value\". Output resource identity: %v. Link id: \"%s\": object has no key \"some-other-data\"",
+		outputResource.Identity.Data, mongoLinkResourceID)
 
 	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
-	require.Equal(t, expectedErr, err)
+	require.Equal(t, expectedErr, err.Error())
 }
 
 func Test_Delete(t *testing.T) {
@@ -882,15 +880,58 @@ func Test_Delete(t *testing.T) {
 	})
 }
 
-func Test_FetchSecrets(t *testing.T) {
+func Test_FetchSecretsWithValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
-	input := buildFetchSecretsInput(modeResource)
-	secrets, err := dp.FetchSecrets(ctx, input)
+	rendererOutput := buildRendererOutputMongo(modeValues)
+	computedValues := map[string]interface{}{
+		renderers.DatabaseNameValue: mongoLinkName,
+	}
+	resourceData := ResourceData{
+		ID:              mongoLinkResourceID,
+		Resource:        buildInputResourceMongo(modeValues),
+		OutputResources: rendererOutput.Resources,
+		SecretValues:    rendererOutput.SecretValues,
+		ComputedValues:  computedValues,
+	}
+	secrets, err := dp.FetchSecrets(ctx, resourceData)
 	require.NoError(t, err)
 	require.Equal(t, 3, len(secrets))
+	require.Equal(t, "testUser", secrets[renderers.UsernameStringValue])
+	require.Equal(t, "testPassword", secrets[renderers.PasswordStringHolder])
+	require.Equal(t, cosmosConnectionString, secrets[renderers.ConnectionStringValue])
+}
+
+func Test_FetchSecretsWithResource(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
+
+	resource := buildInputResourceMongo(modeResource)
+	rendererOutput := buildRendererOutputMongo(modeResource)
+	computedValues := map[string]interface{}{
+		renderers.DatabaseNameValue: "test-database",
+	}
+
+	mocks.secretsValueClient.EXPECT().FetchSecret(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cosmosConnectionString, nil)
+
+	resourceData := ResourceData{
+		ID:              mongoLinkResourceID,
+		Resource:        resource,
+		OutputResources: rendererOutput.Resources,
+		SecretValues:    rendererOutput.SecretValues,
+		ComputedValues:  computedValues,
+	}
+
+	expectedOutput := map[string]interface{}{
+		renderers.ConnectionStringValue: cosmosConnectionString + "/test-database",
+	}
+	secrets, err := dp.FetchSecrets(ctx, resourceData)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(secrets))
+	require.Equal(t, expectedOutput, secrets)
 }
 
 func Test_FetchSecretsWithRecipe(t *testing.T) {
@@ -898,10 +939,29 @@ func Test_FetchSecretsWithRecipe(t *testing.T) {
 	mocks := setup(t)
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
-	input := buildFetchSecretsInput(modeRecipe)
-	secrets, err := dp.FetchSecrets(ctx, input)
+	resource := buildInputResourceMongo(modeRecipe)
+	rendererOutput := buildRendererOutputMongo(modeRecipe)
+	computedValues := map[string]interface{}{
+		renderers.DatabaseNameValue: "test-database",
+	}
+
+	mocks.secretsValueClient.EXPECT().FetchSecret(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(cosmosConnectionString, nil)
+
+	resourceData := ResourceData{
+		ID:              mongoLinkResourceID,
+		Resource:        resource,
+		OutputResources: rendererOutput.Resources,
+		SecretValues:    rendererOutput.SecretValues,
+		ComputedValues:  computedValues,
+	}
+
+	expectedOutput := map[string]interface{}{
+		renderers.ConnectionStringValue: cosmosConnectionString + "/test-database",
+	}
+	secrets, err := dp.FetchSecrets(ctx, resourceData)
 	require.NoError(t, err)
-	require.Equal(t, 3, len(secrets))
+	require.Equal(t, 1, len(secrets))
+	require.Equal(t, expectedOutput, secrets)
 }
 
 func Test_GetEnvironmentMetadata(t *testing.T) {

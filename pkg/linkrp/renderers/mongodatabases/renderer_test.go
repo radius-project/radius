@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
@@ -62,8 +63,9 @@ func Test_Render_Success(t *testing.T) {
 	}
 	expectedOutputResources := []outputresource.OutputResource{
 		{
-			LocalID:      outputresource.LocalIDAzureCosmosAccount,
-			ResourceType: accountResourceType,
+			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			ResourceType:  accountResourceType,
+			RadiusManaged: to.BoolPtr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
@@ -73,8 +75,9 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
-			ResourceType: dbResourceType,
+			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType:  dbResourceType,
+			RadiusManaged: to.BoolPtr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
@@ -327,6 +330,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosAccount,
 				Provider: resourcemodel.ProviderAzure,
 			},
+			RadiusManaged:        to.BoolPtr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
 		},
 		{
@@ -335,6 +339,7 @@ func Test_Render_Recipe_Success(t *testing.T) {
 				Type:     resourcekinds.AzureCosmosDBMongo,
 				Provider: resourcemodel.ProviderAzure,
 			},
+			RadiusManaged:        to.BoolPtr(true),
 			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
 			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 		},

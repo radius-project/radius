@@ -26,7 +26,7 @@ type OutputResource struct {
 	ResourceType resourcemodel.ResourceType `json:"resourceType"`
 
 	// Resource type defined by the provider for this resource. Example for Azure, a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
-	ProviderResourceType string
+	ProviderResourceType string `json:"providerResourceType"`
 
 	RadiusManaged *bool                `json:"radiusManaged"`
 	Deployed      bool                 `json:"deployed"`

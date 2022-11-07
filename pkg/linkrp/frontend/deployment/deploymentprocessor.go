@@ -161,13 +161,13 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		return DeploymentOutput{}, err
 	}
 
-	// Recipe based links - Add resource id to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
+	// Recipe based links - Add deployed recipe resource IDs to output resource; Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
 	// Resource id based links - Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
-	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource.
+	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource; Populate expected computed values from response of the GET request.
 	updatedOutputResources := []outputresource.OutputResource{}
 	computedValues := make(map[string]interface{})
 	for _, outputResource := range orderedOutputResources {
-		// Add resources deployed by recipe to output resources identity
+		// Add resources deployed by recipe to output resource identity
 		for _, id := range rendererOutput.RecipeData.Resources {
 			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
 				parsedID, err := resources.ParseResource(id)
@@ -253,7 +253,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 			value, _, err := pointer.Get(outputResource.Resource)
 			if err != nil {
-				return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to process JSON pointer %q to fetch computed value %q. Output resource identity: %v. Link id: %q: %s", v.JSONPointer, k, outputResource.Identity.Data, id.String(), err.Error()))
+				return nil, fmt.Errorf("failed to process JSON pointer %q to fetch computed value %q. Output resource identity: %v. Link id: %q: %w", v.JSONPointer, k, outputResource.Identity.Data, id.String(), err)
 			}
 			computedValues[k] = value
 		}
@@ -284,6 +284,9 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 			if err != nil {
 				return err
 			}
+		} else if resourceData.RecipeData.Name != "" {
+			// If the resource is not Radius managed for a link tied to a recipe, then this is a bug in the output resource initialization in renderer
+			return fmt.Errorf("resources deployed through recipe must be Radius managed")
 		}
 		logger.Info("Underlying resource lifecycle is not managed by Radius, skipping deletion")
 	}
@@ -338,24 +341,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 		}
 	}
 
-	for _, id := range recipeData.Resources {
-		parsedID, err := resources.ParseResource(id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
-		}
-
-		// Find resource that matches the expected Azure resource type
-		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
-			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
-			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
-		}
-	}
-
-	if recipeData.Resources != nil {
-		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the link", recipeData.Name)
-	}
-
-	return nil, fmt.Errorf("cannot find an output resource matching LocalID %s", reference.LocalID)
+	return nil, fmt.Errorf("cannot find an output resource matching LocalID for secret reference %s", reference.LocalID)
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
