@@ -108,8 +108,8 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// RabbitMQMessageQueuePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or 'resource',
-// or build manually via 'values'. Selection determines which set of fields to additionally require.
+// RabbitMQMessageQueuePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
 type RabbitMQMessageQueuePropertiesMode string
 
 const (

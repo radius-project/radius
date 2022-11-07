@@ -295,13 +295,13 @@
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeRabbitMQMessageQueueProperties
 #### Properties
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **queue**: string: The name of the queue
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 
 ### ValuesRabbitMQMessageQueueProperties
 #### Properties
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **queue**: string (Required): The name of the queue
 
 

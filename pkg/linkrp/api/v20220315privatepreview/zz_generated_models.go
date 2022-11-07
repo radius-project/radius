@@ -940,8 +940,8 @@ type RabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
 	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
@@ -1031,8 +1031,8 @@ type RecipeRabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
 	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
 
 	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitmq link
@@ -1441,8 +1441,8 @@ type ValuesRabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
 	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
 
 	// REQUIRED; The name of the queue
