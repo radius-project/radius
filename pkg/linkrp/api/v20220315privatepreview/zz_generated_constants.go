@@ -50,6 +50,25 @@ func PossibleDaprPubSubBrokerPropertiesKindValues() []DaprPubSubBrokerProperties
 	}
 }
 
+// DaprPubSubBrokerPropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
+type DaprPubSubBrokerPropertiesMode string
+
+const (
+	DaprPubSubBrokerPropertiesModeRecipe DaprPubSubBrokerPropertiesMode = "recipe"
+	DaprPubSubBrokerPropertiesModeResource DaprPubSubBrokerPropertiesMode = "resource"
+	DaprPubSubBrokerPropertiesModeValues DaprPubSubBrokerPropertiesMode = "values"
+)
+
+// PossibleDaprPubSubBrokerPropertiesModeValues returns the possible values for the DaprPubSubBrokerPropertiesMode const type.
+func PossibleDaprPubSubBrokerPropertiesModeValues() []DaprPubSubBrokerPropertiesMode {
+	return []DaprPubSubBrokerPropertiesMode{	
+		DaprPubSubBrokerPropertiesModeRecipe,
+		DaprPubSubBrokerPropertiesModeResource,
+		DaprPubSubBrokerPropertiesModeValues,
+	}
+}
+
 // DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
 type DaprSecretStorePropertiesKind string
 

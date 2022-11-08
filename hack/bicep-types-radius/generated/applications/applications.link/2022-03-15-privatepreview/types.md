@@ -161,27 +161,36 @@
 * **Additional Properties Type**: string
 
 ## DaprPubSubBrokerProperties
-* **Discriminator**: kind
+* **Discriminator**: mode
 
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **kind**: 'generic' | 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 * **topic**: string: Topic name of the Azure ServiceBus resource
-### DaprPubSubGenericResourceProperties
+### RecipeDaprPubSubProperties
 #### Properties
-* **kind**: 'generic' (Required): The DaprPubSubProperties kind
 * **metadata**: any (Required): Any object
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
 
-### DaprPubSubAzureServiceBusResourceProperties
+### ResourceDaprPubSubProperties
 #### Properties
-* **kind**: 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
+* **metadata**: any: Any object
+* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): PubSub resource
+
+### ValuesDaprPubSubProperties
+#### Properties
+* **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string (Required): Dapr component version
 
 
 ## TrackedResourceTags

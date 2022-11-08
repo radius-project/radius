@@ -52,7 +52,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
 				Metadata: map[string]interface{}{
@@ -109,7 +109,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
 			},
@@ -136,7 +136,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
 				},
@@ -165,7 +165,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
 				},
@@ -181,7 +181,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 }
 
 func Test_ConstructDaprPubSubGeneric(t *testing.T) {
-	properties := datamodel.DaprPubSubGenericResourceProperties{
+	properties := datamodel.ValuesDaprPubSubProperties{
 		Type:    "pubsub.kafka",
 		Version: "v1",
 		Metadata: map[string]interface{}{
@@ -238,7 +238,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			},
 			Kind:  resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Topic: "test-topic",
-			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			ResourceDaprPubSub: datamodel.ResourceDaprPubSubProperties{
 				Resource: serviceBusResourceID,
 			},
 		},
@@ -282,7 +282,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprPubSubTopicAzureServiceBus,
-			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			ResourceDaprPubSub: datamodel.ResourceDaprPubSubProperties{
 				Resource: serviceBusResourceID,
 			},
 		},
@@ -326,7 +326,7 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprPubSubTopicAzureServiceBus,
-			DaprPubSubAzureServiceBus: datamodel.DaprPubSubAzureServiceBusResourceProperties{
+			ResourceDaprPubSub: datamodel.ResourceDaprPubSubProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 			},
 		},
@@ -352,7 +352,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
 				Metadata: map[string]interface{}{
@@ -381,7 +381,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			DaprPubSubGeneric: datamodel.DaprPubSubGenericResourceProperties{
+			ValuesDaprPubSub: datamodel.ValuesDaprPubSubProperties{
 				Type:    "pubsub.kafka",
 				Version: "v1",
 				Metadata: map[string]interface{}{

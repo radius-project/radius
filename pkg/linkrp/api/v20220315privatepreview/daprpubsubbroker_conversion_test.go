@@ -46,15 +46,19 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch convertedResource.Properties.Kind {
 		case datamodel.DaprPubSubBrokerKindAzureServiceBus:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", convertedResource.Properties.DaprPubSubAzureServiceBus.Resource)
-			require.Equal(t, "pubsub.azure.servicebus", string(convertedResource.Properties.Kind))
+			if convertedResource.Properties.Mode == datamodel.DaprPubSubBrokerModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", convertedResource.Properties.ResourceDaprPubSub.Resource)
+				require.Equal(t, "pubsub.azure.servicebus", string(convertedResource.Properties.Kind))
+			}
 
 		case datamodel.DaprPubSubBrokerKindGeneric:
-			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
-			require.Equal(t, "pubsub.kafka", convertedResource.Properties.DaprPubSubGeneric.Type)
-			require.Equal(t, "v1", convertedResource.Properties.DaprPubSubGeneric.Version)
-			require.Equal(t, "bar", convertedResource.Properties.DaprPubSubGeneric.Metadata["foo"])
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			if convertedResource.Properties.Mode == datamodel.DaprPubSubBrokerModeValues {
+				require.Equal(t, "generic", string(convertedResource.Properties.Kind))
+				require.Equal(t, "pubsub.kafka", convertedResource.Properties.ValuesDaprPubSub.Type)
+				require.Equal(t, "v1", convertedResource.Properties.ValuesDaprPubSub.Version)
+				require.Equal(t, "bar", convertedResource.Properties.ValuesDaprPubSub.Metadata["foo"])
+				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			}
 		default:
 			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
 		}
@@ -63,10 +67,10 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			payload == "daprpubsubbrokerazureresource_recipe2.json" ||
 			payload == "daprpubsubbrokergenericresource_recipe.json" ||
 			payload == "daprpubsubbrokergenericresource_recipe2.json" {
-			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
+			require.Equal(t, "redis-test", convertedResource.Properties.RecipeDaprPubSub.Recipe.Name)
 			if payload == "daprpubsubbrokerazureresource_recipe2.json" || payload == "daprpubsubbrokergenericresource_recipe2.json" {
 				parameters := map[string]interface{}{"port": float64(6081)}
-				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
+				require.Equal(t, parameters, convertedResource.Properties.RecipeDaprPubSub.Recipe.Parameters)
 			}
 		}
 	}
@@ -102,15 +106,19 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		switch resource.Properties.Kind {
 		case datamodel.DaprPubSubBrokerKindAzureServiceBus:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", resource.Properties.DaprPubSubAzureServiceBus.Resource)
-			require.Equal(t, "pubsub.azure.servicebus", string(resource.Properties.Kind))
-			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["Provider"])
+			if resource.Properties.Mode == datamodel.DaprPubSubBrokerModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", resource.Properties.ResourceDaprPubSub.Resource)
+				require.Equal(t, "pubsub.azure.servicebus", string(resource.Properties.Kind))
+				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["Provider"])
+			}
 		case datamodel.DaprPubSubBrokerKindGeneric:
-			require.Equal(t, "generic", string(resource.Properties.Kind))
-			require.Equal(t, "pubsub.kafka", resource.Properties.DaprPubSubGeneric.Type)
-			require.Equal(t, "v1", resource.Properties.DaprPubSubGeneric.Version)
-			require.Equal(t, "bar", resource.Properties.DaprPubSubGeneric.Metadata["foo"])
+			if resource.Properties.Mode == datamodel.DaprPubSubBrokerModeValues {
+				require.Equal(t, "generic", string(resource.Properties.Kind))
+				require.Equal(t, "pubsub.kafka", resource.Properties.ValuesDaprPubSub.Type)
+				require.Equal(t, "v1", resource.Properties.ValuesDaprPubSub.Version)
+				require.Equal(t, "bar", resource.Properties.ValuesDaprPubSub.Metadata["foo"])
+			}
 		default:
 			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
 		}
@@ -119,10 +127,10 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 			payload == "daprpubsubbrokerazureresourcedatamodel_recipe2.json" ||
 			payload == "daprpubsubbrokergenericresourcedatamodel_recipe.json" ||
 			payload == "daprpubsubbrokergenericresourcedatamodel_recipe2.json" {
-			require.Equal(t, "redis-test", resource.Properties.Recipe.Name)
+			require.Equal(t, "redis-test", resource.Properties.RecipeDaprPubSub.Recipe.Name)
 			if payload == "daprpubsubbrokerazureresourcedatamodel_recipe2.json" || payload == "daprpubsubbrokergenericresourcedatamodel_recipe2.json" {
 				parameters := map[string]interface{}{"port": float64(6081)}
-				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
+				require.Equal(t, parameters, resource.Properties.RecipeDaprPubSub.Recipe.Parameters)
 			}
 		}
 	}

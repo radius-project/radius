@@ -20,11 +20,13 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 		return nil, err
 	}
 	var b DaprPubSubBrokerPropertiesClassification
-	switch m["kind"] {
-	case string(DaprPubSubBrokerPropertiesKindGeneric):
-		b = &DaprPubSubGenericResourceProperties{}
-	case string(DaprPubSubBrokerPropertiesKindPubsubAzureServicebus):
-		b = &DaprPubSubAzureServiceBusResourceProperties{}
+	switch m["mode"] {
+	case string(DaprPubSubBrokerPropertiesModeRecipe):
+		b = &RecipeDaprPubSubProperties{}
+	case string(DaprPubSubBrokerPropertiesModeResource):
+		b = &ResourceDaprPubSubProperties{}
+	case string(DaprPubSubBrokerPropertiesModeValues):
+		b = &ValuesDaprPubSubProperties{}
 	default:
 		b = &DaprPubSubBrokerProperties{}
 	}
