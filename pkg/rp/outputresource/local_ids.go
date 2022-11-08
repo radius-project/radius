@@ -34,7 +34,6 @@ import (
 
 // Represents local IDs used for output resources
 const (
-	LocalIDAADPodIdentity               = "AADPodIdentity"
 	LocalIDAzureCosmosAccount           = "AzureCosmosAccount"
 	LocalIDAzureCosmosDBMongo           = "AzureCosmosDBMongo"
 	LocalIDAzureCosmosDBSQL             = "AzureCosmosDBSQL"
