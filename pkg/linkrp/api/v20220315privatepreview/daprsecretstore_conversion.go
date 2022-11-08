@@ -31,7 +31,6 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprSecretStoreProperties().ProvisioningState),
 			Kind:              toDaprSecretStoreKindDataModel(src.Properties.GetDaprSecretStoreProperties().Kind),
-			Mode:              toDaprSecretStoreModeDataModel(src.Properties.GetDaprSecretStoreProperties().Mode),
 		},
 		InternalMetadata: v1.InternalMetadata{
 			UpdatedAPIVersion: Version,
@@ -45,6 +44,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Mode = datamodel.DaprSecretStorePropertiesModeValues
 	case *RecipeDaprSecretStoreProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
@@ -53,6 +53,7 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Mode = datamodel.DaprSecretStorePropertiesModeValues
 	default:
 		return nil, conv.NewClientErrInvalidRequest("Invalid Mode for DaprSecretStore")
 	}
@@ -74,6 +75,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
 	case datamodel.DaprSecretStorePropertiesModeValues:
+		mode := DaprSecretStorePropertiesModeValues
 		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
@@ -82,13 +84,14 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 			Application:       to.StringPtr(daprSecretStore.Properties.Application),
 			Kind:              fromDaprSecretStoreKindDataModel(daprSecretStore.Properties.Kind),
-			Mode:              fromDaprSecretStoreModeDataModel(daprSecretStore.Properties.Mode),
+			Mode:              &mode,
 			Type:              to.StringPtr(daprSecretStore.Properties.Type),
 			Version:           to.StringPtr(daprSecretStore.Properties.Version),
 			Metadata:          daprSecretStore.Properties.Metadata,
 			ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
 		}
 	case datamodel.DaprSecretStorePropertiesModeRecipe:
+		mode := DaprSecretStorePropertiesModeRecipe
 		var recipe *Recipe
 		if daprSecretStore.Properties.Recipe.Name != "" {
 			recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
@@ -101,7 +104,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 			Application:       to.StringPtr(daprSecretStore.Properties.Application),
 			Kind:              fromDaprSecretStoreKindDataModel(daprSecretStore.Properties.Kind),
-			Mode:              fromDaprSecretStoreModeDataModel(daprSecretStore.Properties.Mode),
+			Mode:              &mode,
 			Type:              to.StringPtr(daprSecretStore.Properties.Type),
 			Version:           to.StringPtr(daprSecretStore.Properties.Version),
 			Metadata:          daprSecretStore.Properties.Metadata,
@@ -129,31 +132,6 @@ func fromDaprSecretStoreKindDataModel(kind datamodel.DaprSecretStoreKind) *DaprS
 		convertedKind = DaprSecretStorePropertiesKindGeneric
 	default:
 		convertedKind = DaprSecretStorePropertiesKindGeneric // 2022-03-15-privatprevie supports only generic.
-	}
-	return &convertedKind
-}
-
-func toDaprSecretStoreModeDataModel(mode *DaprSecretStorePropertiesMode) datamodel.DaprSecretStorePropertiesMode {
-	switch *mode {
-	case DaprSecretStorePropertiesModeValues:
-		return datamodel.DaprSecretStorePropertiesModeValues
-	case DaprSecretStorePropertiesModeRecipe:
-		return datamodel.DaprSecretStorePropertiesModeRecipe
-	default:
-		return datamodel.DaprSecretStorePropertiesModeUnknown
-	}
-
-}
-
-func fromDaprSecretStoreModeDataModel(mode datamodel.DaprSecretStorePropertiesMode) *DaprSecretStorePropertiesMode {
-	var convertedKind DaprSecretStorePropertiesMode
-	switch mode {
-	case datamodel.DaprSecretStorePropertiesModeValues:
-		convertedKind = DaprSecretStorePropertiesModeValues
-	case datamodel.DaprSecretStorePropertiesModeRecipe:
-		convertedKind = DaprSecretStorePropertiesModeRecipe
-	default:
-		convertedKind = DaprSecretStorePropertiesModeValues
 	}
 	return &convertedKind
 }
