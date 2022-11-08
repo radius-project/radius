@@ -1,13 +1,26 @@
 {
   "parameters": {
+    "api-version": "2022-09-01-privatepreview",
+    "planeType": "azure",
+    "planeName": "local",
     "rootScope": "/planes/radius/local/resourcegroups/rg1",
     "resourceGroupName": "rg1",
-    "ResourceGroupResource": {
+    "ResourceGroupResource": {},
+    "ResourceGroup": {
+      "location": "foo"
     }
   },
   "responses": {
     "200": {
       "body": {
+        "location": "",
+        "id": "/planes/radius/local/resourcegroups/rg1",
+        "name": "rg1"
+      }
+    },
+    "201": {
+      "body": {
+        "location": "",
         "id": "/planes/radius/local/resourcegroups/rg1",
         "name": "rg1"
       }

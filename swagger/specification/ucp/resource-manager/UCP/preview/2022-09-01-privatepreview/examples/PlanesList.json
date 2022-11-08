@@ -1,6 +1,7 @@
 {
   "parameters": {
-    "rootScope": "/planes/radius/local"
+    "rootScope": "/planes/radius/local",
+    "api-version": "2022-09-01-privatepreview"
   },
   "responses": {
     "200": {
@@ -10,6 +11,7 @@
             "id": "/planes/radius/local",
             "name": "local",
             "type": "System.Planes/radius",
+            "location": "global",
             "properties": {
               "resourceProviders": {
                   "Applications.Link": "http://appcore-rp.radius-system:5444",
@@ -23,6 +25,7 @@
               "id": "/planes/deployments/local",
               "type": "System.Planes/deployments",
               "name": "local",
+              "location": "local",
               "properties": {
                   "resourceProviders": {
                       "Microsoft.Resources": "http://de-api.radius-system:6443"

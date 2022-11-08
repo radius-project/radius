@@ -1,22 +1,43 @@
 {
   "parameters": {
+    "api-version": "2022-09-01-privatepreview",
     "rootScope": "/planes/radius/local",
     "environmentName": "local",
-    "PlaneResource": {
+    "planeName": "foo",
+    "planeType": "bar",
+    "Plane": {
+      "location": "bar",
       "properties": {
+        "kind": "foo",
         "resourceProviders": {
-            "Applications.Core": "http://localhost:7443"
+          "Applications.Core": "http://localhost:7443"
         }
       }
     }
   },
   "responses": {
-    "200": {
+    "201": {
       "body": {
+        "location": "bar",
         "id": "/planes/radius/local",
         "name": "local",
         "type": "System.Planes/radius",
         "properties": {
+          "kind": "foo",
+          "resourceProviders": {
+            "Applications.Core": "http://localhost:7443"
+          }
+        }
+      }
+    },
+    "200": {
+      "body": {
+        "id": "/planes/radius/local",
+        "location": "bar",
+        "name": "local",
+        "type": "System.Planes/radius",
+        "properties": {
+          "kind": "foo",
           "resourceProviders": {
             "Applications.Core": "http://localhost:7443"
           }

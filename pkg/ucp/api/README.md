@@ -46,10 +46,13 @@ The following configuration generates track2 go models and client.
 ```yaml $(tag) != ''
 version: 3.*.*
 use: "@autorest/go@4.0.0-preview.44"
+use-extension:
+  oav: "~3.2.0"
 module-version: 0.0.1
 file-prefix: zz_generated_
 license-header: MICROSOFT_MIT_NO_VERSION
 azure-arm: true
+model-validator: true
 ```
 
 ### Output
