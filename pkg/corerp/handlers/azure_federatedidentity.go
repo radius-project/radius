@@ -37,7 +37,7 @@ const (
 
 var (
 	// Federated identity is still in preview.
-	// The below regions are not supported. As a fallback, managed identity is created in East US for the below regions.
+	// The below regions are not supported.
 	// Reference: https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#unsupported-regions-user-assigned-managed-identities
 	federatedUnsupportedRegions = []string{
 		"Germany North",
