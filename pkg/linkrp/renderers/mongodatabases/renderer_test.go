@@ -317,9 +317,8 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-			JSONPointer:          "/properties/resource/id",
-			ProviderResourceType: "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer: "/properties/resource/id",
 		},
 	}
 
@@ -364,7 +363,6 @@ func Test_Render_Recipe_Success(t *testing.T) {
 	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
-	require.Equal(t, azresources.DocumentDBDatabaseAccounts, output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
 
 	// Computed Values
 	require.Equal(t, expectedComputedValues, output.ComputedValues)

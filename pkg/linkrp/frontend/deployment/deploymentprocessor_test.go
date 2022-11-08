@@ -159,9 +159,8 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	if mode == modeResource || mode == modeRecipe {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
-				LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-				ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-				JSONPointer:          "/properties/resource/id",
+				LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+				JSONPointer: "/properties/resource/id",
 			},
 			renderers.Host: {
 				Value: 8080,
@@ -170,8 +169,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 
 		secretValues = map[string]rp.SecretValueReference{
 			renderers.ConnectionStringValue: {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				// https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+				LocalID:       outputresource.LocalIDAzureCosmosAccount,
 				Action:        "listConnectionStrings",
 				ValueSelector: "/connectionStrings/0/connectionString",
 				Transformer: resourcemodel.ResourceType{

@@ -84,9 +84,8 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			JSONPointer:          "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
+			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer: "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
 		},
 	}
 
@@ -200,10 +199,9 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
 		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:              outputresource.LocalIDAzureCosmosAccount,
-			Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			ValueSelector:        "/connectionStrings/0/connectionString",
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			Action:        "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			ValueSelector: "/connectionStrings/0/connectionString",
 			Transformer: resourcemodel.ResourceType{
 				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureCosmosDBMongo,
