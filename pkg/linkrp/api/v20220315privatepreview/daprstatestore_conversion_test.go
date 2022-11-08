@@ -50,13 +50,13 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		switch convertedResource.Properties.Kind {
 		case datamodel.DaprStateStoreKindAzureTableStorage:
 			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeResource {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.Resource)
 				require.Equal(t, "state.azure.tablestorage", string(convertedResource.Properties.Kind))
 			}
 
 		case datamodel.DaprStateStoreKindStateSqlServer:
 			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeResource {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
 				require.Equal(t, "state.sqlserver", string(convertedResource.Properties.Kind))
 				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			}
@@ -64,9 +64,9 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		case datamodel.DaprStateStoreKindGeneric:
 			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeValues {
 				require.Equal(t, "generic", string(convertedResource.Properties.Kind))
-				require.Equal(t, "state.zookeeper", convertedResource.Properties.ValuesDaprStateStore.Type)
-				require.Equal(t, "v1", convertedResource.Properties.ValuesDaprStateStore.Version)
-				require.Equal(t, "bar", convertedResource.Properties.ValuesDaprStateStore.Metadata["foo"])
+				require.Equal(t, "state.zookeeper", convertedResource.Properties.Type)
+				require.Equal(t, "v1", convertedResource.Properties.Version)
+				require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
 				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			}
 		default:
@@ -79,12 +79,12 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 			payload == "daprstatestoreazuretablestorageresource_recipe2.json" ||
 			payload == "daprstatestogenericreresource_recipe.json" ||
 			payload == "daprstatestogenericreresource_recipe2.json" {
-			require.Equal(t, "recipe-test", convertedResource.Properties.RecipeDaprStateStore.Recipe.Name)
+			require.Equal(t, "recipe-test", convertedResource.Properties.Recipe.Name)
 			if payload == "daprstatestoresqlserverresource_recipe2.json" ||
 				payload == "daprstatestoreazuretablestorageresource_recipe2.json" ||
 				payload == "daprstatestogenericreresource_recipe2.json" {
 				parameters := map[string]interface{}{"port": float64(6081)}
-				require.Equal(t, parameters, convertedResource.Properties.RecipeDaprStateStore.Recipe.Parameters)
+				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
 			}
 		}
 	}
@@ -124,22 +124,22 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 		switch resource.Properties.Kind {
 		case datamodel.DaprStateStoreKindAzureTableStorage:
 			if resource.Properties.Mode == datamodel.DaprStateStoreModeResource {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.Resource)
 				require.Equal(t, "state.azure.tablestorage", string(resource.Properties.Kind))
 				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
 				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
 			}
 		case datamodel.DaprStateStoreKindStateSqlServer:
 			if resource.Properties.Mode == datamodel.DaprStateStoreModeResource {
-				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
 				require.Equal(t, "state.sqlserver", string(resource.Properties.Kind))
 			}
 		case datamodel.DaprStateStoreKindGeneric:
 			if resource.Properties.Mode == datamodel.DaprStateStoreModeValues {
 				require.Equal(t, "generic", string(resource.Properties.Kind))
-				require.Equal(t, "state.zookeeper", resource.Properties.ValuesDaprStateStore.Type)
-				require.Equal(t, "v1", resource.Properties.ValuesDaprStateStore.Version)
-				require.Equal(t, "bar", resource.Properties.ValuesDaprStateStore.Metadata["foo"])
+				require.Equal(t, "state.zookeeper", resource.Properties.Type)
+				require.Equal(t, "v1", resource.Properties.Version)
+				require.Equal(t, "bar", resource.Properties.Metadata["foo"])
 				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
 				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
 			}
@@ -153,12 +153,12 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			payload == "daprstatestoreazuretablestorageresourcedatamodel_recipe2.json" ||
 			payload == "daprstatestogenericreresourcedatamodel_recipe.json" ||
 			payload == "daprstatestogenericreresourcedatamodel_recipe2.json" {
-			require.Equal(t, "recipe-test", resource.Properties.RecipeDaprStateStore.Recipe.Name)
+			require.Equal(t, "recipe-test", resource.Properties.Recipe.Name)
 			if payload == "daprstatestoresqlserverresourcedatamodel_recipe2.json" ||
 				payload == "daprstatestoreazuretablestorageresourcedatamodel_recipe2.json" ||
 				payload == "daprstatestogenericreresourcedatamodel_recipe2.json" {
 				parameters := map[string]interface{}{"port": float64(6081)}
-				require.Equal(t, parameters, resource.Properties.RecipeDaprStateStore.Recipe.Parameters)
+				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
 			}
 		}
 	}

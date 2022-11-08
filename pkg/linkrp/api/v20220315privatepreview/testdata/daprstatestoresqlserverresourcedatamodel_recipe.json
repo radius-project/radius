@@ -18,11 +18,9 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "kind": "state.sqlserver",
         "mode" : "recipe",
-        "daprStateStoreRecipeProperties" :{
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
-            "recipe": {
-                "name": "recipe-test"
-            }
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "recipe": {
+            "name": "recipe-test"
         }
     }
 }

@@ -52,28 +52,12 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState      v1.ProvisioningState                     `json:"provisioningState,omitempty"`
-	Kind                   DaprStateStoreKind                       `json:"kind"`
-	Mode                   DaprStateStoreMode                       `json:"mode"`
-	RecipeDaprStateStore   RecipeStateStoreResourceProperties       `json:"daprStateStoreRecipeProperties"`
-	ResourceDaprStateStore ResourceDaprStateStoreResourceProperties `json:"daprStateStoreResourceProperties"`
-	ValuesDaprStateStore   ValuesDaprStateStoreResourceProperties   `json:"daprStateStoreValuesProperties"`
-}
-
-type RecipeStateStoreResourceProperties struct {
-	Recipe   LinkRecipe             `json:"recipe"`
-	Metadata map[string]interface{} `json:"metadata"`
-	Type     string                 `json:"type"`
-	Version  string                 `json:"version"`
-}
-
-type ResourceDaprStateStoreResourceProperties struct {
-	Metadata map[string]interface{} `json:"metadata"`
-	Resource string                 `json:"resource"`
-}
-
-type ValuesDaprStateStoreResourceProperties struct {
-	Metadata map[string]interface{} `json:"metadata"`
-	Type     string                 `json:"type"`
-	Version  string                 `json:"version"`
+	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
+	Kind              DaprStateStoreKind     `json:"kind"`
+	Mode              DaprStateStoreMode     `json:"mode"`
+	Metadata          map[string]interface{} `json:"metadata"`
+	Recipe            LinkRecipe             `json:"recipe"`
+	Resource          string                 `json:"resource"`
+	Type              string                 `json:"type"`
+	Version           string                 `json:"version"`
 }
