@@ -10,9 +10,11 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -67,16 +69,20 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return properties, err
 	}
 
-	msiClient := clients.NewUserAssignedIdentitiesClient(subID, handler.arm.Auth)
-	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, msi.Identity{Location: rgLocation})
+	msiClient, err := clientv2.NewUserAssignedIdentityClient(subID, &handler.arm.ClientOption)
+	if err != nil {
+		return nil, err
+	}
+
+	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, armmsi.Identity{Location: rgLocation}, nil)
 	if err != nil {
 		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
 
 	properties[UserAssignedIdentityIDKey] = to.String(identity.ID)
-	properties[UserAssignedIdentityPrincipalIDKey] = identity.PrincipalID.String()
-	properties[UserAssignedIdentityClientIDKey] = identity.ClientID.String()
-	properties[UserAssignedIdentityTenantIDKey] = identity.TenantID.String()
+	properties[UserAssignedIdentityPrincipalIDKey] = to.String(identity.Properties.PrincipalID)
+	properties[UserAssignedIdentityClientIDKey] = to.String(identity.Properties.ClientID)
+	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
 	logger.WithValues(
@@ -97,8 +103,12 @@ func (handler *azureUserAssignedManagedIdentityHandler) Delete(ctx context.Conte
 		return err
 	}
 
-	msiClient := clients.NewUserAssignedIdentitiesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-	_, err = msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name())
+	msiClient, err := clientv2.NewUserAssignedIdentityClient(parsed.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOption)
+	if err != nil {
+		return err
+	}
+
+	_, err = msiClient.Delete(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), nil)
 
 	if err != nil {
 		return fmt.Errorf("failed to delete user assigned managed identity: %w", err)
