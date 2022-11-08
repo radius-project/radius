@@ -107,7 +107,7 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 		return nil
 	}
 
-	// Check the error and determine if it is ignorable/retryable
+	// Extract the detailedError from error.
 	detailedError, ok := clients.ExtractDetailedError(err)
 	if !ok {
 		return err
