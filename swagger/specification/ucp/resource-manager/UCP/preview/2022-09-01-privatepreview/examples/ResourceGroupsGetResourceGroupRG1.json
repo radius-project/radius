@@ -3,7 +3,6 @@
     "api-version": "2022-09-01-privatepreview",
     "planeName": "local",
     "planeType": "radius",
-    "rootScope": "/planes/radius/local/resourcegroups/rg1",
     "resourceGroupName": "rg1"
   },
   "responses": {
@@ -11,7 +10,7 @@
       "body": {
         "id": "/planes/radius/local/resourcegroups/rg1",
         "name": "rg1",
-        "location": "foo"
+        "location": "global"
       }
     }
   }

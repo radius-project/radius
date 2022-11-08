@@ -1,10 +1,9 @@
 {
   "parameters": {
-    "rootScope": "/planes/radius/local/resourcegroups/rg1",
+    "api-version": "2022-09-01-privatepreview",
     "resourceGroupName": "rg1",
-    "planeType": "azure",
-    "planeName": "azurecloud",
-    "api-version": "2022-09-01-privatepreview"
+    "planeType": "radius",
+    "planeName": "local"
   },
   "responses": {
     "200": {},

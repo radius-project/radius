@@ -140,13 +140,7 @@
           ],
           "responses": {
             "200": {
-              "description": "The resource was updated successfully.",
-              "schema": {
-                "$ref": "#/definitions/PlaneResource"
-              }
-            },
-            "201": {
-              "description": "The resource was created successfully.",
+              "description": "The resource was created/updated successfully.",
               "schema": {
                 "$ref": "#/definitions/PlaneResource"
               }
@@ -326,13 +320,7 @@
           ],
           "responses": {
             "200": {
-              "description": "The resource was updated successfully.",
-              "schema": {
-                "$ref": "#/definitions/ResourceGroupResource"
-              }
-            },
-            "201": {
-              "description": "The resource was created successfully.",
+              "description": "The resource was created/updated successfully.",
               "schema": {
                 "$ref": "#/definitions/ResourceGroupResource"
               }

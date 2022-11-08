@@ -1,26 +1,17 @@
 {
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
-    "planeType": "azure",
+    "planeType": "radius",
     "planeName": "local",
-    "rootScope": "/planes/radius/local/resourcegroups/rg1",
     "resourceGroupName": "rg1",
-    "ResourceGroupResource": {},
     "ResourceGroup": {
-      "location": "foo"
+      "location": "global"
     }
   },
   "responses": {
     "200": {
       "body": {
-        "location": "",
-        "id": "/planes/radius/local/resourcegroups/rg1",
-        "name": "rg1"
-      }
-    },
-    "201": {
-      "body": {
-        "location": "",
+        "location": "global",
         "id": "/planes/radius/local/resourcegroups/rg1",
         "name": "rg1"
       }

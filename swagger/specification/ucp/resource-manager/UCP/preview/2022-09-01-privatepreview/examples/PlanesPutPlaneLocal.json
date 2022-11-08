@@ -1,14 +1,12 @@
 {
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
-    "rootScope": "/planes/radius/local",
-    "environmentName": "local",
-    "planeName": "foo",
-    "planeType": "bar",
+    "planeName": "local",
+    "planeType": "radius",
     "Plane": {
-      "location": "bar",
+      "location": "global",
       "properties": {
-        "kind": "foo",
+        "kind": "UCPNative",
         "resourceProviders": {
           "Applications.Core": "http://localhost:7443"
         }
@@ -16,28 +14,14 @@
     }
   },
   "responses": {
-    "201": {
-      "body": {
-        "location": "bar",
-        "id": "/planes/radius/local",
-        "name": "local",
-        "type": "System.Planes/radius",
-        "properties": {
-          "kind": "foo",
-          "resourceProviders": {
-            "Applications.Core": "http://localhost:7443"
-          }
-        }
-      }
-    },
     "200": {
       "body": {
+        "location": "global",
         "id": "/planes/radius/local",
-        "location": "bar",
         "name": "local",
         "type": "System.Planes/radius",
         "properties": {
-          "kind": "foo",
+          "kind": "UCPNative",
           "resourceProviders": {
             "Applications.Core": "http://localhost:7443"
           }
