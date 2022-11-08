@@ -106,9 +106,11 @@ var testAzurePlane = v20220901privatepreview.PlaneResource{
 }
 
 var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
-	ID:   to.Ptr(testUCPNativePlaneID + "/resourceGroups/rg1"),
-	Name: to.Ptr("rg1"),
-	Type: to.Ptr(resourcegroups.ResourceGroupType),
+	ID:       to.Ptr(testUCPNativePlaneID + "/resourceGroups/rg1"),
+	Name:     to.Ptr("rg1"),
+	Type:     to.Ptr(resourcegroups.ResourceGroupType),
+	Location: to.Ptr(v1.LocationGlobal),
+	Tags:     map[string]*string{},
 }
 
 func Test_ProxyToRP(t *testing.T) {
@@ -263,7 +265,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 	var requestBody map[string]interface{}
 	if ucpNative {
 		requestBody = map[string]interface{}{
-			"location": "global",
+			"location": v1.LocationGlobal,
 			"properties": map[string]interface{}{
 				"resourceProviders": map[string]string{
 					"Applications.Core": "http://" + rpURL,
@@ -273,7 +275,7 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 		}
 	} else {
 		requestBody = map[string]interface{}{
-			"location": "global",
+			"location": v1.LocationGlobal,
 			"properties": map[string]interface{}{
 				"kind": rest.PlaneKindAzure,
 				"url":  "http://" + azureURL,
@@ -312,8 +314,9 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 }
 
 func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient) {
-	requestBody := map[string]interface{}{
-		"name": "rg1",
+	requestBody := v20220901privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+		Tags:     map[string]*string{},
 	}
 	body, err := json.Marshal(requestBody)
 	require.NoError(t, err)
@@ -428,7 +431,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	requestBody := map[string]interface{}{
-		"location": "global",
+		"location": v1.LocationGlobal,
 		"properties": map[string]interface{}{
 			"resourceProviders": map[string]string{
 				"Applications.Core": "http://" + rpURL,
@@ -447,8 +450,8 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	response, err := ucpClient.httpClient.Do(request)
 	require.NoError(t, err)
 
-	expectedResponse := v1.ErrorResponse{
-		Error: v1.ErrorDetails{
+	expectedResponse := armrpc_v1.ErrorResponse{
+		Error: armrpc_v1.ErrorDetails{
 			Code:    "InvalidApiVersionParameter",
 			Message: "API version 'unsupported-version' for type 'ucp/ucp' is not supported. The supported api-versions are '2022-09-01-privatepreview'.",
 		},
@@ -456,7 +459,7 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	responseBody, err := io.ReadAll(response.Body)
 	require.NoError(t, err)
 
-	var errorResponse v1.ErrorResponse
+	var errorResponse armrpc_v1.ErrorResponse
 	err = json.Unmarshal(responseBody, &errorResponse)
 	require.NoError(t, err)
 	assert.DeepEqual(t, expectedResponse, errorResponse)

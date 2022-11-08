@@ -69,9 +69,12 @@ func RequireEnvironmentName(cmd *cobra.Command, args []string, workspace workspa
 		environmentName = id.Name()
 	}
 
-	if environmentName == "" {
+	if environmentName == "" && workspace.IsEditableWorkspace() {
+		// Setting a default environment only applies to editable workspaces
 		return "", fmt.Errorf("no environment name provided and no default environment set, " +
 			"either pass in an environment name or set a default environment by using `rad env switch`")
+	} else if environmentName == "" {
+		return "", fmt.Errorf("no environment name provided, pass in an environment name")
 	}
 
 	return environmentName, err
@@ -233,20 +236,13 @@ func RequireWorkspace(cmd *cobra.Command, config *viper.Viper) (*workspaces.Work
 		return nil, err
 	}
 
+	// If we get here and ws is nil then this means there's no default set (or no config).
+	// Lets use the fallback configuration.
+	if ws == nil {
+		ws = workspaces.MakeFallbackWorkspace()
+	}
+
 	return ws, nil
-}
-
-// RequireWorkspaceName is used by commands that require specifying a workspace name using flag or positional args
-func RequireWorkspaceName(cmd *cobra.Command, args []string) (string, error) {
-	workspace, err := ReadWorkspaceNameArgs(cmd, args)
-	if err != nil {
-		return "", err
-	}
-	if workspace == "" {
-		return "", fmt.Errorf("workspace name is not provided or is empty ")
-	}
-
-	return workspace, nil
 }
 
 // RequireUCPResourceGroup is used by commands that require specifying a UCP resouce group name using flag or positional args
@@ -295,6 +291,12 @@ func RequireWorkspaceArgs(cmd *cobra.Command, config *viper.Viper, args []string
 	ws, err := section.GetWorkspace(name)
 	if err != nil {
 		return nil, err
+	}
+
+	// If we get here and ws is nil then this means there's no default set (or no config).
+	// Lets use the fallback configuration.
+	if ws == nil {
+		ws = workspaces.MakeFallbackWorkspace()
 	}
 
 	return ws, nil

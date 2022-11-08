@@ -28,12 +28,6 @@ func Test_Validate(t *testing.T) {
 
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "switch current workspace valid",
-			Input:         []string{radcli.TestWorkspaceName},
-			ExpectedValid: true,
-			ConfigHolder:  framework.ConfigHolder{Config: config},
-		},
-		{
 			Name:          "switch explicit workspace flag valid",
 			Input:         []string{"-w", radcli.TestWorkspaceName},
 			ExpectedValid: true,
@@ -43,6 +37,12 @@ func Test_Validate(t *testing.T) {
 			Name:          "switch explicit workspace positional valid",
 			Input:         []string{radcli.TestWorkspaceName},
 			ExpectedValid: true,
+			ConfigHolder:  framework.ConfigHolder{Config: config},
+		},
+		{
+			Name:          "switch workspace no-workspace-specified invalid",
+			Input:         []string{},
+			ExpectedValid: false,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{

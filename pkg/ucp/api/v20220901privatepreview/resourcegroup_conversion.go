@@ -6,7 +6,7 @@
 package v20220901privatepreview
 
 import (
-	"github.com/Azure/go-autorest/autorest/to"
+	to "github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -18,8 +18,11 @@ func (src *ResourceGroupResource) ConvertTo() (conv.DataModelInterface, error) {
 
 	converted := &datamodel.ResourceGroup{
 		TrackedResource: v1.TrackedResource{
-			Name: to.String(src.Name),
-			ID:   to.String(src.ID),
+			ID:       to.String(src.ID),
+			Name:     to.String(src.Name),
+			Type:     to.String(src.Type),
+			Location: to.String(src.Location),
+			Tags:     to.StringMap(src.Tags),
 		},
 	}
 
@@ -34,9 +37,11 @@ func (dst *ResourceGroupResource) ConvertFrom(src conv.DataModelInterface) error
 		return conv.ErrInvalidModelConversion
 	}
 
-	dst.ID = &rg.TrackedResource.ID
-	dst.Name = &rg.TrackedResource.Name
-	dst.Type = &rg.TrackedResource.Type
+	dst.ID = to.StringPtr(rg.ID)
+	dst.Name = to.StringPtr(rg.Name)
+	dst.Type = to.StringPtr(rg.Type)
+	dst.Location = to.StringPtr(rg.Location)
+	dst.Tags = *to.StringMapPtr(rg.Tags)
 
 	return nil
 }

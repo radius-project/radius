@@ -43,6 +43,11 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, *workspace)
 	if err != nil {
 		return err

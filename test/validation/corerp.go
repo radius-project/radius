@@ -78,7 +78,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, resource := range expected.Resources {
 		if resource.Type == EnvironmentsResource {
-			envs, err := client.ListEnv(ctx)
+			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
 			require.NoError(t, err)
 			require.NotEmpty(t, envs)
 

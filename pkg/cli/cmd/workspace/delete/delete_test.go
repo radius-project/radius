@@ -46,10 +46,10 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
-			Name:          "delete workspace no-workspace invalid",
+			Name:          "delete workspace with non-named workspace invalid",
 			Input:         []string{},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadConfigWithoutWorkspace(t)},
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 		{
 			Name:          "delete workspace not-found invalid",

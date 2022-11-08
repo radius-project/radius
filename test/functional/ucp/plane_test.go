@@ -14,6 +14,7 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220901privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/stretchr/testify/require"
@@ -39,7 +40,7 @@ func Test_Plane_Operations(t *testing.T) {
 			ID:       to.Ptr(planeID),
 			Type:     to.Ptr("System.Planes/testtype"),
 			Name:     to.Ptr("testplane"),
-			Location: to.Ptr("global"),
+			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220901privatepreview.PlaneResourceProperties{
 				Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
 				ResourceProviders: map[string]*string{

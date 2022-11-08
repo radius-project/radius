@@ -7,6 +7,7 @@ package resourcegroups
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"testing"
 
@@ -35,9 +36,13 @@ func Test_CreateResourceGroup(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	body := []byte(`{
-		"name": "test-rg"
-	}`)
+	input := v20220901privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	}
+
+	body, err := json.Marshal(&input)
+	require.NoError(t, err)
+
 	url := "/planes/radius/local/resourceGroups/test-rg?api-version=2022-09-01-privatepreview"
 	request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err)
@@ -47,9 +52,11 @@ func Test_CreateResourceGroup(t *testing.T) {
 
 	resourceGroup := datamodel.ResourceGroup{
 		TrackedResource: v1.TrackedResource{
-			ID:   testResourceGroupID,
-			Name: testResourceGroupName,
-			Type: ResourceGroupType,
+			ID:       testResourceGroupID,
+			Name:     testResourceGroupName,
+			Type:     ResourceGroupType,
+			Location: v1.LocationGlobal,
+			Tags:     map[string]string{},
 		},
 	}
 
@@ -66,9 +73,11 @@ func Test_CreateResourceGroup(t *testing.T) {
 	mockStorageClient.EXPECT().Save(gomock.Any(), o, gomock.Any())
 
 	expectedResourceGroup := &v20220901privatepreview.ResourceGroupResource{
-		ID:   &testResourceGroupID,
-		Name: &testResourceGroupName,
-		Type: to.Ptr(ResourceGroupType),
+		ID:       &testResourceGroupID,
+		Name:     &testResourceGroupName,
+		Type:     to.Ptr(ResourceGroupType),
+		Location: to.Ptr(v1.LocationGlobal),
+		Tags:     *to.Ptr(map[string]*string{}),
 	}
 	expectedResponse := armrpc_rest.NewOKResponse(expectedResourceGroup)
 	response, err := rgCtrl.Run(ctx, nil, request)
