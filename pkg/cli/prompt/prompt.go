@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/manifoldco/promptui"
 )
 
@@ -229,4 +231,42 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 			return strings.HasPrefix(items[index], input)
 		},
 	}
+}
+
+func NewPrompter(promptMessage string) tea.Model {
+	return &Model{
+		TextInput: textinput.New(),
+	}
+}
+
+var _ tea.Model = (*Model)(nil)
+
+type Model struct {
+	TextInput     textinput.Model
+	Err           error
+	promptMessage string
+}
+
+func (m *Model) Init() tea.Cmd {
+	return nil
+}
+
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.TextInput, cmd = m.TextInput.Update(msg)
+	return m, cmd
+}
+
+func (m *Model) View() string {
+	return m.promptMessage
+}
+
+type prompterInterface interface {
+	GetInput() (string, error)
+}
+
+type prompterImpl struct{}
+
+func (i *Impl) GetInput(program tea.Program) (string, error) {
+	return "", nil
 }
