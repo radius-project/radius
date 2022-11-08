@@ -420,9 +420,9 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
-			recipe.Name = obj.Properties.Recipe.Name
-			recipe.Parameters = obj.Properties.Recipe.Parameters
+		if obj.Properties.RecipeDaprStateStore.Recipe.Name != "" {
+			recipe.Name = obj.Properties.RecipeDaprStateStore.Recipe.Name
+			recipe.Parameters = obj.Properties.RecipeDaprStateStore.Recipe.Parameters
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)

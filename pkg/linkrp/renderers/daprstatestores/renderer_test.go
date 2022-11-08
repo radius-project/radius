@@ -48,7 +48,7 @@ func Test_Render_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 			},
 		},
@@ -91,7 +91,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "state.azure.tablestorage",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
 		},
@@ -116,8 +116,8 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind:                            "state.azure.tablestorage",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{},
+			Kind:                   "state.azure.tablestorage",
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{},
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -141,7 +141,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "state.azure.cosmosdb",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 			},
 		},
@@ -167,7 +167,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: datamodel.DaprStateStoreKindGeneric,
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
+			ValuesDaprStateStore: datamodel.ValuesDaprStateStoreResourceProperties{
 				Type:    stateStoreType,
 				Version: daprStateStoreVersion,
 				Metadata: map[string]interface{}{
@@ -224,7 +224,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
+			ValuesDaprStateStore: datamodel.ValuesDaprStateStoreResourceProperties{
 				Type:    stateStoreType,
 				Version: daprStateStoreVersion,
 			},
@@ -251,7 +251,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
+			ValuesDaprStateStore: datamodel.ValuesDaprStateStoreResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
 				},
@@ -280,7 +280,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
+			ValuesDaprStateStore: datamodel.ValuesDaprStateStoreResourceProperties{
 				Metadata: map[string]interface{}{
 					"foo": "bar",
 				},
@@ -310,7 +310,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 			},
 		},
@@ -335,7 +335,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
+			ResourceDaprStateStore: datamodel.ResourceDaprStateStoreResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 			},
 		},

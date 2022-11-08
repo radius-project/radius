@@ -19,6 +19,15 @@ const (
 	DaprStateStoreKindUnknown           DaprStateStoreKind = "unknown"
 )
 
+type DaprStateStoreMode string
+
+const (
+	DaprStateStoreModeRecipe   DaprStateStoreMode = "recipe"
+	DaprStateStoreModeResource DaprStateStoreMode = "resource"
+	DaprStateStoreModeValues   DaprStateStoreMode = "values"
+	DaprStateStoreModeUnknown  DaprStateStoreMode = "unknown"
+)
+
 // DaprStateStore represents DaprStateStore link resource.
 type DaprStateStore struct {
 	v1.TrackedResource
@@ -43,24 +52,28 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState               v1.ProvisioningState                              `json:"provisioningState,omitempty"`
-	Kind                            DaprStateStoreKind                                `json:"kind"`
-	DaprStateStoreSQLServer         DaprStateStoreSQLServerResourceProperties         `json:"daprStateStoreSQLServer"`
-	DaprStateStoreAzureTableStorage DaprStateStoreAzureTableStorageResourceProperties `json:"daprStateStoreAzureTableStorage"`
-	DaprStateStoreGeneric           DaprStateStoreGenericResourceProperties           `json:"daprStateStoreGeneric"`
-	Recipe                          LinkRecipe                                        `json:"recipe,omitempty"`
+	ProvisioningState      v1.ProvisioningState                     `json:"provisioningState,omitempty"`
+	Kind                   DaprStateStoreKind                       `json:"kind"`
+	Mode                   DaprStateStoreMode                       `json:"mode"`
+	RecipeDaprStateStore   RecipeStateStoreResourceProperties       `json:"daprStateStoreRecipeProperties"`
+	ResourceDaprStateStore ResourceDaprStateStoreResourceProperties `json:"daprStateStoreResourceProperties`
+	ValuesDaprStateStore   ValuesDaprStateStoreResourceProperties   `json:"daprStateStoreValuesProperties"`
 }
 
-type DaprStateStoreGenericResourceProperties struct {
+type RecipeStateStoreResourceProperties struct {
+	Recipe   LinkRecipe             `json:"recipe"`
 	Metadata map[string]interface{} `json:"metadata"`
 	Type     string                 `json:"type"`
 	Version  string                 `json:"version"`
 }
 
-type DaprStateStoreAzureTableStorageResourceProperties struct {
-	Resource string `json:"resource"`
+type ResourceDaprStateStoreResourceProperties struct {
+	Metadata map[string]interface{} `json:"metadata"`
+	Resource string                 `json:"resource"`
 }
 
-type DaprStateStoreSQLServerResourceProperties struct {
-	Resource string `json:"resource"`
+type ValuesDaprStateStoreResourceProperties struct {
+	Metadata map[string]interface{} `json:"metadata"`
+	Type     string                 `json:"type"`
+	Version  string                 `json:"version"`
 }

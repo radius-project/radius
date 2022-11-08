@@ -40,18 +40,19 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 		return nil, err
 	}
 	var b DaprStateStorePropertiesClassification
-	switch m["kind"] {
-	case string(DaprStateStorePropertiesKindGeneric):
-		b = &DaprStateStoreGenericResourceProperties{}
-	case string(DaprStateStorePropertiesKindStateAzureTablestorage):
-		b = &DaprStateStoreAzureTableStorageResourceProperties{}
-	case string(DaprStateStorePropertiesKindStateSqlserver):
-		b = &DaprStateStoreSQLServerResourceProperties{}
+	switch m["mode"] {
+	case string(DaprStateStorePropertiesModeRecipe):
+		b = &RecipeDaprStateStoreProperties{}
+	case string(DaprStateStorePropertiesModeResource):
+		b = &ResourceDaprStateStoreResourceProperties{}
+	case string(DaprStateStorePropertiesModeValues):
+		b = &ValuesDaprStateStoreResourceProperties{}
 	default:
 		b = &DaprStateStoreProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }
+
 
 func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
 	if rawMsg == nil {

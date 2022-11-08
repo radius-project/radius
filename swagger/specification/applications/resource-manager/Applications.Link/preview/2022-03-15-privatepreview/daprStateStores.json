@@ -257,7 +257,7 @@
         }
       }
     },
-    "DaprStateStoreSqlServerResourceProperties": {
+    "ResourceDaprStateStoreResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -265,39 +265,31 @@
         }
       ],
       "properties": {
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
         "resource": {
           "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
           "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "resource"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "state.sqlserver"
-    },
-    "DaprStateStoreAzureTableStorageResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprStateStoreProperties"
-        }
-      ],
-      "properties": {
-        "resource": {
-          "description": "The resource id of the Azure Storage Table the daprStateStore resource is connected to.",
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
           "type": "string"
         }
       },
       "required": [
         "kind",
-        "resource"
+        "resource",
+        "type"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "state.azure.tablestorage"
+      "x-ms-discriminator-value": "resource"
     },
-    "DaprStateStoreGenericResourceProperties": {
+    "ValuesDaprStateStoreResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -328,7 +320,44 @@
         "version"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "generic"
+      "x-ms-discriminator-value": "values"
+    },
+    "RecipeDaprStateStoreProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprStateStoreProperties"
+        }
+      ],
+      "properties": {
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        }
+      },
+      "required": [
+        "kind",
+        "recipe"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "recipe"
     },
     "DaprStateStoreProperties": {
       "description": "DaprStateStore link properties",
@@ -341,7 +370,7 @@
           "$ref": "global.json#/definitions/BasicDaprResourceProperties"
         }
       ],
-      "discriminator": "kind",
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
@@ -356,17 +385,12 @@
             "state.azure.tablestorage",
             "generic"
           ]
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
         "environment",
-        "kind"
+        "kind",
+        "mode"
       ]
     }
   },

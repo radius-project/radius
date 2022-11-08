@@ -90,6 +90,7 @@ resource statestore 'Applications.Link/daprStateStores@2022-03-15-privatepreview
     application: app.id
     environment: environment
     kind: 'generic'
+    mode: 'values'
     type: 'state.redis'
     metadata: {
       redisHost: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'

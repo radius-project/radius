@@ -82,6 +82,24 @@ func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind
 	}
 }
 
+// DaprStateStorePropertiesMode- The Dapr StateStore mode
+type DaprStateStorePropertiesMode string
+
+const (
+	DaprStateStorePropertiesModeRecipe DaprStateStorePropertiesMode = "recipe"
+	DaprStateStorePropertiesModeResource DaprStateStorePropertiesMode = "resource"
+	DaprStateStorePropertiesModeValues DaprStateStorePropertiesMode = "values"
+)
+
+// PossibleDaprStateStorePropertiesModeValues returns the possible values for the DaprStateStorePropertiesMode const type.
+func PossibleDaprStateStorePropertiesModeValues() []DaprStateStorePropertiesMode {
+	return []DaprStateStorePropertiesMode{	
+		DaprStateStorePropertiesModeRecipe,
+		DaprStateStorePropertiesModeResource,
+		DaprStateStorePropertiesModeValues,
+	}
+}
+
 // ProvisioningState - Provisioning state of the link at the time the operation was called
 type ProvisioningState string
 
