@@ -70,17 +70,19 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	}
 
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		TypeName: &resourceType,
+		Identifier: to.StringPtr(resource.Name),
+		TypeName:   &resourceType,
 	})
+	if err != nil {
+		return err
+	}
 
 	// Wait till the delete is complete
 	maxWaitTime := 300 * time.Second
 	waiter := cloudcontrol.NewResourceRequestSuccessWaiter(client)
-	err = waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	return waiter.Wait(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: deleteOutput.ProgressEvent.RequestToken,
 	}, maxWaitTime)
-
-	return err
 }
 
 func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResource, client awsclient.AWSCloudControlClient) {
