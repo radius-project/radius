@@ -16,7 +16,7 @@ import (
 
 func Test_PersistentVolume(t *testing.T) {
 	template := "testdata/corerp-resources-volume-azure-keyvault-wi.bicep"
-	name := "corerp-resources-volume-azure-keyvault-wi"
+	name := "corerp-resources-volume-azure-keyvvault"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -25,6 +25,10 @@ func Test_PersistentVolume(t *testing.T) {
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-azure-workload-env",
+						Type: validation.EnvironmentsResource,
+					},
 					{
 						Name: name,
 						Type: validation.ApplicationsResource,

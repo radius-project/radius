@@ -55,7 +55,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-volume-azkv'
+  name: 'corerp-resources-volume-azure-keyvvault'
   location: location
   properties: {
     environment: env.id
