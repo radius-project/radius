@@ -6,6 +6,8 @@
 package resource_test
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -169,6 +171,78 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Equal(t, context.Canceled, err)
 	})
 
+}
+
+func Test_Run(t *testing.T) {
+	// Will be used to cancel `rad run`
+	ctx, cancel := test.GetContext(t)
+	defer cancel()
+	options := corerp.NewCoreRPTestOptions(t)
+
+	template := "testdata/corerp-kubernetes-cli-run.bicep"
+	applicationName := "cli-run"
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	args := []string{
+		"run",
+		filepath.Join(cwd, template),
+		"--application",
+		applicationName,
+	}
+
+	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
+	// the test, because we have to decide when to shut down.
+	//
+	// The challenge with this command is that we want to stream the log output as it comes out so we can find
+	// the output we expect and shut down the test. We don't want to use a fixed timeout and make a test
+	// that takes forever to run even on the happy path.
+	cmd, heartbeat, description := cli.CreateCommand(ctx, args)
+
+	// Read from stdout to get the logs.
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
+
+	err = cmd.Start()
+	require.NoError(t, err)
+
+	// Start heartbeat to trigger logging
+	done := make(chan struct{})
+	go heartbeat(done)
+
+	// Read the text line-by-line while the command is running, but store it so we can report failures.
+	output := bytes.Buffer{}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+	for scanner.Scan() {
+		line := scanner.Text()
+		output.WriteString(line)
+		output.WriteString("\n")
+		if strings.Contains(line, "hello from the streaming logs!") {
+			cancel() // Stop the command, but keep reading to drain all output.
+		}
+	}
+
+	// It's only safe to call wait when we've read all of the output.
+	err = cmd.Wait()
+	err = cli.ReportCommandResult(ctx, output.String(), description, err)
+
+	// Now we can delete the application (before we report pass/fail)
+	t.Run("delete application", func(t *testing.T) {
+		// Create a new context since we canceled the outer one.
+		ctx, cancel := test.GetContext(t)
+		defer cancel()
+
+		err := cli.ApplicationDelete(ctx, applicationName)
+		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+	})
+
+	// We should have an error, but only because we canceled the context.
+	require.Errorf(t, err, "rad run should have been canceled")
+	require.Equal(t, err, ctx.Err(), "rad run should have been canceled")
 }
 
 func Test_CLI(t *testing.T) {
