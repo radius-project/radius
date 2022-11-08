@@ -20,7 +20,6 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
 		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
-		Mode:              toDaprStateStoreModeDataModel(src.Properties.GetDaprStateStoreProperties().Mode),
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -44,12 +43,14 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		}
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+		converted.Properties.Mode = datamodel.DaprStateStoreModeRecipe
 	case *ResourceDaprStateStoreResourceProperties:
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Resource = to.String(v.Resource)
+		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 	case *ValuesDaprStateStoreResourceProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
@@ -57,6 +58,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 	default:
 		return nil, errors.New("invalid mode for DaprStateStore")
 	}
@@ -79,6 +81,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 
 	switch daprStateStore.Properties.Mode {
 	case datamodel.DaprStateStoreModeRecipe:
+		mode := DaprStateStorePropertiesModeRecipe
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -87,7 +90,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			Mode:              fromDaprStateStoreModeDataModel(daprStateStore.Properties.Mode),
+			Mode:              &mode,
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
@@ -95,6 +98,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Recipe:            fromRecipeDataModel(daprStateStore.Properties.Recipe),
 		}
 	case datamodel.DaprStateStoreModeResource:
+		mode := DaprStateStorePropertiesModeResource
 		dst.Properties = &ResourceDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -103,12 +107,13 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			Mode:              fromDaprStateStoreModeDataModel(daprStateStore.Properties.Mode),
+			Mode:              &mode,
 			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	case datamodel.DaprStateStoreModeValues:
+		mode := DaprStateStorePropertiesModeValues
 		dst.Properties = &ValuesDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -117,7 +122,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			Mode:              fromDaprStateStoreModeDataModel(daprStateStore.Properties.Mode),
+			Mode:              &mode,
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
@@ -157,33 +162,4 @@ func fromDaprStateStoreKindDataModel(kind datamodel.DaprStateStoreKind) *DaprSta
 		convertedKind = DaprStateStorePropertiesKindGeneric
 	}
 	return &convertedKind
-}
-
-func toDaprStateStoreModeDataModel(mode *DaprStateStorePropertiesMode) datamodel.DaprStateStoreMode {
-	switch *mode {
-	case DaprStateStorePropertiesModeRecipe:
-		return datamodel.DaprStateStoreModeRecipe
-	case DaprStateStorePropertiesModeResource:
-		return datamodel.DaprStateStoreModeResource
-	case DaprStateStorePropertiesModeValues:
-		return datamodel.DaprStateStoreModeValues
-	default:
-		return datamodel.DaprStateStoreModeUnknown
-	}
-
-}
-
-func fromDaprStateStoreModeDataModel(mode datamodel.DaprStateStoreMode) *DaprStateStorePropertiesMode {
-	var convertedMode DaprStateStorePropertiesMode
-	switch mode {
-	case datamodel.DaprStateStoreModeRecipe:
-		convertedMode = DaprStateStorePropertiesModeRecipe
-	case datamodel.DaprStateStoreModeResource:
-		convertedMode = DaprStateStorePropertiesModeResource
-	case datamodel.DaprStateStoreModeValues:
-		convertedMode = DaprStateStorePropertiesModeValues
-	default:
-		convertedMode = DaprStateStorePropertiesModeValues
-	}
-	return &convertedMode
 }
