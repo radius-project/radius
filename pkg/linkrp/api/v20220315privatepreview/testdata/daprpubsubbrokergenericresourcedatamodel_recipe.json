@@ -18,15 +18,13 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "kind": "generic",
         "mode": "recipe",
-        "daprPubSubRecipeProperties":{
-            "type": "pubsub.kafka",
-            "version": "v1",
-            "metadata": {
-                "foo": "bar"
-            },
-            "recipe": {
-                "name": "redis-test"
-            }
+        "type": "pubsub.kafka",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
+        },
+        "recipe": {
+            "name": "redis-test"
         }
     }
 }

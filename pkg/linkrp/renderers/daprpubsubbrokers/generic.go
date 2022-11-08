@@ -18,7 +18,7 @@ import (
 )
 
 func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
-	properties := resource.Properties.ValuesDaprPubSub
+	properties := resource.Properties
 
 	daprGeneric := dapr.DaprGeneric{
 		Type:     &properties.Type,

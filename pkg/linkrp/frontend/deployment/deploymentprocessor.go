@@ -434,9 +434,9 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		envId = obj.Properties.Environment
-		if obj.Properties.RecipeDaprPubSub.Recipe.Name != "" {
-			recipe.Name = obj.Properties.RecipeDaprPubSub.Recipe.Name
-			recipe.Parameters = obj.Properties.RecipeDaprPubSub.Recipe.Parameters
+		if obj.Properties.Mode == datamodel.DaprPubSubBrokerModeRecipe {
+			recipe.Name = obj.Properties.Recipe.Name
+			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
