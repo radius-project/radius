@@ -22,7 +22,21 @@ type ResourceTypeSchema struct {
 	WriteOnlyProperties  []string               `json:"writeOnlyProperties,omitempty"`
 }
 
-// FlattenProperties flattens a state object
+// FlattenProperties flattens a state object.
+// For example:
+//
+//   "NumShards": 1
+//   "ClusterEndpoint": {
+//     "Address": "test-address"
+//     "Port": 3000
+//   }
+//
+// Gets transformed to:
+//
+//   "NumShards": 1
+//   "ClusterEndpoint/Address": "test-address"
+//   "ClusterEndpoint/Port": 3000
+//
 func FlattenProperties(state map[string]interface{}) map[string]interface{} {
 	flattenedState := map[string]interface{}{}
 
@@ -43,7 +57,22 @@ func FlattenProperties(state map[string]interface{}) map[string]interface{} {
 	return flattenedState
 }
 
-// UnflattenProperties unflattens a flattened state object
+// UnflattenProperties unflattens a flattened state object.
+// For example:
+//
+//   "NumShards": 1
+//   "ClusterEndpoint/Address": "test-address"
+//   "ClusterEndpoint/Port": 3000
+//
+//
+// Gets transformed to:
+//
+//   "NumShards": 1
+//   "ClusterEndpoint": {
+//     "Address": "test-address"
+//     "Port": 3000
+//   }
+//
 func UnflattenProperties(state map[string]interface{}) map[string]interface{} {
 	unflattenedState := map[string]interface{}{}
 
