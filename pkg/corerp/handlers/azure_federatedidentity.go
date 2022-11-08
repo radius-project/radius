@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
@@ -33,6 +34,36 @@ const (
 	// FederatedIdentitySubjectKey is the key to represent the identity subject.
 	FederatedIdentitySubjectKey = "federatedidentitysubject"
 )
+
+var (
+	// Federated identity is still in preview.
+	// The below regions are not supported. As a fallback, managed identity is created in East US for the below regions.
+	// Reference: https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#unsupported-regions-user-assigned-managed-identities
+	federatedUnsupportedRegions = []string{
+		"Germany North",
+		"Sweden South",
+		"Sweden Central",
+		"Switzerland West",
+		"Brazil Southeast",
+		"East Asia",
+		"Southeast Asia",
+		"Switzerland West",
+		"South Africa West",
+		"Qatar Central",
+		"Australia Central",
+		"Australia Central2",
+		"Norway West",
+	}
+)
+
+func isFederatedIdentitySupported(region string) bool {
+	for _, r := range federatedUnsupportedRegions {
+		if strings.EqualFold(r, region) {
+			return false
+		}
+	}
+	return true
+}
 
 // GetKubeAzureSubject constructs the federated identity subject with Kuberenetes namespace and service account name.
 func GetKubeAzureSubject(namespace, saName string) string {

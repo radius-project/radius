@@ -69,12 +69,24 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return properties, err
 	}
 
+	resourceLocation := *rgLocation
+
+	// Federated identity is in preview. Some region doesn't support federated identity.
+	// As a fallback, it will use "East US" for now.
+	// Reference: https://learn.microsoft.com/en-us/azure/active-directory/develop/workload-identity-federation-considerations#unsupported-regions-user-assigned-managed-identities
+	//
+	// TODO: Remove when all regions support Federated identity.
+	if !isFederatedIdentitySupported(resourceLocation) {
+		logger.Info(fmt.Sprintf("federated identity does not support %s region now. 'East US' will be used as a fallback.", resourceLocation))
+		resourceLocation = "East US"
+	}
+
 	msiClient, err := clientv2.NewUserAssignedIdentityClient(subID, &handler.arm.ClientOption)
 	if err != nil {
 		return nil, err
 	}
 
-	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, armmsi.Identity{Location: rgLocation}, nil)
+	identity, err := msiClient.CreateOrUpdate(ctx, rgName, identityName, armmsi.Identity{Location: &resourceLocation}, nil)
 	if err != nil {
 		return properties, fmt.Errorf("failed to create user assigned managed identity: %w", err)
 	}
