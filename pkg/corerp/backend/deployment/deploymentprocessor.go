@@ -352,23 +352,36 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 		return reference.Value, nil
 	}
 
-	var match *outputresource.OutputResource
-	for _, outputResource := range dependency.OutputResources {
-		if outputResource.LocalID == reference.LocalID {
-			copy := outputResource
-			match = &copy
-			break
-		}
-	}
-
-	if match == nil {
-		return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
-	}
-
+	// Reference to operations to fetch secrets is currently only supported for Azure resources
 	if dp.secretClient == nil {
 		return nil, errors.New("no Azure credentials provided to fetch secret")
 	}
-	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
+
+	for _, id := range dependency.RecipeData.Resources {
+		parsedID, err := resources.ParseResource(id)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
+		}
+
+		// Find resource that matches the expected Azure resource type
+		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
+			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, dependency.RecipeData.APIVersion)
+			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	if dependency.RecipeData.Resources != nil {
+		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the connector", dependency.RecipeData.Name)
+	}
+
+	// Find the output resource that maps to the secret value reference
+	for _, outputResource := range dependency.OutputResources {
+		if outputResource.LocalID == reference.LocalID {
+			return dp.secretClient.FetchSecret(ctx, outputResource.Identity, reference.Action, reference.ValueSelector)
+		}
+	}
+
+	return nil, fmt.Errorf("cannot find an output resource matching LocalID %q for dependency %q", reference.LocalID, dependency.ID)
 }
 
 // TODO: Revisit to remove the datamodel.Environment dependency.

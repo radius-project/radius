@@ -53,6 +53,9 @@ type SecretValueReference struct {
 	// LocalID is used to resolve the 'target' output resource for retrieving the secret value.
 	LocalID string
 
+	// Resource type this action can be performed on. Example for Azure a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
+	ProviderResourceType string
+
 	// Action refers to a named custom action used to fetch the secret value. Maybe be empty in the case of Kubernetes since there's
 	// no concept of 'action'. Will always be set for an ARM resource.
 	Action string

@@ -199,9 +199,10 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
 		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:       outputresource.LocalIDAzureCosmosAccount,
-			Action:        "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			ValueSelector: "/connectionStrings/0/connectionString",
+			LocalID:              outputresource.LocalIDAzureCosmosAccount,
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+			Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			ValueSelector:        "/connectionStrings/0/connectionString",
 			Transformer: resourcemodel.ResourceType{
 				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureCosmosDBMongo,
