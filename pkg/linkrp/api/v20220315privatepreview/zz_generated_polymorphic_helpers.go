@@ -53,7 +53,6 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-
 func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

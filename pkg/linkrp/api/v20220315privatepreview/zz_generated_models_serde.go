@@ -653,6 +653,7 @@ func (d DaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
 	populate(objectMap, "kind", d.Kind)
+	objectMap["mode"] = d.Mode
 	populate(objectMap, "provisioningState", d.ProvisioningState)
 	populate(objectMap, "status", d.Status)
 	return json.Marshal(objectMap)
@@ -678,6 +679,9 @@ func (d *DaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "kind":
 				err = unpopulate(val, "Kind", &d.Kind)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &d.Mode)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &d.ProvisioningState)
@@ -725,7 +729,7 @@ func (d *DaprStateStoreResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &d.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &d.Properties)
+				d.Properties, err = unmarshalDaprStateStorePropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &d.SystemData)
@@ -1676,9 +1680,13 @@ func (r RecipeDaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "componentName", r.ComponentName)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "kind", r.Kind)
+	populate(objectMap, "metadata", r.Metadata)
+	objectMap["mode"] = DaprStateStorePropertiesModeRecipe
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "status", r.Status)
+	populate(objectMap, "type", r.Type)
+	populate(objectMap, "version", r.Version)
 	return json.Marshal(objectMap)
 }
 
@@ -1703,6 +1711,12 @@ func (r *RecipeDaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 		case "kind":
 				err = unpopulate(val, "Kind", &r.Kind)
 				delete(rawMsg, key)
+		case "metadata":
+				err = unpopulate(val, "Metadata", &r.Metadata)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
+				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
 				delete(rawMsg, key)
@@ -1711,6 +1725,12 @@ func (r *RecipeDaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, "Type", &r.Type)
+				delete(rawMsg, key)
+		case "version":
+				err = unpopulate(val, "Version", &r.Version)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -2104,6 +2124,7 @@ func (r ResourceDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) 
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "metadata", r.Metadata)
+	objectMap["mode"] = DaprStateStorePropertiesModeResource
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
@@ -2134,6 +2155,9 @@ func (r *ResourceDaprStateStoreResourceProperties) UnmarshalJSON(data []byte) er
 				delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &r.Metadata)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
@@ -2460,6 +2484,7 @@ func (v ValuesDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", v.Environment)
 	populate(objectMap, "kind", v.Kind)
 	populate(objectMap, "metadata", v.Metadata)
+	objectMap["mode"] = DaprStateStorePropertiesModeValues
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "status", v.Status)
 	populate(objectMap, "type", v.Type)
@@ -2490,6 +2515,9 @@ func (v *ValuesDaprStateStoreResourceProperties) UnmarshalJSON(data []byte) erro
 				delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &v.Metadata)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &v.Mode)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)

@@ -18,7 +18,7 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "kind": "state.sqlserver",
         "mode" : "resource",
-        "daprStateStoreSQLServer" :{
+        "daprStateStoreResourceProperties" :{
             "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase"
         }
     }

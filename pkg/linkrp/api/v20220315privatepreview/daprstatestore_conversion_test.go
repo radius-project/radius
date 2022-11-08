@@ -49,20 +49,26 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch convertedResource.Properties.Kind {
 		case datamodel.DaprStateStoreKindAzureTableStorage:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.DaprStateStoreAzureTableStorage.Resource)
-			require.Equal(t, "state.azure.tablestorage", string(convertedResource.Properties.Kind))
+			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "state.azure.tablestorage", string(convertedResource.Properties.Kind))
+			}
 
 		case datamodel.DaprStateStoreKindStateSqlServer:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.DaprStateStoreSQLServer.Resource)
-			require.Equal(t, "state.sqlserver", string(convertedResource.Properties.Kind))
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "state.sqlserver", string(convertedResource.Properties.Kind))
+				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			}
 
 		case datamodel.DaprStateStoreKindGeneric:
-			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
-			require.Equal(t, "state.zookeeper", convertedResource.Properties.DaprStateStoreGeneric.Type)
-			require.Equal(t, "v1", convertedResource.Properties.DaprStateStoreGeneric.Version)
-			require.Equal(t, "bar", convertedResource.Properties.DaprStateStoreGeneric.Metadata["foo"])
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			if convertedResource.Properties.Mode == datamodel.DaprStateStoreModeValues {
+				require.Equal(t, "generic", string(convertedResource.Properties.Kind))
+				require.Equal(t, "state.zookeeper", convertedResource.Properties.ValuesDaprStateStore.Type)
+				require.Equal(t, "v1", convertedResource.Properties.ValuesDaprStateStore.Version)
+				require.Equal(t, "bar", convertedResource.Properties.ValuesDaprStateStore.Metadata["foo"])
+				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+			}
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}
@@ -117,20 +123,26 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		switch resource.Properties.Kind {
 		case datamodel.DaprStateStoreKindAzureTableStorage:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.DaprStateStoreAzureTableStorage.Resource)
-			require.Equal(t, "state.azure.tablestorage", string(resource.Properties.Kind))
-			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
+			if resource.Properties.Mode == datamodel.DaprStateStoreModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "state.azure.tablestorage", string(resource.Properties.Kind))
+				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
+			}
 		case datamodel.DaprStateStoreKindStateSqlServer:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.DaprStateStoreSQLServer.Resource)
-			require.Equal(t, "state.sqlserver", string(resource.Properties.Kind))
+			if resource.Properties.Mode == datamodel.DaprStateStoreModeResource {
+				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.ResourceDaprStateStore.Resource)
+				require.Equal(t, "state.sqlserver", string(resource.Properties.Kind))
+			}
 		case datamodel.DaprStateStoreKindGeneric:
-			require.Equal(t, "generic", string(resource.Properties.Kind))
-			require.Equal(t, "state.zookeeper", resource.Properties.ValuesDaprStateStore.Type)
-			require.Equal(t, "v1", resource.Properties.ValuesDaprStateStore.Version)
-			require.Equal(t, "bar", resource.Properties.ValuesDaprStateStore.Metadata["foo"])
-			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
+			if resource.Properties.Mode == datamodel.DaprStateStoreModeValues {
+				require.Equal(t, "generic", string(resource.Properties.Kind))
+				require.Equal(t, "state.zookeeper", resource.Properties.ValuesDaprStateStore.Type)
+				require.Equal(t, "v1", resource.Properties.ValuesDaprStateStore.Version)
+				require.Equal(t, "bar", resource.Properties.ValuesDaprStateStore.Metadata["foo"])
+				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
+				require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
+			}
 		default:
 			assert.Fail(t, "Kind of DaprStateStore is specified.")
 		}

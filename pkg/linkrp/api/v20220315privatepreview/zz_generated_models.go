@@ -396,8 +396,7 @@ type DaprStateStoreList struct {
 // DaprStateStorePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *RecipeDaprStateStoreResourceProperties, *ResourceDaprStateStoreResourceProperties, *DaprStateStoreProperties,
-// - *ValuesDaprStateStoreResourceProperties
+// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreResourceProperties, *ValuesDaprStateStoreResourceProperties
 type DaprStateStorePropertiesClassification interface {
 	// GetDaprStateStoreProperties returns the DaprStateStoreProperties content of the underlying type.
 	GetDaprStateStoreProperties() *DaprStateStoreProperties
@@ -410,6 +409,10 @@ type DaprStateStoreProperties struct {
 
 	// REQUIRED; The Dapr StateStore kind
 	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -434,7 +437,7 @@ type DaprStateStoreResource struct {
 	Location *string `json:"location,omitempty"`
 
 	// REQUIRED; DaprStateStore link properties
-	Properties *DaprStateStorePropertiesClassification `json:"properties,omitempty"`
+	Properties DaprStateStorePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -451,8 +454,6 @@ type DaprStateStoreResource struct {
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
-
-
 
 // DaprStateStoresClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoresClient.CreateOrUpdate
 // method.
@@ -942,20 +943,24 @@ type RecipeDaprStateStoreProperties struct {
 	// REQUIRED; The Dapr StateStore kind
 	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
-	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// REQUIRED; Dapr component version
-	Version *string `json:"version,omitempty"`
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
 
 	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
@@ -968,15 +973,16 @@ type RecipeDaprStateStoreProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type RecipeDaprStateStoreResourceProperties.
-func (d *RecipeDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type RecipeDaprStateStoreProperties.
+func (r *RecipeDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Kind: r.Kind,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
 	}
 }
 
@@ -1191,6 +1197,10 @@ type ResourceDaprStateStoreResourceProperties struct {
 	// REQUIRED; The Dapr StateStore kind
 	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
 
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+
 	// REQUIRED; The resource id of the Azure SQL Database the daprStateStore resource is connected to.
 	Resource *string `json:"resource,omitempty"`
 
@@ -1215,14 +1225,15 @@ type ResourceDaprStateStoreResourceProperties struct {
 }
 
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreResourceProperties.
-func (d *ResourceDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+func (r *ResourceDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Kind: r.Kind,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
 	}
 }
 
@@ -1403,6 +1414,10 @@ type ValuesDaprStateStoreResourceProperties struct {
 	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+
 	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
@@ -1424,14 +1439,15 @@ type ValuesDaprStateStoreResourceProperties struct {
 }
 
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreResourceProperties.
-func (d *ValuesDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+func (v *ValuesDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Kind: v.Kind,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+		ComponentName: v.ComponentName,
 	}
 }
 

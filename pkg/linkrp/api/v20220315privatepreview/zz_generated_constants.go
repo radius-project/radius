@@ -82,7 +82,8 @@ func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind
 	}
 }
 
-// DaprStateStorePropertiesMode- The Dapr StateStore mode
+// DaprStateStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
 type DaprStateStorePropertiesMode string
 
 const (

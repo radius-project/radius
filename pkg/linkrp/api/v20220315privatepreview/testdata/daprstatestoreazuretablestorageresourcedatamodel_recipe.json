@@ -27,11 +27,11 @@
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
         "kind": "state.azure.tablestorage",
         "mode" : "recipe",
-        "daprStateStoreAzureTableStorage":{
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
-        },
-        "recipe": {
-            "name": "recipe-test"
+        "daprStateStoreRecipeProperties":{
+            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable",
+            "recipe": {
+                "name": "recipe-test"
+            }
         }
     }
 }

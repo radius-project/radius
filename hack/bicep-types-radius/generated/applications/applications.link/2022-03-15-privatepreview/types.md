@@ -210,33 +210,35 @@
 ## DaprStateStoreProperties
 * **Discriminator**: mode
 
-### Properties
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **kind**: 'generic' | 'state.azure.tablestorage' | 'state.sqlserver' (Required): The Dapr StateStore kind
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### ValuesDaprStateStoreResourceProperties
+### RecipeDaprStateStoreProperties
 #### Properties
-* **kind**: string (Required): The Dapr StateStore kind
-* **metadata**: any (Required): Any object
-* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build manually via 'values' or build via 'resource'. Selection determines which set of fields to additionally require.
-* **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-* **version**: string (Required): Dapr component version
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string: Dapr component version
 
 ### ResourceDaprStateStoreResourceProperties
 #### Properties
-* **kind**: string (Required): The Dapr StateStore kind
-* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build manually via 'values' or build via 'resource'. Selection determines which set of fields to additionally require.
-* **resource**: string (Required): The resource id of the daprStateStore resource is connected to.
+* **metadata**: any: Any object
+* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **resource**: string (Required): The resource id of the Azure SQL Database the daprStateStore resource is connected to.
+* **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 
-### RecipeDaprStateStoreResourceProperties
+### ValuesDaprStateStoreResourceProperties
 #### Properties
-* **kind**: string (Required): The Dapr StateStore kind
-* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build manually via 'values' or build via 'resource'. Selection determines which set of fields to additionally require.
-* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
+
 
 ## TrackedResourceTags
 ### Properties

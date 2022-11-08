@@ -56,7 +56,7 @@ type DaprStateStoreProperties struct {
 	Kind                   DaprStateStoreKind                       `json:"kind"`
 	Mode                   DaprStateStoreMode                       `json:"mode"`
 	RecipeDaprStateStore   RecipeStateStoreResourceProperties       `json:"daprStateStoreRecipeProperties"`
-	ResourceDaprStateStore ResourceDaprStateStoreResourceProperties `json:"daprStateStoreResourceProperties`
+	ResourceDaprStateStore ResourceDaprStateStoreResourceProperties `json:"daprStateStoreResourceProperties"`
 	ValuesDaprStateStore   ValuesDaprStateStoreResourceProperties   `json:"daprStateStoreValuesProperties"`
 }
 

@@ -377,6 +377,15 @@
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprStateStore link at the time the operation was called"
         },
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.",
+          "type": "string",
+          "enum": [
+            "recipe",
+            "resource",
+            "values"
+          ]
+        },
         "kind": {
           "description": "The Dapr StateStore kind",
           "type": "string",
