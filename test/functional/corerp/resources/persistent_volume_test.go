@@ -15,7 +15,7 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	template := "testdata/corerp-resources-volume-azure-keyvault-wi.bicep"
+	template := "testdata/corerp-resources-volume-azure-keyvvault.bicep"
 	name := "corerp-resources-volume-azure-keyvvault"
 
 	requiredSecrets := map[string]map[string]string{}
@@ -47,7 +47,7 @@ func Test_PersistentVolume(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-azure-workload-env": {
 						validation.NewK8sPodForResource(name, "volume-azkv-ctnr"),
 					},
 				},
