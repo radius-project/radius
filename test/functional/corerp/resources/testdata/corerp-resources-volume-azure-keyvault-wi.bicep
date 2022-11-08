@@ -10,6 +10,8 @@ import radius as radius
 @description('Specifies the location for resources.')
 param location string = 'global'
 
+param azlocation string = resourceGroup().location
+
 @description('Specifies the image of the container resource.')
 param magpieimage string
 
@@ -17,7 +19,7 @@ param magpieimage string
 param port int = 3000
 
 @description('Specifies the scope of azure resources.')
-param rootScope string
+param rootScope string = resourceGroup().id
 
 @description('Specifies the environment for resources.')
 #disable-next-line no-hardcoded-env-urls
@@ -60,21 +62,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   }
 }
 
-resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = {
-  name: 'volume-azkv'
-  location: location
-  properties: {
-    application: app.id
-    kind: 'azure.com.keyvault'
-    resource: azTestKeyvault.id
-    secrets: {
-      mysecret: {
-        name: 'mysecret'
-      }
-    }
-  }
-}
-
 resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'volume-azkv-ctnr'
   location: location
@@ -98,15 +85,24 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
-// Prepare Azure resources - User assigned managed identity, keyvault, and role assignment.
-resource kvVolIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-  name: 'kv-volume-mi'
+resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = {
+  name: 'volume-azkv'
   location: location
+  properties: {
+    application: app.id
+    kind: 'azure.com.keyvault'
+    resource: azTestKeyvault.id
+    secrets: {
+      mysecret: {
+        name: 'mysecret'
+      }
+    }
+  }
 }
 
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
-  name: 'kv-volume'
-  location: location
+  name: 'azkvvol-${guid(resourceGroup().name)}'
+  location: azlocation
   tags: {
     radiustest: 'corerp-resources-key-vault'
   }
