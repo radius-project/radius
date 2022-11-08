@@ -22,10 +22,8 @@ import (
 // Providers supported by Radius
 // The RP will be able to support a resource only if the corresponding provider is configured with the RP
 const (
-	ProviderAzure = "azure"
-	// This is a special case for support AAD Pod Identity which is not an ARM resource but a modification of an AKS Cluster
-	ProviderAzureKubernetesService = "aks"
-	ProviderKubernetes             = "kubernetes"
+	ProviderAzure      = "azure"
+	ProviderKubernetes = "kubernetes"
 )
 
 // ResourceType determines the type of the resource and the provider domain for the resource
@@ -78,13 +76,6 @@ type AzureFederatedIdentity struct {
 	Audience string `json:"audience"`
 	// Subejct represents the subject of Identity
 	Subject string `json:"subject"`
-}
-
-// AADPodIdentityIdentity uniquely identifies a 'pod identity' psuedo-resource
-type AADPodIdentityIdentity struct {
-	AKSClusterName string `json:"aksClusterName"`
-	Name           string `json:"name"`
-	Namespace      string `json:"namespace"`
 }
 
 func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) ResourceIdentity {
@@ -161,12 +152,7 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 		b, _ := other.Data.(KubernetesIdentity)
 		return a == b
 
-	case ProviderAzureKubernetesService:
-		a, _ := r.Data.(AADPodIdentityIdentity)
-		b, _ := other.Data.(AADPodIdentityIdentity)
-		return a == b
 	}
-
 	// An identity without a valid kind is not the same as any resource.
 	return false
 }
@@ -202,9 +188,6 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 			radlogger.LogFieldResourceKind, resourcekinds.Kubernetes,
 		}
 
-	case ProviderAzureKubernetesService:
-		return nil
-
 	default:
 		return nil
 	}
@@ -236,15 +219,6 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
-		err = json.Unmarshal(data.Data, &identity)
-		if err != nil {
-			return err
-		}
-		r.Data = identity
-		return nil
-
-	case ProviderAzureKubernetesService:
-		identity := AADPodIdentityIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
 		if err != nil {
 			return err
@@ -294,14 +268,6 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 		r.Data = identity
 		return nil
 
-	case ProviderAzureKubernetesService:
-		identity := AADPodIdentityIdentity{}
-		err = bson.Unmarshal(data.Data, &identity)
-		if err != nil {
-			return err
-		}
-		r.Data = identity
-		return nil
 	default:
 		return fmt.Errorf("unknown provider: %q", r.ResourceType.Provider)
 	}
