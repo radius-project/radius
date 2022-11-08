@@ -15,8 +15,6 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	t.Skipf("Skip this until federated identity supports east asia region which is used by functional test.")
-
 	template := "testdata/corerp-resources-volume-azure-keyvvault.bicep"
 	name := "corerp-resources-volume-azure-keyvvault"
 
