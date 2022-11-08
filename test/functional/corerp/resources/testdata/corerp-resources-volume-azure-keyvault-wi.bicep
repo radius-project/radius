@@ -8,7 +8,7 @@
 import radius as radius
 
 @description('Specifies the location for resources.')
-param location string = 'global'
+param location string = 'eastus'
 
 @description('Specifies the image of the container resource.')
 param magpieimage string
@@ -17,7 +17,7 @@ param magpieimage string
 param port int = 3000
 
 @description('Specifies the scope of azure resources.')
-param rootScope string
+param rootScope string = 'subscriptions/${subscription().subscriptionId}/resourceGroups/${resourceGroup().name}'
 
 @description('Specifies the environment for resources.')
 #disable-next-line no-hardcoded-env-urls
@@ -29,7 +29,6 @@ param mySecretValue string = newGuid()
 
 @description('Specifies the value of tenantId.')
 param keyvaultTenantID string = subscription().tenantId
-
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-azure-workload-env'
@@ -89,9 +88,9 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
       }
       volumes: {
         volkv: {
-            kind: 'persistent'
-            source: keyvaultVolume.id
-            mountPath: '/var/secrets'
+          kind: 'persistent'
+          source: keyvaultVolume.id
+          mountPath: '/var/secrets'
         }
       }
     }
@@ -105,7 +104,7 @@ resource kvVolIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01
 }
 
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
-  name: 'kv-volume'
+  name: 'radius-test-kv-volume'
   location: location
   tags: {
     radiustest: 'corerp-resources-key-vault'
@@ -113,7 +112,7 @@ resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
   properties: {
     enabledForTemplateDeployment: true
     tenantId: keyvaultTenantID
-    enableRbacAuthorization:true
+    enableRbacAuthorization: true
     sku: {
       name: 'standard'
       family: 'A'
@@ -126,8 +125,8 @@ resource mySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
   name: 'mysecret'
   properties: {
     value: mySecretValue
-    attributes:{
-      enabled:true
+    attributes: {
+      enabled: true
     }
   }
 }

@@ -15,9 +15,7 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	t.Skipf("Skip until workload identity is supported")
-
-	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
+	template := "testdata/corerp-resources-volume-azure-keyvault-wi.bicep"
 	name := "corerp-resources-volume-azkv"
 
 	requiredSecrets := map[string]map[string]string{}
