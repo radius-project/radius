@@ -114,7 +114,7 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 	}
 
 	// Ignore when it deletes role from non-existing or deleted resource.
-	if detailedError.StatusCode != 404 {
+	if detailedError.StatusCode == 404 {
 		return nil
 	}
 
