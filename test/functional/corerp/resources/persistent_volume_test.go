@@ -15,6 +15,8 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
+	t.Skipf("Skip until we fix https://github.com/project-radius/radius/issues/4543")
+
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
 	name := "corerp-resources-volume-azure-keyvault"
 
