@@ -60,3 +60,8 @@ jobs:
         run: |
           echo "Generated code is not up to date, run 'make generate' to update generated code."
           exit 1
+      - name: Test UCP spec x-ms-examples conform to spec
+        working-directory: swagger/specification/ucp/resource-manager/UCP
+        run: |
+          npm install -g oav@3.2.0
+          oav validate-example ./preview/2022-09-01-privatepreview/ucp.json
