@@ -68,7 +68,7 @@ func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string
 	if err != nil {
 		return PlanesClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
 		return PlanesClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
