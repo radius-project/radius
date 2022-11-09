@@ -89,6 +89,25 @@ func PossibleDaprStateStorePropertiesModeValues() []DaprStateStorePropertiesMode
 	}
 }
 
+// MongoDatabasePropertiesMode - How to build the Mongo database link. Options are to build automatically via 'recipe' or
+// 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+type MongoDatabasePropertiesMode string
+
+const (
+	MongoDatabasePropertiesModeRecipe MongoDatabasePropertiesMode = "recipe"
+	MongoDatabasePropertiesModeResource MongoDatabasePropertiesMode = "resource"
+	MongoDatabasePropertiesModeValues MongoDatabasePropertiesMode = "values"
+)
+
+// PossibleMongoDatabasePropertiesModeValues returns the possible values for the MongoDatabasePropertiesMode const type.
+func PossibleMongoDatabasePropertiesModeValues() []MongoDatabasePropertiesMode {
+	return []MongoDatabasePropertiesMode{	
+		MongoDatabasePropertiesModeRecipe,
+		MongoDatabasePropertiesModeResource,
+		MongoDatabasePropertiesModeValues,
+	}
+}
+
 // ProvisioningState - Provisioning state of the link at the time the operation was called
 type ProvisioningState string
 

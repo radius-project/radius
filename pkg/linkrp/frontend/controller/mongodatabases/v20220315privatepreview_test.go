@@ -31,7 +31,7 @@ func getTestModels20220315privatepreview() (input *v20220315privatepreview.Mongo
 	return input, dataModel, output
 }
 
-func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315privatepreview.MongoDatabaseResource, dataModel *datamodel.MongoDatabase, output *v20220315privatepreview.MongoDatabaseResponseResource) {
+func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315privatepreview.MongoDatabaseResource, dataModel *datamodel.MongoDatabase, output *v20220315privatepreview.MongoDatabaseResource) {
 	rawInput := radiustesting.ReadFixture("20220315privatepreview_input.json")
 	input = &v20220315privatepreview.MongoDatabaseResource{}
 	_ = json.Unmarshal(rawInput, input)
@@ -41,7 +41,7 @@ func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315pri
 	_ = json.Unmarshal(rawDataModel, dataModel)
 
 	rawExpectedOutput := radiustesting.ReadFixture("20220315privatepreview_output.json")
-	output = &v20220315privatepreview.MongoDatabaseResponseResource{}
+	output = &v20220315privatepreview.MongoDatabaseResource{}
 	_ = json.Unmarshal(rawExpectedOutput, output)
 
 	return input, dataModel, output

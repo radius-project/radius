@@ -100,42 +100,6 @@ func TestMongoDatabaseDataModelFromVersioned(t *testing.T) {
 	}
 }
 
-func TestMongoDatabaseResponseDataModelToVersioned(t *testing.T) {
-	testset := []struct {
-		dataModelFile string
-		apiVersion    string
-		apiModelType  interface{}
-		err           error
-	}{
-		{
-			"../../api/v20220315privatepreview/testdata/mongodatabaseresponseresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.MongoDatabaseResponseResource{},
-			nil,
-		},
-		{
-			"",
-			"unsupported",
-			nil,
-			v1.ErrUnsupportedAPIVersion,
-		},
-	}
-
-	for _, tc := range testset {
-		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.MongoDatabaseResponse{}
-			_ = json.Unmarshal(c, dm)
-			am, err := MongoDatabaseResponseDataModelToVersioned(dm, tc.apiVersion)
-			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
-			} else {
-				require.NoError(t, err)
-				require.IsType(t, tc.apiModelType, am)
-			}
-		})
-	}
-}
 func TestMongoDatabaseSecretsDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string

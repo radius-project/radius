@@ -73,11 +73,9 @@ func buildInputResourceMongo(mode string) (testResource datamodel.MongoDatabase)
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: applicationID,
-					Environment: envID,
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: applicationID,
+				Environment: envID,
 			},
 		},
 	}
@@ -396,10 +394,8 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Environment: "invalid-id",
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: "invalid-id",
 				},
 			},
 		}
@@ -435,11 +431,11 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Application: applicationID,
-						Environment: envID,
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Application: applicationID,
+					Environment: envID,
+				},
+				MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
 					Resource: cosmosMongoID,
 				},
 			},
@@ -460,10 +456,8 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: datamodel.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env",
 				},
 			},
 		}
