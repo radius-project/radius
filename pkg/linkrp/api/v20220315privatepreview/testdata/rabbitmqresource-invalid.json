@@ -3,6 +3,7 @@
     "name": "rabbitmq0",
     "type": "Applications.Link/rabbitMQMessageQueues",
     "properties": {
-        "queue": 12345
+        "queue": 12345,
+        "mode": "values"
     }
 }

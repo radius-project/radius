@@ -134,6 +134,23 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// RabbitMQMessageQueuePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+type RabbitMQMessageQueuePropertiesMode string
+
+const (
+	RabbitMQMessageQueuePropertiesModeRecipe RabbitMQMessageQueuePropertiesMode = "recipe"
+	RabbitMQMessageQueuePropertiesModeValues RabbitMQMessageQueuePropertiesMode = "values"
+)
+
+// PossibleRabbitMQMessageQueuePropertiesModeValues returns the possible values for the RabbitMQMessageQueuePropertiesMode const type.
+func PossibleRabbitMQMessageQueuePropertiesModeValues() []RabbitMQMessageQueuePropertiesMode {
+	return []RabbitMQMessageQueuePropertiesMode{	
+		RabbitMQMessageQueuePropertiesModeRecipe,
+		RabbitMQMessageQueuePropertiesModeValues,
+	}
+}
+
 // ResourceDaprPubSubPropertiesKind - The DaprPubSubProperties kind
 type ResourceDaprPubSubPropertiesKind string
 

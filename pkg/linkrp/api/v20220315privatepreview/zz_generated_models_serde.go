@@ -1144,9 +1144,8 @@ func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
+	objectMap["mode"] = r.Mode
 	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "queue", r.Queue)
-	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "secrets", r.Secrets)
 	populate(objectMap, "status", r.Status)
 	return json.Marshal(objectMap)
@@ -1167,14 +1166,11 @@ func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &r.Environment)
 				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
+				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, "Queue", &r.Queue)
-				delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &r.Recipe)
 				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &r.Secrets)
@@ -1222,105 +1218,7 @@ func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &r.Name)
 				delete(rawMsg, key)
 		case "properties":
-				err = unpopulate(val, "Properties", &r.Properties)
-				delete(rawMsg, key)
-		case "systemData":
-				err = unpopulate(val, "SystemData", &r.SystemData)
-				delete(rawMsg, key)
-		case "tags":
-				err = unpopulate(val, "Tags", &r.Tags)
-				delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &r.Type)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", r, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseProperties.
-func (r RabbitMQMessageQueueResponseProperties) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", r.Application)
-	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "provisioningState", r.ProvisioningState)
-	populate(objectMap, "queue", r.Queue)
-	populate(objectMap, "recipe", r.Recipe)
-	populate(objectMap, "status", r.Status)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseProperties.
-func (r *RabbitMQMessageQueueResponseProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", r, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &r.Application)
-				delete(rawMsg, key)
-		case "environment":
-				err = unpopulate(val, "Environment", &r.Environment)
-				delete(rawMsg, key)
-		case "provisioningState":
-				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
-				delete(rawMsg, key)
-		case "queue":
-				err = unpopulate(val, "Queue", &r.Queue)
-				delete(rawMsg, key)
-		case "recipe":
-				err = unpopulate(val, "Recipe", &r.Recipe)
-				delete(rawMsg, key)
-		case "status":
-				err = unpopulate(val, "Status", &r.Status)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", r, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResponseResource.
-func (r RabbitMQMessageQueueResponseResource) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "id", r.ID)
-	populate(objectMap, "location", r.Location)
-	populate(objectMap, "name", r.Name)
-	populate(objectMap, "properties", r.Properties)
-	populate(objectMap, "systemData", r.SystemData)
-	populate(objectMap, "tags", r.Tags)
-	populate(objectMap, "type", r.Type)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResponseResource.
-func (r *RabbitMQMessageQueueResponseResource) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", r, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "id":
-				err = unpopulate(val, "ID", &r.ID)
-				delete(rawMsg, key)
-		case "location":
-				err = unpopulate(val, "Location", &r.Location)
-				delete(rawMsg, key)
-		case "name":
-				err = unpopulate(val, "Name", &r.Name)
-				delete(rawMsg, key)
-		case "properties":
-				err = unpopulate(val, "Properties", &r.Properties)
+				r.Properties, err = unmarshalRabbitMQMessageQueuePropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &r.SystemData)
@@ -1643,6 +1541,61 @@ func (r *RecipeMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "recipe":
+				err = unpopulate(val, "Recipe", &r.Recipe)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, "Secrets", &r.Secrets)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &r.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", r, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type RecipeRabbitMQMessageQueueProperties.
+func (r RecipeRabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", r.Application)
+	populate(objectMap, "environment", r.Environment)
+	objectMap["mode"] = RabbitMQMessageQueuePropertiesModeRecipe
+	populate(objectMap, "provisioningState", r.ProvisioningState)
+	populate(objectMap, "queue", r.Queue)
+	populate(objectMap, "recipe", r.Recipe)
+	populate(objectMap, "secrets", r.Secrets)
+	populate(objectMap, "status", r.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeRabbitMQMessageQueueProperties.
+func (r *RecipeRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", r, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &r.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &r.Environment)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &r.Mode)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &r.ProvisioningState)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, "Queue", &r.Queue)
 				delete(rawMsg, key)
 		case "recipe":
 				err = unpopulate(val, "Recipe", &r.Recipe)
@@ -2780,6 +2733,57 @@ func (v *ValuesMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)
+				delete(rawMsg, key)
+		case "secrets":
+				err = unpopulate(val, "Secrets", &v.Secrets)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &v.Status)
+				delete(rawMsg, key)
+		}
+		if err != nil {
+			return fmt.Errorf("unmarshalling type %T: %v", v, err)
+		}
+	}
+	return nil
+}
+
+// MarshalJSON implements the json.Marshaller interface for type ValuesRabbitMQMessageQueueProperties.
+func (v ValuesRabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
+	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", v.Application)
+	populate(objectMap, "environment", v.Environment)
+	objectMap["mode"] = RabbitMQMessageQueuePropertiesModeValues
+	populate(objectMap, "provisioningState", v.ProvisioningState)
+	populate(objectMap, "queue", v.Queue)
+	populate(objectMap, "secrets", v.Secrets)
+	populate(objectMap, "status", v.Status)
+	return json.Marshal(objectMap)
+}
+
+// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesRabbitMQMessageQueueProperties.
+func (v *ValuesRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
+	var rawMsg map[string]json.RawMessage
+	if err := json.Unmarshal(data, &rawMsg); err != nil {
+		return fmt.Errorf("unmarshalling type %T: %v", v, err)
+	}
+	for key, val := range rawMsg {
+		var err error
+		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &v.Application)
+				delete(rawMsg, key)
+		case "environment":
+				err = unpopulate(val, "Environment", &v.Environment)
+				delete(rawMsg, key)
+		case "mode":
+				err = unpopulate(val, "Mode", &v.Mode)
+				delete(rawMsg, key)
+		case "provisioningState":
+				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)
+				delete(rawMsg, key)
+		case "queue":
+				err = unpopulate(val, "Queue", &v.Queue)
 				delete(rawMsg, key)
 		case "secrets":
 				err = unpopulate(val, "Secrets", &v.Secrets)
