@@ -10,6 +10,14 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
+type RabbitMQMessageQueuePropertiesMode string
+
+const (
+	RabbitMQMessageQueuePropertiesModeRecipe  RabbitMQMessageQueuePropertiesMode = "recipe"
+	RabbitMQMessageQueuePropertiesModeValues  RabbitMQMessageQueuePropertiesMode = "values"
+	RabbitMQMessageQueuePropertiesModeUnknown RabbitMQMessageQueuePropertiesMode = "unknown"
+)
+
 // RabbitMQMessageQueue represents RabbitMQMessageQueue link resource.
 type RabbitMQMessageQueue struct {
 	v1.TrackedResource
@@ -26,41 +34,18 @@ type RabbitMQMessageQueue struct {
 	LinkMetadata
 }
 
-type RabbitMQMessageQueueResponse struct {
-	v1.TrackedResource
-
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
-	// Properties is the properties of the resource.
-	Properties RabbitMQMessageQueueResponseProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
-
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
-}
-
 func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
 	return "Applications.Link/rabbitMQMessageQueues"
 }
 
-func (rabbitmq RabbitMQMessageQueueResponse) ResourceTypeName() string {
-	return "Applications.Link/rabbitMQMessageQueues"
-}
-
 // RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue response resource.
-type RabbitMQMessageQueueResponseProperties struct {
-	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Queue             string               `json:"queue"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-}
-
-// RabbitMQMessageQueueProperties represents the properties of RabbitMQMessageQueue resource.
 type RabbitMQMessageQueueProperties struct {
-	RabbitMQMessageQueueResponseProperties
-	Secrets RabbitMQSecrets `json:"secrets,omitempty"`
+	rp.BasicResourceProperties
+	ProvisioningState v1.ProvisioningState               `json:"provisioningState,omitempty"`
+	Queue             string                             `json:"queue"`
+	Recipe            LinkRecipe                         `json:"recipe,omitempty"`
+	Secrets           RabbitMQSecrets                    `json:"secrets,omitempty"`
+	Mode              RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
 }
 
 // Secrets values consisting of secrets provided for the resource

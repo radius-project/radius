@@ -117,7 +117,7 @@ type ExtendersClientListSecretsResponse struct {
 
 // MongoDatabasesClientCreateOrUpdateResponse contains the response from method MongoDatabasesClient.CreateOrUpdate.
 type MongoDatabasesClientCreateOrUpdateResponse struct {
-	MongoDatabaseResponseResource
+	MongoDatabaseResource
 }
 
 // MongoDatabasesClientDeleteResponse contains the response from method MongoDatabasesClient.Delete.
@@ -127,7 +127,7 @@ type MongoDatabasesClientDeleteResponse struct {
 
 // MongoDatabasesClientGetResponse contains the response from method MongoDatabasesClient.Get.
 type MongoDatabasesClientGetResponse struct {
-	MongoDatabaseResponseResource
+	MongoDatabaseResource
 }
 
 // MongoDatabasesClientListByRootScopeResponse contains the response from method MongoDatabasesClient.ListByRootScope.
@@ -142,7 +142,7 @@ type MongoDatabasesClientListSecretsResponse struct {
 
 // RabbitMQMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitMQMessageQueuesClient.CreateOrUpdate.
 type RabbitMQMessageQueuesClientCreateOrUpdateResponse struct {
-	RabbitMQMessageQueueResponseResource
+	RabbitMQMessageQueueResource
 }
 
 // RabbitMQMessageQueuesClientDeleteResponse contains the response from method RabbitMQMessageQueuesClient.Delete.
@@ -152,7 +152,7 @@ type RabbitMQMessageQueuesClientDeleteResponse struct {
 
 // RabbitMQMessageQueuesClientGetResponse contains the response from method RabbitMQMessageQueuesClient.Get.
 type RabbitMQMessageQueuesClientGetResponse struct {
-	RabbitMQMessageQueueResponseResource
+	RabbitMQMessageQueueResource
 }
 
 // RabbitMQMessageQueuesClientListByRootScopeResponse contains the response from method RabbitMQMessageQueuesClient.ListByRootScope.

@@ -67,7 +67,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): MongoDatabase link properties
+* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): Mongo database link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -79,7 +79,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue link properties
+* **properties**: [RabbitMQMessageQueueProperties](#rabbitmqmessagequeueproperties) (Required): RabbitMQMessageQueue link response properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/rabbitMQMessageQueues' (ReadOnly, DeployTimeConstant): The resource type
@@ -190,17 +190,30 @@
 * **Additional Properties Type**: string
 
 ## DaprSecretStoreProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
+* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeDaprSecretStoreProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **type**: string: Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+* **version**: string: Dapr component version
+
+### ValuesDaprSecretStoreProperties
+#### Properties
 * **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
-* **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 * **version**: string (Required): Dapr component version
+
 
 ## TrackedResourceTags
 ### Properties
@@ -208,31 +221,40 @@
 * **Additional Properties Type**: string
 
 ## DaprStateStoreProperties
-* **Discriminator**: kind
+* **Discriminator**: mode
 
 ### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
-### DaprStateStoreGenericResourceProperties
+### RecipeDaprStateStoreProperties
+#### Properties
+* **metadata**: any: Any object
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+* **resource**: string: The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+* **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string: Dapr component version
+
+### ResourceDaprStateStoreResourceProperties
+#### Properties
+* **kind**: 'state.azure.tablestorage' | 'state.sqlserver' (Required): The Dapr StateStore kind
+* **metadata**: any: Any object
+* **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **resource**: string (Required): The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+* **type**: string: Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+* **version**: string: Dapr component version
+
+### ValuesDaprStateStoreResourceProperties
 #### Properties
 * **kind**: 'generic' (Required): The Dapr StateStore kind
 * **metadata**: any (Required): Any object
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **resource**: string: The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
 * **type**: string (Required): Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
-
-### DaprStateStoreAzureTableStorageResourceProperties
-#### Properties
-* **kind**: 'state.azure.tablestorage' (Required): The Dapr StateStore kind
-* **resource**: string (Required): The resource id of the Azure Storage Table the daprStateStore resource is connected to.
-
-### DaprStateStoreSqlServerResourceProperties
-#### Properties
-* **kind**: 'state.sqlserver' (Required): The Dapr StateStore kind
-* **resource**: string (Required): The resource id of the Azure SQL Database the daprStateStore resource is connected to.
 
 
 ## TrackedResourceTags
@@ -261,23 +283,43 @@
 * **Additional Properties Type**: string
 
 ## MongoDatabaseProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **database**: string (ReadOnly): Database name of the target Mongo database
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **host**: string: Host name of the target Mongo database
-* **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this link
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'recipe' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ResourceMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'resource' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
+* **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
+
+### ValuesMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string (Required): Host name of the target Mongo database
+* **mode**: 'values' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int (Required): Port value of the target Mongo database
+
 
 ## MongoDatabaseSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
-* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
-* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## TrackedResourceTags
 ### Properties
@@ -285,18 +327,29 @@
 * **Additional Properties Type**: string
 
 ## RabbitMQMessageQueueProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **queue**: string (Required): The name of the queue
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets) (WriteOnly): The secret values for the given RabbitMQMessageQueue resource
+* **secrets**: [RabbitMQSecrets](#rabbitmqsecrets): The secret values for the given RabbitMQMessageQueue resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeRabbitMQMessageQueueProperties
+#### Properties
+* **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **queue**: string: The name of the queue
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ValuesRabbitMQMessageQueueProperties
+#### Properties
+* **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **queue**: string (Required): The name of the queue
+
 
 ## RabbitMQSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): The connection string used to connect to this RabbitMQ instance
+* **connectionString**: string: The connection string used to connect to this RabbitMQ instance
 
 ## TrackedResourceTags
 ### Properties
@@ -362,9 +415,9 @@
 
 ## MongoDatabaseSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
-* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
-* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## RedisCacheSecrets
 ### Properties
@@ -373,7 +426,7 @@
 
 ## RabbitMQSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): The connection string used to connect to this RabbitMQ instance
+* **connectionString**: string: The connection string used to connect to this RabbitMQ instance
 
 ## ExtenderSecrets
 ### Properties

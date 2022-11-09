@@ -33,7 +33,7 @@ func NewGetRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
 func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.RabbitMQMessageQueueResponse{}
+	existingResource := &datamodel.RabbitMQMessageQueue{}
 	_, err := rabbitmq.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
@@ -42,6 +42,6 @@ func (rabbitmq *GetRabbitMQMessageQueue) Run(ctx context.Context, w http.Respons
 		return nil, err
 	}
 
-	versioned, _ := converter.RabbitMQMessageQueueDataModelToVersioned(existingResource, serviceCtx.APIVersion, false)
+	versioned, _ := converter.RabbitMQMessageQueueDataModelToVersioned(existingResource, serviceCtx.APIVersion)
 	return rest.NewOKResponse(versioned), nil
 }
