@@ -25,7 +25,6 @@ const (
 	DaprStateStoreModeRecipe   DaprStateStoreMode = "recipe"
 	DaprStateStoreModeResource DaprStateStoreMode = "resource"
 	DaprStateStoreModeValues   DaprStateStoreMode = "values"
-	DaprStateStoreModeUnknown  DaprStateStoreMode = "unknown"
 )
 
 // DaprStateStore represents DaprStateStore link resource.
