@@ -37,12 +37,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command without workspace",
+			Name:          "Show Command with fallback workspace",
 			Input:         []string{"Azure"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

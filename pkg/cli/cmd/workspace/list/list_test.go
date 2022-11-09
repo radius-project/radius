@@ -57,10 +57,12 @@ func Test_Run(t *testing.T) {
 				// Intentionally NOT in alphabetical order
 				"workspace-b": {
 					Environment: "b",
+					Source:      workspaces.SourceUserConfig,
 					Connection:  map[string]interface{}{},
 				},
 				"workspace-a": {
 					Environment: "a",
+					Source:      workspaces.SourceUserConfig,
 					Connection:  map[string]interface{}{},
 				},
 			},
@@ -85,11 +87,13 @@ func Test_Run(t *testing.T) {
 					{
 						Name:        "workspace-a",
 						Environment: "a",
+						Source:      workspaces.SourceUserConfig,
 						Connection:  map[string]interface{}{},
 					},
 					{
 						Name:        "workspace-b",
 						Environment: "b",
+						Source:      workspaces.SourceUserConfig,
 						Connection:  map[string]interface{}{},
 					},
 				},

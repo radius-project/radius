@@ -74,7 +74,4 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that can be used to look up the value in the resource's body.
 	JSONPointer string
-
-	// Resource type of the resource to look up the property from
-	ProviderResourceType string
 }

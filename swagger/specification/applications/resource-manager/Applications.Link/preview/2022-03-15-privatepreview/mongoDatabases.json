@@ -125,8 +125,14 @@
           "application/json"
         ],
         "x-ms-examples": {
-          "MongoDatabasesPut": {
-            "$ref": "./examples/MongoDatabasesPut.json"
+          "MongoDatabasesPutResource": {
+            "$ref": "./examples/MongoDatabasesPutResource.json"
+          },
+          "MongoDatabasesPutRecipe": {
+            "$ref": "./examples/MongoDatabasesPutRecipe.json"
+          },
+          "MongoDatabasesPutValues": {
+            "$ref": "./examples/MongoDatabasesPutValues.json"
           }
         },
         "tags": [

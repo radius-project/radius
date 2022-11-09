@@ -49,6 +49,15 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Show Command with fallback workspace",
+			Input:         []string{"groupname"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }

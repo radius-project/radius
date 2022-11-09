@@ -3,9 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// workspaces contains functionality for using the workspace concept of the CLI to connect and interact
-// with the remote endpoints that are described by the workspace concept
-// (Radius control plane, environment, et al).
 package workspaces
 
 import (
@@ -15,6 +12,18 @@ import (
 )
 
 const KindKubernetes string = "kubernetes"
+
+// MakeFallbackWorkspace creates an un-named workspace that will use the current KubeContext.
+// This is is used in fallback cases where the user has no config.
+func MakeFallbackWorkspace() *Workspace {
+	return &Workspace{
+		Source: SourceFallback,
+		Connection: map[string]interface{}{
+			"kind":    KindKubernetes,
+			"context": "", // Default Kubernetes context
+		},
+	}
+}
 
 type Connection interface {
 	fmt.Stringer

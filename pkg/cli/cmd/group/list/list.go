@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
-	cmd.Flags().StringP("output", "o", "", "The output format")
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }

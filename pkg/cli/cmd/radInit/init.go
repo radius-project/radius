@@ -64,6 +64,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
 }
@@ -88,6 +89,7 @@ type Runner struct {
 	HelmInterface       helm.Interface
 	SkipDevRecipes      bool
 	SetupInterface      setup.Interface
+	Dev                 bool
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -111,12 +113,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
+	r.Dev, err = cmd.Flags().GetBool("dev")
+	if err != nil {
+		return err
+	}
+
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
 
-	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, true, r.Prompter)
+	// In dev mode we will just take the default kubecontext
+	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, !r.Dev, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
@@ -131,7 +139,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
 	}
 
-	if r.RadiusInstalled {
+	if r.RadiusInstalled && !r.Dev {
 		output.LogInfo(fmt.Sprintf("Radius control plane is already installed to context '%s'...", r.KubeContext))
 		y, err := prompt.YesOrNoPrompter(confirmReinstallRadiusPrompt, "N", r.Prompter)
 		if err != nil {
@@ -175,9 +183,23 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// we also need to force re-creation of the envionment to do that, so we don't want
 	// to reuse an existing one.
 	if len(environments) > 0 && !r.Reinstall {
-		r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", r.Prompter, environments)
-		if err != nil {
-			return err
+
+		// In dev mode, we take the default without asking if it's an option.
+		//
+		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
+		// first, and then try again interactively if we get no results.
+		if r.Dev {
+			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", false, r.Prompter, environments)
+			if err != nil {
+				return err
+			}
+		}
+
+		if r.EnvName == "" {
+			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", true, r.Prompter, environments)
+			if err != nil {
+				return err
+			}
 		}
 
 		// User choose an existing environment, grab any settings we need from it.
@@ -209,54 +231,64 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// If we're going to create an environment, then prompt for the name now.
 	if !r.ExistingEnvironment {
-		r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
-		if err != nil {
-			return &cli.FriendlyError{Message: "Failed to read env name"}
+		// In dev mode don't ask for a name, just use 'default'
+		if r.Dev {
+			r.EnvName = "default"
+		} else {
+			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Failed to read env name"}
+			}
 		}
 
-		r.Namespace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
-		if err != nil {
-			return &cli.FriendlyError{Message: "Namespace not specified"}
-		}
+		// In dev mode we don't want to ask about namespaces or cloud providers
+		if r.Dev {
+			r.Namespace = "default"
+		} else {
+			r.Namespace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Namespace not specified"}
+			}
 
-		// This loop is required for adding multiple cloud providers
-		// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
-		addingAnotherProvider := "y"
-		for strings.ToLower(addingAnotherProvider) == "y" {
-			var cloudProvider int
-			// This loop is required to move up a level when the user selects [back] as an option
-			// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
-			addingCloudProvider := true
-			for addingCloudProvider {
-				cloudProviderPrompter, err := prompt.YesOrNoPrompter(confirmCloudProviderPrompt, "N", r.Prompter)
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading cloud provider"}
+			// This loop is required for adding multiple cloud providers
+			// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
+			addingAnotherProvider := "y"
+			for strings.ToLower(addingAnotherProvider) == "y" {
+				var cloudProvider int
+				// This loop is required to move up a level when the user selects [back] as an option
+				// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
+				addingCloudProvider := true
+				for addingCloudProvider {
+					cloudProviderPrompter, err := prompt.YesOrNoPrompter(confirmCloudProviderPrompt, "N", r.Prompter)
+					if err != nil {
+						return &cli.FriendlyError{Message: "Error reading cloud provider"}
+					}
+					if strings.ToLower(cloudProviderPrompter) == "n" {
+						cloudProvider = -1
+						break
+					}
+					cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
+					if err != nil {
+						return &cli.FriendlyError{Message: "Error reading cloud provider"}
+					}
+					// cloudProvider being -1 represents the user doesn't wants to add one
+					if cloudProvider != -1 {
+						addingCloudProvider = false
+					}
 				}
-				if strings.ToLower(cloudProviderPrompter) == "n" {
-					cloudProvider = -1
+				// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
+				if cloudProvider == -1 {
 					break
 				}
-				cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
-				if err != nil {
-					return &cli.FriendlyError{Message: "Error reading cloud provider"}
+				switch cloudProvider {
+				case Azure:
+					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
+					if err != nil {
+						return err
+					}
+				case AWS:
+					r.Output.LogInfo("AWS is not supported")
 				}
-				// cloudProvider being -1 represents the user doesn't wants to add one
-				if cloudProvider != -1 {
-					addingCloudProvider = false
-				}
-			}
-			// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
-			if cloudProvider == -1 {
-				break
-			}
-			switch cloudProvider {
-			case Azure:
-				r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
-				if err != nil {
-					return err
-				}
-			case AWS:
-				r.Output.LogInfo("AWS is not supported")
 			}
 		}
 	}
@@ -284,7 +316,10 @@ func (r *Runner) Run(ctx context.Context) error {
 		}
 	}
 
-	if !r.ExistingEnvironment {
+	if r.ExistingEnvironment {
+		r.Output.LogInfo("Using existing environment %s...", r.EnvName)
+	} else {
+		r.Output.LogInfo("Creating environment %s...", r.EnvName)
 		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 		if err != nil {
 			return err
@@ -369,6 +404,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		}
 		return values[index], nil
 	}
+
 	return currentContext, nil
 }
 

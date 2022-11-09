@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/version"
 	"github.com/spf13/cobra"
 )
@@ -109,6 +110,11 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
+	}
+
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
 	}
 
 	environmentName, err := cli.RequireEnvironmentName(cmd, args, *workspace)

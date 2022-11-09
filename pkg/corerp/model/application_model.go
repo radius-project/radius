@@ -62,7 +62,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	}
 	if arm != nil {
 		supportedProviders[resourcemodel.ProviderAzure] = true
-		supportedProviders[resourcemodel.ProviderAzureKubernetesService] = true
 	}
 
 	radiusResourceModel := []RadiusResourceModel{

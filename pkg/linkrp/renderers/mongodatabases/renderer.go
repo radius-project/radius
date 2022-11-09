@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -84,15 +85,37 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 
 	computedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
-			JSONPointer:          "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
+			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer: "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
 		},
+	}
+
+	// Build expected output resources
+	expectedCosmosAccount := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureCosmosAccount,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosAccount,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		RadiusManaged:        to.BoolPtr(true),
+	}
+
+	expectedMongoDBResource := outputresource.OutputResource{
+		LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.AzureCosmosDBMongo,
+			Provider: resourcemodel.ProviderAzure,
+		},
+		ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+		RadiusManaged:        to.BoolPtr(true),
+		Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 	}
 
 	return renderers.RendererOutput{
 		ComputedValues:       computedValues,
 		SecretValues:         secretValues,
+		Resources:            []outputresource.OutputResource{expectedCosmosAccount, expectedMongoDBResource},
 		RecipeData:           recipeData,
 		EnvironmentProviders: options.EnvironmentProviders,
 	}, nil
@@ -127,6 +150,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosAccount,
 			Provider: resourcemodel.ProviderAzure,
 		},
+		RadiusManaged: to.BoolPtr(false),
 	}
 	cosmosAccountResource.Identity = resourcemodel.NewARMIdentity(&cosmosAccountResource.ResourceType, cosmosMongoAccountID.String(), clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()))
 
@@ -136,6 +160,7 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 			Type:     resourcekinds.AzureCosmosDBMongo,
 			Provider: resourcemodel.ProviderAzure,
 		},
+		RadiusManaged: to.BoolPtr(false),
 		Dependencies: []outputresource.Dependency{
 			{
 				LocalID: outputresource.LocalIDAzureCosmosAccount,
@@ -164,6 +189,7 @@ func getProvidedSecretValues(properties datamodel.MongoDatabaseProperties) map[s
 			secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{Value: properties.Secrets.ConnectionString}
 		}
 	}
+
 	return secretValues
 }
 
@@ -174,10 +200,9 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 	_, ok := secretValues[renderers.ConnectionStringValue]
 	if !ok {
 		secretValues[renderers.ConnectionStringValue] = rp.SecretValueReference{
-			LocalID:              outputresource.LocalIDAzureCosmosAccount,
-			Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-			ValueSelector:        "/connectionStrings/0/connectionString",
-			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			Action:        "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
+			ValueSelector: "/connectionStrings/0/connectionString",
 			Transformer: resourcemodel.ResourceType{
 				Provider: resourcemodel.ProviderAzure,
 				Type:     resourcekinds.AzureCosmosDBMongo,

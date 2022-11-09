@@ -20,8 +20,6 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/resourcemodel"
-	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -33,8 +31,6 @@ const deploymentPrefix = "recipe"
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
 	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) ([]string, error)
-	Delete(ctx context.Context, id string, apiVersion string) error
-	GetResource(ctx context.Context, provider, id, apiVersion string) (map[string]interface{}, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -204,41 +200,4 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 		return "", "", conv.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
-}
-
-func (handler *azureRecipeHandler) Delete(ctx context.Context, id string, apiVersion string) error {
-	logger := radlogger.GetLogger(ctx)
-	parsed, err := ucpresources.ParseResource(id)
-	if err != nil {
-		return err
-	}
-
-	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
-	_, err = rc.DeleteByID(ctx, id, apiVersion)
-	if err != nil {
-		if !clients.Is404Error(err) {
-			return fmt.Errorf("failed to delete resource %q: %w", id, err)
-		}
-		logger.Info(fmt.Sprintf("Recipe resource %s does not exist: %s", id, err.Error()))
-	}
-	return nil
-}
-
-func (handler *azureRecipeHandler) GetResource(ctx context.Context, provider, id, apiVersion string) (resource map[string]interface{}, err error) {
-	if provider == resourcemodel.ProviderAzure {
-		resource, err := GetByID(ctx, handler.arm.Auth, id, apiVersion)
-		if err != nil {
-			return nil, err
-		}
-
-		// Return the serialized resource so renderers can use it for computed values.
-		serialized, err := SerializeResource(*resource)
-		if err != nil {
-			return nil, err
-		}
-
-		return serialized, nil
-	}
-
-	return map[string]interface{}{}, nil
 }
