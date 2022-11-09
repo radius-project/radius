@@ -147,6 +147,20 @@ func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
 	}
 }
 
+// ValuesDaprPubSubPropertiesKind - The DaprPubSubProperties kind
+type ValuesDaprPubSubPropertiesKind string
+
+const (
+	ValuesDaprPubSubPropertiesKindGeneric ValuesDaprPubSubPropertiesKind = "generic"
+)
+
+// PossibleValuesDaprPubSubPropertiesKindValues returns the possible values for the ValuesDaprPubSubPropertiesKind const type.
+func PossibleValuesDaprPubSubPropertiesKindValues() []ValuesDaprPubSubPropertiesKind {
+	return []ValuesDaprPubSubPropertiesKind{	
+		ValuesDaprPubSubPropertiesKindGeneric,
+	}
+}
+
 // ValuesDaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
 type ValuesDaprSecretStorePropertiesKind string
 

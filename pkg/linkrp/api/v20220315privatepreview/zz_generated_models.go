@@ -967,6 +967,59 @@ type Recipe struct {
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
+type RecipeDaprPubSubProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprPubSub link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// PubSub resource
+	Resource *string `json:"resource,omitempty"`
+
+	// Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty"`
+
+	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type RecipeDaprPubSubProperties.
+func (r *RecipeDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
+	return &DaprPubSubBrokerProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Topic: r.Topic,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
+	}
+}
+
 type RecipeDaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1435,6 +1488,105 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValuesDaprPubSubProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The DaprPubSubProperties kind
+	Kind *ValuesDaprPubSubPropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// PubSub resource
+	Resource *string `json:"resource,omitempty"`
+
+	// Topic name of the Azure ServiceBus resource
+	Topic *string `json:"topic,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type ValuesDaprPubSubProperties.
+func (v *ValuesDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
+	return &DaprPubSubBrokerProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Topic: v.Topic,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+		ComponentName: v.ComponentName,
+	}
+}
+
+type ValuesDaprSecretStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Radius kind for Dapr Secret Store
+	Kind *ValuesDaprSecretStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type ValuesDaprSecretStoreProperties.
+func (v *ValuesDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties {
+	return &DaprSecretStoreProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+		ComponentName: v.ComponentName,
+	}
 }
 
 type ValuesSQLDatabaseProperties struct {
