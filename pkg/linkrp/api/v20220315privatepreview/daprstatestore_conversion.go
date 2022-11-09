@@ -65,7 +65,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
 		if *v.Kind != ValuesDaprStateStoreResourcePropertiesKindGeneric {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", DaprPubSubBrokerPropertiesKindGeneric))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", ValuesDaprStateStoreResourcePropertiesKindGeneric))
 		}
 		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 		converted.Properties.Kind = datamodel.DaprStateStoreKindGeneric

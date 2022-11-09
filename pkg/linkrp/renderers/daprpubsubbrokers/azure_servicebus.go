@@ -19,7 +19,7 @@ import (
 )
 
 func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error) {
-	properties := resource.Properties.DaprPubSubAzureServiceBus
+	properties := resource.Properties
 	var output outputresource.OutputResource
 
 	if properties.Resource == "" {
