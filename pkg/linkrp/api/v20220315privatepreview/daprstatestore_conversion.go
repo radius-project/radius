@@ -2,6 +2,7 @@ package v20220315privatepreview
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -41,24 +42,33 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
-		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Mode = datamodel.DaprStateStoreModeRecipe
+		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
+		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Resource = to.String(v.Resource)
+		converted.Properties.Type = to.String(v.Type)
+		converted.Properties.Version = to.String(v.Version)
 	case *ResourceDaprStateStoreResourceProperties:
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
+		if *v.Kind != DaprStateStorePropertiesKindStateAzureTablestorage && *v.Kind != DaprStateStorePropertiesKindStateSqlserver {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s or %s when mode is 'values'", DaprStateStorePropertiesKindStateAzureTablestorage, DaprStateStorePropertiesKindStateSqlserver))
+		}
+		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Resource = to.String(v.Resource)
-		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 	case *ValuesDaprStateStoreResourceProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
+		if *v.Kind != DaprStateStorePropertiesKindGeneric {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", DaprStateStorePropertiesKindGeneric))
+		}
+		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
 	default:
 		return nil, errors.New("invalid mode for DaprStateStore")
 	}
@@ -89,13 +99,14 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
-			Mode:              &mode,
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
+			Mode:              &mode,
+			Recipe:            fromRecipeDataModel(daprStateStore.Properties.Recipe),
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
-			Recipe:            fromRecipeDataModel(daprStateStore.Properties.Recipe),
 		}
 	case datamodel.DaprStateStoreModeResource:
 		mode := DaprStateStorePropertiesModeResource
@@ -106,11 +117,11 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
 			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
-			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	case datamodel.DaprStateStoreModeValues:
 		mode := DaprStateStorePropertiesModeValues
@@ -121,12 +132,12 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			ProvisioningState: fromProvisioningStateDataModel(daprStateStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprStateStore.Properties.Environment),
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
+			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
-			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 		}
 	default:
 		return errors.New("mode of DaprStateStore is not specified")

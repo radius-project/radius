@@ -53,11 +53,11 @@ type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Kind              DaprStateStoreKind     `json:"kind"`
-	Mode              DaprStateStoreMode     `json:"mode"`
-	Metadata          map[string]interface{} `json:"metadata"`
-	Recipe            LinkRecipe             `json:"recipe"`
-	Resource          string                 `json:"resource"`
-	Type              string                 `json:"type"`
-	Version           string                 `json:"version"`
+	Kind              DaprStateStoreKind     `json:"kind,omitempty"`
+	Mode              DaprStateStoreMode     `json:"mode,omitempty"`
+	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	Recipe            LinkRecipe             `json:"recipe,omitempty"`
+	Resource          string                 `json:"resource,omitempty"`
+	Type              string                 `json:"type,omitempty"`
+	Version           string                 `json:"version,omitempty"`
 }

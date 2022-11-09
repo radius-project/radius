@@ -1684,6 +1684,7 @@ func (r RecipeDaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap["mode"] = DaprStateStorePropertiesModeRecipe
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
+	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
 	populate(objectMap, "type", r.Type)
 	populate(objectMap, "version", r.Version)
@@ -1722,6 +1723,9 @@ func (r *RecipeDaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "recipe":
 				err = unpopulate(val, "Recipe", &r.Recipe)
+				delete(rawMsg, key)
+		case "resource":
+				err = unpopulate(val, "Resource", &r.Resource)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
@@ -2128,7 +2132,6 @@ func (r ResourceDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) 
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
-	populate(objectMap, "type", r.Type)
 	return json.Marshal(objectMap)
 }
 
@@ -2167,9 +2170,6 @@ func (r *ResourceDaprStateStoreResourceProperties) UnmarshalJSON(data []byte) er
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
-				delete(rawMsg, key)
-		case "type":
-				err = unpopulate(val, "Type", &r.Type)
 				delete(rawMsg, key)
 		}
 		if err != nil {

@@ -272,19 +272,11 @@
         "resource": {
           "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
           "type": "string"
-        },
-        "type": {
-          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
-          "example": [
-            "state.zookeeper"
-          ],
-          "type": "string"
         }
       },
       "required": [
         "kind",
-        "resource",
-        "type"
+        "resource"
       ],
       "type": "object",
       "x-ms-discriminator-value": "resource"
@@ -345,6 +337,10 @@
           "description": "Dapr component version",
           "type": "string"
         },
+        "resource": {
+          "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
+          "type": "string"
+        },
         "recipe": {
           "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
           "type": "object",
@@ -353,7 +349,6 @@
         }
       },
       "required": [
-        "kind",
         "recipe"
       ],
       "type": "object",
@@ -398,7 +393,6 @@
       },
       "required": [
         "environment",
-        "kind",
         "mode"
       ]
     }
