@@ -275,23 +275,23 @@ func (ct CoreRPTest) Test(t *testing.T) {
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
 		// Delete AWS resources if they were created
-		if step.AWSResources == nil || len(step.AWSResources.Resources) == 0 {
-			continue
-		}
-		for _, resource := range step.AWSResources.Resources {
-			t.Logf("deleting %s", resource.Name)
-			err := validation.DeleteAWSResource(ctx, t, &resource, ct.Options.AWSClient)
-			require.NoErrorf(t, err, "failed to delete %s", resource.Name)
-			t.Logf("finished deleting %s", ct.Description)
+		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
+			for _, resource := range step.AWSResources.Resources {
+				t.Logf("deleting %s", resource.Name)
+				err := validation.DeleteAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
+				t.Logf("finished deleting %s", ct.Description)
 
-			t.Logf("validating deletion of AWS resource for %s", ct.Description)
-			validation.ValidateNoAWSResource(ctx, t, &resource, ct.Options.AWSClient)
-			t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
+				t.Logf("validating deletion of AWS resource for %s", ct.Description)
+				validation.ValidateNoAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
+			}
 		}
 
 		if (step.CoreRPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
 			continue
 		}
+
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
