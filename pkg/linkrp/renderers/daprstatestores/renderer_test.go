@@ -47,10 +47,9 @@ func Test_Render_Success(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
-			},
+			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
+			Mode:     datamodel.DaprStateStoreModeResource,
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -90,10 +89,9 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind: "state.azure.tablestorage",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
-			},
+			Kind:     "state.azure.tablestorage",
+			Mode:     datamodel.DaprStateStoreModeResource,
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -116,8 +114,8 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind:                            "state.azure.tablestorage",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{},
+			Kind: "state.azure.tablestorage",
+			Mode: datamodel.DaprStateStoreModeResource,
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -140,10 +138,9 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind: "state.azure.cosmosdb",
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
-			},
+			Kind:     "state.azure.cosmosdb",
+			Mode:     datamodel.DaprStateStoreModeResource,
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -166,13 +163,12 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind: datamodel.DaprStateStoreKindGeneric,
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Type:    stateStoreType,
-				Version: daprStateStoreVersion,
-				Metadata: map[string]interface{}{
-					"foo": "bar",
-				},
+			Kind:    datamodel.DaprStateStoreKindGeneric,
+			Mode:    datamodel.DaprStateStoreModeValues,
+			Type:    stateStoreType,
+			Version: daprStateStoreVersion,
+			Metadata: map[string]interface{}{
+				"foo": "bar",
 			},
 		},
 	}
@@ -223,11 +219,10 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Type:    stateStoreType,
-				Version: daprStateStoreVersion,
-			},
+			Kind:    "generic",
+			Mode:    datamodel.DaprStateStoreModeValues,
+			Type:    stateStoreType,
+			Version: daprStateStoreVersion,
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -251,12 +246,11 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Metadata: map[string]interface{}{
-					"foo": "bar",
-				},
-				Version: daprStateStoreVersion,
+			Mode: datamodel.DaprStateStoreModeValues,
+			Metadata: map[string]interface{}{
+				"foo": "bar",
 			},
+			Version: daprStateStoreVersion,
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -280,12 +274,11 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			DaprStateStoreGeneric: datamodel.DaprStateStoreGenericResourceProperties{
-				Metadata: map[string]interface{}{
-					"foo": "bar",
-				},
-				Type: stateStoreType,
+			Mode: datamodel.DaprStateStoreModeValues,
+			Metadata: map[string]interface{}{
+				"foo": "bar",
 			},
+			Type: stateStoreType,
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -309,10 +302,9 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
-			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
-			},
+			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
+			Mode:     datamodel.DaprStateStoreModeResource,
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -334,10 +326,9 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: environmentID,
 			},
-			Kind: datamodel.DaprStateStoreKindAzureTableStorage,
-			DaprStateStoreAzureTableStorage: datamodel.DaprStateStoreAzureTableStorageResourceProperties{
-				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
-			},
+			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
+			Mode:     datamodel.DaprStateStoreModeResource,
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues

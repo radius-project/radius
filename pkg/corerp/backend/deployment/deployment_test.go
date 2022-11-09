@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
@@ -177,12 +178,11 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			},
 		},
 		Properties: linkrp_dm.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
+			Mode: dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp_dm.RecipeData{
@@ -384,11 +384,10 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: linkrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
+				Mode: dm.LinkModeValues,
 			},
 		}
 		mr := store.Object{

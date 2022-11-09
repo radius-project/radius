@@ -39,6 +39,7 @@ resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privateprevi
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     kind: 'generic'
     type: 'secretstores.kubernetes'
     metadata: {

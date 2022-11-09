@@ -39,23 +39,22 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, err
 	}
 
-	if resource.Properties.Recipe.Name != "" {
+	switch resource.Properties.Mode {
+	case datamodel.LinkModeRecipe:
 		rendererOutput, err := RenderAzureRecipe(resource, options)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		return rendererOutput, nil
-	} else if resource.Properties.Resource != "" {
+	case datamodel.LinkModeResource:
 		// Source resource identifier is provided
 		// Currently only Azure resources are supported with non empty resource id
 		rendererOutput, err := RenderAzureResource(resource.Properties)
 		if err != nil {
 			return renderers.RendererOutput{}, err
 		}
-
 		return rendererOutput, nil
-	} else {
+	case datamodel.LinkModeValues:
 		return renderers.RendererOutput{
 			Resources: []outputresource.OutputResource{},
 			ComputedValues: map[string]renderers.ComputedValueReference{
@@ -65,6 +64,8 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			},
 			SecretValues: getProvidedSecretValues(resource.Properties),
 		}, nil
+	default:
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
 	}
 }
 
@@ -208,6 +209,5 @@ func buildSecretValueReferenceForAzure(properties datamodel.MongoDatabasePropert
 			},
 		}
 	}
-
 	return secretValues
 }

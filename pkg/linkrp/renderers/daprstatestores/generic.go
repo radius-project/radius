@@ -15,7 +15,7 @@ import (
 )
 
 func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
-	properties := resource.Properties.DaprStateStoreGeneric
+	properties := resource.Properties
 
 	daprGeneric := dapr.DaprGeneric{
 		Type:     &properties.Type,

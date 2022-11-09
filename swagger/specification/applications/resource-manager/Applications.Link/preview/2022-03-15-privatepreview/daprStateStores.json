@@ -257,7 +257,7 @@
         }
       }
     },
-    "DaprStateStoreSqlServerResourceProperties": {
+    "ResourceDaprStateStoreResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -265,8 +265,31 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "state.sqlserver",
+            "state.azure.tablestorage"
+          ]
+        },
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
         "resource": {
-          "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         }
       },
@@ -275,9 +298,9 @@
         "resource"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "state.sqlserver"
+      "x-ms-discriminator-value": "resource"
     },
-    "DaprStateStoreAzureTableStorageResourceProperties": {
+    "ValuesDaprStateStoreResourceProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -285,19 +308,43 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "generic"
+          ]
+        },
+        "metadata": {
+          "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
         "resource": {
-          "description": "The resource id of the Azure Storage Table the daprStateStore resource is connected to.",
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         }
       },
       "required": [
         "kind",
-        "resource"
+        "type",
+        "metadata",
+        "version"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "state.azure.tablestorage"
+      "x-ms-discriminator-value": "values"
     },
-    "DaprStateStoreGenericResourceProperties": {
+    "RecipeDaprStateStoreProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -319,16 +366,23 @@
         "version": {
           "description": "Dapr component version",
           "type": "string"
+        },
+        "resource": {
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
+          "type": "string"
+        },
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
-        "kind",
-        "type",
-        "metadata",
-        "version"
+        "recipe"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "generic"
+      "x-ms-discriminator-value": "recipe"
     },
     "DaprStateStoreProperties": {
       "description": "DaprStateStore link properties",
@@ -341,32 +395,26 @@
           "$ref": "global.json#/definitions/BasicDaprResourceProperties"
         }
       ],
-      "discriminator": "kind",
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprStateStore link at the time the operation was called"
         },
-        "kind": {
-          "description": "The Dapr StateStore kind",
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.",
           "type": "string",
           "enum": [
-            "state.sqlserver",
-            "state.azure.tablestorage",
-            "generic"
+            "recipe",
+            "resource",
+            "values"
           ]
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprStateStore link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
         "environment",
-        "kind"
+        "mode"
       ]
     }
   },

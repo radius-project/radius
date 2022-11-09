@@ -118,7 +118,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResponseResource{}
+				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -196,7 +196,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResponseResource{}
+				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
