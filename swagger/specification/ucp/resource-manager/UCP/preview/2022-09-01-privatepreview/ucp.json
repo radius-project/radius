@@ -390,7 +390,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "Azure Credentials"
         ],
         "parameters": [
           {
@@ -431,7 +431,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "Azure Credentials"
         ],
         "parameters": [
           {
@@ -486,7 +486,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "Azure Credentials"
         ],
         "parameters": [
           {
@@ -529,7 +529,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "Azure Credentials"
         ],
         "parameters": [
           {
@@ -569,7 +569,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "AWS Credentials"
         ],
         "parameters": [
           {
@@ -610,7 +610,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "AWS Credentials"
         ],
         "parameters": [
           {
@@ -665,7 +665,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "AWS Credentials"
         ],
         "parameters": [
           {
@@ -708,7 +708,7 @@
           }
         },
         "tags": [
-          "Credentials"
+          "AWS Credentials"
         ],
         "parameters": [
           {
