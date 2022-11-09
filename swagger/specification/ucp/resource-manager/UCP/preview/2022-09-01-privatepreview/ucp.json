@@ -401,6 +401,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -442,6 +445,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
             "name": "Credential",
@@ -497,6 +503,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -537,6 +546,9 @@
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -580,6 +592,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -621,6 +636,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
             "name": "Credential",
@@ -676,6 +694,9 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -716,6 +737,9 @@
           },
           {
             "$ref": "#/parameters/PlaneNameParameter"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
