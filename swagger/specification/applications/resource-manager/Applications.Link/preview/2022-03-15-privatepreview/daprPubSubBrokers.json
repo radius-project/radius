@@ -319,9 +319,15 @@
         }
       ],
       "properties": {
-        "metadata": {
-          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
-          "type": "object"
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSub link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        },
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
         },
         "type": {
           "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
@@ -331,18 +337,12 @@
           "description": "Dapr component version",
           "type": "string"
         },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSub link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
         }
       },
       "required": [
-        "kind",
-        "type",
-        "metadata",
-        "version",
         "recipe"
       ],
       "type": "object",
@@ -390,7 +390,6 @@
       },
       "required": [
         "environment",
-        "kind",
         "mode"
       ]
     }

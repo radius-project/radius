@@ -24,7 +24,6 @@ const (
 	DaprPubSubBrokerModeRecipe   DaprPubSubBrokerMode = "recipe"
 	DaprPubSubBrokerModeResource DaprPubSubBrokerMode = "resource"
 	DaprPubSubBrokerModeValues   DaprPubSubBrokerMode = "values"
-	DaprPubSubBrokerModeUnknown  DaprPubSubBrokerMode = "unknown"
 )
 
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
