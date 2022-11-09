@@ -3,6 +3,7 @@
     "name": "daprStateStore0",
     "type": "Applications.Link/daprStateStores",
     "properties": {
-        "kind": 12345
+        "kind": 12345,
+        "mode" : "resource"
     }
 }

@@ -19,7 +19,7 @@ import (
 func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string, namespace string) (outputResources []outputresource.OutputResource, err error) {
 	var azuretableStorageID resources.ID
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
-		properties := resource.Properties.DaprStateStoreAzureTableStorage
+		properties := resource.Properties
 		if properties.Resource == "" {
 			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
@@ -31,7 +31,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 
 	}
 	if resource.Properties.Kind == datamodel.DaprStateStoreKindStateSqlServer {
-		properties := resource.Properties.DaprStateStoreSQLServer
+		properties := resource.Properties
 		if properties.Resource == "" {
 			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 		}
