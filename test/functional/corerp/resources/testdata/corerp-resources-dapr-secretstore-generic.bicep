@@ -49,11 +49,11 @@ resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privateprevi
     environment: environment
     application: app.id
     kind: 'generic'
+    mode: 'values'
     type: 'secretstores.kubernetes'
     metadata: {
       vaultName: 'test'
     }
     version: 'v1'
-    mode: 'values'
   }
 }
