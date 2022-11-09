@@ -352,24 +352,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 		return reference.Value, nil
 	}
 
-	var recipeData = dependency.RecipeData
-
-	for _, id := range recipeData.Resources {
-		parsedID, err := resources.ParseResource(id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
-		}
-		// Find resource that matches the expected Azure resource type
-		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
-			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
-			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
-		}
-	}
-
-	if recipeData.Resources != nil {
-		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the link", recipeData.Name)
-	}
-
 	var match *outputresource.OutputResource
 	for _, outputResource := range dependency.OutputResources {
 		if outputResource.LocalID == reference.LocalID {

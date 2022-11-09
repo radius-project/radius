@@ -37,17 +37,6 @@ var values = []ResourceIdentity{
 			Namespace:  "test-namespace",
 		},
 	},
-	{
-		ResourceType: &ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: ProviderAzureKubernetesService,
-		},
-		Data: AADPodIdentityIdentity{
-			AKSClusterName: "test-cluster",
-			Name:           "test-name",
-			Namespace:      "test-namespace",
-		},
-	},
 }
 
 // Test that all formats of ResourceIdentifier round-trip with BSON

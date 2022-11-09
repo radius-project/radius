@@ -53,17 +53,20 @@ func PossibleDaprPubSubBrokerPropertiesModeValues() []DaprPubSubBrokerProperties
 	}
 }
 
-// DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
-type DaprSecretStorePropertiesKind string
+// DaprSecretStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+type DaprSecretStorePropertiesMode string
 
 const (
-	DaprSecretStorePropertiesKindGeneric DaprSecretStorePropertiesKind = "generic"
+	DaprSecretStorePropertiesModeRecipe DaprSecretStorePropertiesMode = "recipe"
+	DaprSecretStorePropertiesModeValues DaprSecretStorePropertiesMode = "values"
 )
 
-// PossibleDaprSecretStorePropertiesKindValues returns the possible values for the DaprSecretStorePropertiesKind const type.
-func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKind {
-	return []DaprSecretStorePropertiesKind{	
-		DaprSecretStorePropertiesKindGeneric,
+// PossibleDaprSecretStorePropertiesModeValues returns the possible values for the DaprSecretStorePropertiesMode const type.
+func PossibleDaprSecretStorePropertiesModeValues() []DaprSecretStorePropertiesMode {
+	return []DaprSecretStorePropertiesMode{	
+		DaprSecretStorePropertiesModeRecipe,
+		DaprSecretStorePropertiesModeValues,
 	}
 }
 
@@ -144,17 +147,17 @@ func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
 	}
 }
 
-// ValuesDaprPubSubPropertiesKind - The DaprPubSubProperties kind
-type ValuesDaprPubSubPropertiesKind string
+// ValuesDaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
+type ValuesDaprSecretStorePropertiesKind string
 
 const (
-	ValuesDaprPubSubPropertiesKindGeneric ValuesDaprPubSubPropertiesKind = "generic"
+	ValuesDaprSecretStorePropertiesKindGeneric ValuesDaprSecretStorePropertiesKind = "generic"
 )
 
-// PossibleValuesDaprPubSubPropertiesKindValues returns the possible values for the ValuesDaprPubSubPropertiesKind const type.
-func PossibleValuesDaprPubSubPropertiesKindValues() []ValuesDaprPubSubPropertiesKind {
-	return []ValuesDaprPubSubPropertiesKind{	
-		ValuesDaprPubSubPropertiesKindGeneric,
+// PossibleValuesDaprSecretStorePropertiesKindValues returns the possible values for the ValuesDaprSecretStorePropertiesKind const type.
+func PossibleValuesDaprSecretStorePropertiesKindValues() []ValuesDaprSecretStorePropertiesKind {
+	return []ValuesDaprSecretStorePropertiesKind{	
+		ValuesDaprSecretStorePropertiesKindGeneric,
 	}
 }
 

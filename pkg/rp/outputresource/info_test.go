@@ -34,25 +34,24 @@ func TestGetGCOutputResources_Same(t *testing.T) {
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
-	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
+	federatedIdentity := OutputResource{
+		LocalID: LocalIDFederatedIdentity,
 		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
 			{LocalID: roleAssignmentKeys.LocalID},
 		},
 	}
-
 	after = append(after, managedIdentity)
 	after = append(after, roleAssignmentKeys)
-	after = append(after, aadPodIdentity)
+	after = append(after, federatedIdentity)
 
 	before = append(before, managedIdentity)
 	before = append(before, roleAssignmentKeys)
-	before = append(before, aadPodIdentity)
+	before = append(before, federatedIdentity)
 
 	diff := GetGCOutputResources(after, before)
 
@@ -80,11 +79,11 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
-	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
+	federatedIdentity := OutputResource{
+		LocalID: LocalIDFederatedIdentity,
 		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -94,10 +93,10 @@ func TestGetGCOutputResources_SameWithAdditionalOutputResource(t *testing.T) {
 
 	after = append(after, managedIdentity)
 	after = append(after, roleAssignmentKeys)
-	after = append(after, aadPodIdentity)
+	after = append(after, federatedIdentity)
 
 	before = append(before, roleAssignmentKeys)
-	before = append(before, aadPodIdentity)
+	before = append(before, federatedIdentity)
 
 	diff := GetGCOutputResources(after, before)
 
@@ -125,11 +124,11 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
-	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
+	federatedIdentity := OutputResource{
+		LocalID: LocalIDFederatedIdentity,
 		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -138,11 +137,11 @@ func TestGetGCOutputResources_ManagedIdentityShouldBeDeleted(t *testing.T) {
 	}
 
 	after = append(after, roleAssignmentKeys)
-	after = append(after, aadPodIdentity)
+	after = append(after, federatedIdentity)
 
 	before = append(before, managedIdentity)
 	before = append(before, roleAssignmentKeys)
-	before = append(before, aadPodIdentity)
+	before = append(before, federatedIdentity)
 
 	diff := GetGCOutputResources(after, before)
 
@@ -179,11 +178,11 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 		Dependencies: []Dependency{{LocalID: managedIdentity1.LocalID}},
 	}
 
-	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
+	federatedIdentity := OutputResource{
+		LocalID: LocalIDFederatedIdentity,
 		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity1.LocalID},
@@ -193,12 +192,12 @@ func TestGetGCOutputResources_ALotOfResources(t *testing.T) {
 
 	after = append(after, managedIdentity1)
 	after = append(after, roleAssignmentKeys)
-	after = append(after, aadPodIdentity)
+	after = append(after, federatedIdentity)
 
 	before = append(before, managedIdentity1)
 	before = append(before, managedIdentity2)
 	before = append(before, roleAssignmentKeys)
-	before = append(before, aadPodIdentity)
+	before = append(before, federatedIdentity)
 
 	diff := GetGCOutputResources(after, before)
 

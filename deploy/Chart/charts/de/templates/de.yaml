@@ -16,9 +16,6 @@ spec:
       labels:
         control-plane: de
         app.kubernetes.io/part-of: radius-control-plane
-{{ if .Values.global.rp.provider.azure.podidentity }}
-        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
-{{ end }}
     spec:
       serviceAccountName: de-manager
       containers:
@@ -55,11 +52,7 @@ metadata:
     control-plane: de
 stringData:
 # Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.podidentity }}
-  # Enable ARM but without explicit credentials, pod identity will handle it
-  SKIP_ARM: 'false'
-  ARM_AUTH_METHOD: 'ManagedIdentity'
-{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
+{{ if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
   ARM_AUTH_METHOD: 'ServicePrincipal'
