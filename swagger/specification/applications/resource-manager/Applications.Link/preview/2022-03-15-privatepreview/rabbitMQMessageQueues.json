@@ -389,7 +389,6 @@
       },
       "required": [
         "environment",
-        "queue",
         "mode"
       ]
     }
