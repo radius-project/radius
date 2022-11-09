@@ -25,13 +25,11 @@
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "kind": "generic",
-        "daprStateStoreGeneric": {
-            "type": "state.zookeeper",
-            "version": "v1",
-            "metadata": {
-                "foo": "bar"
-            }
+        "mode": "recipe",
+        "type": "state.zookeeper",
+        "version": "v1",
+        "metadata": {
+            "foo": "bar"
         },
         "recipe": {
             "name": "recipe-test",

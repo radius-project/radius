@@ -19,6 +19,14 @@ const (
 	DaprStateStoreKindUnknown           DaprStateStoreKind = "unknown"
 )
 
+type DaprStateStoreMode string
+
+const (
+	DaprStateStoreModeRecipe   DaprStateStoreMode = "recipe"
+	DaprStateStoreModeResource DaprStateStoreMode = "resource"
+	DaprStateStoreModeValues   DaprStateStoreMode = "values"
+)
+
 // DaprStateStore represents DaprStateStore link resource.
 type DaprStateStore struct {
 	v1.TrackedResource
@@ -43,24 +51,12 @@ func (daprStateStore DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState               v1.ProvisioningState                              `json:"provisioningState,omitempty"`
-	Kind                            DaprStateStoreKind                                `json:"kind"`
-	DaprStateStoreSQLServer         DaprStateStoreSQLServerResourceProperties         `json:"daprStateStoreSQLServer"`
-	DaprStateStoreAzureTableStorage DaprStateStoreAzureTableStorageResourceProperties `json:"daprStateStoreAzureTableStorage"`
-	DaprStateStoreGeneric           DaprStateStoreGenericResourceProperties           `json:"daprStateStoreGeneric"`
-	Recipe                          LinkRecipe                                        `json:"recipe,omitempty"`
-}
-
-type DaprStateStoreGenericResourceProperties struct {
-	Metadata map[string]interface{} `json:"metadata"`
-	Type     string                 `json:"type"`
-	Version  string                 `json:"version"`
-}
-
-type DaprStateStoreAzureTableStorageResourceProperties struct {
-	Resource string `json:"resource"`
-}
-
-type DaprStateStoreSQLServerResourceProperties struct {
-	Resource string `json:"resource"`
+	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
+	Kind              DaprStateStoreKind     `json:"kind,omitempty"`
+	Mode              DaprStateStoreMode     `json:"mode,omitempty"`
+	Metadata          map[string]interface{} `json:"metadata,omitempty"`
+	Recipe            LinkRecipe             `json:"recipe,omitempty"`
+	Resource          string                 `json:"resource,omitempty"`
+	Type              string                 `json:"type,omitempty"`
+	Version           string                 `json:"version,omitempty"`
 }
