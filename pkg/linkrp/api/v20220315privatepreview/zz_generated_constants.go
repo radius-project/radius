@@ -161,3 +161,17 @@ func PossibleValuesDaprSecretStorePropertiesKindValues() []ValuesDaprSecretStore
 	}
 }
 
+// ValuesDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
+type ValuesDaprStateStoreResourcePropertiesKind string
+
+const (
+	ValuesDaprStateStoreResourcePropertiesKindGeneric ValuesDaprStateStoreResourcePropertiesKind = "generic"
+)
+
+// PossibleValuesDaprStateStoreResourcePropertiesKindValues returns the possible values for the ValuesDaprStateStoreResourcePropertiesKind const type.
+func PossibleValuesDaprStateStoreResourcePropertiesKindValues() []ValuesDaprStateStoreResourcePropertiesKind {
+	return []ValuesDaprStateStoreResourcePropertiesKind{	
+		ValuesDaprStateStoreResourcePropertiesKindGeneric,
+	}
+}
+
