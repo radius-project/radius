@@ -67,7 +67,7 @@
 * **id**: string (ReadOnly, DeployTimeConstant): The resource id
 * **location**: string (Required): The geo-location where the resource lives
 * **name**: string (Required, DeployTimeConstant): The resource name
-* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): MongoDatabase link properties
+* **properties**: [MongoDatabaseProperties](#mongodatabaseproperties) (Required): Mongo database link properties
 * **systemData**: [SystemData](#systemdata) (ReadOnly): Metadata pertaining to creation and last modification of the resource.
 * **tags**: [TrackedResourceTags](#trackedresourcetags): Resource tags.
 * **type**: 'Applications.Link/mongoDatabases' (ReadOnly, DeployTimeConstant): The resource type
@@ -283,23 +283,43 @@
 * **Additional Properties Type**: string
 
 ## MongoDatabaseProperties
-### Properties
+* **Discriminator**: mode
+
+### Base Properties
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
-* **database**: string (ReadOnly): Database name of the target Mongo database
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **host**: string: Host name of the target Mongo database
-* **port**: int: Port value of the target Mongo database
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
-* **recipe**: [Recipe](#recipe): The recipe used to automatically deploy underlying infrastructure for a link
-* **resource**: string: Fully qualified resource ID of a supported resource with Mongo API to use for this link
-* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets) (WriteOnly): The secret values for the given MongoDatabase resource
+* **secrets**: [MongoDatabaseSecrets](#mongodatabasesecrets): The secret values for the given Mongo database resource
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+### RecipeMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'recipe' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
+* **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
+
+### ResourceMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string: Host name of the target Mongo database
+* **mode**: 'resource' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int: Port value of the target Mongo database
+* **resource**: string (Required): Fully qualified resource ID of a supported resource with Mongo API to use for this link
+
+### ValuesMongoDatabaseProperties
+#### Properties
+* **database**: string (ReadOnly): Database name of the target Mongo database
+* **host**: string (Required): Host name of the target Mongo database
+* **mode**: 'values' (Required): How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **port**: int (Required): Port value of the target Mongo database
+
 
 ## MongoDatabaseSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
-* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
-* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## TrackedResourceTags
 ### Properties
@@ -384,9 +404,9 @@
 
 ## MongoDatabaseSecrets
 ### Properties
-* **connectionString**: string (WriteOnly): Connection string used to connect to the target Mongo database
-* **password**: string (WriteOnly): Password to use when connecting to the target Mongo database
-* **username**: string (WriteOnly): Username to use when connecting to the target Mongo database
+* **connectionString**: string: Connection string used to connect to the target Mongo database
+* **password**: string: Password to use when connecting to the target Mongo database
+* **username**: string: Username to use when connecting to the target Mongo database
 
 ## RedisCacheSecrets
 ### Properties
