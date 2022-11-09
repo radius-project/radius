@@ -295,9 +295,8 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 		Message: "the 'resource' field must be a valid resource id",
 	}
 
-	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Equal(t, expectedErr, err)
-	require.Equal(t, 0, len(output.Resources))
 }
 
 func Test_Render_InvalidMode(t *testing.T) {
