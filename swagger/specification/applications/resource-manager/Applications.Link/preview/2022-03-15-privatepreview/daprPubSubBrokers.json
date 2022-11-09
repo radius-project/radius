@@ -257,7 +257,7 @@
         }
       }
     },
-    "DaprPubSubAzureServiceBusResourceProperties": {
+    "ResourceDaprPubSubProperties": {
       "additionalProperties": false,
       "allOf": [
         {
@@ -265,26 +265,17 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The DaprPubSubProperties kind",
+          "type": "string",
+          "enum": [
+            "pubsub.azure.servicebus"
+          ]
+        },
         "resource": {
           "description": "PubSub resource",
           "type": "string"
-        }
-      },
-      "required": [
-        "kind",
-        "resource"
-      ],
-      "type": "object",
-      "x-ms-discriminator-value": "pubsub.azure.servicebus"
-    },
-    "DaprPubSubGenericResourceProperties": {
-      "additionalProperties": false,
-      "allOf": [
-        {
-          "$ref": "#/definitions/DaprPubSubBrokerProperties"
-        }
-      ],
-      "properties": {
+        },
         "metadata": {
           "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -300,12 +291,88 @@
       },
       "required": [
         "kind",
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "resource"
+    },
+    "ValuesDaprPubSubProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubBrokerProperties"
+        }
+      ],
+      "properties": {
+        "kind": {
+          "description": "The DaprPubSubProperties kind",
+          "type": "string",
+          "enum": [
+            "generic"
+          ]
+        },
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        },
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
         "type",
         "version",
         "metadata"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "generic"
+      "x-ms-discriminator-value": "values"
+    },
+    "RecipeDaprPubSubProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/DaprPubSubBrokerProperties"
+        }
+      ],
+      "properties": {
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSub link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        },
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        },
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
+        "metadata": {
+          "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
+          "type": "object"
+        }
+      },
+      "required": [
+        "recipe"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "recipe"
     },
     "DaprPubSubBrokerProperties": {
       "description": "DaprPubSubBroker link properties",
@@ -318,35 +385,30 @@
           "$ref": "global.json#/definitions/BasicDaprResourceProperties"
         }
       ],
-      "discriminator": "kind",
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker link at the time the operation was called"
         },
-        "kind": {
-          "description": "The DaprPubSubProperties kind",
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.",
           "type": "string",
           "enum": [
-            "pubsub.azure.servicebus",
-            "generic"
+            "recipe",
+            "resource",
+            "values"
           ]
         },
         "topic": {
           "description": "Topic name of the Azure ServiceBus resource",
           "type": "string"
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the daprPubSubBroker link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
         }
       },
       "required": [
         "environment",
-        "kind"
+        "mode"
       ]
     }
   },
