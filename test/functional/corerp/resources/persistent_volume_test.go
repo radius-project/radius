@@ -15,7 +15,6 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	t.Skipf("Enable this when we use federated identity enabled regions.")
 	template := "testdata/corerp-resources-volume-azure-keyvvault.bicep"
 	name := "corerp-resources-volume-azure-keyvvault"
 
