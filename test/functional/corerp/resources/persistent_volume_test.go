@@ -15,8 +15,8 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	template := "testdata/corerp-resources-volume-azure-keyvvault.bicep"
-	name := "corerp-resources-volume-azure-keyvvault"
+	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
+	name := "corerp-resources-volume-azure-keyvault"
 
 	requiredSecrets := map[string]map[string]string{}
 
