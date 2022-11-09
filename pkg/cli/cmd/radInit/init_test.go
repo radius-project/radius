@@ -183,6 +183,91 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "rad init --dev create new environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev without Radius installed",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusNotInstalled(mocks.Helm)
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev chooses existing environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Configure an existing environment - this will be chosen automatically
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("default"),
+					},
+				})
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev prompts for existing environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Configure an existing environment - user has to choose
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("dev"),
+					},
+					{
+						Name: to.StringPtr("prod"),
+					},
+				})
+
+				// prompt the user since there's no 'default'
+				initExistingEnvironmentSelection(mocks.Prompter, "prod")
+			},
+		},
+		{
 			Name:          "Init Command With Error KubeContext Read",
 			Input:         []string{},
 			ExpectedValid: false,

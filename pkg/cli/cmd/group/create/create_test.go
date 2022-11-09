@@ -38,7 +38,7 @@ func Test_Validate(t *testing.T) {
 		{
 			Name:          "Create Command with valid args and fallback workspace",
 			Input:         []string{"rg"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),

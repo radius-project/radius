@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -36,9 +37,9 @@ Note that these resource groups are separate from the Azure cloud provider and A
 		RunE:    framework.RunCommand(runner),
 	}
 
-	cmd.Flags().StringP("group", "g", "", "The resource group name")
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
-	cmd.Flags().StringP("output", "o", "", "The output format")
+	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
@@ -67,11 +68,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
-	}
-
-	// TODO: support fallback workspace
-	if !workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
 	}
 
 	format, err := cli.RequireOutput(cmd)
