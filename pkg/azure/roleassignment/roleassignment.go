@@ -7,6 +7,7 @@ package roleassignment
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -77,7 +78,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 
 		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400
 		// For other reasons, fail.
-		if detailedError.StatusCode != 400 {
+		if detailedError.StatusCode != http.StatusBadRequest {
 			return nil, fmt.Errorf("failed to create role assignment for role '%s' with error: %v, status code: %v", roleNameOrID, detailedError.Message, detailedError.StatusCode)
 		}
 
@@ -114,7 +115,7 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 	}
 
 	// Ignore when it deletes role from non-existing or deleted resource.
-	if detailedError.StatusCode == 404 {
+	if detailedError.StatusCode == http.StatusNotFound {
 		return nil
 	}
 
