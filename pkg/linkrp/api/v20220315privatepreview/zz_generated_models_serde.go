@@ -507,7 +507,6 @@ func (d DaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", d.Application)
 	populate(objectMap, "componentName", d.ComponentName)
 	populate(objectMap, "environment", d.Environment)
-	populate(objectMap, "kind", d.Kind)
 	objectMap["mode"] = d.Mode
 	populate(objectMap, "provisioningState", d.ProvisioningState)
 	populate(objectMap, "status", d.Status)
@@ -531,9 +530,6 @@ func (d *DaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &d.Environment)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &d.Kind)
 				delete(rawMsg, key)
 		case "mode":
 				err = unpopulate(val, "Mode", &d.Mode)
@@ -1840,7 +1836,6 @@ func (r RecipeDaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "componentName", r.ComponentName)
 	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "metadata", r.Metadata)
 	objectMap["mode"] = DaprSecretStorePropertiesModeRecipe
 	populate(objectMap, "provisioningState", r.ProvisioningState)
@@ -1868,9 +1863,6 @@ func (r *RecipeDaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &r.Environment)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &r.Kind)
 				delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &r.Metadata)

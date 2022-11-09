@@ -50,20 +50,6 @@ func PossibleDaprPubSubBrokerPropertiesKindValues() []DaprPubSubBrokerProperties
 	}
 }
 
-// DaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
-type DaprSecretStorePropertiesKind string
-
-const (
-	DaprSecretStorePropertiesKindGeneric DaprSecretStorePropertiesKind = "generic"
-)
-
-// PossibleDaprSecretStorePropertiesKindValues returns the possible values for the DaprSecretStorePropertiesKind const type.
-func PossibleDaprSecretStorePropertiesKindValues() []DaprSecretStorePropertiesKind {
-	return []DaprSecretStorePropertiesKind{	
-		DaprSecretStorePropertiesKindGeneric,
-	}
-}
-
 // DaprSecretStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 type DaprSecretStorePropertiesMode string
@@ -141,6 +127,20 @@ func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
 		SQLDatabasePropertiesModeRecipe,
 		SQLDatabasePropertiesModeResource,
 		SQLDatabasePropertiesModeValues,
+	}
+}
+
+// ValuesDaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
+type ValuesDaprSecretStorePropertiesKind string
+
+const (
+	ValuesDaprSecretStorePropertiesKindGeneric ValuesDaprSecretStorePropertiesKind = "generic"
+)
+
+// PossibleValuesDaprSecretStorePropertiesKindValues returns the possible values for the ValuesDaprSecretStorePropertiesKind const type.
+func PossibleValuesDaprSecretStorePropertiesKindValues() []ValuesDaprSecretStorePropertiesKind {
+	return []ValuesDaprSecretStorePropertiesKind{	
+		ValuesDaprSecretStorePropertiesKindGeneric,
 	}
 }
 

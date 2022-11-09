@@ -196,7 +196,6 @@
 * **application**: string: Fully qualified resource ID for the application that the link is consumed by
 * **componentName**: string (ReadOnly): The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.
 * **environment**: string (Required): Fully qualified resource ID for the environment that the link is linked to
-* **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the link at the time the operation was called
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 ### RecipeDaprSecretStoreProperties
@@ -209,6 +208,7 @@
 
 ### ValuesDaprSecretStoreProperties
 #### Properties
+* **kind**: 'generic' (Required): Radius kind for Dapr Secret Store
 * **metadata**: any (Required): Any object
 * **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **type**: string (Required): Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/

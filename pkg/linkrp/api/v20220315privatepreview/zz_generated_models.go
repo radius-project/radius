@@ -318,9 +318,6 @@ type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Radius kind for Dapr Secret Store
-	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
 // determines which set of fields to additionally require.
 	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
@@ -1070,9 +1067,6 @@ type RecipeDaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Radius kind for Dapr Secret Store
-	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
 // determines which set of fields to additionally require.
 	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
@@ -1108,7 +1102,6 @@ func (r *RecipeDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSe
 	return &DaprSecretStoreProperties{
 		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
-		Kind: r.Kind,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
@@ -1492,7 +1485,7 @@ type ValuesDaprSecretStoreProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; Radius kind for Dapr Secret Store
-	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
+	Kind *ValuesDaprSecretStorePropertiesKind `json:"kind,omitempty"`
 
 	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -1526,7 +1519,6 @@ func (v *ValuesDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSe
 	return &DaprSecretStoreProperties{
 		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
-		Kind: v.Kind,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,

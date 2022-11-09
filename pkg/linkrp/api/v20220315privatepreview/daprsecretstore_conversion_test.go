@@ -34,7 +34,6 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "daprSecretStore0", convertedResource.Name)
 		require.Equal(t, "Applications.Link/daprSecretStores", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
-		require.Equal(t, "generic", string(convertedResource.Properties.Kind))
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch versionedResource.Properties.(type) {
 		case *RecipeDaprSecretStoreProperties:
@@ -42,6 +41,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
 		case *ValuesDaprSecretStoreProperties:
+			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
 			require.Equal(t, "secretstores.hashicorp.vault", convertedResource.Properties.Type)
 			require.Equal(t, "v1", convertedResource.Properties.Version)
 			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
@@ -70,7 +70,6 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Link/daprSecretStores", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetDaprSecretStoreProperties().Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetDaprSecretStoreProperties().Environment)
-		require.Equal(t, "generic", string(*versionedResource.Properties.GetDaprSecretStoreProperties().Kind))
 
 		switch v := versionedResource.Properties.(type) {
 		case *RecipeDaprSecretStoreProperties:
@@ -79,6 +78,7 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprSecretStoreProperties().Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprSecretStoreProperties().Status.OutputResources[0]["Provider"])
 		case *ValuesDaprSecretStoreProperties:
+			require.Equal(t, "generic", string(*v.Kind))
 			require.Equal(t, "secretstores.hashicorp.vault", *v.Type)
 			require.Equal(t, "v1", *v.Version)
 			require.Equal(t, "bar", v.Metadata["foo"])
