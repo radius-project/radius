@@ -32,17 +32,6 @@ type PlaneList struct {
 	Value []Plane `json:"value" yaml:"value"`
 }
 
-// ResourceGroup represents a resource group within UCP
-type ResourceGroup struct {
-	ID   string `json:"id" yaml:"id"`
-	Name string `json:"name" yaml:"name"`
-}
-
-// ResourceGroupList represents a list of resource groups
-type ResourceGroupList struct {
-	Value []ResourceGroup `json:"value" yaml:"value"`
-}
-
 // Resource represents a resource within a UCP resource group
 type Resource struct {
 	ID                string `json:"id" yaml:"id"`

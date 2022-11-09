@@ -16,73 +16,10 @@ import (
 	"reflect"
 )
 
-// MarshalJSON implements the json.Marshaller interface for type ApplicationExtension.
-func (a ApplicationExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	objectMap["kind"] = "ApplicationExtension"
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ApplicationExtension.
-func (a *ApplicationExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", a, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &a.Kind)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", a, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ApplicationKubernetesMetadataExtension.
-func (a ApplicationKubernetesMetadataExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "annotations", a.Annotations)
-	objectMap["kind"] = "kubernetesMetadata"
-	populate(objectMap, "labels", a.Labels)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ApplicationKubernetesMetadataExtension.
-func (a *ApplicationKubernetesMetadataExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", a, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "annotations":
-				err = unpopulate(val, "Annotations", &a.Annotations)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &a.Kind)
-				delete(rawMsg, key)
-		case "labels":
-				err = unpopulate(val, "Labels", &a.Labels)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", a, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type ApplicationProperties.
 func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "environment", a.Environment)
-	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
 	return json.Marshal(objectMap)
 }
@@ -98,9 +35,6 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
-				delete(rawMsg, key)
-		case "extensions":
-				a.Extensions, err = unmarshalExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
@@ -430,68 +364,6 @@ func (c *Container) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ContainerExtension.
-func (c ContainerExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	objectMap["kind"] = "ContainerExtension"
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerExtension.
-func (c *ContainerExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", c, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &c.Kind)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", c, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type ContainerKubernetesMetadataExtension.
-func (c ContainerKubernetesMetadataExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "annotations", c.Annotations)
-	objectMap["kind"] = "kubernetesMetadata"
-	populate(objectMap, "labels", c.Labels)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type ContainerKubernetesMetadataExtension.
-func (c *ContainerKubernetesMetadataExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", c, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "annotations":
-				err = unpopulate(val, "Annotations", &c.Annotations)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &c.Kind)
-				delete(rawMsg, key)
-		case "labels":
-				err = unpopulate(val, "Labels", &c.Labels)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", c, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type ContainerPort.
 func (c ContainerPort) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
@@ -746,73 +618,10 @@ func (e *EnvironmentCompute) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentExtension.
-func (e EnvironmentExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	objectMap["kind"] = "EnvironmentExtension"
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentExtension.
-func (e *EnvironmentExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &e.Kind)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type EnvironmentKubernetesMetadataExtension.
-func (e EnvironmentKubernetesMetadataExtension) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "annotations", e.Annotations)
-	objectMap["kind"] = "kubernetesMetadata"
-	populate(objectMap, "labels", e.Labels)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type EnvironmentKubernetesMetadataExtension.
-func (e *EnvironmentKubernetesMetadataExtension) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", e, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "annotations":
-				err = unpopulate(val, "Annotations", &e.Annotations)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &e.Kind)
-				delete(rawMsg, key)
-		case "labels":
-				err = unpopulate(val, "Labels", &e.Labels)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", e, err)
-		}
-	}
-	return nil
-}
-
 // MarshalJSON implements the json.Marshaller interface for type EnvironmentProperties.
 func (e EnvironmentProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "compute", e.Compute)
-	populate(objectMap, "extensions", e.Extensions)
 	populate(objectMap, "providers", e.Providers)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
 	populate(objectMap, "recipes", e.Recipes)
@@ -831,9 +640,6 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 		switch key {
 		case "compute":
 				e.Compute, err = unmarshalEnvironmentComputeClassification(val)
-				delete(rawMsg, key)
-		case "extensions":
-				e.Extensions, err = unmarshalExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "providers":
 				err = unpopulate(val, "Providers", &e.Providers)

@@ -14,7 +14,16 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
+)
+
+// Used in tests
+const (
+	SelectExistingEnvironmentPrompt         = "Select an existing environment or create a new one"
+	SelectExistingEnvironmentCreateSentinel = "[create new]"
+	EnterEnvironmentNamePrompt              = "Enter an environment name"
+	EnterNamespacePrompt                    = "Enter a namespace name to deploy apps into"
 )
 
 func ValidateCloudProviderName(name string) error {
@@ -23,6 +32,75 @@ func ValidateCloudProviderName(name string) error {
 	}
 
 	return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider type %q is not supported. Supported types: azure.", name)}
+}
+
+// SelectExistingEnvironment prompts the user to select from existing environments (with the option to create a new one).
+// We also expect the the existing environments to be a non-empty list, callers should check that.
+//
+// If the name returned is empty, it means that that either no environment was found or that the user opted to create a new one.
+func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface, existing []corerp.EnvironmentResource) (string, error) {
+	selectedName, err := cmd.Flags().GetString("environment")
+	if err != nil {
+		return "", err
+	}
+
+	// If the user provided a name, let's use that if possible.
+	if selectedName != "" {
+		for _, env := range existing {
+			if strings.EqualFold(selectedName, *env.Name) {
+				return selectedName, nil
+			}
+		}
+
+		// Returing empty tells the caller to create a new one, or to prompt or fail.
+		return "", nil
+	}
+
+	if !interactive {
+		// If an an environment exists that matches the default then choose that.
+		for _, env := range existing {
+			if strings.EqualFold(defaultVal, *env.Name) {
+				return defaultVal, nil
+			}
+		}
+
+		// Returing empty tells the caller to prompt or fail.
+		return "", nil
+	}
+
+	// On this code path, we're going to prompt for input.
+	//
+	// Build the list of items in the following way:
+	//
+	// - default environment (if it exists)
+	// - (all other existing environments)
+	// - [create new]
+	items := []string{}
+	for _, env := range existing {
+		if strings.EqualFold(defaultVal, *env.Name) {
+			items = append(items, defaultVal)
+			break
+		}
+	}
+	for _, env := range existing {
+		// The default is already in the list
+		if !strings.EqualFold(defaultVal, *env.Name) {
+			items = append(items, *env.Name)
+		}
+	}
+	items = append(items, SelectExistingEnvironmentCreateSentinel)
+
+	_, choice, err := prompter.RunSelect(prompt.SelectionPrompter(SelectExistingEnvironmentPrompt, items))
+	if err != nil {
+		return "", err
+	}
+
+	if choice == SelectExistingEnvironmentCreateSentinel {
+		// Returing empty tells the caller to create a new one.
+		return "", nil
+	}
+
+	return choice, nil
 }
 
 // Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise
@@ -35,7 +113,7 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		return "", err
 	}
 	if interactive && envStr == "" {
-		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault("Enter an environment name", defaultVal, prompt.ResourceName))
+		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault(EnterEnvironmentNamePrompt, defaultVal, prompt.ResourceName))
 		if err != nil {
 			return "", err
 		}
@@ -59,7 +137,7 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 	var err error
 	if interactive {
 		namespaceSelector := promptui.Prompt{
-			Label:   "Enter a namespace name to deploy apps into",
+			Label:   EnterNamespacePrompt,
 			Default: defaultVal,
 			Validate: func(s string) error {
 				valid, msg, err := prompt.EmptyValidator(s)

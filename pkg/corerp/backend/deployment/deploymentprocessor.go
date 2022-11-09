@@ -140,6 +140,8 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		}
 	}
 
+	rendererOutput.RadiusResource = resource
+
 	return rendererOutput, nil
 }
 
@@ -153,7 +155,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, putOptions *handlers.PutOptions) (map[string]interface{}, error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
 
 	or := putOptions.Resource
@@ -161,29 +163,26 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// Transform resource before deploying resource.
 	if outputResourceModel.ResourceTransformer != nil {
 		if err := outputResourceModel.ResourceTransformer(ctx, putOptions); err != nil {
-			return nil, err
+			return err
 		}
 	}
 	properties, err := outputResourceModel.ResourceHandler.Put(ctx, putOptions)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	if or.Identity.ResourceType == nil {
 		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
-		return nil, err
+		return err
 	}
 
 	putOptions.DependencyProperties[or.LocalID] = properties
-
-	// Values consumed by other Radius resource types through connections
-	computedValues := map[string]interface{}{}
 
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
@@ -197,18 +196,18 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 		if or.LocalID == v.LocalID && v.JSONPointer != "" {
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
-				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
 			value, _, err := pointer.Get(or.Resource)
 			if err != nil {
-				return nil, fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
+				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 			computedValues[k] = value
 		}
 	}
 
-	return computedValues, nil
+	return nil
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
@@ -226,14 +225,14 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	deployedOutputResources := []outputresource.OutputResource{}
 
 	// Values consumed by other Radius resource types through connections
-	computedValues := map[string]interface{}{}
+	computedValues := map[string]any{}
 
 	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-		deployedComputedValues, err := dp.deployOutputResource(ctx, id, rendererOutput, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
+		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rp.DeploymentOutput{}, err
 		}
@@ -253,13 +252,21 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			},
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
-		computedValues = deployedComputedValues
 	}
 
 	// Update static values for connections
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value
+		}
+	}
+
+	// Transform Radius resource with computedValues
+	for _, cv := range rendererOutput.ComputedValues {
+		if cv.Transformer != nil {
+			if err := cv.Transformer(rendererOutput.RadiusResource, computedValues); err != nil {
+				return rp.DeploymentOutput{}, err
+			}
 		}
 	}
 
@@ -343,24 +350,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
-	}
-
-	var recipeData = dependency.RecipeData
-
-	for _, id := range recipeData.Resources {
-		parsedID, err := resources.ParseResource(id)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse deployed recipe resource id %s: %w", id, err)
-		}
-		// Find resource that matches the expected Azure resource type
-		if strings.EqualFold(parsedID.Type(), reference.ProviderResourceType) {
-			identity := resourcemodel.NewARMIdentity(&reference.Transformer, id, recipeData.APIVersion)
-			return dp.secretClient.FetchSecret(ctx, identity, reference.Action, reference.ValueSelector)
-		}
-	}
-
-	if recipeData.Resources != nil {
-		return nil, fmt.Errorf("recipe %q resources do not match expected resource type for the link", recipeData.Name)
 	}
 
 	var match *outputresource.OutputResource

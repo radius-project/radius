@@ -50,6 +50,15 @@ func Test_Validate(t *testing.T) {
 				Config:         configWithWorkspace,
 			},
 		},
+		{
+			Name:          "Switch command with non-editable workspace invalid",
+			Input:         []string{"groupname"},
+			ExpectedValid: false,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
+			},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
@@ -68,14 +77,16 @@ func Test_Run(t *testing.T) {
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
-							Scope: "/planes/radius/local/resourceGroups/a",
+							Source: workspaces.SourceUserConfig,
+							Scope:  "/planes/radius/local/resourceGroups/a",
 						},
 						"b": {
 							Connection: map[string]interface{}{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
-							Scope: "/planes/radius/local/resourceGroups/b",
+							Source: workspaces.SourceUserConfig,
+							Scope:  "/planes/radius/local/resourceGroups/b",
 						},
 					},
 				},
@@ -94,7 +105,8 @@ func Test_Run(t *testing.T) {
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
-						Scope: "/planes/radius/local/resourceGroups/a",
+						Source: workspaces.SourceUserConfig,
+						Scope:  "/planes/radius/local/resourceGroups/a",
 					},
 					"b": {
 						Name: "b",
@@ -102,7 +114,8 @@ func Test_Run(t *testing.T) {
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
-						Scope: "/planes/radius/local/resourceGroups/a",
+						Source: workspaces.SourceUserConfig,
+						Scope:  "/planes/radius/local/resourceGroups/a",
 					},
 				},
 			}
@@ -155,7 +168,8 @@ func Test_Run(t *testing.T) {
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
-							Scope: "/planes/radius/local/resourceGroups/b",
+							Source: workspaces.SourceUserConfig,
+							Scope:  "/planes/radius/local/resourceGroups/b",
 						},
 					},
 				},
@@ -179,7 +193,8 @@ func Test_Run(t *testing.T) {
 					"kind":    workspaces.KindKubernetes,
 					"context": "my-context",
 				},
-				Scope: "/planes/radius/local/resourceGroups/b",
+				Source: workspaces.SourceUserConfig,
+				Scope:  "/planes/radius/local/resourceGroups/b",
 			}
 
 			runner := &Runner{

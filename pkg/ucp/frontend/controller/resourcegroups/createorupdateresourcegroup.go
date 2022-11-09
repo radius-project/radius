@@ -10,14 +10,13 @@ import (
 	"fmt"
 	http "net/http"
 
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -54,17 +53,15 @@ func (r *CreateOrUpdateResourceGroup) Run(ctx context.Context, w http.ResponseWr
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	// Build the tracked resource
-	newResource.TrackedResource = v1.TrackedResource{
-		ID:   path,
-		Name: id.Name(),
-		Type: ResourceGroupType,
-	}
+	// Set TrackedResource properties that come from the URL
+	newResource.ID = path
+	newResource.Name = id.Name()
+	newResource.Type = ResourceGroupType
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldResourceGroup, id)
 	logger := ucplog.GetLogger(ctx)
 
-	existingResource := rest.ResourceGroup{}
+	existingResource := datamodel.ResourceGroup{}
 	rgExists := true
 	etag, err := r.GetResource(ctx, id.String(), &existingResource)
 	if err != nil {

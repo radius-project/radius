@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -46,6 +47,11 @@ rad resource logs containers orders --application icecream-store --container dap
 		workspace, err := cli.RequireWorkspace(cmd, config)
 		if err != nil {
 			return err
+		}
+
+		// TODO: support fallback workspace
+		if !workspace.IsNamedWorkspace() {
+			return workspaces.ErrNamedWorkspaceRequired
 		}
 
 		application, err := cli.RequireApplication(cmd, *workspace)

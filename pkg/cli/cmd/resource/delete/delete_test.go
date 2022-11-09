@@ -25,7 +25,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Delete Command",
@@ -37,12 +36,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command without workspace",
+			Name:          "Delete Command with fallback workspace",
 			Input:         []string{"containers", "foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

@@ -19,7 +19,7 @@ func TestFromARMRequest(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
 
-	serviceCtx, _ := FromARMRequest(req, "", "global")
+	serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
 	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
 	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
 	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
@@ -34,7 +34,7 @@ func TestFromARMRequest(t *testing.T) {
 func TestSystemData(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, _ := FromARMRequest(req, "", "global")
+	serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
 
 	sysData := serviceCtx.SystemData()
 	require.NotNil(t, sysData)
@@ -49,7 +49,7 @@ func TestSystemData(t *testing.T) {
 func TestFromContext(t *testing.T) {
 	req, err := getTestHTTPRequest()
 	require.NoError(t, err)
-	serviceCtx, err := FromARMRequest(req, "", "global")
+	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 	require.NoError(t, err)
 	ctx := context.Background()
 	newCtx := WithARMRequestContext(ctx, serviceCtx)
@@ -82,7 +82,7 @@ func TestTopQueryParam(t *testing.T) {
 			req.URL.RawQuery = q.Encode()
 
 			require.NoError(t, err)
-			serviceCtx, err := FromARMRequest(req, "", "global")
+			serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 
 			if tt.shouldFail {
 				require.NotNil(t, err)

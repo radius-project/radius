@@ -32,7 +32,7 @@ type VolumesClient struct {
 }
 
 // NewVolumesClient creates a new instance of VolumesClient with the specified values.
-// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
+// rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
 func NewVolumesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*VolumesClient, error) {

@@ -26,7 +26,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid List Command",
@@ -38,12 +37,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command without workspace",
+			Name:          "List Command with fallback workspace",
 			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

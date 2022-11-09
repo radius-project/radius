@@ -12,7 +12,6 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
@@ -25,13 +24,6 @@ func Test_CommandValidation(t *testing.T) {
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 
-	ctrl := gomock.NewController(t)
-	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-
-	createGetEnvDetailsSuccess(appManagementClient)
-	// Non-existing environment
-	createGetEnvDetailsError(appManagementClient)
-
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Switch Command with valid arguments",
@@ -41,7 +33,9 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createGetEnvDetailsSuccess(mocks.ApplicationManagementClient)
+			},
 		},
 		{
 			Name:          "Switch Command with non-existent env",
@@ -51,7 +45,15 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createGetEnvDetailsError(mocks.ApplicationManagementClient)
+			},
+		},
+		{
+			Name:          "Switch Command with non-editable workspace invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

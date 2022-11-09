@@ -30,7 +30,6 @@ const (
 	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	AzureSqlServer                   = "azure.sql"
 	AzureSqlServerDatabase           = "azure.sql.database"
-	AzurePodIdentity                 = "azure.aadpodidentity"
 	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
 	AzureFederatedIdentity           = "azure.federatedidentity"
 	AzureRoleAssignment              = "azure.roleassignment"

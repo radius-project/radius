@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -33,8 +34,10 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
 	cmd.Flags().String("name", "", "specify the name of the recipe")
+	_ = cmd.MarkFlagRequired("name")
 
 	return cmd, runner
 }
@@ -63,11 +66,16 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	environmentName, err := cli.RequireEnvironmentName(cmd, args, *workspace)
+	// TODO: support fallback workspace
+	if !r.Workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
+	environment, err := cli.RequireEnvironmentName(cmd, args, *workspace)
 	if err != nil {
 		return err
 	}
-	r.Workspace.Environment = environmentName
+	r.Workspace.Environment = environment
 
 	recipeName, err := requireRecipeName(cmd)
 	if err != nil {
@@ -94,7 +102,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 	namespace := cmd.GetNamespace(envResource)
 	delete(recipeProperties, r.RecipeName)
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, "global", namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
+	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
 		return &cli.FriendlyError{Message: fmt.Sprintf("failed to delete the recipe %s from the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}

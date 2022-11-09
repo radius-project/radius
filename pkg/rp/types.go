@@ -39,6 +39,9 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
 	JSONPointer string
+
+	// Transformer transforms datamodel resource with the computed values.
+	Transformer func(conv.DataModelInterface, map[string]any) error
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources
@@ -53,9 +56,6 @@ type SecretValueReference struct {
 	// Action refers to a named custom action used to fetch the secret value. Maybe be empty in the case of Kubernetes since there's
 	// no concept of 'action'. Will always be set for an ARM resource.
 	Action string
-
-	// Resource type this action can be performed on. Example for Azure a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
-	ProviderResourceType string
 
 	// ValueSelector is a JSONPointer used to resolve the secret value.
 	ValueSelector string

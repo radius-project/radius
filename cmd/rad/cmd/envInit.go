@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
@@ -167,7 +168,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	matched, msg, _ := prompt.ResourceName(workspaceName)
 	if !matched {
-		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name.", workspaceName, msg)
+		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name", workspaceName, msg)
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -346,11 +347,11 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}
 
-	loc := "global"
 	id := "self"
+	location := v1.LocationGlobal
 
 	toCreate := coreRpApps.EnvironmentResource{
-		Location: &loc,
+		Location: &location,
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.KubernetesCompute{
 				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),
@@ -363,7 +364,7 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 	if subscriptionID != "" && resourceGroup != "" {
 		toCreate.Properties.Providers = &coreRpApps.Providers{
 			Azure: &coreRpApps.ProvidersAzure{
-				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroup/" + resourceGroup),
+				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroups/" + resourceGroup),
 			},
 		}
 	}

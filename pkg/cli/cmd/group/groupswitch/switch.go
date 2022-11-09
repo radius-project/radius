@@ -62,6 +62,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	if !workspace.IsEditableWorkspace() {
+		// Only workspaces stored in configuration can be modified.
+		return workspaces.ErrEditableWorkspaceRequired
+	}
+
 	resourceGroup, err := cli.RequireUCPResourceGroup(cmd, args)
 	if err != nil {
 		return err

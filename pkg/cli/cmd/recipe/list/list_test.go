@@ -11,6 +11,7 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -28,7 +29,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid List Command",
@@ -40,12 +40,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command without workspace",
-			Input:         []string{},
+			Name:          "List Command with fallback workspace",
+			Input:         []string{"-e", "my-env", "-g", "my-env"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{
@@ -70,7 +70,7 @@ func Test_Run(t *testing.T) {
 				ID:       to.StringPtr("/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/environments/kind-kind"),
 				Name:     to.StringPtr("kind-kind"),
 				Type:     to.StringPtr("applications.core/environments"),
-				Location: to.StringPtr("global"),
+				Location: to.StringPtr(v1.LocationGlobal),
 				Properties: &v20220315privatepreview.EnvironmentProperties{
 					Recipes: map[string]*v20220315privatepreview.EnvironmentRecipeProperties{
 						"cosmosDB": {

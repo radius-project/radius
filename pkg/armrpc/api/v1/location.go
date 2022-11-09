@@ -3,10 +3,9 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package main
+package v1
 
-import "github.com/project-radius/radius/cmd/testenv/cmd"
-
-func main() {
-	cmd.Execute()
-}
+const (
+	// LocationGlobal is the sentinel value for the location property in UCP.
+	LocationGlobal = "global"
+)
