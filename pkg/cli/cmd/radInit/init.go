@@ -28,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/spf13/cobra"
 	"k8s.io/client-go/tools/clientcmd/api"
 )
@@ -35,6 +36,11 @@ import (
 const (
 	Azure int = iota
 	AWS
+
+	confirmCloudProviderPrompt   = "Add cloud providers for cloud resources [y/N]?"
+	confirmReinstallRadiusPrompt = "Would you like to reinstall Radius control plane and configure cloud providers [N/y]?"
+	selectKubeContextPrompt      = "Select the kubeconfig context to install Radius into"
+	selectCloudProviderPrompt    = "Select your cloud provider"
 )
 
 const (
@@ -58,30 +64,32 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	cmd.Flags().Bool("dev", false, "Setup Radius for development")
 	cmd.Flags().Bool("skip-dev-recipes", false, "Use this flag to not use radius built in recipes")
 	return cmd, runner
 }
 
 type Runner struct {
-	ConfigHolder           *framework.ConfigHolder
-	Output                 output.Interface
-	Format                 string
-	Workspace              *workspaces.Workspace
-	ServicePrincipal       *azure.ServicePrincipal
-	ConnectionFactory      connections.Factory
-	KubeContext            string
-	EnvName                string
-	NameSpace              string
-	AzureCloudProvider     *azure.Provider
-	CreateNewResourceGroup bool
-	RadiusInstalled        bool
-	Reinstall              bool
-	Prompter               prompt.Interface
-	ConfigFileInterface    framework.ConfigFileInterface
-	KubernetesInterface    kubernetes.Interface
-	HelmInterface          helm.Interface
-	SkipDevRecipes         bool
-	SetupInterface         setup.Interface
+	ConfigHolder        *framework.ConfigHolder
+	Output              output.Interface
+	Format              string
+	Workspace           *workspaces.Workspace
+	ServicePrincipal    *azure.ServicePrincipal
+	ConnectionFactory   connections.Factory
+	KubeContext         string
+	ExistingEnvironment bool
+	EnvName             string
+	Namespace           string
+	AzureCloudProvider  *azure.Provider
+	RadiusInstalled     bool
+	Reinstall           bool
+	Prompter            prompt.Interface
+	ConfigFileInterface framework.ConfigFileInterface
+	KubernetesInterface kubernetes.Interface
+	HelmInterface       helm.Interface
+	SkipDevRecipes      bool
+	SetupInterface      setup.Interface
+	Dev                 bool
 }
 
 func NewRunner(factory framework.Factory) *Runner {
@@ -105,12 +113,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Format = format
 
+	r.Dev, err = cmd.Flags().GetBool("dev")
+	if err != nil {
+		return err
+	}
+
 	kubeContextList, err := r.KubernetesInterface.GetKubeContext()
 	if err != nil {
 		return &cli.FriendlyError{Message: "Failed to read kube config"}
 	}
 
-	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, true, r.Prompter)
+	// In dev mode we will just take the default kubecontext
+	r.KubeContext, err = selectKubeContext(kubeContextList.CurrentContext, kubeContextList.Contexts, !r.Dev, r.Prompter)
 	if err != nil {
 		return &cli.FriendlyError{Message: "KubeContext not specified"}
 	}
@@ -125,9 +139,9 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: "Unable to verify radius installation on cluster"}
 	}
 
-	if r.RadiusInstalled {
+	if r.RadiusInstalled && !r.Dev {
 		output.LogInfo(fmt.Sprintf("Radius control plane is already installed to context '%s'...", r.KubeContext))
-		y, err := prompt.YesOrNoPrompter("Would you like to reinstall Radius control plane and configure cloud providers [N/y]?", "N", r.Prompter)
+		y, err := prompt.YesOrNoPrompter(confirmReinstallRadiusPrompt, "N", r.Prompter)
 		if err != nil {
 			return &cli.FriendlyError{Message: "Unable to read reinstall prompt"}
 		}
@@ -136,73 +150,159 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Failed to read env name"}
-	}
-
-	r.NameSpace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
-	if err != nil {
-		return &cli.FriendlyError{Message: "Namespace not specified"}
-	}
-
+	// Set up a connection so we can list environments
 	r.Workspace = &workspaces.Workspace{
-		Name: r.EnvName,
 		Connection: map[string]interface{}{
 			"context": r.KubeContext,
-			"kind":    kubernetesKind, // we support only kubernetes for now
+			"kind":    kubernetesKind,
 		},
-		Environment: fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", r.EnvName, r.EnvName),
-		Scope:       fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName),
+
+		// We can't know the scope yet. Setting it up likes this ensures that any code
+		// that needs a resource group will fail. After we know the env name we will
+		// update this value.
+		Scope: "/planes/radius/local",
 	}
 
-	// This loop is required for adding multiple cloud providers
-	// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
-	addingAnotherProvider := "y"
-	for strings.ToLower(addingAnotherProvider) == "y" && r.Reinstall {
-		var cloudProvider int
-		// This loop is required to move up a level when the user selects [back] as an option
-		// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
-		addingCloudProvider := true
-		for addingCloudProvider {
-			cloudProviderPrompter, err := prompt.YesOrNoPrompter("Add cloud providers for cloud resources [y/N]?", "N", r.Prompter)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading cloud provider"}
-			}
-			if strings.ToLower(cloudProviderPrompter) == "n" {
-				cloudProvider = -1
-				break
-			}
-			cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
-			if err != nil {
-				return &cli.FriendlyError{Message: "Error reading cloud provider"}
-			}
-			// cloudProvider being -1 represents the user doesn't wants to add one
-			if cloudProvider != -1 {
-				addingCloudProvider = false
-			}
+	environments := []corerp.EnvironmentResource{}
+	if r.RadiusInstalled {
+		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(cmd.Context(), *r.Workspace)
+		if err != nil {
+			return err
 		}
-		// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
-		if cloudProvider == -1 {
-			break
+
+		environments, err = client.ListEnvironmentsAll(cmd.Context())
+		if err != nil {
+			return err
 		}
-		switch cloudProvider {
-		case Azure:
-			r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
+	}
+
+	// If there are any existing environments and we're not reinstalling, ask to use
+	// one of those first.
+	//
+	// "reinstall" repreresents the the user-intent to reconfigure cloud providers,
+	// we also need to force re-creation of the envionment to do that, so we don't want
+	// to reuse an existing one.
+	if len(environments) > 0 && !r.Reinstall {
+
+		// In dev mode, we take the default without asking if it's an option.
+		//
+		// The best way to accomplish that is to run SelectedExistingEnvironment in non-interactive mode
+		// first, and then try again interactively if we get no results.
+		if r.Dev {
+			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", false, r.Prompter, environments)
 			if err != nil {
 				return err
 			}
-		case AWS:
-			r.Output.LogInfo("AWS is not supported")
+		}
+
+		if r.EnvName == "" {
+			r.EnvName, err = common.SelectExistingEnvironment(cmd, "default", true, r.Prompter, environments)
+			if err != nil {
+				return err
+			}
+		}
+
+		// User choose an existing environment, grab any settings we need from it.
+		if r.EnvName != "" {
+			r.ExistingEnvironment = true
+
+			// Grab any provider info we found on the environment resource so we can store it locally.
+			for _, env := range environments {
+				if strings.EqualFold(r.EnvName, *env.Name) {
+					if env.Properties != nil &&
+						env.Properties.Providers != nil &&
+						env.Properties.Providers.Azure != nil &&
+						env.Properties.Providers.Azure.Scope != nil {
+						scope, err := resources.ParseScope(*env.Properties.Providers.Azure.Scope)
+						if err != nil {
+							return err
+						}
+
+						r.AzureCloudProvider = &azure.Provider{
+							SubscriptionID: scope.FindScope(resources.SubscriptionsSegment),
+							ResourceGroup:  scope.FindScope(resources.ResourceGroupsSegment),
+						}
+					}
+					break
+				}
+			}
 		}
 	}
+
+	// If we're going to create an environment, then prompt for the name now.
+	if !r.ExistingEnvironment {
+		// In dev mode don't ask for a name, just use 'default'
+		if r.Dev {
+			r.EnvName = "default"
+		} else {
+			r.EnvName, err = common.SelectEnvironmentName(cmd, "default", true, r.Prompter)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Failed to read env name"}
+			}
+		}
+
+		// In dev mode we don't want to ask about namespaces or cloud providers
+		if r.Dev {
+			r.Namespace = "default"
+		} else {
+			r.Namespace, err = common.SelectNamespace(cmd, "default", true, r.Prompter)
+			if err != nil {
+				return &cli.FriendlyError{Message: "Namespace not specified"}
+			}
+
+			// This loop is required for adding multiple cloud providers
+			// addingAnotherProvider tracks whether a user wants to add multiple cloud provider or not at the time of prompt
+			addingAnotherProvider := "y"
+			for strings.ToLower(addingAnotherProvider) == "y" {
+				var cloudProvider int
+				// This loop is required to move up a level when the user selects [back] as an option
+				// addingCloudProvider tracks whether a user wants to add a new cloud provider at the time of prompt
+				addingCloudProvider := true
+				for addingCloudProvider {
+					cloudProviderPrompter, err := prompt.YesOrNoPrompter(confirmCloudProviderPrompt, "N", r.Prompter)
+					if err != nil {
+						return &cli.FriendlyError{Message: "Error reading cloud provider"}
+					}
+					if strings.ToLower(cloudProviderPrompter) == "n" {
+						cloudProvider = -1
+						break
+					}
+					cloudProvider, err = selectCloudProvider(r.Output, r.Prompter)
+					if err != nil {
+						return &cli.FriendlyError{Message: "Error reading cloud provider"}
+					}
+					// cloudProvider being -1 represents the user doesn't wants to add one
+					if cloudProvider != -1 {
+						addingCloudProvider = false
+					}
+				}
+				// if the user doesn't want to add a cloud provider, then break out of the adding provider prompt block
+				if cloudProvider == -1 {
+					break
+				}
+				switch cloudProvider {
+				case Azure:
+					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
+					if err != nil {
+						return err
+					}
+				case AWS:
+					r.Output.LogInfo("AWS is not supported")
+				}
+			}
+		}
+	}
+
+	// Update the workspace with the information we captured about the environment.
+	r.Workspace.Name = r.EnvName
+	r.Workspace.Environment = fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/Applications.Core/environments/%s", r.EnvName, r.EnvName)
+	r.Workspace.Scope = fmt.Sprintf("/planes/radius/local/resourceGroups/%s", r.EnvName)
 
 	return nil
 }
 
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
-
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
 	//TODO: Initialize cloud providers separately once providers commands are in
 	// If the user prompts for re-install, re-install and init providers
@@ -215,38 +315,46 @@ func (r *Runner) Run(ctx context.Context) error {
 			return &cli.FriendlyError{Message: "Failed to install radius"}
 		}
 	}
-	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
-	if err != nil {
-		return err
-	}
-	//ignore the id of the resource group created
-	isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
-		Location: to.Ptr(v1.LocationGlobal),
-	})
-	if err != nil || !isGroupCreated {
-		return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
+
+	if r.ExistingEnvironment {
+		r.Output.LogInfo("Using existing environment %s...", r.EnvName)
+	} else {
+		r.Output.LogInfo("Creating environment %s...", r.EnvName)
+		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+		if err != nil {
+			return err
+		}
+
+		//ignore the id of the resource group created
+		isGroupCreated, err := client.CreateUCPGroup(ctx, "radius", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+			Location: to.Ptr(v1.LocationGlobal),
+		})
+		if err != nil || !isGroupCreated {
+			return &cli.FriendlyError{Message: "Failed to create ucp resource group"}
+		}
+
+		// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
+		// We'll remove this in the future.
+		_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
+			Location: to.Ptr(v1.LocationGlobal),
+		})
+		if err != nil {
+			return err
+		}
+
+		// create the providers scope from the AzureCloudProvider properties for creating the environment
+		var providers corerp.Providers
+		if r.AzureCloudProvider != nil {
+			providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
+		}
+
+		isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.Namespace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
+		if err != nil || !isEnvCreated {
+			return &cli.FriendlyError{Message: "Failed to create radius environment"}
+		}
 	}
 
-	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
-	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.EnvName, v20220901privatepreview.ResourceGroupResource{
-		Location: to.Ptr(v1.LocationGlobal),
-	})
-	if err != nil {
-		return err
-	}
-
-	// create the providers scope from the AzureCloudProvider properties for creating the environment
-	var providers corerp.Providers
-	if r.AzureCloudProvider != nil {
-		providers = cmd.CreateEnvAzureProvider(r.AzureCloudProvider.SubscriptionID, r.AzureCloudProvider.ResourceGroup)
-	}
-	isEnvCreated, err := client.CreateEnvironment(ctx, r.EnvName, v1.LocationGlobal, r.NameSpace, "kubernetes", "", map[string]*corerp.EnvironmentRecipeProperties{}, &providers, !r.SkipDevRecipes)
-	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: "Failed to create radius environment"}
-	}
-
-	err = r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, r.AzureCloudProvider)
+	err := r.ConfigFileInterface.EditWorkspaces(ctx, config, r.Workspace, r.AzureCloudProvider)
 	if err != nil {
 		return err
 	}
@@ -284,7 +392,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 			}
 		}
 		index, _, err := prompter.RunSelect(prompt.SelectionPrompter(
-			"Select the kubeconfig context to install Radius into",
+			selectKubeContextPrompt,
 			values,
 		))
 		if err != nil {
@@ -296,6 +404,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		}
 		return values[index], nil
 	}
+
 	return currentContext, nil
 }
 
@@ -303,7 +412,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 func selectCloudProvider(output output.Interface, prompter prompt.Interface) (int, error) {
 	values := []string{"Azure", "AWS", "[back]"}
 	cloudProviderSelector := promptui.Select{
-		Label: "Select your cloud provider",
+		Label: selectCloudProviderPrompt,
 		Items: values,
 	}
 	index, _, err := prompter.RunSelect(cloudProviderSelector)

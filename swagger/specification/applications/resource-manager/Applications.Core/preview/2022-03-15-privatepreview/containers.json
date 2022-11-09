@@ -410,7 +410,7 @@
           "type": "number"
         },
         "timeoutSeconds": {
-          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 second",
+          "description": "Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds",
           "type": "number"
         }
       },
@@ -630,18 +630,11 @@
         }
       }
     },
-    "ContainerExtension": {
-      "allOf": [
-        {
-          "$ref": "global.json#/definitions/Extension"
-        }
-      ]
-    },
     "ManualScalingExtension": {
       "type": "object",
       "allOf": [
         {
-          "$ref": "#/definitions/ContainerExtension"
+          "$ref": "#/definitions/Extension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -657,7 +650,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "#/definitions/ContainerExtension"
+          "$ref": "#/definitions/Extension"
         }
       ],
       "type": "object",
@@ -698,32 +691,19 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "ContainerKubernetesMetadataExtension": {
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ContainerExtension"
-        }
-      ],
-      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource",
+    "Extension": {
+      "description": "Extension of a resource.",
+      "discriminator": "kind",
       "properties": {
-        "annotations": {
-          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
-        },
-        "labels": {
-          "description": "Labels to be applied to the Kubernetes resources output by the resource",
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          }
+        "kind": {
+          "description": "Specifies the extensions of a resource.",
+          "type": "string"
         }
       },
-      "additionalProperties": false,
-      "x-ms-discriminator-value": "kubernetesMetadata"
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     },
     "ContainerProperties": {
       "allOf": [
@@ -757,7 +737,7 @@
         "extensions": {
           "type": "array",
           "items": {
-            "$ref": "global.json#/definitions/Extension"
+            "$ref": "#/definitions/Extension"
           },
           "description": "Extensions spec of the resource"
         }

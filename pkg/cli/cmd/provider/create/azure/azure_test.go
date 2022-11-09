@@ -42,7 +42,7 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: configWithWorkspace},
 		},
 		{
-			Name: "Azure command without workspace",
+			Name: "Azure command with fallback workspace",
 			Input: []string{
 				"--client-id", "abcd",
 				"--client-secret", "efgh",
@@ -51,7 +51,7 @@ func Test_Validate(t *testing.T) {
 				"--resource-group", "cool-group",
 			},
 			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadConfigWithoutWorkspace(t)},
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
 		},
 		{
 			Name: "Azure command with too many positional args",
@@ -155,6 +155,7 @@ func Test_Run(t *testing.T) {
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
+							Source: workspaces.SourceUserConfig,
 
 							// Will have provider info added
 						},
@@ -163,6 +164,7 @@ func Test_Run(t *testing.T) {
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
+							Source: workspaces.SourceUserConfig,
 
 							// Will be over-written
 							ProviderConfig: workspaces.ProviderConfig{
@@ -177,6 +179,7 @@ func Test_Run(t *testing.T) {
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-other-context",
 							},
+							Source: workspaces.SourceUserConfig,
 
 							// Will be left-alone
 							ProviderConfig: workspaces.ProviderConfig{
@@ -226,6 +229,7 @@ func Test_Run(t *testing.T) {
 						"kind":    workspaces.KindKubernetes,
 						"context": "my-context",
 					},
+					Source: workspaces.SourceUserConfig,
 				},
 				Format: "table",
 
@@ -257,6 +261,7 @@ func Test_Run(t *testing.T) {
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
+						Source: workspaces.SourceUserConfig,
 						ProviderConfig: workspaces.ProviderConfig{
 							Azure: &workspaces.AzureProvider{
 								SubscriptionID: "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
@@ -270,6 +275,7 @@ func Test_Run(t *testing.T) {
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
+						Source: workspaces.SourceUserConfig,
 						ProviderConfig: workspaces.ProviderConfig{
 							Azure: &workspaces.AzureProvider{
 								SubscriptionID: "E3955194-FC78-40A8-8143-C5D8DCDC45C5",
@@ -283,6 +289,7 @@ func Test_Run(t *testing.T) {
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-other-context",
 						},
+						Source: workspaces.SourceUserConfig,
 						ProviderConfig: workspaces.ProviderConfig{
 							Azure: &workspaces.AzureProvider{
 								SubscriptionID: "FE3955194-FC78-40A8-8143-C5D8DCDC45C5",

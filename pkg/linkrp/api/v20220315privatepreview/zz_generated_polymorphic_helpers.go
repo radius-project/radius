@@ -31,6 +31,26 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 	return b, json.Unmarshal(rawMsg, b)
 }
 
+func unmarshalDaprSecretStorePropertiesClassification(rawMsg json.RawMessage) (DaprSecretStorePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b DaprSecretStorePropertiesClassification
+	switch m["mode"] {
+	case string(DaprSecretStorePropertiesModeRecipe):
+		b = &RecipeDaprSecretStoreProperties{}
+	case string(DaprSecretStorePropertiesModeValues):
+		b = &ValuesDaprSecretStoreProperties{}
+	default:
+		b = &DaprSecretStoreProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (DaprStateStorePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -40,15 +60,37 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 		return nil, err
 	}
 	var b DaprStateStorePropertiesClassification
-	switch m["kind"] {
-	case string(DaprStateStorePropertiesKindGeneric):
-		b = &DaprStateStoreGenericResourceProperties{}
-	case string(DaprStateStorePropertiesKindStateAzureTablestorage):
-		b = &DaprStateStoreAzureTableStorageResourceProperties{}
-	case string(DaprStateStorePropertiesKindStateSqlserver):
-		b = &DaprStateStoreSQLServerResourceProperties{}
+	switch m["mode"] {
+	case string(DaprStateStorePropertiesModeRecipe):
+		b = &RecipeDaprStateStoreProperties{}
+	case string(DaprStateStorePropertiesModeResource):
+		b = &ResourceDaprStateStoreResourceProperties{}
+	case string(DaprStateStorePropertiesModeValues):
+		b = &ValuesDaprStateStoreResourceProperties{}
 	default:
 		b = &DaprStateStoreProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (MongoDatabasePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b MongoDatabasePropertiesClassification
+	switch m["mode"] {
+	case string(MongoDatabasePropertiesModeRecipe):
+		b = &RecipeMongoDatabaseProperties{}
+	case string(MongoDatabasePropertiesModeResource):
+		b = &ResourceMongoDatabaseProperties{}
+	case string(MongoDatabasePropertiesModeValues):
+		b = &ValuesMongoDatabaseProperties{}
+	default:
+		b = &MongoDatabaseProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }

@@ -117,7 +117,7 @@ type ExtendersClientListSecretsResponse struct {
 
 // MongoDatabasesClientCreateOrUpdateResponse contains the response from method MongoDatabasesClient.CreateOrUpdate.
 type MongoDatabasesClientCreateOrUpdateResponse struct {
-	MongoDatabaseResponseResource
+	MongoDatabaseResource
 }
 
 // MongoDatabasesClientDeleteResponse contains the response from method MongoDatabasesClient.Delete.
@@ -127,7 +127,7 @@ type MongoDatabasesClientDeleteResponse struct {
 
 // MongoDatabasesClientGetResponse contains the response from method MongoDatabasesClient.Get.
 type MongoDatabasesClientGetResponse struct {
-	MongoDatabaseResponseResource
+	MongoDatabaseResource
 }
 
 // MongoDatabasesClientListByRootScopeResponse contains the response from method MongoDatabasesClient.ListByRootScope.

@@ -66,6 +66,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
+	// TODO: support fallback workspace
+	if !r.Workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
 	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
 	if err != nil {
 		return err

@@ -36,7 +36,7 @@
   "paths": {
     "/{rootScope}/providers/Applications.Link/mongoDatabases": {
       "get": {
-        "description": "Lists information about all mongoDatabases resources in the given root scope",
+        "description": "Lists information about all Mongo database resources in the given root scope",
         "operationId": "MongoDatabases_ListByRootScope",
         "produces": [
           "application/json"
@@ -59,7 +59,7 @@
         ],
         "responses": {
           "200": {
-            "description": "List of MongoDatabase resources",
+            "description": "List of Mongo database resources",
             "schema": {
               "$ref": "#/definitions/MongoDatabaseList"
             }
@@ -79,7 +79,7 @@
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}": {
       "get": {
-        "description": "Retrieves information about a mongoDatabases resource",
+        "description": "Retrieves information about a Mongo database resource",
         "operationId": "MongoDatabases_Get",
         "produces": [
           "application/json"
@@ -105,9 +105,9 @@
         ],
         "responses": {
           "200": {
-            "description": "MongoDatabase resource",
+            "description": "Mongo database resource",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResponseResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "default": {
@@ -119,14 +119,20 @@
         }
       },
       "put": {
-        "description": "Creates or updates a MongoDatabase resource",
+        "description": "Creates or updates a Mongo database resource",
         "operationId": "MongoDatabases_CreateOrUpdate",
         "produces": [
           "application/json"
         ],
         "x-ms-examples": {
-          "MongoDatabasesPut": {
-            "$ref": "./examples/MongoDatabasesPut.json"
+          "MongoDatabasesPutResource": {
+            "$ref": "./examples/MongoDatabasesPutResource.json"
+          },
+          "MongoDatabasesPutRecipe": {
+            "$ref": "./examples/MongoDatabasesPutRecipe.json"
+          },
+          "MongoDatabasesPutValues": {
+            "$ref": "./examples/MongoDatabasesPutValues.json"
           }
         },
         "tags": [
@@ -144,7 +150,7 @@
           },
           {
             "name": "MongoDatabaseParameters",
-            "description": "mongoDatabase create parameters",
+            "description": "Mongo database create parameters",
             "in": "body",
             "required": true,
             "schema": {
@@ -154,15 +160,15 @@
         ],
         "responses": {
           "200": {
-            "description": "The request was successful; response contains the mongoDatabase resource",
+            "description": "The request was successful; response contains the Mongo database resource",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResponseResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/MongoDatabaseResponseResource"
+              "$ref": "#/definitions/MongoDatabaseResource"
             }
           },
           "default": {
@@ -174,7 +180,7 @@
         }
       },
       "delete": {
-        "description": "Deletes an existing mongoDatabase resource",
+        "description": "Deletes an existing mongo database resource",
         "operationId": "MongoDatabases_Delete",
         "produces": [
           "application/json"
@@ -200,13 +206,13 @@
         ],
         "responses": {
           "200": {
-            "description": "The MongoDatabase link was successfully deleted."
+            "description": "The Mongo database link was successfully deleted."
           },
           "202": {
-            "description": "The MongoDatabase link will be deleted asynchronously."
+            "description": "The Mongo database link will be deleted asynchronously."
           },
           "204": {
-            "description": "The MongoDatabase link does not exist."
+            "description": "The Mongo database link does not exist."
           },
           "default": {
             "description": "Error response describing the reason for operation failure",
@@ -219,7 +225,7 @@
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
       "post": {
-        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "description": "Lists secrets values for the specified Mongo database resource",
         "operationId": "MongoDatabases_listSecrets",
         "produces": [
           "application/json"
@@ -262,18 +268,18 @@
   },
   "definitions": {
     "MongoDatabaseList": {
-      "description": "Object that includes an array of MongoDatabase and a possible link for next set",
+      "description": "Object that includes an array of Mongo database and a possible link for next set",
       "type": "object",
       "properties": {
         "value": {
-          "description": "List of MongoDatabase resources",
+          "description": "List of Mongo database resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/MongoDatabaseResponseResource"
+            "$ref": "#/definitions/MongoDatabaseResource"
           }
         },
         "nextLink": {
-          "description": "The link used to fetch the next page of MongoDatabase list.",
+          "description": "The link used to fetch the next page of Mongo database list.",
           "type": "string"
         }
       }
@@ -299,48 +305,14 @@
         }
       }
     },
-    "MongoDatabaseResponseResource": {
-      "description": "MongoDatabase link",
-      "type": "object",
+    "ResourceMongoDatabaseProperties": {
+      "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          "$ref": "#/definitions/MongoDatabaseProperties"
         }
       ],
-      "required": [
-        "properties"
-      ],
-      "properties": {
-        "systemData": {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
-        },
-        "properties": {
-          "x-ms-client-flatten": true,
-          "$ref": "#/definitions/MongoDatabaseResponseProperties"
-        }
-      }
-    },
-    "MongoDatabaseResponseProperties": {
-      "description": "MongoDatabase link properties",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "global.json#/definitions/BasicResourceProperties"
-        }
-      ],
-      "properties": {
-        "provisioningState": {
-          "readOnly": true,
-          "$ref": "global.json#/definitions/ProvisioningState",
-          "description": "Provisioning state of the mongo database link at the time the operation was called"
-        },
-        "resource": {
-          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link",
-          "type": "string",
-          "example": [
-            "account::mongodb.id"
-          ]
-        },
+      "properties": { 
         "host": {
           "description": "Host name of the target Mongo database",
           "type": "string"
@@ -354,8 +326,46 @@
         },
         "database": {
           "description": "Database name of the target Mongo database",
+          "readOnly": true,
+          "type": "string"
+        },
+        "resource": {
+          "description": "Fully qualified resource ID of a supported resource with Mongo API to use for this link",
           "type": "string",
-          "readOnly": true
+          "example": [
+            "account::mongodb.id"
+          ]
+        }
+      },
+      "required": [
+        "resource"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "resource"
+    },
+    "RecipeMongoDatabaseProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/MongoDatabaseProperties"
+        }
+      ],
+      "properties": { 
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "readOnly": true,
+          "type": "string"
         },
         "recipe": {
           "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link",
@@ -364,31 +374,86 @@
         }
       },
       "required": [
-        "environment"
-      ]
-    },
-    "MongoDatabaseProperties": {
-      "description": "MongoDatabase link properties",
+        "recipe"
+      ],
       "type": "object",
+      "x-ms-discriminator-value": "recipe"
+    },
+    "ValuesMongoDatabaseProperties": {
+      "additionalProperties": false,
       "allOf": [
         {
-          "$ref": "#/definitions/MongoDatabaseResponseProperties"
+          "$ref": "#/definitions/MongoDatabaseProperties"
         }
       ],
       "properties": {
+        "host": {
+          "description": "Host name of the target Mongo database",
+          "type": "string"
+        },
+        "port": {
+          "description": "Port value of the target Mongo database",
+          "type": "integer",
+          "example": [
+            27017
+          ]
+        },
+        "database": {
+          "description": "Database name of the target Mongo database",
+          "readOnly": true,
+          "type": "string"
+        }
+      },
+      "required": [
+        "host",
+        "port"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
+    },
+    "MongoDatabaseProperties": {
+      "description": "Mongo database link properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "discriminator": "mode",
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "global.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the mongo database link at the time the operation was called"
+        },
+        "mode" : {
+          "description": "How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.",
+          "type": "string",
+          "enum": [
+            "resource",
+            "recipe",
+            "values"
+          ] 
+        },
         "secrets": {
+          "x-ms-secret": true,
           "type": "object",
           "description": "Secrets values provided for the resource",
           "$ref": "#/definitions/MongoDatabaseSecrets"
         }
-      }
+      },
+      "required": [
+        "environment",
+        "mode"
+      ]
     },
     "MongoDatabaseListSecretsResult": {
-      "description": "The secret values for the given MongoDatabase resource",
+      "description": "The secret values for the given Mongo database resource",
       "$ref": "#/definitions/MongoDatabaseSecrets"
     },
     "MongoDatabaseSecrets": {
-      "description": "The secret values for the given MongoDatabase resource",
+      "description": "The secret values for the given Mongo database resource",
+      "type": "object",
       "properties": {
         "username": {
           "description": "Username to use when connecting to the target Mongo database",
@@ -407,7 +472,7 @@
   },
   "parameters": {
     "MongoDatabaseNameParameter": {
-      "description": "The name of the MongoDatabase link resource",
+      "description": "The name of the Mongo database link resource",
       "name": "mongoDatabaseName",
       "in": "path",
       "required": true,

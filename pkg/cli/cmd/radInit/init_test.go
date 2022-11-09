@@ -8,12 +8,16 @@ package radInit
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
+	"github.com/manifoldco/promptui"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
@@ -22,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 	"k8s.io/client-go/tools/clientcmd/api"
@@ -32,26 +37,8 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
+	config := radcli.LoadConfigWithWorkspace(t)
 
-	// Scenario with no cloud provider
-	kubernetesMock := kubernetes.NewMockInterface(ctrl)
-	prompter := prompt.NewMockInterface(ctrl)
-	helmMock := helm.NewMockInterface(ctrl)
-	setupMock := setup.NewMockInterface(ctrl)
-
-	initMocksWithoutCloudProvider(kubernetesMock, prompter, helmMock)
-	// Scenario with error kubeContext read
-	initMocksWithKubeContextReadError(kubernetesMock)
-	// Scenario with error kubeContext selection
-	initMocksWithKubeContextSelectionError(kubernetesMock, prompter)
-	// Scenario with error env name read
-	initMocksWithErrorEnvNameRead(kubernetesMock, prompter, helmMock)
-	// Scenario with error name space read
-	initMocksWithErrorNamespaceRead(kubernetesMock, prompter, helmMock)
-	// Scenario with cloud provider configured
-	initMocksWithCloudProvider(kubernetesMock, prompter, helmMock, setupMock)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Init Command",
@@ -59,11 +46,226 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config:         config,
 			},
-			KubernetesInterface: kubernetesMock,
-			Prompter:            prompter,
-			HelmInterface:       helmMock,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Use default env name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+
+				// No cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Valid Init Command Without Radius installed",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusNotInstalled(mocks.Helm)
+
+				// We do not prompt for reinstall if Radius is not yet installed
+
+				// We do not check for existing environments if Radius is not installed
+
+				// Use default env name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+
+				// No cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Initialize with existing environment, choose to create new",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("cool-existing-env"),
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, common.SelectExistingEnvironmentCreateSentinel)
+
+				// Use default env name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+
+				// No cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Initialize with existing environment, choose existing",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("cool-existing-env"),
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
+
+				// No need to choose env settings since we're using existing
+			},
+		},
+		{
+			Name:          "Init Command With Cloud Provider (Reinstall))",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Reinstall
+				initRadiusReinstallYes(mocks.Prompter)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+
+				// Add azure provider
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter)
+				initParseCloudProvider(mocks.Setup, mocks.Prompter)
+
+				// Don't add any other cloud providers
+				initAddCloudProviderPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "rad init --dev create new environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev without Radius installed",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusNotInstalled(mocks.Helm)
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev chooses existing environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Configure an existing environment - this will be chosen automatically
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("default"),
+					},
+				})
+
+				// No prompts in this case
+			},
+		},
+		{
+			Name:          "rad init --dev prompts for existing environment",
+			Input:         []string{"--dev"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initHelmMockRadiusInstalled(mocks.Helm)
+
+				// Configure an existing environment - user has to choose
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("dev"),
+					},
+					{
+						Name: to.StringPtr("prod"),
+					},
+				})
+
+				// prompt the user since there's no 'default'
+				initExistingEnvironmentSelection(mocks.Prompter, "prod")
+			},
 		},
 		{
 			Name:          "Init Command With Error KubeContext Read",
@@ -71,9 +273,12 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config:         config,
 			},
-			KubernetesInterface: kubernetesMock,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Fail to read Kubernetes context
+				initGetKubeContextError(mocks.Kubernetes)
+			},
 		},
 		{
 			Name:          "Init Command With Error KubeContext Selection",
@@ -81,10 +286,13 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config:         config,
 			},
-			KubernetesInterface: kubernetesMock,
-			Prompter:            prompter,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Cancel instead of choosing kubernetes context
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextSelectionError(mocks.Prompter)
+			},
 		},
 		{
 			Name:          "Init Command With Error EnvName Read",
@@ -92,11 +300,21 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config:         config,
 			},
-			KubernetesInterface: kubernetesMock,
-			Prompter:            prompter,
-			HelmInterface:       helmMock,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// User cancels from environment name prompt
+				initEnvNamePromptError(mocks.Prompter)
+			},
 		},
 		{
 			Name:          "Init Command With Error Namespace Read",
@@ -104,24 +322,22 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+				Config:         config,
 			},
-			KubernetesInterface: kubernetesMock,
-			Prompter:            prompter,
-			HelmInterface:       helmMock,
-		},
-		{
-			Name:          "Init Command With Cloud Provider Read",
-			Input:         []string{},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and cancel out of namespace prompt
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePromptError(mocks.Prompter)
 			},
-			KubernetesInterface: kubernetesMock,
-			Prompter:            prompter,
-			HelmInterface:       helmMock,
-			SetupInterface:      setupMock,
 		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
@@ -143,7 +359,7 @@ func Test_Run(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().
@@ -166,7 +382,7 @@ func Test_Run(t *testing.T) {
 			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
 			KubeContext:         "kind-kind",
 			EnvName:             "default",
-			NameSpace:           "defaultNameSpace",
+			Namespace:           "defaultNamespace",
 			Reinstall:           true,
 			AzureCloudProvider: &azure.Provider{
 				SubscriptionID: "test-subscription",
@@ -195,7 +411,7 @@ func Test_Run_WithoutAzureProvider(t *testing.T) {
 			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
 			Return(true, nil).Times(1)
 		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNameSpace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 			Return(true, nil).Times(1)
 
 		configFileInterface.EXPECT().
@@ -218,7 +434,7 @@ func Test_Run_WithoutAzureProvider(t *testing.T) {
 			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
 			KubeContext:         "kind-kind",
 			EnvName:             "default",
-			NameSpace:           "defaultNameSpace",
+			Namespace:           "defaultNamespace",
 			Reinstall:           true,
 		}
 
@@ -227,31 +443,8 @@ func Test_Run_WithoutAzureProvider(t *testing.T) {
 	})
 }
 
-func initMocksWithoutCloudProvider(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
-	initGetKubeContextSuccess(kubernetesMock)
-	initKubeContextWithKind(prompterMock)
-	initHelmMockRadiusInstalled(helmMock)
-	initRadiusReInstallNo(prompterMock)
-	initEnvNamePrompt(prompterMock)
-	initNameSpacePrompt(prompterMock)
-	initAddCloudProviderPromptNo(prompterMock)
-}
-
-func initMocksWithCloudProvider(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface, azureMock *setup.MockInterface) {
-	initGetKubeContextSuccess(kubernetesMock)
-	initKubeContextWithKind(prompterMock)
-	initHelmMockRadiusInstalled(helmMock)
-	initPromptYes(prompterMock)
-	initEnvNamePrompt(prompterMock)
-	initNameSpacePrompt(prompterMock)
-	initPromptYes(prompterMock)
-	initSelectCloudProvider(prompterMock)
-	initParseCloudProvider(azureMock, prompterMock)
-	initAddCloudProviderPromptNo(prompterMock) // N dont add another cloud provider
-}
-
-func initParseCloudProvider(azureMock *setup.MockInterface, prompterMock *prompt.MockInterface) {
-	azureMock.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, prompterMock).Return(&azure.Provider{
+func initParseCloudProvider(setup *setup.MockInterface, promper *prompt.MockInterface) {
+	setup.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, promper).Return(&azure.Provider{
 		SubscriptionID: "test-subscription",
 		ResourceGroup:  "test-rg",
 		ServicePrincipal: &azure.ServicePrincipal{
@@ -260,32 +453,6 @@ func initParseCloudProvider(azureMock *setup.MockInterface, prompterMock *prompt
 			TenantID:     gomock.Any().String(),
 		},
 	}, nil)
-}
-
-func initMocksWithKubeContextReadError(kubernetesMock *kubernetes.MockInterface) {
-	initGetKubeContextError(kubernetesMock)
-}
-
-func initMocksWithKubeContextSelectionError(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface) {
-	initGetKubeContextSuccess(kubernetesMock)
-	initKubeContextSelectionError(prompterMock)
-}
-
-func initMocksWithErrorEnvNameRead(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
-	initGetKubeContextSuccess(kubernetesMock)
-	initKubeContextWithKind(prompterMock)
-	initHelmMockRadiusInstalled(helmMock)
-	initRadiusReInstallNo(prompterMock)
-	initEnvNamePromptError(prompterMock)
-}
-
-func initMocksWithErrorNamespaceRead(kubernetesMock *kubernetes.MockInterface, prompterMock *prompt.MockInterface, helmMock *helm.MockInterface) {
-	initGetKubeContextSuccess(kubernetesMock)
-	initKubeContextWithKind(prompterMock)
-	initHelmMockRadiusInstalled(helmMock)
-	initRadiusReInstallNo(prompterMock)
-	initEnvNamePrompt(prompterMock)
-	initNameSpacePromptError(prompterMock)
 }
 
 func initGetKubeContextSuccess(kubernestesMock *kubernetes.MockInterface) {
@@ -314,65 +481,136 @@ func getTestKubeConfig() *api.Config {
 
 func initKubeContextWithKind(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(gomock.Any()).
+		RunSelect(matchesSelect(selectKubeContextPrompt)).
 		Return(2, "", nil).Times(1)
 }
 
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(gomock.Any()).
+		RunSelect(matchesSelect(selectKubeContextPrompt)).
 		Return(-1, "", errors.New("cannot read selection")).Times(1)
 }
 
-func initRadiusReInstallNo(prompter *prompt.MockInterface) {
+func initRadiusReinstallNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(confirmReinstallRadiusPrompt)).
 		Return("N", nil).Times(1)
+}
+
+func initRadiusReinstallYes(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(matchesPrompt(confirmReinstallRadiusPrompt)).
+		Return("Y", nil).Times(1)
 }
 
 func initEnvNamePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(common.EnterEnvironmentNamePrompt)).
 		Return("default", nil).Times(1)
 }
 
 func initEnvNamePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(common.EnterEnvironmentNamePrompt)).
 		Return("", errors.New("unable to read prompt")).Times(1)
 }
 
-func initNameSpacePrompt(prompter *prompt.MockInterface) {
+func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(common.EnterNamespacePrompt)).
 		Return("default", nil).Times(1)
 }
 
-func initNameSpacePromptError(prompter *prompt.MockInterface) {
+func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(common.EnterNamespacePrompt)).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
 func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(confirmCloudProviderPrompt)).
 		Return("N", nil).Times(1)
 }
 
-func initPromptYes(prompter *prompt.MockInterface) {
+func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(gomock.Any()).
+		RunPrompt(matchesPrompt(confirmCloudProviderPrompt)).
 		Return("Y", nil).Times(1)
+
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(gomock.Any()).Return(0, "", nil).Times(1)
+		RunSelect(matchesSelect(selectCloudProviderPrompt)).Return(0, "", nil).Times(1)
 }
 
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
 	helmMock.EXPECT().
 		CheckRadiusInstall(gomock.Any()).
 		Return(true, nil).Times(1)
+}
+
+func initHelmMockRadiusNotInstalled(helmMock *helm.MockInterface) {
+	helmMock.EXPECT().
+		CheckRadiusInstall(gomock.Any()).
+		Return(false, nil).Times(1)
+}
+
+func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClient, environments []corerp.EnvironmentResource) {
+	clientMock.EXPECT().
+		ListEnvironmentsAll(gomock.Any()).
+		Return(environments, nil).Times(1)
+}
+
+func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
+	prompter.EXPECT().
+		RunSelect(matchesSelect(common.SelectExistingEnvironmentPrompt)).
+		Return(-1, choice, nil).Times(1) // We ignore the index, so this is ok.
+}
+
+var _ gomock.Matcher = (*PromptMatcher)(nil)
+
+func matchesPrompt(message string) *PromptMatcher {
+	return &PromptMatcher{Message: message}
+}
+
+type PromptMatcher struct {
+	Message string
+}
+
+func (m *PromptMatcher) Matches(x interface{}) bool {
+	p, ok := x.(promptui.Prompt)
+	if !ok {
+		return false
+	}
+
+	return p.Label == m.Message
+}
+
+func (m *PromptMatcher) String() string {
+	return fmt.Sprintf("promptui.Prompt { Label: \"%s\"}", m.Message)
+}
+
+var _ gomock.Matcher = (*SelectMatcher)(nil)
+
+func matchesSelect(message string) *SelectMatcher {
+	return &SelectMatcher{Message: message}
+}
+
+type SelectMatcher struct {
+	Message string
+}
+
+func (m *SelectMatcher) Matches(x interface{}) bool {
+	p, ok := x.(promptui.Select)
+	if !ok {
+		return false
+	}
+
+	return p.Label == m.Message
+}
+
+func (m *SelectMatcher) String() string {
+	return fmt.Sprintf("promptui.Select { Label: \"%s\"}", m.Message)
 }

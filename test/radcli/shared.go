@@ -13,8 +13,10 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/golang/mock/gomock"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -32,16 +34,20 @@ import (
 )
 
 type ValidateInput struct {
-	Name                string
-	Input               []string
-	ExpectedValid       bool
-	ConfigHolder        framework.ConfigHolder
-	KubernetesInterface kubernetes.Interface
-	Prompter            prompt.Interface
-	HelmInterface       helm.Interface
-	ConnectionFactory   *connections.MockFactory
-	NamespaceInterface  namespace.Interface
-	SetupInterface      setup.Interface
+	Name           string
+	Input          []string
+	ExpectedValid  bool
+	ConfigHolder   framework.ConfigHolder
+	ConfigureMocks func(mocks ValidateMocks)
+}
+
+type ValidateMocks struct {
+	Kubernetes                  *kubernetes.MockInterface
+	Namespace                   *namespace.MockInterface
+	Prompter                    *prompt.MockInterface
+	Helm                        *helm.MockInterface
+	Setup                       *setup.MockInterface
+	ApplicationManagementClient *clients.MockApplicationsManagementClient
 }
 
 func SharedCommandValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner)) {
@@ -57,16 +63,35 @@ func SharedCommandValidation(t *testing.T, factory func(framework framework.Fact
 func SharedValidateValidation(t *testing.T, factory func(framework framework.Factory) (*cobra.Command, framework.Runner), testcases []ValidateInput) {
 	for _, testcase := range testcases {
 		t.Run(testcase.Name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+
 			framework := &framework.Impl{
-				ConnectionFactory:   testcase.ConnectionFactory,
-				ConfigHolder:        &testcase.ConfigHolder,
-				Output:              &output.MockOutput{},
-				KubernetesInterface: testcase.KubernetesInterface,
-				Prompter:            testcase.Prompter,
-				HelmInterface:       testcase.HelmInterface,
-				NamespaceInterface:  testcase.NamespaceInterface,
-				SetupInterface:      testcase.SetupInterface,
+				ConfigHolder: &testcase.ConfigHolder,
+				Output:       &output.MockOutput{},
 			}
+
+			if testcase.ConfigureMocks != nil {
+				mocks := ValidateMocks{
+					Kubernetes:                  kubernetes.NewMockInterface(ctrl),
+					Namespace:                   namespace.NewMockInterface(ctrl),
+					Prompter:                    prompt.NewMockInterface(ctrl),
+					Helm:                        helm.NewMockInterface(ctrl),
+					Setup:                       setup.NewMockInterface(ctrl),
+					ApplicationManagementClient: clients.NewMockApplicationsManagementClient(ctrl),
+				}
+
+				testcase.ConfigureMocks(mocks)
+
+				framework.KubernetesInterface = mocks.Kubernetes
+				framework.NamespaceInterface = mocks.Namespace
+				framework.Prompter = mocks.Prompter
+				framework.HelmInterface = mocks.Helm
+				framework.SetupInterface = mocks.Setup
+				framework.ConnectionFactory = &connections.MockFactory{
+					ApplicationsManagementClient: mocks.ApplicationManagementClient,
+				}
+			}
+
 			cmd, runner := factory(framework)
 			cmd.SetArgs(testcase.Input)
 			cmd.SetContext(context.Background())
@@ -151,7 +176,7 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-func LoadConfigWithoutWorkspace(t *testing.T) *viper.Viper {
+func LoadEmptyConfig(t *testing.T) *viper.Viper {
 
 	var yamlData = `
 workspaces: 

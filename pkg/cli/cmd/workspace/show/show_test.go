@@ -32,6 +32,12 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder:  framework.ConfigHolder{Config: config},
 		},
 		{
+			Name:          "show fallback workspace",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
+		},
+		{
 			Name:          "show explicit workspace flag valid",
 			Input:         []string{"-w", radcli.TestWorkspaceName},
 			ExpectedValid: true,
@@ -42,12 +48,6 @@ func Test_Validate(t *testing.T) {
 			Input:         []string{radcli.TestWorkspaceName},
 			ExpectedValid: true,
 			ConfigHolder:  framework.ConfigHolder{Config: config},
-		},
-		{
-			Name:          "show workspace no-workspace invalid",
-			Input:         []string{},
-			ExpectedValid: false,
-			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadConfigWithoutWorkspace(t)},
 		},
 		{
 			Name:          "show workspace not-found invalid",
@@ -72,7 +72,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Show workspace", func(t *testing.T) {
+	t.Run("Show named workspace", func(t *testing.T) {
 		outputSink := &output.MockOutput{}
 
 		runner := &Runner{
@@ -96,6 +96,29 @@ func Test_Run(t *testing.T) {
 					Environment: "test-environment",
 					Connection:  map[string]interface{}{},
 				},
+				Options: objectformats.GetWorkspaceTableFormat(),
+			},
+		}
+
+		require.Equal(t, expected, outputSink.Writes)
+	})
+
+	t.Run("Show fallback workspace", func(t *testing.T) {
+		outputSink := &output.MockOutput{}
+
+		runner := &Runner{
+			ConfigHolder: &framework.ConfigHolder{},
+			Output:       outputSink,
+			Workspace:    workspaces.MakeFallbackWorkspace(),
+		}
+
+		err := runner.Run(context.Background())
+		require.NoError(t, err)
+
+		expected := []interface{}{
+			output.FormattedOutput{
+				Format:  "",
+				Obj:     runner.Workspace,
 				Options: objectformats.GetWorkspaceTableFormat(),
 			},
 		}

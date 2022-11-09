@@ -11,11 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/cli/clients"
-	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
-	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -30,39 +26,9 @@ func Test_CommandValidation(t *testing.T) {
 }
 
 func Test_Validate(t *testing.T) {
-
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	helmMock := helm.NewMockInterface(ctrl)
-	kubeMock := kubernetes.NewMockInterface(ctrl)
-	appManagementClientMock := clients.NewMockApplicationsManagementClient(ctrl)
-
-	//Setup a non existant radius scenario
-	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(false, nil).Times(1)
-
-	//Setup non existant group scenario
-	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
-	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
-
-	//Setup existant group scenario and non existing env
-	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
-	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
-	appManagementClientMock.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
-
-	//Working scenario
-	kubeMock.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
-	helmMock.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
-	appManagementClientMock.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
-	appManagementClientMock.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, nil).Times(1)
-
 	testcases := []radcli.ValidateInput{
-
 		{
 			Name:          "create command with workspace type not kubernetes",
 			Input:         []string{"notkubernetes", "b"},
@@ -89,20 +55,28 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			HelmInterface:       helmMock,
-			KubernetesInterface: kubeMock,
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// We have a valid kubernetes context, but Radius is not installed
+				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(false, nil).Times(1)
+			},
 		},
 		{
-			Name:          "valid create command with correct options but non existing env",
+			Name:          "valid create command with correct options but non existing env resource group",
 			Input:         []string{"kubernetes", "-w", "ws", "-g", "rg1", "-e", "env1"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "filePath",
 				Config:         configWithWorkspace,
 			},
-			HelmInterface:       helmMock,
-			KubernetesInterface: kubeMock,
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// We have a valid kubernetes context with Radius installed
+				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+
+				// Resource group does not exist
+				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, errors.New("group does not exist")).Times(1)
+			},
 		},
 		{
 			Name:          "valid create command with correct options but non existing env",
@@ -112,9 +86,15 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			KubernetesInterface: kubeMock,
-			HelmInterface:       helmMock,
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// We have a valid kubernetes context with Radius installed
+				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+
+				// Resource group exists but environment does not
+				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, errors.New("environment does not exist")).Times(1)
+			},
 		},
 		{
 			Name:          "valid working create command",
@@ -124,9 +104,15 @@ func Test_Validate(t *testing.T) {
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
 			},
-			KubernetesInterface: kubeMock,
-			HelmInterface:       helmMock,
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClientMock},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// We have a valid kubernetes context with Radius installed
+				mocks.Kubernetes.EXPECT().GetKubeContext().Return(getTestKubeConfig(), nil).Times(1)
+				mocks.Helm.EXPECT().CheckRadiusInstall(gomock.Any()).Return(true, nil).Times(1)
+
+				// Resource group and environment exist
+				mocks.ApplicationManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), "radius", "local", "rg1").Return(ucp.ResourceGroupResource{}, nil).Times(1)
+				mocks.ApplicationManagementClient.EXPECT().GetEnvDetails(gomock.Any(), "env1").Return(corerp.EnvironmentResource{}, nil).Times(1)
+			},
 		},
 	}
 

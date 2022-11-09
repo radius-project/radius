@@ -10,8 +10,10 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -41,11 +43,12 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -61,8 +64,9 @@ func Test_Render_Success(t *testing.T) {
 	}
 	expectedOutputResources := []outputresource.OutputResource{
 		{
-			LocalID:      outputresource.LocalIDAzureCosmosAccount,
-			ResourceType: accountResourceType,
+			LocalID:       outputresource.LocalIDAzureCosmosAccount,
+			ResourceType:  accountResourceType,
+			RadiusManaged: to.BoolPtr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
@@ -72,8 +76,9 @@ func Test_Render_Success(t *testing.T) {
 			},
 		},
 		{
-			LocalID:      outputresource.LocalIDAzureCosmosDBMongo,
-			ResourceType: dbResourceType,
+			LocalID:       outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType:  dbResourceType,
+			RadiusManaged: to.BoolPtr(false),
 			Identity: resourcemodel.ResourceIdentity{
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
@@ -115,11 +120,14 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeValues,
+			MongoDatabaseValuesProperties: datamodel.MongoDatabaseValuesProperties{
+				Host: "testAccount1.mongo.cosmos.azure.com",
+				Port: 1234,
 			},
 			Secrets: datamodel.MongoDatabaseSecrets{
 				Username:         userName,
@@ -146,33 +154,6 @@ func Test_Render_UserSpecifiedSecrets(t *testing.T) {
 		renderers.PasswordStringHolder:  {Value: password},
 	}
 	require.Equal(t, expectedSecretValues, output.SecretValues)
-}
-
-func Test_Render_NoResourceSpecified(t *testing.T) {
-	ctx := context.Background()
-	renderer := Renderer{}
-
-	mongoDBResource := datamodel.MongoDatabase{
-		BaseResource: v1.BaseResource{
-			TrackedResource: v1.TrackedResource{
-				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
-				Name: "mongo0",
-				Type: "Applications.Link/mongoDatabases",
-			},
-		},
-		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
-			},
-		},
-	}
-
-	output, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
-	require.NoError(t, err)
-	require.Equal(t, 0, len(output.Resources))
 }
 
 func Test_Render_InvalidResourceModel(t *testing.T) {
@@ -212,11 +193,12 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
 				Resource: "//subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -241,11 +223,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -270,11 +253,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "invalid-app-id",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
 			},
 		},
@@ -284,6 +268,65 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_NoResourceSpecified(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Link/mongoDatabases",
+			},
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeResource,
+		},
+	}
+	expectedErr := &conv.ErrClientRP{
+		Code:    "BadRequest",
+		Message: "the 'resource' field must be a valid resource id",
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.Equal(t, expectedErr, err)
+}
+
+func Test_Render_InvalidMode(t *testing.T) {
+	ctx := context.Background()
+	renderer := Renderer{}
+
+	mongoDBResource := datamodel.MongoDatabase{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Link/mongoDatabases",
+			},
+		},
+		Properties: datamodel.MongoDatabaseProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: "abcd",
+			MongoDatabaseResourceProperties: datamodel.MongoDatabaseResourceProperties{
+				Resource: "/subscriptions/test-sub/resourceGroups/test-group/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+			},
+		},
+	}
+
+	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, "unsupported mode abcd", err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Recipe_Success(t *testing.T) {
@@ -299,11 +342,12 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
 				Recipe: datamodel.LinkRecipe{
 					Name: "mongodb",
 				},
@@ -313,9 +357,30 @@ func Test_Render_Recipe_Success(t *testing.T) {
 
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
-			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
-			JSONPointer:          "/properties/resource/id",
-			ProviderResourceType: "Microsoft.DocumentDB/databaseAccounts/mongodbDatabases",
+			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
+			JSONPointer: "/properties/resource/id",
+		},
+	}
+
+	expectedOutputResources := []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDAzureCosmosAccount,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			RadiusManaged:        to.BoolPtr(true),
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		},
+		{
+			LocalID: outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosDBMongo,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			RadiusManaged:        to.BoolPtr(true),
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+			Dependencies:         []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
 		},
 	}
 
@@ -328,15 +393,23 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			LinkType:     ResourceType,
 		}})
 	require.NoError(t, err)
+	// Recipe properties
 	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
 	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
+
+	// Secrets
+	require.Equal(t, 1, len(output.SecretValues))
+	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
 	require.Equal(t, "/connectionStrings/0/connectionString", output.SecretValues[renderers.ConnectionStringValue].ValueSelector)
 	require.Equal(t, "listConnectionStrings", output.SecretValues[renderers.ConnectionStringValue].Action)
-	require.Equal(t, "Microsoft.DocumentDB/databaseAccounts", output.SecretValues[renderers.ConnectionStringValue].ProviderResourceType)
-	require.Equal(t, outputresource.LocalIDAzureCosmosAccount, output.SecretValues[renderers.ConnectionStringValue].LocalID)
-	require.Equal(t, 1, len(output.SecretValues))
+
+	// Computed Values
 	require.Equal(t, expectedComputedValues, output.ComputedValues)
+
+	// Output resources
+	require.Equal(t, 2, len(output.Resources))
+	require.Equal(t, expectedOutputResources, output.Resources)
 }
 
 func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
@@ -352,11 +425,12 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: datamodel.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			Mode: datamodel.LinkModeRecipe,
+			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
 				Recipe: datamodel.LinkRecipe{
 					Name: "mongodb",
 				},

@@ -304,28 +304,26 @@ type DaprSecretStoreList struct {
 	Value []*DaprSecretStoreResource `json:"value,omitempty"`
 }
 
+// DaprSecretStorePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetDaprSecretStoreProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *DaprSecretStoreProperties, *RecipeDaprSecretStoreProperties, *ValuesDaprSecretStoreProperties
+type DaprSecretStorePropertiesClassification interface {
+	// GetDaprSecretStoreProperties returns the DaprSecretStoreProperties content of the underlying type.
+	GetDaprSecretStoreProperties() *DaprSecretStoreProperties
+}
+
 // DaprSecretStoreProperties - DaprSecretStore link properties
 type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Radius kind for Dapr Secret Store
-	Kind *DaprSecretStorePropertiesKind `json:"kind,omitempty"`
-
-	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
-	Type *string `json:"type,omitempty"`
-
-	// REQUIRED; Dapr component version
-	Version *string `json:"version,omitempty"`
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link
-	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
@@ -338,13 +336,16 @@ type DaprSecretStoreProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
+// GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type DaprSecretStoreProperties.
+func (d *DaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties { return d }
+
 // DaprSecretStoreResource - DaprSecretStore link
 type DaprSecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
 	// REQUIRED; DaprSecretStore link properties
-	Properties *DaprSecretStoreProperties `json:"properties,omitempty"`
+	Properties DaprSecretStorePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -384,92 +385,6 @@ type DaprSecretStoresClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
-type DaprStateStoreAzureTableStorageResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The Dapr StateStore kind
-	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
-
-	// REQUIRED; The resource id of the Azure Storage Table the daprStateStore resource is connected to.
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreAzureTableStorageResourceProperties.
-func (d *DaprStateStoreAzureTableStorageResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
-	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Recipe: d.Recipe,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
-	}
-}
-
-type DaprStateStoreGenericResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The Dapr StateStore kind
-	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
-
-	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
-	Metadata map[string]interface{} `json:"metadata,omitempty"`
-
-	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
-	// REQUIRED; Dapr component version
-	Version *string `json:"version,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreGenericResourceProperties.
-func (d *DaprStateStoreGenericResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
-	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Recipe: d.Recipe,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
-	}
-}
-
 // DaprStateStoreList - Object that includes an array of DaprStateStore and a possible link for next set
 type DaprStateStoreList struct {
 	// The link used to fetch the next page of DaprStateStore list.
@@ -482,8 +397,7 @@ type DaprStateStoreList struct {
 // DaprStateStorePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreAzureTableStorageResourceProperties, *DaprStateStoreGenericResourceProperties, *DaprStateStoreProperties,
-// - *DaprStateStoreSQLServerResourceProperties
+// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreResourceProperties, *ValuesDaprStateStoreResourceProperties
 type DaprStateStorePropertiesClassification interface {
 	// GetDaprStateStoreProperties returns the DaprStateStoreProperties content of the underlying type.
 	GetDaprStateStoreProperties() *DaprStateStoreProperties
@@ -494,14 +408,12 @@ type DaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The Dapr StateStore kind
-	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
-	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
@@ -539,46 +451,6 @@ type DaprStateStoreResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-type DaprStateStoreSQLServerResourceProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// REQUIRED; The Dapr StateStore kind
-	Kind *DaprStateStorePropertiesKind `json:"kind,omitempty"`
-
-	// REQUIRED; The resource id of the Azure SQL Database the daprStateStore resource is connected to.
-	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreSQLServerResourceProperties.
-func (d *DaprStateStoreSQLServerResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
-	return &DaprStateStoreProperties{
-		ProvisioningState: d.ProvisioningState,
-		Kind: d.Kind,
-		Recipe: d.Recipe,
-		Status: d.Status,
-		Environment: d.Environment,
-		Application: d.Application,
-		ComponentName: d.ComponentName,
-	}
 }
 
 // DaprStateStoresClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoresClient.CreateOrUpdate
@@ -758,40 +630,38 @@ type ExtendersClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabaseList - Object that includes an array of MongoDatabase and a possible link for next set
+// MongoDatabaseList - Object that includes an array of Mongo database and a possible link for next set
 type MongoDatabaseList struct {
-	// The link used to fetch the next page of MongoDatabase list.
+	// The link used to fetch the next page of Mongo database list.
 	NextLink *string `json:"nextLink,omitempty"`
 
-	// List of MongoDatabase resources
-	Value []*MongoDatabaseResponseResource `json:"value,omitempty"`
+	// List of Mongo database resources
+	Value []*MongoDatabaseResource `json:"value,omitempty"`
 }
 
-// MongoDatabaseProperties - MongoDatabase link properties
+// MongoDatabasePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetMongoDatabaseProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *MongoDatabaseProperties, *RecipeMongoDatabaseProperties, *ResourceMongoDatabaseProperties, *ValuesMongoDatabaseProperties
+type MongoDatabasePropertiesClassification interface {
+	// GetMongoDatabaseProperties returns the MongoDatabaseProperties content of the underlying type.
+	GetMongoDatabaseProperties() *MongoDatabaseProperties
+}
+
+// MongoDatabaseProperties - Mongo database link properties
 type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Mongo API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
 	// Secrets values provided for the resource
 	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -799,14 +669,17 @@ type MongoDatabaseProperties struct {
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseProperties.
+func (m *MongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties { return m }
 
 // MongoDatabaseResource - MongoDatabase link
 type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; MongoDatabase link properties
-	Properties *MongoDatabaseProperties `json:"properties,omitempty"`
+	// REQUIRED; Mongo database link properties
+	Properties MongoDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -824,61 +697,7 @@ type MongoDatabaseResource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// MongoDatabaseResponseProperties - MongoDatabase link properties
-type MongoDatabaseResponseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Host name of the target Mongo database
-	Host *string `json:"host,omitempty"`
-
-	// Port value of the target Mongo database
-	Port *int32 `json:"port,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Mongo API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// READ-ONLY; Database name of the target Mongo database
-	Database *string `json:"database,omitempty" azure:"ro"`
-
-	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-}
-
-// MongoDatabaseResponseResource - MongoDatabase link
-type MongoDatabaseResponseResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string `json:"location,omitempty"`
-
-	// REQUIRED; MongoDatabase link properties
-	Properties *MongoDatabaseResponseProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string `json:"id,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the resource
-	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
+// MongoDatabaseSecrets - The secret values for the given Mongo database resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -1025,6 +844,146 @@ type Recipe struct {
 
 	// Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
+}
+
+type RecipeDaprSecretStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type RecipeDaprSecretStoreProperties.
+func (r *RecipeDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties {
+	return &DaprSecretStoreProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
+	}
+}
+
+type RecipeDaprStateStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+	Resource *string `json:"resource,omitempty"`
+
+	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type RecipeDaprStateStoreProperties.
+func (r *RecipeDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+	return &DaprStateStoreProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
+	}
+}
+
+type RecipeMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
+func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
 }
 
 type RecipeRabbitMQMessageQueueProperties struct {
@@ -1270,6 +1229,100 @@ type Resource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+type ResourceDaprStateStoreResourceProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The Dapr StateStore kind
+	Kind *ResourceDaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Metadata for the state store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreResourceProperties.
+func (r *ResourceDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+	return &DaprStateStoreProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+		ComponentName: r.ComponentName,
+	}
+}
+
+type ResourceMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
+func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 type ResourceSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1435,6 +1488,143 @@ type TrackedResource struct {
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+type ValuesDaprSecretStoreProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Radius kind for Dapr Secret Store
+	Kind *ValuesDaprSecretStorePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
+// determines which set of fields to additionally require.
+	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type ValuesDaprSecretStoreProperties.
+func (v *ValuesDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties {
+	return &DaprSecretStoreProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+		ComponentName: v.ComponentName,
+	}
+}
+
+type ValuesDaprStateStoreResourceProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The Dapr StateStore kind
+	Kind *ValuesDaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
+
+	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
+
+	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// REQUIRED; Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
+	Resource *string `json:"resource,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreResourceProperties.
+func (v *ValuesDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+	return &DaprStateStoreProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+		ComponentName: v.ComponentName,
+	}
+}
+
+type ValuesMongoDatabaseProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; Host name of the target Mongo database
+	Host *string `json:"host,omitempty"`
+
+	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
+// manually via 'values'. Selection determines which set of fields to additionally require.
+	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Port value of the target Mongo database
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Secrets values provided for the resource
+	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Database name of the target Mongo database
+	Database *string `json:"database,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+}
+
+// GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
+func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
+	return &MongoDatabaseProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Secrets: v.Secrets,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+	}
 }
 
 type ValuesRabbitMQMessageQueueProperties struct {

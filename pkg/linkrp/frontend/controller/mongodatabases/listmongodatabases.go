@@ -53,12 +53,12 @@ func (mongo *ListMongoDatabases) createPaginatedList(ctx context.Context, req *h
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		dm := &datamodel.MongoDatabaseResponse{}
+		dm := &datamodel.MongoDatabase{}
 		if err := item.As(dm); err != nil {
 			return nil, err
 		}
 
-		versioned, err := converter.MongoDatabaseResponseDataModelToVersioned(dm, serviceCtx.APIVersion)
+		versioned, err := converter.MongoDatabaseDataModelToVersioned(dm, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

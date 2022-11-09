@@ -16,9 +16,6 @@ spec:
       labels:
         control-plane: appcore-rp
         app.kubernetes.io/part-of: radius-control-plane
-{{ if .Values.global.rp.provider.azure.podidentity }}
-        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
-{{ end }}
     spec:
       serviceAccountName: appcore-rp
       containers:
@@ -103,11 +100,7 @@ metadata:
     app: appcore-rp
 stringData:
 # Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.podidentity }}
-  # Enable ARM without explicit credentials
-  SKIP_ARM: 'false'
-  ARM_AUTH_METHOD: 'ManagedIdentity'
-{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
+{{ if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
   ARM_AUTH_METHOD: 'ServicePrincipal'

@@ -47,3 +47,11 @@ type LinkRecipe struct {
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
+
+type LinkMode string
+
+const (
+	LinkModeRecipe   LinkMode = "recipe"
+	LinkModeResource LinkMode = "resource"
+	LinkModeValues   LinkMode = "values"
+)
