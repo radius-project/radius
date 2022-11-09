@@ -148,6 +148,25 @@ func PossibleRabbitMQMessageQueuePropertiesModeValues() []RabbitMQMessageQueuePr
 	}
 }
 
+// RedisCachePropertiesMode - How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource',
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
+type RedisCachePropertiesMode string
+
+const (
+	RedisCachePropertiesModeRecipe RedisCachePropertiesMode = "recipe"
+	RedisCachePropertiesModeResource RedisCachePropertiesMode = "resource"
+	RedisCachePropertiesModeValues RedisCachePropertiesMode = "values"
+)
+
+// PossibleRedisCachePropertiesModeValues returns the possible values for the RedisCachePropertiesMode const type.
+func PossibleRedisCachePropertiesModeValues() []RedisCachePropertiesMode {
+	return []RedisCachePropertiesMode{	
+		RedisCachePropertiesModeRecipe,
+		RedisCachePropertiesModeResource,
+		RedisCachePropertiesModeValues,
+	}
+}
+
 // ResourceDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
 type ResourceDaprStateStoreResourcePropertiesKind string
 

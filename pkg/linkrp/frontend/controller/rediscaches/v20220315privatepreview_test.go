@@ -31,7 +31,7 @@ func getTestModels20220315privatepreview() (input *v20220315privatepreview.Redis
 	return input, dataModel, output
 }
 
-func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315privatepreview.RedisCacheResource, dataModel *datamodel.RedisCache, output *v20220315privatepreview.RedisCacheResponseResource) {
+func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315privatepreview.RedisCacheResource, dataModel *datamodel.RedisCache, output *v20220315privatepreview.RedisCacheResource) {
 	rawInput := radiustesting.ReadFixture("20220315privatepreview_input.json")
 	input = &v20220315privatepreview.RedisCacheResource{}
 	_ = json.Unmarshal(rawInput, input)
@@ -41,7 +41,7 @@ func getTestModelsForGetAndListApis20220315privatepreview() (input *v20220315pri
 	_ = json.Unmarshal(rawDataModel, dataModel)
 
 	rawExpectedOutput := radiustesting.ReadFixture("20220315privatepreview_output.json")
-	output = &v20220315privatepreview.RedisCacheResponseResource{}
+	output = &v20220315privatepreview.RedisCacheResource{}
 	_ = json.Unmarshal(rawExpectedOutput, output)
 
 	return input, dataModel, output

@@ -23,8 +23,8 @@ func RedisCacheDataModelToVersioned(model conv.DataModelInterface, version strin
 			err := versioned.ConvertFrom(model.(*datamodel.RedisCache))
 			return versioned, err
 		} else {
-			versioned := &v20220315privatepreview.RedisCacheResponseResource{}
-			err := versioned.ConvertFrom(model.(*datamodel.RedisCacheResponse))
+			versioned := &v20220315privatepreview.RedisCacheResource{}
+			err := versioned.ConvertFrom(model.(*datamodel.RedisCache))
 			return versioned, err
 		}
 	default:

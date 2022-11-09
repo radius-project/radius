@@ -1025,6 +1025,51 @@ func (r *RecipeRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties
 	}
 }
 
+type RecipeRedisCacheProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the Redis cache link
+	Recipe *Recipe `json:"recipe,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The host name of the target Redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target Redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// The secret values for the given Redis cache resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+
+	// READ-ONLY; The username for Redis cache
+	Username *string `json:"username,omitempty" azure:"ro"`
+}
+
+// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RecipeRedisCacheProperties.
+func (r *RecipeRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
+	return &RedisCacheProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
 type RecipeSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1063,55 +1108,56 @@ func (r *RecipeSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabasePro
 	}
 }
 
-// RedisCacheList - Object that includes an array of RedisCache and a possible link for next set
+// RedisCacheList - Object that includes an array of Redis cache and a possible link for next set
 type RedisCacheList struct {
-	// The link used to fetch the next page of RedisCache list.
+	// The link used to fetch the next page of Redis cache list.
 	NextLink *string `json:"nextLink,omitempty"`
 
 	// List of RedisCache resources
-	Value []*RedisCacheResponseResource `json:"value,omitempty"`
+	Value []*RedisCacheResource `json:"value,omitempty"`
 }
 
-// RedisCacheProperties - RedisCache link properties
+// RedisCachePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetRedisCacheProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *RecipeRedisCacheProperties, *RedisCacheProperties, *ResourceRedisCacheProperties, *ValuesRedisCacheProperties
+type RedisCachePropertiesClassification interface {
+	// GetRedisCacheProperties returns the RedisCacheProperties content of the underlying type.
+	GetRedisCacheProperties() *RedisCacheProperties
+}
+
+// RedisCacheProperties - Redis cache link properties
 type RedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The host name of the target redis cache
-	Host *string `json:"host,omitempty"`
-
-	// The port value of the target redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the rediscache link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Redis API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// The secret values for the given RedisCache resource
+	// The secret values for the given Redis cache resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for redis
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
-// RedisCacheResource - RedisCache link
+// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RedisCacheProperties.
+func (r *RedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties { return r }
+
+// RedisCacheResource - Redis cache link
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; RedisCache link properties
-	Properties *RedisCacheProperties `json:"properties,omitempty"`
+	// REQUIRED; Redis cache link properties
+	Properties RedisCachePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -1129,66 +1175,12 @@ type RedisCacheResource struct {
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// RedisCacheResponseProperties - RedisCache link properties
-type RedisCacheResponseProperties struct {
-	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// The host name of the target redis cache
-	Host *string `json:"host,omitempty"`
-
-	// The port value of the target redis cache
-	Port *int32 `json:"port,omitempty"`
-
-	// The recipe used to automatically deploy underlying infrastructure for the rediscache link
-	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID of a supported resource with Redis API to use for this link
-	Resource *string `json:"resource,omitempty"`
-
-	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
-	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
-
-	// READ-ONLY; Status of the resource
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for redis
-	Username *string `json:"username,omitempty" azure:"ro"`
-}
-
-// RedisCacheResponseResource - RedisCache link
-type RedisCacheResponseResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string `json:"location,omitempty"`
-
-	// REQUIRED; RedisCache link properties
-	Properties *RedisCacheResponseProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string `json:"id,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the resource
-	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
-	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// RedisCacheSecrets - The secret values for the given RedisCache resource
+// RedisCacheSecrets - The secret values for the given Redis cache resource
 type RedisCacheSecrets struct {
-	// The connection string used to connect to the redis cache
+	// The connection string used to connect to the Redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// The password for this Redis instance
+	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
 }
 
@@ -1314,6 +1306,51 @@ type ResourceMongoDatabaseProperties struct {
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
 func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
+		ProvisioningState: r.ProvisioningState,
+		Mode: r.Mode,
+		Secrets: r.Secrets,
+		Status: r.Status,
+		Environment: r.Environment,
+		Application: r.Application,
+	}
+}
+
+type ResourceRedisCacheProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; Fully qualified resource ID of a supported resource with Redis API to use for this link
+	Resource *string `json:"resource,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The host name of the target Redis cache
+	Host *string `json:"host,omitempty"`
+
+	// The port value of the target Redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// The secret values for the given Redis cache resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+
+	// READ-ONLY; The username for Redis cache
+	Username *string `json:"username,omitempty" azure:"ro"`
+}
+
+// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ResourceRedisCacheProperties.
+func (r *ResourceRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
+	return &RedisCacheProperties{
 		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
 		Secrets: r.Secrets,
@@ -1657,6 +1694,48 @@ func (v *ValuesRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties
 		ProvisioningState: v.ProvisioningState,
 		Secrets: v.Secrets,
 		Mode: v.Mode,
+		Status: v.Status,
+		Environment: v.Environment,
+		Application: v.Application,
+	}
+}
+
+type ValuesRedisCacheProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
+	// REQUIRED; The host name of the target Redis cache
+	Host *string `json:"host,omitempty"`
+
+	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+// via 'values'. Selection determines which set of fields to additionally require.
+	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+
+	// REQUIRED; The port value of the target Redis cache
+	Port *int32 `json:"port,omitempty"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// The secret values for the given Redis cache resource
+	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
+
+	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
+
+	// READ-ONLY; The username for Redis cache
+	Username *string `json:"username,omitempty" azure:"ro"`
+}
+
+// GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ValuesRedisCacheProperties.
+func (v *ValuesRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
+	return &RedisCacheProperties{
+		ProvisioningState: v.ProvisioningState,
+		Mode: v.Mode,
+		Secrets: v.Secrets,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,

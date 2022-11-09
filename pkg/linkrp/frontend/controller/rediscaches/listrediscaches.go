@@ -53,7 +53,7 @@ func (redis *ListRedisCaches) createPaginatedList(ctx context.Context, req *http
 
 	items := []interface{}{}
 	for _, item := range result.Items {
-		dm := &datamodel.RedisCacheResponse{}
+		dm := &datamodel.RedisCache{}
 		if err := item.As(dm); err != nil {
 			return nil, err
 		}
