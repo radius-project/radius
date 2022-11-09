@@ -65,7 +65,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 }
 
 func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
-	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresource2.json", "rediscacheresource_recipe.json", "rediscacheresource_recipe2.json"}
+	testset := []string{"rediscacheresourcedatamodel.json", "rediscacheresourcedatamodel2.json", "rediscacheresourcedatamodel_recipe.json", "rediscacheresourcedatamodel_recipe2.json"}
 	for _, payload := range testset {
 		// arrange
 		rawPayload := loadTestData(payload)
