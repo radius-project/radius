@@ -31,6 +31,7 @@
         "metadata": {
             "foo": "bar"
         },
+        "mode": "values",
         "componentName": "test-app-test-secret-store"
     },
     "tenantId": "00000000-0000-0000-0000-000000000000",

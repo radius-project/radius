@@ -17,6 +17,14 @@ const (
 	DaprSecretStoreKindUnknown DaprSecretStoreKind = "unknown"
 )
 
+type DaprSecretStorePropertiesMode string
+
+const (
+	DaprSecretStorePropertiesModeRecipe  DaprSecretStorePropertiesMode = "recipe"
+	DaprSecretStorePropertiesModeValues  DaprSecretStorePropertiesMode = "values"
+	DaprSecretStorePropertiesModeUnknown DaprSecretStorePropertiesMode = "unknown"
+)
+
 // DaprSecretStore represents DaprSecretStore link resource.
 type DaprSecretStore struct {
 	v1.TrackedResource
@@ -41,10 +49,11 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 type DaprSecretStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Kind              DaprSecretStoreKind    `json:"kind"`
-	Type              string                 `json:"type"`
-	Version           string                 `json:"version"`
-	Metadata          map[string]interface{} `json:"metadata"`
-	Recipe            LinkRecipe             `json:"recipe,omitempty"`
+	ProvisioningState v1.ProvisioningState          `json:"provisioningState,omitempty"`
+	Mode              DaprSecretStorePropertiesMode `json:"mode"`
+	Kind              DaprSecretStoreKind           `json:"kind"`
+	Type              string                        `json:"type"`
+	Version           string                        `json:"version"`
+	Metadata          map[string]interface{}        `json:"metadata"`
+	Recipe            LinkRecipe                    `json:"recipe,omitempty"`
 }
