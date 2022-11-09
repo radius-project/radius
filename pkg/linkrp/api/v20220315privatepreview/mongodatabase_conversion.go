@@ -113,7 +113,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 	case datamodel.LinkModeResource:
 		var mode MongoDatabasePropertiesMode
 		mode = MongoDatabasePropertiesModeResource
-		converted := &ResourceMongoDatabaseProperties{
+		dst.Properties = &ResourceMongoDatabaseProperties{
 			Mode:     &mode,
 			Resource: to.StringPtr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
 			Host:     to.StringPtr(mongo.Properties.Host),
@@ -126,11 +126,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
-		dst.Properties = converted
 	case datamodel.LinkModeValues:
 		var mode MongoDatabasePropertiesMode
 		mode = MongoDatabasePropertiesModeValues
-		converted := &ValuesMongoDatabaseProperties{
+		dst.Properties = &ValuesMongoDatabaseProperties{
 			Mode:     &mode,
 			Host:     to.StringPtr(mongo.Properties.Host),
 			Port:     to.Int32Ptr(mongo.Properties.Port),
@@ -142,11 +141,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
-		dst.Properties = converted
 	case datamodel.LinkModeRecipe:
 		var mode MongoDatabasePropertiesMode
 		mode = MongoDatabasePropertiesModeRecipe
-		converted := &RecipeMongoDatabaseProperties{
+		dst.Properties = &RecipeMongoDatabaseProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),
 			Host:     to.StringPtr(mongo.Properties.Host),
@@ -159,7 +157,6 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
-		dst.Properties = converted
 	default:
 		return fmt.Errorf("Unsupported mode %s", mongo.Properties.Mode)
 	}
