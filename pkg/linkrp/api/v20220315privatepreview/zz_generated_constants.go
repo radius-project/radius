@@ -115,6 +115,20 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
+// ResourceDaprPubSubPropertiesKind - The DaprPubSubProperties kind
+type ResourceDaprPubSubPropertiesKind string
+
+const (
+	ResourceDaprPubSubPropertiesKindPubsubAzureServicebus ResourceDaprPubSubPropertiesKind = "pubsub.azure.servicebus"
+)
+
+// PossibleResourceDaprPubSubPropertiesKindValues returns the possible values for the ResourceDaprPubSubPropertiesKind const type.
+func PossibleResourceDaprPubSubPropertiesKindValues() []ResourceDaprPubSubPropertiesKind {
+	return []ResourceDaprPubSubPropertiesKind{	
+		ResourceDaprPubSubPropertiesKindPubsubAzureServicebus,
+	}
+}
+
 // ResourceDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
 type ResourceDaprStateStoreResourcePropertiesKind string
 
