@@ -70,21 +70,22 @@ func PossibleDaprSecretStorePropertiesModeValues() []DaprSecretStorePropertiesMo
 	}
 }
 
-// DaprStateStorePropertiesKind - The Dapr StateStore kind
-type DaprStateStorePropertiesKind string
+// DaprStateStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
+type DaprStateStorePropertiesMode string
 
 const (
-	DaprStateStorePropertiesKindGeneric DaprStateStorePropertiesKind = "generic"
-	DaprStateStorePropertiesKindStateAzureTablestorage DaprStateStorePropertiesKind = "state.azure.tablestorage"
-	DaprStateStorePropertiesKindStateSqlserver DaprStateStorePropertiesKind = "state.sqlserver"
+	DaprStateStorePropertiesModeRecipe DaprStateStorePropertiesMode = "recipe"
+	DaprStateStorePropertiesModeResource DaprStateStorePropertiesMode = "resource"
+	DaprStateStorePropertiesModeValues DaprStateStorePropertiesMode = "values"
 )
 
-// PossibleDaprStateStorePropertiesKindValues returns the possible values for the DaprStateStorePropertiesKind const type.
-func PossibleDaprStateStorePropertiesKindValues() []DaprStateStorePropertiesKind {
-	return []DaprStateStorePropertiesKind{	
-		DaprStateStorePropertiesKindGeneric,
-		DaprStateStorePropertiesKindStateAzureTablestorage,
-		DaprStateStorePropertiesKindStateSqlserver,
+// PossibleDaprStateStorePropertiesModeValues returns the possible values for the DaprStateStorePropertiesMode const type.
+func PossibleDaprStateStorePropertiesModeValues() []DaprStateStorePropertiesMode {
+	return []DaprStateStorePropertiesMode{	
+		DaprStateStorePropertiesModeRecipe,
+		DaprStateStorePropertiesModeResource,
+		DaprStateStorePropertiesModeValues,
 	}
 }
 
@@ -114,17 +115,19 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// ResourceDaprPubSubPropertiesKind - The DaprPubSubProperties kind
-type ResourceDaprPubSubPropertiesKind string
+// ResourceDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
+type ResourceDaprStateStoreResourcePropertiesKind string
 
 const (
-	ResourceDaprPubSubPropertiesKindPubsubAzureServicebus ResourceDaprPubSubPropertiesKind = "pubsub.azure.servicebus"
+	ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage ResourceDaprStateStoreResourcePropertiesKind = "state.azure.tablestorage"
+	ResourceDaprStateStoreResourcePropertiesKindStateSqlserver ResourceDaprStateStoreResourcePropertiesKind = "state.sqlserver"
 )
 
-// PossibleResourceDaprPubSubPropertiesKindValues returns the possible values for the ResourceDaprPubSubPropertiesKind const type.
-func PossibleResourceDaprPubSubPropertiesKindValues() []ResourceDaprPubSubPropertiesKind {
-	return []ResourceDaprPubSubPropertiesKind{	
-		ResourceDaprPubSubPropertiesKindPubsubAzureServicebus,
+// PossibleResourceDaprStateStoreResourcePropertiesKindValues returns the possible values for the ResourceDaprStateStoreResourcePropertiesKind const type.
+func PossibleResourceDaprStateStoreResourcePropertiesKindValues() []ResourceDaprStateStoreResourcePropertiesKind {
+	return []ResourceDaprStateStoreResourcePropertiesKind{	
+		ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage,
+		ResourceDaprStateStoreResourcePropertiesKindStateSqlserver,
 	}
 }
 
@@ -172,6 +175,20 @@ const (
 func PossibleValuesDaprSecretStorePropertiesKindValues() []ValuesDaprSecretStorePropertiesKind {
 	return []ValuesDaprSecretStorePropertiesKind{	
 		ValuesDaprSecretStorePropertiesKindGeneric,
+	}
+}
+
+// ValuesDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
+type ValuesDaprStateStoreResourcePropertiesKind string
+
+const (
+	ValuesDaprStateStoreResourcePropertiesKindGeneric ValuesDaprStateStoreResourcePropertiesKind = "generic"
+)
+
+// PossibleValuesDaprStateStoreResourcePropertiesKindValues returns the possible values for the ValuesDaprStateStoreResourcePropertiesKind const type.
+func PossibleValuesDaprStateStoreResourcePropertiesKindValues() []ValuesDaprStateStoreResourcePropertiesKind {
+	return []ValuesDaprStateStoreResourcePropertiesKind{	
+		ValuesDaprStateStoreResourcePropertiesKindGeneric,
 	}
 }
 
