@@ -32,7 +32,7 @@
                   "mode": "resource",
                   "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable"
                 }
-              },
+            },
             {
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore2",
               "name": "daprStateStore2",
@@ -49,6 +49,21 @@
                 "foo": "bar"
                 }
               }
+            },
+            {
+                "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore3",
+                "name": "daprStateStore3",
+                "type": "Applications.Link/daprStateStores",
+                "properties": {
+                  "provisioningState": "Succeeded",
+                  "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+                  "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+                  "kind": "state.azure.tablestorage",
+                  "mode": "recipe",
+                  "recipe": {
+                      "name": "recipe-test"
+                  }
+                }
             }
           ],
           "nextLink": "https://serviceRoot/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores?api-version=2022-01-25-privatepreview&$skiptoken=X'12345'"
