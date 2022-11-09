@@ -86,6 +86,7 @@ resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepre
   properties: {
     application: app.id
     environment: environment
+    mode: 'values'
     queue: 'queue'
     secrets: {
       connectionString: 'amqp://${username}:${password}@${rabbitmqRoute.properties.hostname}:${rabbitmqRoute.properties.port}'

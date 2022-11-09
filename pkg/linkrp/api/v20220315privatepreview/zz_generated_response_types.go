@@ -142,7 +142,7 @@ type MongoDatabasesClientListSecretsResponse struct {
 
 // RabbitMQMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitMQMessageQueuesClient.CreateOrUpdate.
 type RabbitMQMessageQueuesClientCreateOrUpdateResponse struct {
-	RabbitMQMessageQueueResponseResource
+	RabbitMQMessageQueueResource
 }
 
 // RabbitMQMessageQueuesClientDeleteResponse contains the response from method RabbitMQMessageQueuesClient.Delete.
@@ -152,7 +152,7 @@ type RabbitMQMessageQueuesClientDeleteResponse struct {
 
 // RabbitMQMessageQueuesClientGetResponse contains the response from method RabbitMQMessageQueuesClient.Get.
 type RabbitMQMessageQueuesClientGetResponse struct {
-	RabbitMQMessageQueueResponseResource
+	RabbitMQMessageQueueResource
 }
 
 // RabbitMQMessageQueuesClientListByRootScopeResponse contains the response from method RabbitMQMessageQueuesClient.ListByRootScope.
