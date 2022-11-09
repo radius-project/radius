@@ -76,6 +76,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace = workspace
 	r.Confirm = yes
 
+	if !r.Workspace.IsNamedWorkspace() {
+		// Only workspaces stored in configuration can be deleted.
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
 	return nil
 }
 

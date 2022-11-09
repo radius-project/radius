@@ -107,7 +107,7 @@
           "200": {
             "description": "RabbitMQMessageQueue resource",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -156,13 +156,13 @@
           "200": {
             "description": "The request was successful; response contains the rabbitMQMessageQueue resource",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "201": {
             "description": "The request was successful, resource will be updated asynchronously",
             "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -269,7 +269,7 @@
           "description": "List of RabbitMQMessageQueue resources",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RabbitMQMessageQueueResponseResource"
+            "$ref": "#/definitions/RabbitMQMessageQueueResource"
           }
         },
         "nextLink": {
@@ -299,27 +299,6 @@
         }
       }
     },
-    "RabbitMQMessageQueueResponseResource": {
-      "description": "RabbitMQMessageQueue link",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
-        }
-      ],
-      "required": [
-        "properties"
-      ],
-      "properties": {
-        "systemData": {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
-        },
-        "properties": {
-          "x-ms-client-flatten": true,
-          "$ref": "#/definitions/RabbitMQMessageQueueResponseProperties"
-        }
-      }
-    },
     "RabbitMQListSecretsResult": {
       "description": "The secret values for the given RabbitMQMessageQueue resource",
       "$ref": "#/definitions/RabbitMQSecrets"
@@ -333,7 +312,51 @@
         }
       }
     },
-    "RabbitMQMessageQueueResponseProperties": {
+    "ValuesRabbitMQMessageQueueProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
+        }
+      ],
+      "properties": {
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        }
+      },
+      "required": [
+        "queue"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "values"
+    },
+    "RecipeRabbitMQMessageQueueProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
+        }
+      ],
+      "properties": {
+        "recipe": {
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq link",
+          "type": "object",
+          "additionalProperties": false,
+          "$ref": "global.json#/definitions/Recipe"
+        },
+        "queue": {
+          "description": "The name of the queue",
+          "type": "string"
+        }
+      },
+      "required": [
+        "recipe"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "recipe"
+    },
+    "RabbitMQMessageQueueProperties": {
       "description": "RabbitMQMessageQueue link response properties",
       "type": "object",
       "allOf": [
@@ -341,47 +364,32 @@
           "$ref": "global.json#/definitions/BasicResourceProperties"
         }
       ],
+      "discriminator": "mode",
       "properties": {
         "provisioningState": {
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the rabbitMQ message queue link at the time the operation was called"
         },
-        "queue": {
-          "description": "The name of the queue",
-          "type": "string"
-        },
-        "recipe": {
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq link",
-          "type": "object",
-          "additionalProperties": false,
-          "$ref": "global.json#/definitions/Recipe"
-        }
-      },
-      "required": [
-        "environment",
-        "queue"
-      ]
-    },
-    "RabbitMQMessageQueueProperties": {
-      "description": "RabbitMQMessageQueue link properties",
-      "type": "object",
-      "allOf": [
-        {
-          "$ref": "#/definitions/RabbitMQMessageQueueResponseProperties"
-        }
-      ],
-      "properties": {
         "secrets": {
+          "x-ms-secret": true,
           "type": "object",
           "description": "Secrets provided by resources,",
           "additionalProperties": false,
           "$ref": "#/definitions/RabbitMQSecrets"
+        },
+        "mode": {
+          "description": "How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection determines which set of fields to additionally require.",
+          "type": "string",
+          "enum": [
+            "recipe",
+            "values"
+          ]
         }
       },
       "required": [
         "environment",
-        "queue"
+        "mode"
       ]
     }
   },

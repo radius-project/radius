@@ -19,6 +19,7 @@ resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' 
   properties: {
     environment: environment
     application: app.id
+    mode: 'resource'
     kind: 'pubsub.azure.servicebus'
     resource: namespace.id
   }
@@ -39,6 +40,7 @@ resource secretstore 'Applications.Link/daprSecretStores@2022-03-15-privateprevi
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     kind: 'generic'
     type: 'secretstores.kubernetes'
     metadata: {

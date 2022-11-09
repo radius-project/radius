@@ -39,13 +39,11 @@ func Test_Render_User_Secrets(t *testing.T) {
 			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
-				Queue: "abc",
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
+			Queue:   "abc",
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
 	}
@@ -81,11 +79,9 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
@@ -107,13 +103,11 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: "Applications.Link/rabbitMQMessageQueues",
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
-			RabbitMQMessageQueueResponseProperties: datamodel.RabbitMQMessageQueueResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "invalid-app-id",
-				},
-				Queue: "abc",
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "invalid-app-id",
 			},
+			Queue:   "abc",
 			Secrets: datamodel.RabbitMQSecrets{ConnectionString: "admin:deadbeef@localhost:42"},
 		},
 	}

@@ -3,6 +3,7 @@
     "name": "daprPubSub0",
     "type": "Applications.Link/daprPubSubBrokers",
     "properties": {
-        "kind": 12345
+        "kind": 12345,
+        "mode": "resource"
     }
 }

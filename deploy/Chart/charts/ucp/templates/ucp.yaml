@@ -16,9 +16,6 @@ spec:
       labels:
         control-plane: ucp
         app.kubernetes.io/part-of: radius-control-plane
-{{ if .Values.global.rp.provider.azure.podidentity }}
-        aadpodidbinding: "{{ .Values.global.rp.provider.azure.podidentity }}"
-{{ end }}
     spec:
       serviceAccountName: ucp
       containers:

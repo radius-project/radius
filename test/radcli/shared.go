@@ -176,7 +176,7 @@ workspaces:
 	return LoadConfig(t, yamlData)
 }
 
-func LoadConfigWithoutWorkspace(t *testing.T) *viper.Viper {
+func LoadEmptyConfig(t *testing.T) *viper.Viper {
 
 	var yamlData = `
 workspaces: 

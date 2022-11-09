@@ -50,12 +50,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "List Command without workspace",
+			Name:          "List Command with fallback workspace",
 			Input:         []string{"containers"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

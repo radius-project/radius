@@ -53,6 +53,7 @@ resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' 
     environment: environment
     application: app.id
     kind: 'pubsub.azure.servicebus'
+    mode: 'resource'
     resource: namespace::topic.id
   }
 }

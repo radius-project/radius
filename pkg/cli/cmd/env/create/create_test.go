@@ -73,12 +73,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create command without workspace",
+			Name:          "Create command with fallback workspace",
 			Input:         []string{"testingenv"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

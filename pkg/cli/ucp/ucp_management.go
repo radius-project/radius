@@ -266,7 +266,7 @@ func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Contex
 	}
 
 	envCompute := corerp.KubernetesCompute{Kind: &envKind, Namespace: &namespace, ResourceID: &resourceId}
-	properties := corerp.EnvironmentProperties{Compute: &envCompute, Recipes: recipeProperties, UseDevRecipes: &useDevRecipes}
+	properties := corerp.EnvironmentProperties{Compute: &envCompute, Recipes: recipeProperties, Providers: providers, UseDevRecipes: &useDevRecipes}
 	_, err = client.CreateOrUpdate(ctx, envName, corerp.EnvironmentResource{Location: &location, Properties: &properties}, &corerp.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return false, err

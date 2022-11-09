@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	linkrp_r "github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
@@ -35,6 +36,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
@@ -176,12 +178,11 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 			},
 		},
 		Properties: linkrp_dm.MongoDatabaseProperties{
-			MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 			},
+			Mode: dm.LinkModeRecipe,
 		},
 		LinkMetadata: linkrp_dm.LinkMetadata{
 			RecipeData: linkrp_dm.RecipeData{
@@ -208,10 +209,9 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 
 	secretValues := map[string]rp.SecretValueReference{}
 	secretValues[linkrp_r.ConnectionStringValue] = rp.SecretValueReference{
-		LocalID:              outputresource.LocalIDAzureCosmosAccount,
-		Action:               "listConnectionStrings", // https://docs.microsoft.com/en-us/rest/api/cosmos-db-resource-provider/2021-04-15/database-accounts/list-connection-strings
-		ValueSelector:        "/connectionStrings/0/connectionString",
-		ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+		LocalID:       outputresource.LocalIDAzureCosmosAccount,
+		Action:        "listConnectionStrings",
+		ValueSelector: "/connectionStrings/0/connectionString",
 		Transformer: resourcemodel.ResourceType{
 			Provider: resourcemodel.ProviderAzure,
 			Type:     resourcekinds.AzureCosmosDBMongo,
@@ -225,12 +225,58 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 	testResource.ComputedValues = computedValues
 	testResource.SecretValues = secretValues
 
+	accountResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureCosmosAccount,
+		Provider: resourcemodel.ProviderAzure,
+	}
+	dbResourceType := resourcemodel.ResourceType{
+		Type:     resourcekinds.AzureCosmosDBMongo,
+		Provider: resourcemodel.ProviderAzure,
+	}
+	outputResources := []outputresource.OutputResource{
+		{
+			LocalID:              outputresource.LocalIDAzureCosmosAccount,
+			ResourceType:         accountResourceType,
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts,
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &accountResourceType,
+				Data: resourcemodel.ARMIdentity{
+					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
+					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				},
+			},
+			RadiusManaged: to.BoolPtr(true),
+		},
+		{
+			LocalID:              outputresource.LocalIDAzureCosmosDBMongo,
+			ResourceType:         dbResourceType,
+			ProviderResourceType: azresources.DocumentDBDatabaseAccounts + "/" + azresources.DocumentDBDatabaseAccountsMongoDBDatabases,
+			Identity: resourcemodel.ResourceIdentity{
+				ResourceType: &dbResourceType,
+				Data: resourcemodel.ARMIdentity{
+					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
+					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				},
+			},
+			Resource: map[string]interface{}{
+				"properties": map[string]interface{}{
+					"resource": map[string]string{
+						"id": "test-database",
+					},
+				},
+			},
+			RadiusManaged: to.BoolPtr(true),
+			Dependencies:  []outputresource.Dependency{{LocalID: outputresource.LocalIDAzureCosmosAccount}},
+		},
+	}
+
 	return ResourceData{
-		ID:             getTestResourceID(testResource.ID),
-		Resource:       testResource,
-		ComputedValues: computedValues,
-		SecretValues:   secretValues,
-		RecipeData:     testResource.RecipeData}
+		ID:              getTestResourceID(testResource.ID),
+		OutputResources: outputResources,
+		Resource:        testResource,
+		ComputedValues:  computedValues,
+		SecretValues:    secretValues,
+		RecipeData:      testResource.RecipeData}
 }
 
 func createContext(t *testing.T) context.Context {
@@ -338,11 +384,10 @@ func Test_Render(t *testing.T) {
 				},
 			},
 			Properties: linkrp_dm.MongoDatabaseProperties{
-				MongoDatabaseResponseProperties: linkrp_dm.MongoDatabaseResponseProperties{
-					BasicResourceProperties: rp.BasicResourceProperties{
-						Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
-					},
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: "/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/environments/env0",
 				},
+				Mode: dm.LinkModeValues,
 			},
 		}
 		mr := store.Object{

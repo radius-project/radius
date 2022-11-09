@@ -49,6 +49,12 @@ func Test_Validate(t *testing.T) {
 				createGetEnvDetailsError(mocks.ApplicationManagementClient)
 			},
 		},
+		{
+			Name:          "Switch Command with non-editable workspace invalid",
+			Input:         []string{},
+			ExpectedValid: false,
+			ConfigHolder:  framework.ConfigHolder{Config: radcli.LoadEmptyConfig(t)},
+		},
 	}
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }

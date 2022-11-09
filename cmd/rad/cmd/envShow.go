@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -33,6 +34,11 @@ func showEnvironment(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
+
 	environmentName, err := cli.RequireEnvironmentNameArgs(cmd, args, *workspace)
 	if err != nil {
 		return err

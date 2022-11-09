@@ -46,12 +46,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with no workspace",
+			Name:          "Delete Command with fallback workspace",
 			Input:         []string{"groupname"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         radcli.LoadConfigWithoutWorkspace(t),
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 	}
