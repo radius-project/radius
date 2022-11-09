@@ -38,14 +38,14 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	}
 
 	// Do a GET just to validate that the resource exists.
-	res, err := GetByID(ctx, handler.arm.Auth, id, apiVersion)
+	res, err := getByID(ctx, handler.arm.Auth, id, apiVersion)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
 	// Return the resource so renderers can use it for computed values.
 	// TODO: it may not require such serialization.
-	serialized, err := SerializeResource(*res)
+	serialized, err := serializeResource(*res)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -55,10 +55,31 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 }
 
 func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
+	id, apiVersion, err := resource.Identity.RequireARM()
+	if err != nil {
+		return err
+	}
+
+	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
+	logger.Info("Deleting ARM resource")
+	parsed, err := ucpresources.ParseResource(id)
+	if err != nil {
+		return err
+	}
+
+	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
+	_, err = rc.DeleteByID(ctx, id, apiVersion)
+	if err != nil {
+		if !clients.Is404Error(err) {
+			return fmt.Errorf("failed to delete resource %q: %w", id, err)
+		}
+		logger.Info(fmt.Sprintf("Resource %s does not exist: %s", id, err.Error()))
+	}
+
 	return nil
 }
 
-func SerializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
+func serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
 	b, err := json.Marshal(&resource)
@@ -75,7 +96,7 @@ func SerializeResource(resource resources.GenericResource) (map[string]interface
 	return data, nil
 }
 
-func GetByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion string) (*resources.GenericResource, error) {
+func getByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion string) (*resources.GenericResource, error) {
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return nil, err

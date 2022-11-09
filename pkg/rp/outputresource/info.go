@@ -25,10 +25,14 @@ type OutputResource struct {
 	// Resource type specifies the 'provider' and 'kind' used to look up the resource handler for processing
 	ResourceType resourcemodel.ResourceType `json:"resourceType"`
 
-	Deployed     bool                 `json:"deployed"`
-	Resource     interface{}          `json:"resource,omitempty"`
-	Dependencies []Dependency         // resources that are required to be deployed before this resource can be deployed
-	Status       OutputResourceStatus `json:"status,omitempty"`
+	// Resource type defined by the provider for this resource. Example for Azure, a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
+	ProviderResourceType string `json:"providerResourceType"`
+
+	RadiusManaged *bool                `json:"radiusManaged"`
+	Deployed      bool                 `json:"deployed"`
+	Resource      interface{}          `json:"resource,omitempty"`
+	Dependencies  []Dependency         // resources that are required to be deployed before this resource can be deployed - used for parent/child resources.
+	Status        OutputResourceStatus `json:"status,omitempty"`
 }
 
 type Dependency struct {
@@ -57,6 +61,14 @@ func (resource OutputResource) GetDependencies() ([]string, error) {
 		dependencies = append(dependencies, dependency.LocalID)
 	}
 	return dependencies, nil
+}
+
+func (resource OutputResource) IsRadiusManaged() bool {
+	if resource.RadiusManaged == nil {
+		return false
+	}
+
+	return *resource.RadiusManaged
 }
 
 // OrderOutputResources returns output resources ordered based on deployment order

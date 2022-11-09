@@ -57,9 +57,6 @@ type SecretValueReference struct {
 	// no concept of 'action'. Will always be set for an ARM resource.
 	Action string
 
-	// Resource type this action can be performed on. Example for Azure a resource type is of the format: Microsoft.DocumentDB/databaseAccounts
-	ProviderResourceType string
-
 	// ValueSelector is a JSONPointer used to resolve the secret value.
 	ValueSelector string
 

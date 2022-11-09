@@ -68,7 +68,7 @@ func TestOrderOutputResources(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := []OutputResource{outputResourcesMap[LocalIDUserAssignedManagedIdentity], outputResourcesMap[LocalIDRoleAssignmentKVKeys],
-		outputResourcesMap[LocalIDAADPodIdentity]}
+		outputResourcesMap[LocalIDFederatedIdentity]}
 	require.Equal(t, expected, ordered)
 }
 
@@ -91,11 +91,11 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 		Dependencies: []Dependency{{LocalID: managedIdentity.LocalID}},
 	}
 
-	aadPodIdentity := OutputResource{
-		LocalID: LocalIDAADPodIdentity,
+	federatedIdentity := OutputResource{
+		LocalID: LocalIDFederatedIdentity,
 		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.AzurePodIdentity,
-			Provider: resourcemodel.ProviderAzureKubernetesService,
+			Type:     resourcekinds.AzureFederatedIdentity,
+			Provider: resourcemodel.ProviderAzure,
 		},
 		Dependencies: []Dependency{
 			{LocalID: managedIdentity.LocalID},
@@ -104,10 +104,10 @@ func getTestOutputResourceWithDependencies() (OutputResource, map[string]OutputR
 	}
 
 	outputResources := map[string]OutputResource{
-		LocalIDAADPodIdentity:              aadPodIdentity,
+		LocalIDFederatedIdentity:           federatedIdentity,
 		LocalIDUserAssignedManagedIdentity: managedIdentity,
 		LocalIDRoleAssignmentKVKeys:        roleAssignmentKeys,
 	}
 
-	return aadPodIdentity, outputResources
+	return federatedIdentity, outputResources
 }

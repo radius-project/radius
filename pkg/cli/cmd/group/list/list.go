@@ -37,7 +37,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	commonflags.AddWorkspaceFlag(cmd)
-	cmd.Flags().StringP("output", "o", "", "The output format")
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
@@ -66,11 +66,6 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspace(cmd, config)
 	if err != nil {
 		return err
-	}
-
-	// TODO: support fallback workspace
-	if !workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
 	}
 
 	format, err := cmd.Flags().GetString("output")
