@@ -265,12 +265,31 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "state.sqlserver",
+            "state.azure.tablestorage"
+          ]
+        },
         "metadata": {
           "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
           "type": "object"
         },
+        "type": {
+          "description": "Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "example": [
+            "state.zookeeper"
+          ],
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
+          "type": "string"
+        },
         "resource": {
-          "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         }
       },
@@ -289,6 +308,13 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The Dapr StateStore kind",
+          "type": "string",
+          "enum": [
+            "generic"
+          ]
+        },
         "metadata": {
           "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -302,6 +328,10 @@
         },
         "version": {
           "description": "Dapr component version",
+          "type": "string"
+        },
+        "resource": {
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         }
       },
@@ -338,7 +368,7 @@
           "type": "string"
         },
         "resource": {
-          "description": "The resource id of the Azure SQL Database the daprStateStore resource is connected to.",
+          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         },
         "recipe": {
@@ -379,15 +409,6 @@
             "recipe",
             "resource",
             "values"
-          ]
-        },
-        "kind": {
-          "description": "The Dapr StateStore kind",
-          "type": "string",
-          "enum": [
-            "state.sqlserver",
-            "state.azure.tablestorage",
-            "generic"
           ]
         }
       },

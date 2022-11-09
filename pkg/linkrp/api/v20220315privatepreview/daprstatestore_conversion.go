@@ -20,7 +20,6 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 			Application: to.String(src.Properties.GetDaprStateStoreProperties().Application),
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprStateStoreProperties().ProvisioningState),
-		Kind:              toDaprStateStoreKindDataModel(src.Properties.GetDaprStateStoreProperties().Kind),
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -52,23 +51,28 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
-		if *v.Kind != DaprStateStorePropertiesKindStateAzureTablestorage && *v.Kind != DaprStateStorePropertiesKindStateSqlserver {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s or %s when mode is 'values'", DaprStateStorePropertiesKindStateAzureTablestorage, DaprStateStorePropertiesKindStateSqlserver))
+		if *v.Kind != ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage && *v.Kind != ResourceDaprStateStoreResourcePropertiesKindStateSqlserver {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s or %s when mode is 'values'", ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage, ResourceDaprStateStoreResourcePropertiesKindStateSqlserver))
 		}
 		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
+		converted.Properties.Kind = toDaprStateStoreKindResourceDataModel(v.Kind)
+		converted.Properties.Type = to.String(v.Type)
+		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Resource = to.String(v.Resource)
 	case *ValuesDaprStateStoreResourceProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
-		if *v.Kind != DaprStateStorePropertiesKindGeneric {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", DaprStateStorePropertiesKindGeneric))
+		if *v.Kind != ValuesDaprStateStoreResourcePropertiesKindGeneric {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", DaprPubSubBrokerPropertiesKindGeneric))
 		}
 		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
+		converted.Properties.Kind = datamodel.DaprStateStoreKindGeneric
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Resource = to.String(v.Resource)
 	default:
 		return nil, errors.New("invalid mode for DaprStateStore")
 	}
@@ -102,7 +106,6 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
 			Recipe:            fromRecipeDataModel(daprStateStore.Properties.Recipe),
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
 			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
@@ -119,12 +122,13 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			Kind:              fromDaprStateStoreKindResourceDataModel(daprStateStore.Properties.Kind),
 			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	case datamodel.DaprStateStoreModeValues:
 		mode := DaprStateStorePropertiesModeValues
+		kind := ValuesDaprStateStoreResourcePropertiesKindGeneric
 		dst.Properties = &ValuesDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -134,7 +138,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Application:       to.StringPtr(daprStateStore.Properties.Application),
 			ComponentName:     to.StringPtr(daprStateStore.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              fromDaprStateStoreKindDataModel(daprStateStore.Properties.Kind),
+			Kind:              &kind,
 			Type:              to.StringPtr(daprStateStore.Properties.Type),
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
@@ -146,31 +150,25 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	return nil
 }
 
-func toDaprStateStoreKindDataModel(kind *DaprStateStorePropertiesKind) datamodel.DaprStateStoreKind {
+func toDaprStateStoreKindResourceDataModel(kind *ResourceDaprStateStoreResourcePropertiesKind) datamodel.DaprStateStoreKind {
 	switch *kind {
-	case DaprStateStorePropertiesKindStateSqlserver:
+	case ResourceDaprStateStoreResourcePropertiesKindStateSqlserver:
 		return datamodel.DaprStateStoreKindStateSqlServer
-	case DaprStateStorePropertiesKindStateAzureTablestorage:
+	case ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage:
 		return datamodel.DaprStateStoreKindAzureTableStorage
-	case DaprStateStorePropertiesKindGeneric:
-		return datamodel.DaprStateStoreKindGeneric
 	default:
 		return datamodel.DaprStateStoreKindUnknown
 	}
 
 }
 
-func fromDaprStateStoreKindDataModel(kind datamodel.DaprStateStoreKind) *DaprStateStorePropertiesKind {
-	var convertedKind DaprStateStorePropertiesKind
+func fromDaprStateStoreKindResourceDataModel(kind datamodel.DaprStateStoreKind) *ResourceDaprStateStoreResourcePropertiesKind {
+	var convertedKind ResourceDaprStateStoreResourcePropertiesKind
 	switch kind {
 	case datamodel.DaprStateStoreKindStateSqlServer:
-		convertedKind = DaprStateStorePropertiesKindStateSqlserver
+		convertedKind = ResourceDaprStateStoreResourcePropertiesKindStateSqlserver
 	case datamodel.DaprStateStoreKindAzureTableStorage:
-		convertedKind = DaprStateStorePropertiesKindStateAzureTablestorage
-	case datamodel.DaprStateStoreKindGeneric:
-		convertedKind = DaprStateStorePropertiesKindGeneric
-	default:
-		convertedKind = DaprStateStorePropertiesKindGeneric
+		convertedKind = ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage
 	}
 	return &convertedKind
 }
