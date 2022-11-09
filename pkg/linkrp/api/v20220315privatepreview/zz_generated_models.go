@@ -136,9 +136,6 @@ type DaprPubSubBrokerProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The DaprPubSubProperties kind
-	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
-
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -983,9 +980,6 @@ type RecipeDaprPubSubProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The DaprPubSubProperties kind
-	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
-
 	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
@@ -1016,7 +1010,6 @@ type RecipeDaprPubSubProperties struct {
 func (r *RecipeDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
 		ProvisioningState: r.ProvisioningState,
-		Kind: r.Kind,
 		Mode: r.Mode,
 		Topic: r.Topic,
 		Status: r.Status,
@@ -1234,6 +1227,9 @@ type ResourceDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; The DaprPubSubProperties kind
+	Kind *ResourceDaprPubSubPropertiesKind `json:"kind,omitempty"`
+
 	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
@@ -1244,14 +1240,17 @@ type ResourceDaprPubSubProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The DaprPubSubProperties kind
-	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
-
 	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
+
+	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
@@ -1268,7 +1267,6 @@ type ResourceDaprPubSubProperties struct {
 func (r *ResourceDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
 		ProvisioningState: r.ProvisioningState,
-		Kind: r.Kind,
 		Mode: r.Mode,
 		Topic: r.Topic,
 		Status: r.Status,
@@ -1449,6 +1447,9 @@ type ValuesDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// REQUIRED; The DaprPubSubProperties kind
+	Kind *ValuesDaprPubSubPropertiesKind `json:"kind,omitempty"`
+
 	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
@@ -1465,8 +1466,8 @@ type ValuesDaprPubSubProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The DaprPubSubProperties kind
-	Kind *DaprPubSubBrokerPropertiesKind `json:"kind,omitempty"`
+	// PubSub resource
+	Resource *string `json:"resource,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
@@ -1486,7 +1487,6 @@ type ValuesDaprPubSubProperties struct {
 func (v *ValuesDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
 		ProvisioningState: v.ProvisioningState,
-		Kind: v.Kind,
 		Mode: v.Mode,
 		Topic: v.Topic,
 		Status: v.Status,

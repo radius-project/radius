@@ -25,7 +25,6 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 			Application: to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		},
 		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
-		Kind:              toDaprPubSubBrokerKindDataModel(src.Properties.GetDaprPubSubBrokerProperties().Kind),
 		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
 	}
 
@@ -48,23 +47,28 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
-		if *v.Kind != DaprPubSubBrokerPropertiesKindPubsubAzureServicebus {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'resource'", DaprPubSubBrokerPropertiesKindPubsubAzureServicebus))
+		if *v.Kind != ResourceDaprPubSubPropertiesKindPubsubAzureServicebus {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'resource'", ResourceDaprPubSubPropertiesKindPubsubAzureServicebus))
 		}
 		converted.Properties.Mode = datamodel.DaprPubSubBrokerModeResource
+		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindAzureServiceBus
 		converted.Properties.Resource = to.String(v.Resource)
+		converted.Properties.Type = to.String(v.Type)
+		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
 	case *ValuesDaprPubSubProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
-		if *v.Kind != DaprPubSubBrokerPropertiesKindGeneric {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", DaprPubSubBrokerPropertiesKindGeneric))
+		if *v.Kind != ValuesDaprPubSubPropertiesKindGeneric {
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", ValuesDaprPubSubPropertiesKindGeneric))
 		}
 		converted.Properties.Mode = datamodel.DaprPubSubBrokerModeValues
+		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindGeneric
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
+		converted.Properties.Resource = to.String(v.Resource)
 	case *RecipeDaprPubSubProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
@@ -108,7 +112,6 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.Resource),
 			Type:              to.StringPtr(daprPubSub.Properties.Type),
@@ -118,6 +121,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 		}
 	case datamodel.DaprPubSubBrokerModeResource:
 		mode := DaprPubSubBrokerPropertiesModeResource
+		kind := ResourceDaprPubSubPropertiesKindPubsubAzureServicebus
 		dst.Properties = &ResourceDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -127,13 +131,14 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
+			Kind:              &kind,
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.Resource),
 			Metadata:          daprPubSub.Properties.Metadata,
 		}
 	case datamodel.DaprPubSubBrokerModeValues:
 		mode := DaprPubSubBrokerPropertiesModeValues
+		kind := ValuesDaprPubSubPropertiesKindGeneric
 		dst.Properties = &ValuesDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -143,7 +148,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              fromDaprPubSubBrokerKindDataModel(daprPubSub.Properties.Kind),
+			Kind:              &kind,
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Type:              to.StringPtr(daprPubSub.Properties.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.Version),
@@ -154,29 +159,4 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	}
 
 	return nil
-}
-
-func toDaprPubSubBrokerKindDataModel(kind *DaprPubSubBrokerPropertiesKind) datamodel.DaprPubSubBrokerKind {
-	switch *kind {
-	case DaprPubSubBrokerPropertiesKindPubsubAzureServicebus:
-		return datamodel.DaprPubSubBrokerKindAzureServiceBus
-	case DaprPubSubBrokerPropertiesKindGeneric:
-		return datamodel.DaprPubSubBrokerKindGeneric
-	default:
-		return datamodel.DaprPubSubBrokerKindUnknown
-	}
-
-}
-
-func fromDaprPubSubBrokerKindDataModel(kind datamodel.DaprPubSubBrokerKind) *DaprPubSubBrokerPropertiesKind {
-	var convertedKind DaprPubSubBrokerPropertiesKind
-	switch kind {
-	case datamodel.DaprPubSubBrokerKindAzureServiceBus:
-		convertedKind = DaprPubSubBrokerPropertiesKindPubsubAzureServicebus
-	case datamodel.DaprPubSubBrokerKindGeneric:
-		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
-	default:
-		convertedKind = DaprPubSubBrokerPropertiesKindGeneric
-	}
-	return &convertedKind
 }

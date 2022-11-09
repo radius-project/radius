@@ -265,12 +265,27 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The DaprPubSubProperties kind",
+          "type": "string",
+          "enum": [
+            "pubsub.azure.servicebus"
+          ]
+        },
+        "resource": {
+          "description": "PubSub resource",
+          "type": "string"
+        },
         "metadata": {
           "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
           "type": "object"
         },
-        "resource": {
-          "description": "PubSub resource",
+        "type": {
+          "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",
+          "type": "string"
+        },
+        "version": {
+          "description": "Dapr component version",
           "type": "string"
         }
       },
@@ -289,6 +304,13 @@
         }
       ],
       "properties": {
+        "kind": {
+          "description": "The DaprPubSubProperties kind",
+          "type": "string",
+          "enum": [
+            "generic"
+          ]
+        },
         "metadata": {
           "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -299,6 +321,10 @@
         },
         "version": {
           "description": "Dapr component version",
+          "type": "string"
+        },
+        "resource": {
+          "description": "PubSub resource",
           "type": "string"
         }
       },
@@ -365,14 +391,6 @@
           "readOnly": true,
           "$ref": "global.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the daprPubSubBroker link at the time the operation was called"
-        },
-        "kind": {
-          "description": "The DaprPubSubProperties kind",
-          "type": "string",
-          "enum": [
-            "pubsub.azure.servicebus",
-            "generic"
-          ]
         },
         "mode": {
           "description": "How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.",
