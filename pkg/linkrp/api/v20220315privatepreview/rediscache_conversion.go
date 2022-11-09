@@ -104,7 +104,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	case datamodel.LinkModeResource:
 		var mode RedisCachePropertiesMode
 		mode = RedisCachePropertiesModeResource
-		converted := &ResourceRedisCacheProperties{
+		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
 			Resource: to.StringPtr(redis.Properties.RedisResourceProperties.Resource),
 			Host:     to.StringPtr(redis.Properties.Host),
@@ -117,11 +117,10 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
-		dst.Properties = converted
 	case datamodel.LinkModeValues:
 		var mode RedisCachePropertiesMode
 		mode = RedisCachePropertiesModeValues
-		converted := &ResourceRedisCacheProperties{
+		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
 			Host:     to.StringPtr(redis.Properties.Host),
 			Port:     to.Int32Ptr(redis.Properties.Port),
@@ -133,11 +132,10 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
-		dst.Properties = converted
 	case datamodel.LinkModeRecipe:
 		var mode RedisCachePropertiesMode
 		mode = RedisCachePropertiesModeRecipe
-		converted := &RecipeRedisCacheProperties{
+		dst.Properties = &RecipeRedisCacheProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(redis.Properties.Recipe),
 			Host:     to.StringPtr(redis.Properties.Host),
@@ -150,7 +148,6 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
-		dst.Properties = converted
 	default:
 		return conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", redis.Properties.Mode))
 	}
