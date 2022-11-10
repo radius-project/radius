@@ -382,7 +382,7 @@
 ### RecipeRedisCacheProperties
 #### Properties
 * **host**: string: The host name of the target Redis cache
-* **mode**: 'recipe' (Required): How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'recipe' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **port**: int: The port value of the target Redis cache
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
 * **username**: string (ReadOnly): The username for Redis cache
@@ -390,7 +390,7 @@
 ### ResourceRedisCacheProperties
 #### Properties
 * **host**: string: The host name of the target Redis cache
-* **mode**: 'resource' (Required): How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'resource' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **port**: int: The port value of the target Redis cache
 * **resource**: string (Required): Fully qualified resource ID of a supported resource with Redis API to use for this link
 * **username**: string (ReadOnly): The username for Redis cache
@@ -398,7 +398,7 @@
 ### ValuesRedisCacheProperties
 #### Properties
 * **host**: string (Required): The host name of the target Redis cache
-* **mode**: 'values' (Required): How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
+* **mode**: 'values' (Required): How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **port**: int (Required): The port value of the target Redis cache
 * **username**: string (ReadOnly): The username for Redis cache
 

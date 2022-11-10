@@ -151,7 +151,7 @@ func PossibleRabbitMQMessageQueuePropertiesModeValues() []RabbitMQMessageQueuePr
 	}
 }
 
-// RedisCachePropertiesMode - How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource',
+// RedisCachePropertiesMode - How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource',
 // or build manually via 'values'. Selection determines which set of fields to additionally require.
 type RedisCachePropertiesMode string
 

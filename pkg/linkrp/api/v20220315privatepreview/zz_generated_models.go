@@ -986,7 +986,7 @@ type RecipeRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
 
@@ -1088,7 +1088,7 @@ type RedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
 
@@ -1329,7 +1329,7 @@ type ResourceRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
 
@@ -1770,7 +1770,7 @@ type ValuesRedisCacheProperties struct {
 	// REQUIRED; The host name of the target Redis cache
 	Host *string `json:"host,omitempty"`
 
-	// REQUIRED; How to build the Redis cache link. Options are to build automatically via 'recipe' or 'resource', or build manually
+	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
 
