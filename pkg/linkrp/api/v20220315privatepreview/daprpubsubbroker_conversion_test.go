@@ -44,19 +44,25 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		switch convertedResource.Properties.Kind {
-		case datamodel.DaprPubSubBrokerKindAzureServiceBus:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", convertedResource.Properties.DaprPubSubAzureServiceBus.Resource)
-			require.Equal(t, "pubsub.azure.servicebus", string(convertedResource.Properties.Kind))
+		if convertedResource.Properties.Mode != datamodel.DaprPubSubBrokerModeRecipe {
+			switch convertedResource.Properties.Kind {
+			case datamodel.DaprPubSubBrokerKindAzureServiceBus:
+				if convertedResource.Properties.Mode == datamodel.DaprPubSubBrokerModeResource {
+					require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", convertedResource.Properties.Resource)
+					require.Equal(t, "pubsub.azure.servicebus", string(convertedResource.Properties.Kind))
+				}
 
-		case datamodel.DaprPubSubBrokerKindGeneric:
-			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
-			require.Equal(t, "pubsub.kafka", convertedResource.Properties.DaprPubSubGeneric.Type)
-			require.Equal(t, "v1", convertedResource.Properties.DaprPubSubGeneric.Version)
-			require.Equal(t, "bar", convertedResource.Properties.DaprPubSubGeneric.Metadata["foo"])
-			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
-		default:
-			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
+			case datamodel.DaprPubSubBrokerKindGeneric:
+				if convertedResource.Properties.Mode == datamodel.DaprPubSubBrokerModeValues {
+					require.Equal(t, "generic", string(convertedResource.Properties.Kind))
+					require.Equal(t, "pubsub.kafka", convertedResource.Properties.Type)
+					require.Equal(t, "v1", convertedResource.Properties.Version)
+					require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
+					require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
+				}
+			default:
+				assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
+			}
 		}
 
 		if payload == "daprpubsubbrokerazureresource_recipe.json" ||
@@ -100,19 +106,25 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Link/daprPubSubBrokers", resource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
-		switch resource.Properties.Kind {
-		case datamodel.DaprPubSubBrokerKindAzureServiceBus:
-			require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", resource.Properties.DaprPubSubAzureServiceBus.Resource)
-			require.Equal(t, "pubsub.azure.servicebus", string(resource.Properties.Kind))
-			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
-			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["Provider"])
-		case datamodel.DaprPubSubBrokerKindGeneric:
-			require.Equal(t, "generic", string(resource.Properties.Kind))
-			require.Equal(t, "pubsub.kafka", resource.Properties.DaprPubSubGeneric.Type)
-			require.Equal(t, "v1", resource.Properties.DaprPubSubGeneric.Version)
-			require.Equal(t, "bar", resource.Properties.DaprPubSubGeneric.Metadata["foo"])
-		default:
-			assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
+		if resource.Properties.Mode != datamodel.DaprPubSubBrokerModeRecipe {
+			switch resource.Properties.Kind {
+			case datamodel.DaprPubSubBrokerKindAzureServiceBus:
+				if resource.Properties.Mode == datamodel.DaprPubSubBrokerModeResource {
+					require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue", resource.Properties.Resource)
+					require.Equal(t, "pubsub.azure.servicebus", string(resource.Properties.Kind))
+					require.Equal(t, "Deployment", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["LocalID"])
+					require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprPubSubBrokerProperties().Status.OutputResources[0]["Provider"])
+				}
+			case datamodel.DaprPubSubBrokerKindGeneric:
+				if resource.Properties.Mode == datamodel.DaprPubSubBrokerModeValues {
+					require.Equal(t, "generic", string(resource.Properties.Kind))
+					require.Equal(t, "pubsub.kafka", resource.Properties.Type)
+					require.Equal(t, "v1", resource.Properties.Version)
+					require.Equal(t, "bar", resource.Properties.Metadata["foo"])
+				}
+			default:
+				assert.Fail(t, "Kind of DaprPubSubBroker is specified.")
+			}
 		}
 
 		if payload == "daprpubsubbrokerazureresourcedatamodel_recipe.json" ||

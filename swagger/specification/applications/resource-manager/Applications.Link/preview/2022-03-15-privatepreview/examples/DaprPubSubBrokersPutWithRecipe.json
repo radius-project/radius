@@ -1,8 +1,23 @@
 {
     "parameters": {
       "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "daprPubSubBrokerName": "daprPubSub0",
       "api-version": "2022-03-15-privatepreview",
-      "daprPubSubBrokerName": "daprPubSub0"
+      "DaprPubSubBrokerResource": {
+        "location": "West US",
+        "properties": {
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "kind": "pubsub.azure.servicebus",
+          "mode": "recipe",
+          "recipe": {
+            "name": "pubsub-test",
+            "parameters": {
+                "port": 6081
+            }
+          }
+        }
+      }
     },
     "responses": {
       "200": {
@@ -15,8 +30,13 @@
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
             "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
             "kind": "pubsub.azure.servicebus",
-            "mode": "resource",
-            "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/testQueue"
+            "mode": "recipe",
+            "recipe": {
+              "name": "pubsub-test",
+              "parameters": {
+                  "port": 6081
+              }
+            }
           }
         }
       }

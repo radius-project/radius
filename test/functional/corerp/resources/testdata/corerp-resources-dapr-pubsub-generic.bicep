@@ -92,6 +92,7 @@ resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' 
     application: app.id
     kind: 'generic'
     type: 'pubsub.redis'
+    mode: 'values'
     metadata: {
       redisHost: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       redisPassword: ''
