@@ -15,10 +15,10 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
-	t.Skipf("Skip until workload identity is supported")
+	t.Skipf("Skip until we fix https://github.com/project-radius/radius/issues/4543")
 
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
-	name := "corerp-resources-volume-azkv"
+	name := "corerp-resources-volume-azure-keyvault"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -27,6 +27,10 @@ func Test_PersistentVolume(t *testing.T) {
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-azure-workload-env",
+						Type: validation.EnvironmentsResource,
+					},
 					{
 						Name: name,
 						Type: validation.ApplicationsResource,
@@ -45,7 +49,7 @@ func Test_PersistentVolume(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-azure-workload-env": {
 						validation.NewK8sPodForResource(name, "volume-azkv-ctnr"),
 					},
 				},

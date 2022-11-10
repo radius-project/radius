@@ -17,18 +17,11 @@ param magpieimage string
 param port int = 3000
 
 @description('Specifies the scope of azure resources.')
-param rootScope string
+param rootScope string = resourceGroup().id
 
 @description('Specifies the environment for resources.')
 #disable-next-line no-hardcoded-env-urls
 param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
-
-@description('Specifies the value of the secret that you want to create.')
-@secure()
-param mySecretValue string = newGuid()
-
-@description('Specifies the value of tenantId.')
-param keyvaultTenantID string = subscription().tenantId
 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
@@ -53,25 +46,10 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-volume-azkv'
+  name: 'corerp-resources-volume-azure-keyvvault'
   location: location
   properties: {
     environment: env.id
-  }
-}
-
-resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = {
-  name: 'volume-azkv'
-  location: location
-  properties: {
-    application: app.id
-    kind: 'azure.com.keyvault'
-    resource: azTestKeyvault.id
-    secrets: {
-      mysecret: {
-        name: 'mysecret'
-      }
-    }
   }
 }
 
@@ -98,15 +76,28 @@ resource keyvaultVolContainer 'Applications.Core/containers@2022-03-15-privatepr
   }
 }
 
-// Prepare Azure resources - User assigned managed identity, keyvault, and role assignment.
-resource kvVolIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' = {
-  name: 'kv-volume-mi'
+resource keyvaultVolume 'Applications.Core/volumes@2022-03-15-privatepreview' = {
+  name: 'volume-azkv'
   location: location
+  properties: {
+    application: app.id
+    kind: 'azure.com.keyvault'
+    // Due to the soft-delete production of keyvault, this test uses the existing test keyvault.
+    resource: '/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.KeyVault/vaults/radiuskvvoltest'
+    secrets: {
+      mysecret: {
+        name: 'mysecret'
+      }
+    }
+  }
 }
 
+/*
+// Due to the soft-delete production of keyvault, this test uses the existing test keyvault.
+// If you want to create keyvault while deploying this bicep template, please uncomment the below resource template.
 resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
-  name: 'kv-volume'
-  location: location
+  name: 'radkvt${uniqueString(resourceGroup().name)}'
+  location: resourceGroup().location
   tags: {
     radiustest: 'corerp-resources-key-vault'
   }
@@ -114,6 +105,8 @@ resource azTestKeyvault 'Microsoft.KeyVault/vaults@2022-07-01' = {
     enabledForTemplateDeployment: true
     tenantId: keyvaultTenantID
     enableRbacAuthorization:true
+    enableSoftDelete: false
+    softDeleteRetentionInDays: 7
     sku: {
       name: 'standard'
       family: 'A'
@@ -131,3 +124,5 @@ resource mySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
     }
   }
 }
+*/
+
