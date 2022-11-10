@@ -42,6 +42,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		if v.Resource == nil {
 			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
 		}
+		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
@@ -59,6 +60,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.RedisRecipeProperties = datamodel.RedisRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
 		}
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Username = to.String(v.Username)
@@ -72,6 +74,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		if v.Host == nil || v.Port == nil {
 			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
 		}
+		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
 		converted.Properties.Username = to.String(v.Username)
