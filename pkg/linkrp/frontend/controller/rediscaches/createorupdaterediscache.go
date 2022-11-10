@@ -122,7 +122,7 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseW
 		return nil, err
 	}
 
-	redisResponse := &datamodel.RedisCacheResponse{}
+	redisResponse := &datamodel.RedisCache{}
 	err = savedResource.As(redisResponse)
 	if err != nil {
 		return nil, err

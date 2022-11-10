@@ -167,7 +167,7 @@ type RabbitMQMessageQueuesClientListSecretsResponse struct {
 
 // RedisCachesClientCreateOrUpdateResponse contains the response from method RedisCachesClient.CreateOrUpdate.
 type RedisCachesClientCreateOrUpdateResponse struct {
-	RedisCacheResponseResource
+	RedisCacheResource
 }
 
 // RedisCachesClientDeleteResponse contains the response from method RedisCachesClient.Delete.
@@ -177,7 +177,7 @@ type RedisCachesClientDeleteResponse struct {
 
 // RedisCachesClientGetResponse contains the response from method RedisCachesClient.Get.
 type RedisCachesClientGetResponse struct {
-	RedisCacheResponseResource
+	RedisCacheResource
 }
 
 // RedisCachesClientListByRootScopeResponse contains the response from method RedisCachesClient.ListByRootScope.

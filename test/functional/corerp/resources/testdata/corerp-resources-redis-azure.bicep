@@ -41,6 +41,7 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: environment
     application: app.id
+    mode: 'resource'
     resource: '/subscriptions/85716382-7362-45c3-ae03-2126e459a123/resourceGroups/RadiusFunctionalTest/providers/Microsoft.Cache/Redis/redis-radiustest'
   }
 }
