@@ -291,6 +291,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		if (step.CoreRPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
 			continue
 		}
+
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
