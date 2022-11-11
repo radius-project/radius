@@ -6,6 +6,7 @@
 package daprstatestores
 
 import (
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
@@ -64,6 +65,7 @@ func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicatio
 				handlers.StorageAccountNameKey: azuretableStorageID.TypeSegments()[0].Name,
 				handlers.ResourceName:          resource.Name,
 			},
+			RadiusManaged: to.BoolPtr(true),
 		},
 	}
 	return outputResources, nil
