@@ -40,7 +40,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceRedisCacheProperties:
 		if v.Resource == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
 		}
 		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Resource = to.String(v.Resource)
@@ -55,7 +55,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	case *RecipeRedisCacheProperties:
 		if v.Recipe == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
+			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
 		}
 		converted.Properties.RedisRecipeProperties = datamodel.RedisRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
@@ -72,7 +72,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	case *ValuesRedisCacheProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
+			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
 		}
 		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Host = to.String(v.Host)
@@ -85,7 +85,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 	default:
-		return datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
+		return datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
 	}
 	return converted, nil
 }
