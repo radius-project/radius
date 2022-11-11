@@ -103,7 +103,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, parameters, v.Recipe.Parameters)
 			}
 		case *ValuesRedisCacheProperties:
-			require.Equal(t, "testAccount1.mongo.cosmos.azure.com", *v.Host)
+			require.Equal(t, "myrediscache.redis.cache.windows.net", *v.Host)
 			require.Equal(t, int32(10255), *v.Port)
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "azure", v.Status.OutputResources[0]["Provider"])
