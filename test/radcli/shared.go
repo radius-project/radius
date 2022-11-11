@@ -9,6 +9,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -39,6 +41,11 @@ type ValidateInput struct {
 	ExpectedValid  bool
 	ConfigHolder   framework.ConfigHolder
 	ConfigureMocks func(mocks ValidateMocks)
+
+	// CreateTempDirectory can be used to create a directory, and change directory into the
+	// newly created directory before calling Validate. Set this field to the name of the directory
+	// you want. The test framework will handle the cleanup.
+	CreateTempDirectory string
 }
 
 type ValidateMocks struct {
@@ -90,6 +97,24 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				framework.ConnectionFactory = &connections.MockFactory{
 					ApplicationsManagementClient: mocks.ApplicationManagementClient,
 				}
+			}
+
+			if testcase.CreateTempDirectory != "" {
+				// Will be automatically deleted after the test
+				tempRoot := t.TempDir()
+				combined := filepath.Join(tempRoot, testcase.CreateTempDirectory)
+				err := os.MkdirAll(combined, 0775)
+				require.NoError(t, err)
+
+				wd, err := os.Getwd()
+				require.NoError(t, err)
+				defer func() {
+					_ = os.Chdir(wd) // Restore working directory
+				}()
+
+				// Change to the new directory before running the test code.
+				err = os.Chdir(combined)
+				require.NoError(t, err)
 			}
 
 			cmd, runner := factory(framework)

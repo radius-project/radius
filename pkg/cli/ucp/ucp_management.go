@@ -258,6 +258,46 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return respFromCtx.StatusCode != 204, nil
 }
 
+// CreateOrUpdateApplication creates or updates an application.
+func (amc *ARMApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource v20220315privatepreview.ApplicationResource) error {
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateApplicationIfNotFound creates an application if it does not exist.
+func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource v20220315privatepreview.ApplicationResource) error {
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.Get(ctx, applicationName, nil)
+	if clients.Is404Error(err) {
+		// continue
+	} else if err != nil {
+		return err
+	} else {
+		// Application already exists, nothing to do.
+		return nil
+	}
+
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Creates a radius environment resource
 func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers, useDevRecipes bool) (bool, error) {
 	client, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)

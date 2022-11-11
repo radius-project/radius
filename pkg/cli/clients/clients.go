@@ -130,8 +130,16 @@ type ApplicationsManagementClient interface {
 	DeleteResource(ctx context.Context, resourceType string, resourceName string) (bool, error)
 	ListApplications(ctx context.Context) ([]corerp.ApplicationResource, error)
 	ShowApplication(ctx context.Context, applicationName string) (corerp.ApplicationResource, error)
+
+	// CreateOrUpdateApplication creates or updates an application.
+	CreateOrUpdateApplication(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
+
+	// CreateApplicationIfNotFound creates an application if it does not exist.
+	CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource corerp.ApplicationResource) error
+
 	DeleteApplication(ctx context.Context, applicationName string) (bool, error)
 	CreateEnvironment(ctx context.Context, envName, location, namespace, envKind, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers, useDevRecipes bool) (bool, error)
+
 	// ListEnvironmentsInResourceGroup lists all environments in the configured scope (assumes configured scope is a resource group)
 	ListEnvironmentsInResourceGroup(ctx context.Context) ([]corerp.EnvironmentResource, error)
 

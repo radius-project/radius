@@ -9,6 +9,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -64,6 +66,9 @@ func Test_Validate(t *testing.T) {
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -90,6 +95,9 @@ func Test_Validate(t *testing.T) {
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -121,6 +129,9 @@ func Test_Validate(t *testing.T) {
 
 				// No cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -147,6 +158,9 @@ func Test_Validate(t *testing.T) {
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
 
 				// No need to choose env settings since we're using existing
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -180,6 +194,70 @@ func Test_Validate(t *testing.T) {
 
 				// Don't add any other cloud providers
 				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Initialize with existing environment create application",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			CreateTempDirectory: "test-app", // Valid app name
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("cool-existing-env"),
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
+
+				// No need to choose env settings since we're using existing
+
+				// Create Application
+				setScaffoldApplicationPromptYes(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Initialize with existing environment create application - initial appname is invalid",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			CreateTempDirectory: "in.valid", // Invalid app name
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				initRadiusReinstallNo(mocks.Prompter)
+
+				// Configure an existing environment - but then choose to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
+					{
+						Name: to.StringPtr("cool-existing-env"),
+					},
+				})
+				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
+
+				// No need to choose env settings since we're using existing
+
+				// Create Application
+				setScaffoldApplicationPromptYes(mocks.Prompter)
+				setApplicationNamePrompt(mocks.Prompter, "valid")
 			},
 		},
 		{
@@ -198,7 +276,8 @@ func Test_Validate(t *testing.T) {
 				// No existing environment, users will be prompted to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
 
-				// No prompts in this case
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -214,7 +293,8 @@ func Test_Validate(t *testing.T) {
 				initGetKubeContextSuccess(mocks.Kubernetes)
 				initHelmMockRadiusNotInstalled(mocks.Helm)
 
-				// No prompts in this case
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -237,7 +317,8 @@ func Test_Validate(t *testing.T) {
 					},
 				})
 
-				// No prompts in this case
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -265,6 +346,9 @@ func Test_Validate(t *testing.T) {
 
 				// prompt the user since there's no 'default'
 				initExistingEnvironmentSelection(mocks.Prompter, "prod")
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 		{
@@ -343,104 +427,182 @@ func Test_Validate(t *testing.T) {
 	radcli.SharedValidateValidation(t, NewCommand, testcases)
 }
 
-func Test_Run(t *testing.T) {
-	t.Run("Init Radius", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-		configFileInterface.EXPECT().
-			ConfigFromContext(context.Background()).
-			Return(nil).Times(1)
+func Test_Run_InstallAndCreateEnvironment_WithAzureProvider(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).Times(1)
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-			Return(true, nil).Times(1)
-		appManagementClient.EXPECT().
-			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-			Return(true, nil).Times(1)
-		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(true, nil).Times(1)
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	appManagementClient.EXPECT().
+		CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+		Return(true, nil).Times(1)
+	appManagementClient.EXPECT().
+		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
+		Return(true, nil).Times(1)
+	appManagementClient.EXPECT().
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(true, nil).Times(1)
 
-		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil).Times(1)
+	configFileInterface.EXPECT().
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
 
-		outputSink := &output.MockOutput{}
+	outputSink := &output.MockOutput{}
 
-		helmInterface := helm.NewMockInterface(ctrl)
-		helmInterface.EXPECT().
-			InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-			Return(true, nil).Times(1)
+	helmInterface := helm.NewMockInterface(ctrl)
+	helmInterface.EXPECT().
+		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+		Return(true, nil).Times(1)
 
-		runner := &Runner{
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			ConfigFileInterface: configFileInterface,
-			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-			HelmInterface:       helmInterface,
-			Output:              outputSink,
-			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-			KubeContext:         "kind-kind",
-			EnvName:             "default",
-			Namespace:           "defaultNamespace",
-			Reinstall:           true,
-			AzureCloudProvider: &azure.Provider{
-				SubscriptionID: "test-subscription",
-				ResourceGroup:  "test-rg",
-			},
-		}
+	runner := &Runner{
+		ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		ConfigFileInterface: configFileInterface,
+		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		HelmInterface:       helmInterface,
+		Output:              outputSink,
+		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
+		KubeContext:         "kind-kind",
+		EnvName:             "default",
+		Namespace:           "defaultNamespace",
+		RadiusInstalled:     true, // We're testing the reinstall case
+		Reinstall:           true,
+		AzureCloudProvider: &azure.Provider{
+			SubscriptionID: "test-subscription",
+			ResourceGroup:  "test-rg",
+		},
+	}
 
-		err := runner.Run(context.Background())
-		require.NoError(t, err)
-	})
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
 }
 
-func Test_Run_WithoutAzureProvider(t *testing.T) {
-	t.Run("Init Radius", func(t *testing.T) {
-		ctrl := gomock.NewController(t)
-		configFileInterface := framework.NewMockConfigFileInterface(ctrl)
-		configFileInterface.EXPECT().
-			ConfigFromContext(context.Background()).
-			Return(nil).Times(1)
+func Test_Run_InstallAndCreateEnvironment_WithoutAzureProvider(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).Times(1)
 
-		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
-		appManagementClient.EXPECT().
-			CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
-			Return(true, nil).Times(1)
-		appManagementClient.EXPECT().
-			CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
-			Return(true, nil).Times(1)
-		appManagementClient.EXPECT().
-			CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(true, nil).Times(1)
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	appManagementClient.EXPECT().
+		CreateUCPGroup(context.Background(), "radius", "local", "default", gomock.Any()).
+		Return(true, nil).Times(1)
+	appManagementClient.EXPECT().
+		CreateUCPGroup(context.Background(), "deployments", "local", "default", gomock.Any()).
+		Return(true, nil).Times(1)
+	appManagementClient.EXPECT().
+		CreateEnvironment(context.Background(), "default", v1.LocationGlobal, "defaultNamespace", "kubernetes", gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(true, nil).Times(1)
 
-		configFileInterface.EXPECT().
-			EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
-			Return(nil).Times(1)
+	configFileInterface.EXPECT().
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
 
-		outputSink := &output.MockOutput{}
+	outputSink := &output.MockOutput{}
 
-		helmInterface := helm.NewMockInterface(ctrl)
-		helmInterface.EXPECT().
-			InstallRadius(context.Background(), gomock.Any(), "kind-kind").
-			Return(true, nil).Times(1)
+	helmInterface := helm.NewMockInterface(ctrl)
+	helmInterface.EXPECT().
+		InstallRadius(context.Background(), gomock.Any(), "kind-kind").
+		Return(true, nil).Times(1)
 
-		runner := &Runner{
-			ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			ConfigFileInterface: configFileInterface,
-			ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
-			HelmInterface:       helmInterface,
-			Output:              outputSink,
-			Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
-			KubeContext:         "kind-kind",
-			EnvName:             "default",
-			Namespace:           "defaultNamespace",
-			Reinstall:           true,
-		}
+	runner := &Runner{
+		ConnectionFactory:   &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		ConfigFileInterface: configFileInterface,
+		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		HelmInterface:       helmInterface,
+		Output:              outputSink,
+		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
+		KubeContext:         "kind-kind",
+		RadiusInstalled:     false,
+		Namespace:           "defaultNamespace",
+		EnvName:             "default",
+	}
 
-		err := runner.Run(context.Background())
-		require.NoError(t, err)
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+}
+
+func Test_Run_InstalledRadiusExistingEnvironment(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).Times(1)
+
+	configFileInterface.EXPECT().
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
+
+	outputSink := &output.MockOutput{}
+
+	runner := &Runner{
+		ConnectionFactory:   &connections.MockFactory{},
+		ConfigFileInterface: configFileInterface,
+		ConfigHolder:        &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		Output:              outputSink,
+		Workspace:           &workspaces.Workspace{Name: "defaultWorkspace"},
+		KubeContext:         "kind-kind",
+		RadiusInstalled:     true,
+		EnvName:             "default",
+		ExistingEnvironment: true,
+	}
+
+	err := runner.Run(context.Background())
+	require.NoError(t, err)
+}
+
+func Test_Run_InstalledRadiusExistingEnvironment_CreateApplication(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	configFileInterface := framework.NewMockConfigFileInterface(ctrl)
+	configFileInterface.EXPECT().
+		ConfigFromContext(context.Background()).
+		Return(nil).Times(1)
+
+	configFileInterface.EXPECT().
+		EditWorkspaces(context.Background(), gomock.Any(), gomock.Any(), gomock.Any()).
+		Return(nil).Times(1)
+
+	appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
+	appManagementClient.EXPECT().
+		CreateApplicationIfNotFound(context.Background(), "cool-application", gomock.Any()).
+		Return(nil).Times(1)
+
+	outputSink := &output.MockOutput{}
+
+	runner := &Runner{
+		ConnectionFactory:       &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
+		ConfigFileInterface:     configFileInterface,
+		ConfigHolder:            &framework.ConfigHolder{ConfigFilePath: "filePath"},
+		Output:                  outputSink,
+		Workspace:               &workspaces.Workspace{Name: "defaultWorkspace"},
+		KubeContext:             "kind-kind",
+		RadiusInstalled:         true,
+		EnvName:                 "default",
+		ExistingEnvironment:     true,
+		ScaffoldApplication:     true,
+		ScaffoldApplicationName: "cool-application",
+	}
+
+	// Sandbox the command in a temp directory so we can do file-creation
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = os.Chdir(wd) // Restore when test is done
 	})
+
+	directory := t.TempDir()
+	err = os.Chdir(directory)
+	require.NoError(t, err)
+
+	err = runner.Run(context.Background())
+	require.NoError(t, err)
+
+	// For init, just test that these files were created. The setup code that creates them tests
+	// them in detail.
+	require.FileExists(t, filepath.Join(directory, "app.bicep"))
+	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 }
 
 func initParseCloudProvider(setup *setup.MockInterface, promper *prompt.MockInterface) {
@@ -537,7 +699,6 @@ func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		RunPrompt(matchesPrompt(confirmCloudProviderPrompt)).
 		Return("Y", nil).Times(1)
-
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface) {
@@ -567,6 +728,24 @@ func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice str
 	prompter.EXPECT().
 		RunSelect(matchesSelect(common.SelectExistingEnvironmentPrompt)).
 		Return(-1, choice, nil).Times(1) // We ignore the index, so this is ok.
+}
+
+func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(matchesPrompt(confirmSetupApplicationPrompt)).
+		Return("N", nil).Times(1)
+}
+
+func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
+	prompter.EXPECT().
+		RunPrompt(matchesPrompt(confirmSetupApplicationPrompt)).
+		Return("Y", nil).Times(1)
+}
+
+func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
+	prompter.EXPECT().
+		RunPrompt(matchesPrompt(enterApplicationName)).
+		Return(applicationName, nil).Times(1)
 }
 
 var _ gomock.Matcher = (*PromptMatcher)(nil)

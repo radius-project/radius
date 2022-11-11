@@ -11,6 +11,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/deploy"
@@ -136,7 +137,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist in scope %q. Run `rad env create` try again \n", r.EnvironmentName, r.Workspace.Scope)}
 	} else if err != nil {
 		return err

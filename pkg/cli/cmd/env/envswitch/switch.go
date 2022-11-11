@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -102,7 +103,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Validate that the environment exists
 	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch environments as requested environment %s does not exist.\n", r.EnvironmentName)}
 	} else if err != nil {
 		return err

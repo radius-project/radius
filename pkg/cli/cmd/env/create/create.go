@@ -14,6 +14,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -137,7 +138,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
 	} else if err != nil {
 		return err
