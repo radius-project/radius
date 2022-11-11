@@ -7,6 +7,7 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -52,7 +53,12 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
+	// TODO
+	// 1. Split this method up into two calls
+	// 2. If we can't create the multi-identifier resource
+	// create the id afterwards and assume create
+
+	primaryIdentifers, err := lookupPrimaryIdentifiersForResourceType(p.Options, resourceType)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -63,21 +69,9 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	computedResourceID := computeResourceID(id, awsResourceIdentifier)
-
-	// Create and update work differently for AWS - we need to know if the resource
-	// we're working on exists already.
-
 	existing := true
-	getResponse, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		TypeName:   &resourceType,
-		Identifier: aws.String(awsResourceIdentifier),
-	})
-	if awserror.IsAWSResourceNotFound(err) {
-		existing = false
-	} else if err != nil {
-		return awserror.HandleAWSError(err)
-	}
+
+	responseProperties := map[string]interface{}{}
 
 	var operation uuid.UUID
 	desiredState, err := json.Marshal(properties)
@@ -85,13 +79,32 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return awserror.HandleAWSError(err)
 	}
 
-	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
-	// simulate that here.
-	responseProperties := map[string]interface{}{}
-	if getResponse != nil {
-		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
-		if err != nil {
+	awsResourceIdentifier, err := getResourceIDFromPrimaryIdentifiers(primaryIdentifers, properties)
+	computedResourceID := ""
+
+	var getResponse *cloudcontrol.GetResourceOutput = nil
+	if err != nil {
+		// assume that if we can't get the AWS resource identifier, we need to create the resource
+		existing = false
+	} else {
+		computedResourceID = computeResourceID(id, awsResourceIdentifier)
+
+		// Create and update work differently for AWS - we need to know if the resource
+		// we're working on exists already.
+
+		getResponse, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+			TypeName:   &resourceType,
+			Identifier: aws.String(awsResourceIdentifier),
+		})
+		if awserror.IsAWSResourceNotFound(err) {
+			existing = false
+		} else if err != nil {
 			return awserror.HandleAWSError(err)
+		} else {
+			err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
+			if err != nil {
+				return awserror.HandleAWSError(err)
+			}
 		}
 	}
 
@@ -163,10 +176,18 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return awserror.HandleAWSError(err)
 		}
 
+		if response == nil || response.ProgressEvent == nil || response.ProgressEvent.Identifier == nil {
+			return awserror.HandleAWSError(fmt.Errorf("empty response from AWS Cloud Control Create API for type %s", resourceType))
+		}
+
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
+
+		awsResourceIdentifier := *response.ProgressEvent.Identifier
+
+		computedResourceID = computeResourceID(id, awsResourceIdentifier)
 	}
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning

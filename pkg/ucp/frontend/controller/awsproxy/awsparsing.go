@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -54,9 +54,20 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func lookupAWSResourceSchema(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, resourceType string) ([]interface{}, error) {
-	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-		Type:     types.RegistryTypeResource,
+func lookupPrimaryIdentifiersForResourceType(opts ctrl.Options, resourceType string) ([]interface{}, error) {
+	sess, err := session.NewSession()
+	if err != nil {
+		return nil, err
+	}
+
+	var svc awsclient.AWSCloudFormationClient
+	if opts.AWSCloudFormationClient == nil {
+		svc = cloudformation.New(sess, aws.NewConfig())
+	} else {
+		svc = opts.AWSCloudFormationClient
+	}
+
+	output, err := svc.DescribeType(&cloudformation.DescribeTypeInput{
 		TypeName: aws.String(resourceType),
 	})
 	if err != nil {
@@ -72,12 +83,7 @@ func lookupAWSResourceSchema(ctx context.Context, cloudFormationClient awsclient
 	return primaryIdentifier, nil
 }
 
-func getResourceIDWithMultiIdentifiers(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, url string, resourceType string, properties map[string]interface{}) (string, error) {
-	primaryIdentifiers, err := lookupAWSResourceSchema(ctx, cloudFormationClient, resourceType)
-	if err != nil {
-		return "", err
-	}
-
+func getResourceIDFromPrimaryIdentifiers(primaryIdentifiers []interface{}, properties map[string]interface{}) (string, error) {
 	var resourceID string
 	for _, pi := range primaryIdentifiers {
 		// Primary identifier is of the form /properties/<property-name>

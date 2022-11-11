@@ -49,7 +49,20 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
+	primaryIdentifiers, err := lookupPrimaryIdentifiersForResourceType(p.Options, resourceType)
+	if err != nil {
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
+				Message: err.Error(),
+			},
+		}
+
+		return armrpc_rest.NewBadRequestARMResponse(e), nil
+	}
+
+	awsResourceIdentifier, err := getResourceIDFromPrimaryIdentifiers(primaryIdentifiers, properties)
+
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{

@@ -45,11 +45,17 @@ func TestResourceIDWithMultiIdentifiers(t *testing.T) {
 	}
 	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
 
-	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
-	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
+	opts := ctrl.Options{
+		AWSCloudFormationClient: mockClient,
+	}
+
+	actualPrimaryIdentifiers, err := lookupPrimaryIdentifiersForResourceType(opts, "AWS::NetworkManager::Device")
+
+	resourceID, err := getResourceIDFromPrimaryIdentifiers(actualPrimaryIdentifiers, map[string]interface{}{
 		"GlobalNetworkId": "global-network-id",
 		"DeviceId":        "device-id",
 	})
+
 	require.NoError(t, err)
 	require.Equal(t, "global-network-id|device-id", resourceID)
 }
@@ -79,8 +85,17 @@ func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T)
 	}
 	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
 
+<<<<<<< HEAD
 	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
 	_, err = getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
+=======
+	opts := ctrl.Options{
+		AWSCloudFormationClient: mockClient,
+	}
+	actualPrimaryIdentifiers, err := lookupPrimaryIdentifiersForResourceType(opts, "AWS::NetworkManager::Device")
+
+	_, err = getResourceIDFromPrimaryIdentifiers(actualPrimaryIdentifiers, map[string]interface{}{
+>>>>>>> 825c2930 (Getting ID after creating resource)
 		"GlobalNetworkId": "global-network-id",
 	})
 	require.NotNil(t, err)

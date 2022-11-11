@@ -54,6 +54,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(testAWSResourceName),
 			},
 		}, nil)
 
@@ -148,6 +149,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(testAWSResourceName),
 			},
 		}, nil)
 
@@ -307,6 +309,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		TypeName: aws.String("AWS::RedShift::EndpointAuthorization"),
 		Schema:   to.Ptr(string(serialized)),
 	}
+	multiIdentifierResourceID := testPrimaryIdentifier1 + "|" + testPrimaryIdentifier2
 
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
@@ -320,6 +323,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(multiIdentifierResourceID),
 			},
 		}, nil)
 
@@ -357,7 +361,6 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	id, err := resources.Parse(testMultiIdentifierResourcePath)
 	require.NoError(t, err)
-	multiIdentifierResourceID := testPrimaryIdentifier1 + "|" + testPrimaryIdentifier2
 	rID := computeResourceID(id, multiIdentifierResourceID)
 	expectedResponseObject := map[string]interface{}{
 		"id":   rID,
@@ -388,6 +391,9 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			"/properties/Account",
 		},
 	}
+
+	multiIdentifierResourceID := testPrimaryIdentifier1 + "|" + testPrimaryIdentifier2
+
 	serialized, err := json.Marshal(primaryIdentifiers)
 	require.NoError(t, err)
 	output := cloudformation.DescribeTypeOutput{
@@ -416,6 +422,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(multiIdentifierResourceID),
 			},
 		}, nil)
 
@@ -454,7 +461,6 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	id, err := resources.Parse(testMultiIdentifierResourcePath)
 	require.NoError(t, err)
-	multiIdentifierResourceID := testPrimaryIdentifier1 + "|" + testPrimaryIdentifier2
 	rID := computeResourceID(id, multiIdentifierResourceID)
 	expectedResponseObject := map[string]interface{}{
 		"id":   rID,
