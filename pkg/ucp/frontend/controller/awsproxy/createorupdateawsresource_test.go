@@ -16,6 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -100,18 +101,49 @@ func Test_UpdateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	resourceTypeAWS := "AWS::MemoryDB::Cluster"
+	resourceId := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster/mycluster"
+	resourceType := "AWS.MemoryDB/Cluster"
+	resourceName := "mycluster"
+
+	typeSchema := map[string]interface{}{
+		"readOnlyProperties": []interface{}{
+			"/properties/ClusterEndpoint/Address",
+			"/properties/ClusterEndpoint/Port",
+			"/properties/ARN",
+		},
+		"createOnlyProperties": []interface{}{
+			"/properties/ClusterName",
+			"/properties/Port",
+		},
+	}
+	serialized, err := json.Marshal(typeSchema)
+	require.NoError(t, err)
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(resourceTypeAWS),
+		Schema:   aws.String(string(serialized)),
+	}
+
 	getResponseBody := map[string]interface{}{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
+		"ClusterEndpoint": map[string]interface{}{
+			"Address": "test",
+			"Port":    6379,
+		},
+		"Port":                6379,
+		"ARN":                 "arn:aws:memorydb:us-west-2:123456789012:cluster:mycluster",
+		"NumReplicasPerShard": 1,
 	}
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
+
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Properties: to.StringPtr(string(getResponseBodyBytes)),
+				Properties: aws.String(string(getResponseBodyBytes)),
 			},
 		}, nil)
 
@@ -119,26 +151,26 @@ func Test_UpdateAWSResource(t *testing.T) {
 		&cloudcontrol.UpdateResourceOutput{
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
-				RequestToken:    to.StringPtr(testAWSRequestToken),
+				RequestToken:    aws.String(testAWSRequestToken),
 			},
 		}, nil)
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
-			"RetentionPeriodHours": 180,
-			"ShardCount":           4,
+			"NumReplicasPerShard": 0,
 		},
 	}
 	requestBodyBytes, err := json.Marshal(requestBody)
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testAWSSingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	request, err := http.NewRequest(http.MethodPut, resourceId, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -155,13 +187,18 @@ func Test_UpdateAWSResource(t *testing.T) {
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{
-		"id":   testAWSSingleResourcePath,
-		"name": testAWSResourceName,
-		"type": testAWSResourceType,
+		"id":   resourceId,
+		"name": resourceName,
+		"type": resourceType,
 		"properties": map[string]interface{}{
-			"RetentionPeriodHours": float64(180),
-			"ShardCount":           float64(4),
-			"provisioningState":    "Provisioning",
+			"ClusterEndpoint": map[string]interface{}{
+				"Address": "test",
+				"Port":    float64(6379),
+			},
+			"Port":                float64(6379),
+			"ARN":                 "arn:aws:memorydb:us-west-2:123456789012:cluster:mycluster",
+			"NumReplicasPerShard": float64(0),
+			"provisioningState":   "Provisioning",
 		},
 	}
 
@@ -176,6 +213,22 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	resourceType := "AWS::Kinesis::Stream"
+	typeSchema := map[string]interface{}{
+		"readOnlyProperties": []interface{}{
+			"/properties/Arn",
+		},
+		"createOnlyProperties": []interface{}{
+			"/properties/Name",
+		},
+	}
+	serialized, err := json.Marshal(typeSchema)
+	require.NoError(t, err)
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(resourceType),
+		Schema:   aws.String(string(serialized)),
+	}
+
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
@@ -184,6 +237,9 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
+
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
@@ -201,8 +257,9 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 
 	awsController, err := NewCreateOrUpdateAWSResource(ctrl.Options{
-		AWSCloudControlClient: testOptions.AWSCloudControlClient,
-		DB:                    testOptions.StorageClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		DB:                      testOptions.StorageClient,
 	})
 	require.NoError(t, err)
 

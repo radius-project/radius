@@ -46,20 +46,20 @@ const (
 
 func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudControlClient, *aws.MockAWSCloudFormationClient) {
 	ctrl := gomock.NewController(t)
-	cloudcontrolClient := aws.NewMockAWSCloudControlClient(ctrl)
-	cloudformationClient := aws.NewMockAWSCloudFormationClient(ctrl)
+	cloudControlClient := aws.NewMockAWSCloudControlClient(ctrl)
+	cloudFormationClient := aws.NewMockAWSCloudFormationClient(ctrl)
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
 		BasePath:                basePath,
-		AWSCloudControlClient:   cloudcontrolClient,
-		AWSCloudFormationClient: cloudformationClient,
+		AWSCloudControlClient:   cloudControlClient,
+		AWSCloudFormationClient: cloudFormationClient,
 	})
 	require.NoError(t, err)
 
 	ucpClient := NewClient(http.DefaultClient, ucp.URL+basePath)
 
-	return ucp, ucpClient, cloudcontrolClient, cloudformationClient
+	return ucp, ucpClient, cloudControlClient, cloudFormationClient
 }

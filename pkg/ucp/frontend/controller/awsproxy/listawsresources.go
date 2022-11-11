@@ -30,13 +30,13 @@ func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error
 }
 
 func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO pagination
-	response, err := client.ListResources(ctx, &cloudcontrol.ListResourcesInput{
+	response, err := cloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: &resourceType,
 	})
 	if err != nil {

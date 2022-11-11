@@ -34,8 +34,10 @@ func Test_AWS_DeleteResource(t *testing.T) {
 	setupTestAWSResource(t, ctx, streamName)
 
 	test := NewUCPTest(t, "Test_AWS_DeleteResource", func(t *testing.T, url string, roundTripper http.RoundTripper) {
+		ctx := context.Background()
+
 		// Call UCP Delete AWS Resource API
-		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
+		resourceID := validation.GetResourceIdentifier(ctx, t, "AWS.Kinesis/Stream", streamName)
 
 		// Construct resource collection url
 		resourceIDParts := strings.Split(resourceID, "/")
@@ -94,7 +96,7 @@ func Test_AWS_ListResources(t *testing.T) {
 
 	test := NewUCPTest(t, "Test_AWS_ListResources", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Call UCP Delete AWS Resource API
-		resourceID := validation.GetResourceIdentifier(t, "AWS.Kinesis/Stream", streamName)
+		resourceID := validation.GetResourceIdentifier(ctx, t, "AWS.Kinesis/Stream", streamName)
 
 		// Remove the stream name from the to form the post URL and add the stream name to the body
 		resourceIDParts := strings.Split(resourceID, "/")

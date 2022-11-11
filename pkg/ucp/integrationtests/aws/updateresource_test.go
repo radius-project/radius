@@ -15,8 +15,10 @@ import (
 	"testing"
 
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -25,7 +27,7 @@ import (
 const ZeroAWSRequestToken = "00000000-0000-0000-0000-000000000000"
 
 func Test_UpdateAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, cloudFormationClient := initializeTest(t)
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
@@ -33,6 +35,24 @@ func Test_UpdateAWSResource(t *testing.T) {
 	}
 	getResponseBodyBytes, err := json.Marshal(getResponseBody)
 	require.NoError(t, err)
+
+	resourceType := "AWS::Kinesis::Stream"
+	typeSchema := map[string]interface{}{
+		"readOnlyProperties": []interface{}{
+			"/properties/Arn",
+		},
+		"createOnlyProperties": []interface{}{
+			"/properties/Name",
+		},
+	}
+	serialized, err := json.Marshal(typeSchema)
+	require.NoError(t, err)
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(resourceType),
+		Schema:   aws.String(string(serialized)),
+	}
+
+	cloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	cloudcontrolClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceOutput, error) {
 		output := cloudcontrol.GetResourceOutput{

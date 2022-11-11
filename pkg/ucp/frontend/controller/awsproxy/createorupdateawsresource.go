@@ -11,13 +11,15 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/wI2L/jsondiff"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
@@ -33,7 +35,7 @@ func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controll
 }
 
 func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +73,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// we're working on exists already.
 
 	existing := true
-	getResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
@@ -103,20 +105,21 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	if existing {
-		// For an existing resource we need to convert the desired state into a JSON-patch document
-		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
+		// Get resource type schema
+		describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+			Type:     types.RegistryTypeResource,
+			TypeName: aws.String(resourceType),
+		})
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return nil, err
 		}
 
-		// We need to take out readonly properties. Those are usually not specified by the client, and so
-		// our library will generate "remove" operations.
-		//
-		// Iterate backwards because we're removing items from the array
-		for i := len(patch) - 1; i >= 0; i-- {
-			if patch[i].Type == "remove" {
-				patch = append(patch[:i], patch[i+1:]...)
-			}
+		// Generate patch
+		currentState := []byte(*getResponse.ResourceDescription.Properties)
+		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
+		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
+		if err != nil {
+			return awserror.HandleAWSError(err)
 		}
 
 		// Call update only if the patch is not empty
@@ -126,7 +129,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := cloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
 				Identifier:    aws.String(id.Name()),
 				PatchDocument: aws.String(string(marshaled)),
@@ -154,7 +157,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			return resp, nil
 		}
 	} else {
-		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})

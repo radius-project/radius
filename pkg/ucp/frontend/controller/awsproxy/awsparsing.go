@@ -12,56 +12,52 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, string, resources.ID, error) {
+func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (awsclient.AWSCloudControlClient, awsclient.AWSCloudFormationClient, string, resources.ID, error) {
 	// Common parsing in AWS plane requests
 	cfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
-		return nil, "", resources.ID{}, err
+		return nil, nil, "", resources.ID{}, err
 	}
 
-	var client awsclient.AWSCloudControlClient
+	var cloudControlClient awsclient.AWSCloudControlClient
 	if opts.AWSCloudControlClient == nil {
-		client = cloudcontrol.NewFromConfig(cfg)
+		cloudControlClient = cloudcontrol.NewFromConfig(cfg)
 	} else {
-		client = opts.AWSCloudControlClient
+		cloudControlClient = opts.AWSCloudControlClient
 	}
+
+	var cloudFormationClient awsclient.AWSCloudFormationClient
+	if opts.AWSCloudControlClient == nil {
+		cloudFormationClient = cloudformation.NewFromConfig(cfg)
+	} else {
+		cloudFormationClient = opts.AWSCloudFormationClient
+	}
+
 	path := middleware.GetRelativePath(opts.BasePath, r.URL.Path)
 	id, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
-		return nil, "", resources.ID{}, err
+		return nil, nil, "", resources.ID{}, err
 	}
 
 	resourceType := resources.ToAWSResourceType(id)
-	return client, resourceType, id, nil
+	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func lookupAWSResourceSchema(opts ctrl.Options, resourceType string) ([]interface{}, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	var svc awsclient.AWSCloudFormationClient
-	if opts.AWSCloudFormationClient == nil {
-		svc = cloudformation.New(sess, aws.NewConfig())
-	} else {
-		svc = opts.AWSCloudFormationClient
-	}
-
-	output, err := svc.DescribeType(&cloudformation.DescribeTypeInput{
+func lookupAWSResourceSchema(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, resourceType string) ([]interface{}, error) {
+	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
-		Type:     aws.String("RESOURCE"),
 	})
 	if err != nil {
 		return nil, err
@@ -76,11 +72,12 @@ func lookupAWSResourceSchema(opts ctrl.Options, resourceType string) ([]interfac
 	return primaryIdentifier, nil
 }
 
-func getResourceIDWithMultiIdentifiers(opts ctrl.Options, url string, resourceType string, properties map[string]interface{}) (string, error) {
-	primaryIdentifiers, err := lookupAWSResourceSchema(opts, resourceType)
+func getResourceIDWithMultiIdentifiers(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, url string, resourceType string, properties map[string]interface{}) (string, error) {
+	primaryIdentifiers, err := lookupAWSResourceSchema(ctx, cloudFormationClient, resourceType)
 	if err != nil {
 		return "", err
 	}
+
 	var resourceID string
 	for _, pi := range primaryIdentifiers {
 		// Primary identifier is of the form /properties/<property-name>
@@ -88,7 +85,7 @@ func getResourceIDWithMultiIdentifiers(opts ctrl.Options, url string, resourceTy
 
 		if _, ok := properties[propertyName]; !ok {
 			// Mandatory property is missing
-			err := fmt.Errorf("Mandatory property %s is missing", propertyName)
+			err := fmt.Errorf("mandatory property %s is missing", propertyName)
 			return "", err
 		}
 		resourceID += properties[propertyName].(string) + "|"
@@ -96,7 +93,6 @@ func getResourceIDWithMultiIdentifiers(opts ctrl.Options, url string, resourceTy
 
 	resourceID = strings.TrimSuffix(resourceID, "|")
 	return resourceID, nil
-
 }
 
 func readPropertiesFromBody(req *http.Request) (map[string]interface{}, error) {

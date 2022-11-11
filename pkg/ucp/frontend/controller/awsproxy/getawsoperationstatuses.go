@@ -32,12 +32,12 @@ func NewGetAWSOperationStatuses(opts ctrl.Options) (armrpc_controller.Controller
 }
 
 func (p *GetAWSOperationStatuses) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
-	client, _, id, err := ParseAWSRequest(ctx, p.Options, req)
+	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := cloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
