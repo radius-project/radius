@@ -52,13 +52,8 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 					},
 				},
 			},
-			// TODO: Remove the below when https://github.com/project-radius/radius/issues/4627 is fixed.
-			SkipResourceDeletion: true,
 		},
 	}, requiredSecrets)
-
-	// TODO: Remove the below and "SkipResourceDeletion: true" when https://github.com/project-radius/radius/issues/4627 is fixed.
-	test.SkipSecretDeletion = true
 
 	test.Test(t)
 }
