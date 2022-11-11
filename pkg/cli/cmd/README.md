@@ -36,6 +36,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the `rad <fill in the blank>` command and runner.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -55,6 +56,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the Runner implementation for the `rad <fill in the blank>` command.
 type Runner struct {
 	ConfigHolder *framework.ConfigHolder
 	Output       output.Interface
@@ -62,6 +64,7 @@ type Runner struct {
 	Workspace    *workspaces.Workspace
 }
 
+// NewRunner creates an instance of the runner for the `rad <fill in the blank>` command.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
@@ -69,6 +72,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad <fill in the blank>` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
@@ -86,6 +90,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad <fill in the blank>` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// Implement your command here
 	return nil

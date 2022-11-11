@@ -22,6 +22,7 @@ const (
 	deleteConfirmationFmt = "Are you sure you want to delete workspace '%v' from local config [y/N]? This will update config but will not delete any deployed resources."
 )
 
+// NewCommand creates an instance of the command and runner for the `rad workspace delete` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -44,6 +45,7 @@ rad workspace delete my-workspace`,
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad workspace delete` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	ConfigFileInterface framework.ConfigFileInterface
@@ -53,6 +55,7 @@ type Runner struct {
 	Confirm             bool
 }
 
+// NewRunner creates a new instance of the `rad workspace delete` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigFileInterface: factory.GetConfigFileInterface(),
@@ -62,6 +65,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad workspace delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspaceArgs(cmd, r.ConfigHolder.Config, args)
 	if err != nil {
@@ -84,6 +88,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad workspace delete` command.
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {

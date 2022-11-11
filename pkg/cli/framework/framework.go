@@ -8,8 +8,10 @@ package framework
 import (
 	"context"
 
+	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -20,8 +22,10 @@ import (
 
 // Factory interface handles resources for interfacing with corerp and configs
 type Factory interface {
+	GetBicep() bicep.Interface
 	GetConnectionFactory() connections.Factory
 	GetConfigHolder() *ConfigHolder
+	GetDeploy() deploy.Interface
 	GetOutput() output.Interface
 	GetPrompter() prompt.Interface
 	GetConfigFileInterface() ConfigFileInterface
@@ -32,8 +36,10 @@ type Factory interface {
 }
 
 type Impl struct {
+	Bicep bicep.Interface
 	ConnectionFactory   connections.Factory
 	ConfigHolder        *ConfigHolder
+	Deploy deploy.Interface
 	Output              output.Interface
 	Prompter            prompt.Interface
 	ConfigFileInterface ConfigFileInterface
@@ -43,12 +49,20 @@ type Impl struct {
 	SetupInterface      setup.Interface
 }
 
+func (i *Impl) GetBicep() bicep.Interface {
+	return i.Bicep
+}
+
 func (i *Impl) GetConnectionFactory() connections.Factory {
 	return i.ConnectionFactory
 }
 
 func (i *Impl) GetConfigHolder() *ConfigHolder {
 	return i.ConfigHolder
+}
+
+func (i *Impl) GetDeploy() deploy.Interface {
+	return i.Deploy
 }
 
 func (i *Impl) GetOutput() output.Interface {
