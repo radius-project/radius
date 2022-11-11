@@ -544,6 +544,9 @@ type GatewayProperties struct {
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
 
+	// TLS configuration for the Gateway.
+	TLS *GatewayPropertiesTLS `json:"tls,omitempty"`
+
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
@@ -564,6 +567,12 @@ type GatewayPropertiesHostname struct {
 	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname'
 // and will be overridden if both are defined.
 	Prefix *string `json:"prefix,omitempty"`
+}
+
+// GatewayPropertiesTLS - TLS configuration for the Gateway.
+type GatewayPropertiesTLS struct {
+	// If true, gateway lets the https traffic passthrough to the backend servers for decryption.
+	Sslpassthrough *bool `json:"sslpassthrough,omitempty"`
 }
 
 // GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
