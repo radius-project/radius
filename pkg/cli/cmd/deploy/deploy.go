@@ -99,7 +99,7 @@ type Runner struct {
 	Workspace       *workspaces.Workspace
 }
 
-// NewRunning creates a new instance of the `rad deploy` runner.
+// NewRunner creates a new instance of the `rad deploy` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		Bicep:             factory.GetBicep(),
@@ -158,7 +158,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Validate runs the `rad deploy` command.
+// Run runs the `rad deploy` command.
 func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.FilePath)
 	if err != nil {
@@ -170,12 +170,13 @@ func (r *Runner) Run(ctx context.Context) error {
 			"Deployment In Progress...", r.FilePath, r.EnvironmentName, r.Workspace.Name)
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
-		EnvironmentID:  r.EnvironmentID,
-		Workspace:      *r.Workspace,
-		Template:       template,
-		Parameters:     r.Parameters,
-		ProgressText:   progressText,
-		CompletionText: "Deployment Complete",
+		ConnectionFactory: r.ConnectionFactory,
+		EnvironmentID:     r.EnvironmentID,
+		Workspace:         *r.Workspace,
+		Template:          template,
+		Parameters:        r.Parameters,
+		ProgressText:      progressText,
+		CompletionText:    "Deployment Complete",
 	})
 	if err != nil {
 		return err

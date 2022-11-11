@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad group list` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -42,6 +43,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad group list` command.
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
@@ -53,6 +55,7 @@ type Runner struct {
 	Format               string
 }
 
+// NewRunner creates a new instance of the `rad group list` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -61,6 +64,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad group list` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 	workspace, err := cli.RequireWorkspace(cmd, config)
@@ -81,6 +85,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad group list` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {

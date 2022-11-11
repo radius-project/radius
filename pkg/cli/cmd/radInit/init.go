@@ -47,6 +47,7 @@ const (
 	kubernetesKind = "kubernetes"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad init` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -69,6 +70,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad init` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	Output              output.Interface
@@ -92,6 +94,7 @@ type Runner struct {
 	Dev                 bool
 }
 
+// NewRunner creates a new instance of the `rad init` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -105,6 +108,8 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad init` command.
+//
 // Validates the user prompts, values provided and builds the picture for the backend to execute
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	format, err := cli.RequireOutput(cmd)
@@ -301,6 +306,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad init` command.
+//
 // Creates radius resources, azure resources if required based on the user input, command flags
 func (r *Runner) Run(ctx context.Context) error {
 	config := r.ConfigFileInterface.ConfigFromContext(ctx)
