@@ -53,11 +53,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	// TODO
-	// 1. Split this method up into two calls
-	// 2. If we can't create the multi-identifier resource
-	// create the id afterwards and assume create
-
 	primaryIdentifers, err := lookupPrimaryIdentifiersForResourceType(p.Options, resourceType)
 	if err != nil {
 		e := v1.ErrorResponse{
