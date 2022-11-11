@@ -54,43 +54,6 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 	}
 }
 
-func TestRedisCacheResponseDataModelToVersioned(t *testing.T) {
-	testset := []struct {
-		dataModelFile string
-		apiVersion    string
-		apiModelType  interface{}
-		err           error
-	}{
-		{
-			"../../api/v20220315privatepreview/testdata/rediscacheresponseresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RedisCacheResponseResource{},
-			nil,
-		},
-		{
-			"",
-			"unsupported",
-			nil,
-			v1.ErrUnsupportedAPIVersion,
-		},
-	}
-
-	for _, tc := range testset {
-		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.RedisCacheResponse{}
-			_ = json.Unmarshal(c, dm)
-			am, err := RedisCacheDataModelToVersioned(dm, tc.apiVersion, false)
-			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
-			} else {
-				require.NoError(t, err)
-				require.IsType(t, tc.apiModelType, am)
-			}
-		})
-	}
-}
-
 func TestRedisCacheDataModelFromVersioned(t *testing.T) {
 	testset := []struct {
 		versionedModelFile string

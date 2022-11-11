@@ -38,11 +38,12 @@ func Test_Render_Success(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeResource,
+			RedisResourceProperties: datamodel.RedisResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
 			},
 		},
@@ -111,11 +112,12 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeValues,
+			RedisValuesProperties: datamodel.RedisValuesProperties{
 				Host: "hello.com",
 				Port: 1234,
 			},
@@ -158,18 +160,16 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 			},
+			Mode: datamodel.LinkModeResource,
 		},
 	}
 
-	output, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
+	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.NoError(t, err)
-	require.Equal(t, 0, len(output.Resources))
 }
 
 func Test_Render_InvalidResourceModel(t *testing.T) {
@@ -207,11 +207,12 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeResource,
+			RedisResourceProperties: datamodel.RedisResourceProperties{
 				Resource: "//subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
 			},
 		},
@@ -234,11 +235,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+			},
+			Mode: datamodel.LinkModeResource,
+			RedisResourceProperties: datamodel.RedisResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.SomethingElse/Redis/testCache",
 			},
 		},
@@ -261,16 +263,16 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Type: "Applications.Link/redisCaches",
 		},
 		Properties: datamodel.RedisCacheProperties{
-			RedisCacheResponseProperties: datamodel.RedisCacheResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-					Application: "invalid-app-id",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+				Application: "invalid-app-id",
+			},
+			Mode: datamodel.LinkModeResource,
+			RedisResourceProperties: datamodel.RedisResourceProperties{
 				Resource: "/subscriptions/test-sub/resourceGroups/testGroup/providers/Microsoft.Cache/Redis/testCache",
 			},
 		},
 	}
-
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)

@@ -148,7 +148,8 @@ func validateRequiredFlags(c *cobra.Command) error {
 }
 
 const (
-	TestWorkspaceName = "test-workspace"
+	TestWorkspaceName   = "test-workspace"
+	TestEnvironmentName = "test-environment"
 )
 
 func LoadConfig(t *testing.T, yamlData string) *viper.Viper {

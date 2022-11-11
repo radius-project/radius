@@ -117,6 +117,28 @@ func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessag
 	return b, json.Unmarshal(rawMsg, b)
 }
 
+func unmarshalRedisCachePropertiesClassification(rawMsg json.RawMessage) (RedisCachePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b RedisCachePropertiesClassification
+	switch m["mode"] {
+	case string(RedisCachePropertiesModeRecipe):
+		b = &RecipeRedisCacheProperties{}
+	case string(RedisCachePropertiesModeResource):
+		b = &ResourceRedisCacheProperties{}
+	case string(RedisCachePropertiesModeValues):
+		b = &ValuesRedisCacheProperties{}
+	default:
+		b = &RedisCacheProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDatabasePropertiesClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

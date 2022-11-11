@@ -33,7 +33,7 @@ func NewGetRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
 func (redis *GetRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	existingResource := &datamodel.RedisCacheResponse{}
+	existingResource := &datamodel.RedisCache{}
 	_, err := redis.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {

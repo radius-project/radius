@@ -21,7 +21,9 @@ import (
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
 
+	"github.com/project-radius/radius/pkg/cli/bicep"
 	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
@@ -38,6 +40,7 @@ import (
 	workspace_show "github.com/project-radius/radius/pkg/cli/cmd/workspace/show"
 	workspace_switch "github.com/project-radius/radius/pkg/cli/cmd/workspace/switch"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -114,8 +117,10 @@ func init() {
 
 func initSubCommands() {
 	framework := &framework.Impl{
+		Bicep:             &bicep.Impl{},
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
+		Deploy:            &deploy.Impl{},
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
@@ -126,6 +131,9 @@ func initSubCommands() {
 		NamespaceInterface:  &namespace.Impl{},
 		SetupInterface:      &setup.Impl{},
 	}
+
+	deployCmd, _ := cmddeploy.NewCommand(framework)
+	RootCmd.AddCommand(deployCmd)
 
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)

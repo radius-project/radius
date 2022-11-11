@@ -49,6 +49,11 @@ const (
 	cosmosMongoID          = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"
 	cosmosConnectionString = "mongodb://testUser:testPassword@testAccount1.mongo.cosmos.azure.com:10255"
 
+	daprLinkName        = "test-state-store"
+	daprLinkID          = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store"
+	daprLinkType        = "applications.link/daprstatestores"
+	azureTableStorageID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable"
+
 	recipeName = "testRecipe"
 
 	modeRecipe   = "recipe"
@@ -215,6 +220,32 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 	return
 }
 
+func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
+	radiusManaged := true
+
+	return []outputresource.OutputResource{
+		{
+			LocalID: outputresource.LocalIDDaprStateStoreAzureStorage,
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.DaprStateStoreAzureStorage,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			Resource: map[string]string{
+				handlers.KubernetesNameKey:       daprLinkName,
+				handlers.KubernetesNamespaceKey:  "radius-test",
+				handlers.ApplicationName:         "testApplication",
+				handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",
+				handlers.KubernetesKindKey:       "Component",
+
+				handlers.ResourceIDKey:         azureTableStorageID,
+				handlers.StorageAccountNameKey: "test-account",
+				handlers.ResourceName:          daprLinkName,
+			},
+			RadiusManaged: &radiusManaged,
+		},
+	}
+}
+
 func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) store.Object {
 	environment := corerpDatamodel.Environment{
 		BaseResource: v1.BaseResource{
@@ -293,6 +324,13 @@ func setup(t *testing.T) SharedMocks {
 				},
 				ResourceHandler:        mockResourceHandler,
 				SecretValueTransformer: &mongodatabases.AzureTransformer{},
+			},
+			{
+				ResourceType: resourcemodel.ResourceType{
+					Type:     resourcekinds.DaprStateStoreAzureStorage,
+					Provider: resourcemodel.ProviderAzure,
+				},
+				ResourceHandler: mockResourceHandler,
 			},
 		},
 		map[string]bool{
@@ -869,6 +907,33 @@ func Test_Delete(t *testing.T) {
 		err := dp.Delete(ctx, resourceData)
 		require.Error(t, err)
 		require.Equal(t, "output resource kind 'Provider: azure, Type: foo' is unsupported", err.Error())
+	})
+}
+
+func Test_Delete_Dapr(t *testing.T) {
+	ctx := createContext(t)
+	mocks := setup(t)
+	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
+
+	daprLinkResourceID := getResourceID(daprLinkID)
+	testOutputResources := buildOutputResourcesDapr(modeResource)
+	testResourceData := ResourceData{
+		ID:              daprLinkResourceID,
+		OutputResources: testOutputResources,
+	}
+
+	t.Run("Verify handler delete is invoked", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
+
+		err := dp.Delete(ctx, testResourceData)
+		require.NoError(t, err)
+	})
+
+	t.Run("Verify delete failure", func(t *testing.T) {
+		mocks.resourceHandler.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(errors.New("failed to delete the resource"))
+
+		err := dp.Delete(ctx, testResourceData)
+		require.Error(t, err)
 	})
 }
 
