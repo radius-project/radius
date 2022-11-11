@@ -48,6 +48,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 					},
 				},
 			},
+			// TODO: Remove the below when https://github.com/project-radius/radius/issues/4627 is fixed.
 			SkipResourceDeletion: true,
 		},
 	}, requiredSecrets)
