@@ -279,7 +279,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 			return err
 		}
 
-		if outputResource.IsRadiusManaged() {
+		if outputResource.IsRadiusManaged() || outputResource.ResourceType.Provider == resourcemodel.ProviderKubernetes {
 			err = outputResourceModel.ResourceHandler.Delete(ctx, &outputResource)
 			if err != nil {
 				return err
