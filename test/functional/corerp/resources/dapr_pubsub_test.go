@@ -49,6 +49,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 					},
 				},
 			},
+			SkipResourceDeletion: true,
 		},
 	}, requiredSecrets)
 

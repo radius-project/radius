@@ -48,6 +48,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 					},
 				},
 			},
+			SkipResourceDeletion: true,
 		},
 	}, requiredSecrets)
 
