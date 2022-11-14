@@ -93,6 +93,9 @@ func (client *AzureCredentialsClient) deleteCreateRequest(ctx context.Context, p
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
@@ -138,6 +141,9 @@ func (client *AzureCredentialsClient) getCreateRequest(ctx context.Context, plan
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
@@ -187,6 +193,9 @@ func (client *AzureCredentialsClient) listCreateRequest(ctx context.Context, pla
 	if err != nil {
 		return nil, err
 	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
