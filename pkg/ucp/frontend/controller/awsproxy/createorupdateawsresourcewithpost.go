@@ -53,7 +53,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	primaryIdentifers, err := lookupPrimaryIdentifiersForResourceType(p.Options, resourceType)
+	primaryIdentifers, err := lookupPrimaryIdentifiersForResourceType(ctx, cloudFormationClient, resourceType)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -87,7 +87,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		// Create and update work differently for AWS - we need to know if the resource
 		// we're working on exists already.
 
-		getResponse, err = client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+		getResponse, err = cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 			TypeName:   &resourceType,
 			Identifier: aws.String(awsResourceIdentifier),
 		})
@@ -180,7 +180,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return awserror.HandleAWSError(err)
 		}
 
-		awsResourceIdentifier := *response.ProgressEvent.Identifier
+		awsResourceIdentifier = *response.ProgressEvent.Identifier
 
 		computedResourceID = computeResourceID(id, awsResourceIdentifier)
 	}

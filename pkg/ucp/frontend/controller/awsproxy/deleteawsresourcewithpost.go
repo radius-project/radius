@@ -49,7 +49,7 @@ func (p *DeleteAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWrit
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	primaryIdentifiers, err := lookupPrimaryIdentifiersForResourceType(p.Options, resourceType)
+	primaryIdentifiers, err := lookupPrimaryIdentifiersForResourceType(ctx, cloudFormationClient, resourceType)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{

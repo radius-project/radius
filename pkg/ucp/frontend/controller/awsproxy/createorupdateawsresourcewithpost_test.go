@@ -380,6 +380,88 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
 
+func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	testOptions := setupTest(t)
+
+	primaryIdentifiers := map[string]interface{}{
+		"primaryIdentifier": []interface{}{
+			"/properties/ClusterIdentifier",
+			"/properties/Account",
+		},
+	}
+	serialized, err := json.Marshal(primaryIdentifiers)
+	require.NoError(t, err)
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String("AWS::RedShift::EndpointAuthorization"),
+		Schema:   to.Ptr(string(serialized)),
+	}
+	multiIdentifierResourceID := testPrimaryIdentifier1 + "|" + testPrimaryIdentifier2
+
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.CreateResourceOutput{
+			ProgressEvent: &types.ProgressEvent{
+				OperationStatus: types.OperationStatusSuccess,
+				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(multiIdentifierResourceID),
+			},
+		}, nil)
+
+	requestBody := map[string]interface{}{
+		"properties": map[string]interface{}{
+			"ClusterIdentifier": testPrimaryIdentifier1,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testMultiIdentifierResourcePath+"/:put", bytes.NewBuffer(requestBodyBytes))
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	err = actualResponse.Apply(ctx, w, request)
+	require.NoError(t, err)
+
+	res := w.Result()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	id, err := resources.Parse(testMultiIdentifierResourcePath)
+	require.NoError(t, err)
+	rID := computeResourceID(id, multiIdentifierResourceID)
+	expectedResponseObject := map[string]interface{}{
+		"id":   rID,
+		"name": multiIdentifierResourceID,
+		"type": testMultiIdentifierResourceType,
+		"properties": map[string]interface{}{
+			"ClusterIdentifier": "abc",
+			"provisioningState": "Provisioning",
+		},
+	}
+
+	actualResponseObject := map[string]interface{}{}
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
 func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()

@@ -54,8 +54,8 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func lookupPrimaryIdentifiersForResourceType(ctx context.Context, opts ctrl.Options, cloudFormationClient awsclient.AWSCloudControlClient, resourceType string) ([]interface{}, error) {
-	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+func lookupPrimaryIdentifiersForResourceType(ctx context.Context, client awsclient.AWSCloudFormationClient, resourceType string) ([]interface{}, error) {
+	output, err := client.DescribeType(ctx, &cloudformation.DescribeTypeInput{
 		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
 	})
