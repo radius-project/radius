@@ -894,6 +894,7 @@
           "type": "string"
         },
         "storage": {
+          "type": "object",
           "required": [
             "kind"
           ],
