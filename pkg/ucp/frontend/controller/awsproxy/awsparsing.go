@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -54,20 +54,9 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func lookupPrimaryIdentifiersForResourceType(opts ctrl.Options, resourceType string) ([]interface{}, error) {
-	sess, err := session.NewSession()
-	if err != nil {
-		return nil, err
-	}
-
-	var svc awsclient.AWSCloudFormationClient
-	if opts.AWSCloudFormationClient == nil {
-		svc = cloudformation.New(sess, aws.NewConfig())
-	} else {
-		svc = opts.AWSCloudFormationClient
-	}
-
-	output, err := svc.DescribeType(&cloudformation.DescribeTypeInput{
+func lookupPrimaryIdentifiersForResourceType(ctx context.Context, opts ctrl.Options, cloudFormationClient awsclient.AWSCloudControlClient, resourceType string) ([]interface{}, error) {
+	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
 		TypeName: aws.String(resourceType),
 	})
 	if err != nil {
