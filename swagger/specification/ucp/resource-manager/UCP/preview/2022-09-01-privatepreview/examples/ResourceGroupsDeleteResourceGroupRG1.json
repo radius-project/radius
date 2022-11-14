@@ -1,7 +1,9 @@
 {
   "parameters": {
-    "rootScope": "/planes/radius/local/resourcegroups/rg1",
-    "resourceGroupName": "rg1"
+    "api-version": "2022-09-01-privatepreview",
+    "PlaneType": "radius",
+    "PlaneName": "local",
+    "ResourceGroup": "rg1"
   },
   "responses": {
     "200": {},

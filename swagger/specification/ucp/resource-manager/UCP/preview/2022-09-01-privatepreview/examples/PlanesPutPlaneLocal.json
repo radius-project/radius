@@ -1,8 +1,10 @@
 {
   "parameters": {
-    "rootScope": "/planes/radius/local",
-    "environmentName": "local",
+    "api-version": "2022-09-01-privatepreview",
+    "PlaneType": "radius",
+    "PlaneName": "local",
     "PlaneResource": {
+      "location": "global",
       "properties": {
         "resourceProviders": {
             "Applications.Core": "http://localhost:7443"

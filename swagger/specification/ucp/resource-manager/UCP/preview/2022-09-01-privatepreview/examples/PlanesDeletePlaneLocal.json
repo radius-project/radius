@@ -1,7 +1,8 @@
 {
   "parameters": {
-    "rootScope": "/planes/radius/local",
-    "planeName": "local"
+    "api-version": "2022-09-01-privatepreview",
+    "PlaneType": "radius",
+    "PlaneName": "local"
   },
   "responses": {
     "200": {},
