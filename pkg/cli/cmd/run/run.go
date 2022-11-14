@@ -8,15 +8,19 @@ package run
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
+	"github.com/fatih/color"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	deploycmd "github.com/project-radius/radius/pkg/cli/cmd/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad run` command.
@@ -60,14 +64,16 @@ rad run app.bicep --parameters @myfile.json --parameters version=latest
 // Runner is the runner implementation for the `rad run` command.
 type Runner struct {
 	deploycmd.Runner
-	Logstream logstream.Interface
+	Logstream   logstream.Interface
+	Portforward portforward.Interface
 }
 
 // NewRunner creates a new instance of the `rad run` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
-		Runner:    *deploycmd.NewRunner(factory),
-		Logstream: factory.GetLogstream(),
+		Runner:      *deploycmd.NewRunner(factory),
+		Logstream:   factory.GetLogstream(),
+		Portforward: factory.GetPortforward(),
 	}
 }
 
@@ -122,15 +128,40 @@ func (r *Runner) Run(ctx context.Context) error {
 		return &cli.FriendlyError{Message: "Only kubernetes runtimes are supported."}
 	}
 
-	err = r.Logstream.Stream(ctx, logstream.Options{
-		ApplicationName: r.ApplicationName,
-		Namespace:       namespace,
-		KubeContext:     kubeContext,
+	// We start three background jobs and wait for them to complete.
+	group, ctx := errgroup.WithContext(ctx)
 
-		// Right now we don't need an abstraction for this because we don't really
-		// run the streaming logs in unit tests.
-		Out: os.Stdout,
+	// 1. Display port-forward messages
+	status := make(chan portforward.StatusMessage)
+	group.Go(func() error {
+		r.displayPortforwardMessages(status)
+		return nil
 	})
+
+	// 2. Port-forward
+	group.Go(func() error {
+		return r.Portforward.Run(ctx, portforward.Options{
+			ApplicationName: r.ApplicationName,
+			Namespace:       namespace,
+			KubeContext:     kubeContext,
+			StatusChan:      status,
+		})
+	})
+
+	// 3. Stream logs
+	group.Go(func() error {
+		return r.Logstream.Stream(ctx, logstream.Options{
+			ApplicationName: r.ApplicationName,
+			Namespace:       namespace,
+			KubeContext:     kubeContext,
+
+			// Right now we don't need an abstraction for this because we don't really
+			// run the streaming logs in unit tests.
+			Out: os.Stdout,
+		})
+	})
+
+	err = group.Wait()
 
 	// context.Canceled here means the user canceled.
 	if errors.Is(err, context.Canceled) {
@@ -140,4 +171,15 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (r *Runner) displayPortforwardMessages(status <-chan portforward.StatusMessage) {
+	regular := color.New(color.FgWhite)
+	bold := color.New(color.FgHiWhite)
+
+	for message := range status {
+		// This format is used in functional tests to test the functionality. You will need to
+		// update the tests if you make changes here.
+		fmt.Printf("%s %s [port-forward] %s from localhost:%d -> ::%d\n", regular.Sprint(message.ReplicaName), bold.Sprint(message.ContainerName), message.Kind, message.LocalPort, message.RemotePort)
+	}
 }
