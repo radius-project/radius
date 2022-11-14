@@ -301,7 +301,7 @@
 
 ## GatewayPropertiesTls
 ### Properties
-* **sslpassthrough**: bool: If true, gateway lets the https traffic passthrough to the backend servers for decryption.
+* **sslPassThrough**: bool: If true, gateway lets the https traffic passthrough to the backend servers for decryption.
 
 ## TrackedResourceTags
 ### Properties

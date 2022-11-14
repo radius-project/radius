@@ -1077,7 +1077,7 @@ func (g *GatewayPropertiesHostname) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type GatewayPropertiesTLS.
 func (g GatewayPropertiesTLS) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "sslpassthrough", g.Sslpassthrough)
+	populate(objectMap, "sslPassThrough", g.SSLPassThrough)
 	return json.Marshal(objectMap)
 }
 
@@ -1090,8 +1090,8 @@ func (g *GatewayPropertiesTLS) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "sslpassthrough":
-				err = unpopulate(val, "Sslpassthrough", &g.Sslpassthrough)
+		case "sslPassThrough":
+				err = unpopulate(val, "SSLPassThrough", &g.SSLPassThrough)
 				delete(rawMsg, key)
 		}
 		if err != nil {

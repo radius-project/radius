@@ -572,7 +572,7 @@ type GatewayPropertiesHostname struct {
 // GatewayPropertiesTLS - TLS configuration for the Gateway.
 type GatewayPropertiesTLS struct {
 	// If true, gateway lets the https traffic passthrough to the backend servers for decryption.
-	Sslpassthrough *bool `json:"sslpassthrough,omitempty"`
+	SSLPassThrough *bool `json:"sslPassThrough,omitempty"`
 }
 
 // GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.

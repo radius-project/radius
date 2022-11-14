@@ -13,7 +13,7 @@
         }
         ],
         "tls":{
-            "sslpassthrough": false
+            "sslPassThrough": false
           },
         "url": "myprefix.myapp.mydomain.com",
         "provisioningState": "Succeeded"

@@ -17,9 +17,9 @@ import (
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 	var tls *datamodel.GatewayPropertiesTLS
-	if src.Properties.TLS != nil && src.Properties.TLS.Sslpassthrough != nil {
+	if src.Properties.TLS != nil && src.Properties.TLS.SSLPassThrough != nil {
 		tls = &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: to.Bool(src.Properties.TLS.Sslpassthrough),
+			SSLPassThrough: to.Bool(src.Properties.TLS.SSLPassThrough),
 		}
 	}
 
@@ -82,7 +82,7 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	var tls *GatewayPropertiesTLS
 	if g.Properties.TLS != nil {
 		tls = &GatewayPropertiesTLS{
-			Sslpassthrough: to.BoolPtr(g.Properties.TLS.SSLPassThrough),
+			SSLPassThrough: to.BoolPtr(g.Properties.TLS.SSLPassThrough),
 		}
 	}
 

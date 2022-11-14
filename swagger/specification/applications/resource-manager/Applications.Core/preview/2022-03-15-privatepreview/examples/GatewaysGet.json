@@ -19,7 +19,7 @@
             }
           ],    
           "tls":{
-            "sslpassthrough": true
+            "sslPassThrough": true
           }
         }
       }
