@@ -43,6 +43,9 @@
             "replacePrefix": "myreplaceprefix"
         }
         ],
+        "tls":{
+          "sslpassthrough": false
+        },
         "url": "myprefix.myapp.mydomain.com"
     }
 }

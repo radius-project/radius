@@ -17,12 +17,16 @@
             "fullyQualifiedHostname": "myapp.mydomain.com",
             "prefix":"myprefix"
         },
+
         "routes": [ {
             "destination": "mydestination",
             "path": "mypath",
             "replacePrefix": "myreplaceprefix"
         }
         ],
+        "tls":{
+            "sslpassthrough": false
+        },
         "url": "http://myprefix.myapp.mydomain.com"
     }
 }
