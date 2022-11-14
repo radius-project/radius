@@ -84,10 +84,11 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
+		var ann, lbl = getFromExtensionClassificationFields(e)
 		converted := ApplicationKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
-			Annotations: *to.StringMapPtr(e.KubernetesMetadata.Annotations),
-			Labels:      *to.StringMapPtr(e.KubernetesMetadata.Labels),
+			Annotations: *to.StringMapPtr(ann),
+			Labels:      *to.StringMapPtr(lbl),
 		}
 
 		return converted.GetApplicationExtension()
@@ -101,14 +102,14 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) datamodel.Ext
 	switch c := e.(type) {
 	case *ApplicationKubernetesMetadataExtension:
 
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return *converted
+		return converted
 	}
 
 	return datamodel.Extension{}

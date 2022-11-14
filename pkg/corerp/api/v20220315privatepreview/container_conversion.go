@@ -468,15 +468,15 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.ManualScaling,
 			ManualScaling: &datamodel.ManualScalingExtension{
 				Replicas: c.Replicas,
 			},
 		}
-		return *converted
+		return converted
 	case *DaprSidecarExtension:
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.DaprSidecar,
 			DaprSidecar: &datamodel.DaprSidecarExtension{
 				AppID:    to.String(c.AppID),
@@ -486,16 +486,16 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				Provides: to.String(c.Provides),
 			},
 		}
-		return *converted
+		return converted
 	case *ContainerKubernetesMetadataExtension:
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return *converted
+		return converted
 	}
 
 	return datamodel.Extension{}
@@ -521,10 +521,11 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 		}
 		return converted.GetContainerExtension()
 	case datamodel.KubernetesMetadata:
+		var ann, lbl = getFromExtensionClassificationFields(e)
 		converted := ContainerKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
-			Annotations: *to.StringMapPtr(e.KubernetesMetadata.Annotations),
-			Labels:      *to.StringMapPtr(e.KubernetesMetadata.Labels),
+			Annotations: *to.StringMapPtr(ann),
+			Labels:      *to.StringMapPtr(lbl),
 		}
 		return converted.GetContainerExtension()
 	}
@@ -545,4 +546,20 @@ func toVolumeBaseDataModel(v Volume) datamodel.VolumeBase {
 	return datamodel.VolumeBase{
 		MountPath: *v.MountPath,
 	}
+}
+
+func getFromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
+	var ann map[string]string
+	var lbl map[string]string
+
+	if e.KubernetesMetadata != nil {
+		if e.KubernetesMetadata.Annotations != nil {
+			ann = e.KubernetesMetadata.Annotations
+		}
+		if e.KubernetesMetadata.Labels != nil {
+			lbl = e.KubernetesMetadata.Labels
+		}
+	}
+
+	return ann, lbl
 }
