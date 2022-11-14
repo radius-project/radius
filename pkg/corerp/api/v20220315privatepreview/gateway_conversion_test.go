@@ -40,7 +40,7 @@ func TestGatewayConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, "myreplaceprefix", ct.Properties.Routes[0].ReplacePrefix)
 	require.Equal(t, "http://myprefix.myapp.mydomain.com", ct.Properties.URL)
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
-	require.Equal(t, false, ct.Properties.TLS.SSLPassThrough)
+	require.Equal(t, true, ct.Properties.TLS.SSLPassThrough)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 }
 

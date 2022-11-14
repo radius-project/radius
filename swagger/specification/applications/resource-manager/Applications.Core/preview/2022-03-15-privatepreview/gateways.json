@@ -351,7 +351,7 @@
           },
           "additionalProperties": false
         },
-        "tls" : {
+        "tls": {
           "type": "object",
           "description": "TLS configuration for the Gateway.",
           "properties": {

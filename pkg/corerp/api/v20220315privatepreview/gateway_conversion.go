@@ -21,6 +21,10 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 		tls = &datamodel.GatewayPropertiesTLS{
 			SSLPassThrough: to.Bool(src.Properties.TLS.SSLPassThrough),
 		}
+	} else {
+		tls = &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true, // Defaulting to true allows us to support https backend server whenever the backend server is responsible for TLS termination.
+		}
 	}
 
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
