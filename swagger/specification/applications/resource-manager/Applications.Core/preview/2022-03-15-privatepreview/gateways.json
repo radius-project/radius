@@ -351,6 +351,16 @@
           },
           "additionalProperties": false
         },
+        "tls": {
+          "type": "object",
+          "description": "TLS configuration for the Gateway.",
+          "properties": {
+            "sslPassThrough": {
+              "description": "If true, gateway lets the https traffic passthrough to the backend servers for decryption.",
+              "type": "boolean"
+            }
+          }
+        },
         "routes": {
           "type": "array",
           "minItems": 1,

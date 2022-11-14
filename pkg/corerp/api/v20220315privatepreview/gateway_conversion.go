@@ -16,6 +16,17 @@ import (
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
+	var tls *datamodel.GatewayPropertiesTLS
+	if src.Properties.TLS != nil && src.Properties.TLS.SSLPassThrough != nil {
+		tls = &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: to.Bool(src.Properties.TLS.SSLPassThrough),
+		}
+	} else {
+		tls = &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true, // Defaulting to true allows us to support https backend server whenever the backend server is responsible for TLS termination.
+		}
+	}
+
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	routes := []datamodel.GatewayRoute{}
 	if src.Properties.Routes != nil {
@@ -56,6 +67,7 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 				Application: to.String(src.Properties.Application),
 			},
 			Hostname: hostname,
+			TLS:      tls,
 			Routes:   routes,
 			URL:      to.String(src.Properties.URL),
 		},
@@ -69,6 +81,13 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	g, ok := src.(*datamodel.Gateway)
 	if !ok {
 		return conv.ErrInvalidModelConversion
+	}
+
+	var tls *GatewayPropertiesTLS
+	if g.Properties.TLS != nil {
+		tls = &GatewayPropertiesTLS{
+			SSLPassThrough: to.BoolPtr(g.Properties.TLS.SSLPassThrough),
+		}
 	}
 
 	routes := []*GatewayRoute{}
@@ -105,6 +124,7 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 		Application:       to.StringPtr(g.Properties.Application),
 		Hostname:          hostname,
 		Routes:            routes,
+		TLS:               tls,
 		URL:               to.StringPtr(g.Properties.URL),
 	}
 

@@ -17,12 +17,14 @@
             "fullyQualifiedHostname": "myapp.mydomain.com",
             "prefix":"myprefix"
         },
+
         "routes": [ {
             "destination": "mydestination",
             "path": "mypath",
             "replacePrefix": "myreplaceprefix"
         }
         ],
+       
         "url": "http://myprefix.myapp.mydomain.com"
     }
 }

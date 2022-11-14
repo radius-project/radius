@@ -285,6 +285,7 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **routes**: [GatewayRoute](#gatewayroute)[] (Required): Routes attached to this Gateway
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
+* **tls**: [GatewayPropertiesTls](#gatewaypropertiestls): TLS configuration for the Gateway.
 * **url**: string (ReadOnly): URL of the gateway resource. Readonly.
 
 ## GatewayPropertiesHostname
@@ -297,6 +298,10 @@
 * **destination**: string: The HttpRoute to route to. Ex - myserviceroute.id.
 * **path**: string: The path to match the incoming request path on. Ex - /myservice.
 * **replacePrefix**: string: Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will transform '/myservice/myroute' to '/myroute'
+
+## GatewayPropertiesTls
+### Properties
+* **sslPassThrough**: bool: If true, gateway lets the https traffic passthrough to the backend servers for decryption.
 
 ## TrackedResourceTags
 ### Properties
