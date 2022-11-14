@@ -1,6 +1,6 @@
 {
   "parameters": {
-    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
+    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
     "api-version": "2022-03-15-privatepreview"
   },
   "responses": {
