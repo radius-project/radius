@@ -7,9 +7,11 @@ package controller
 
 import (
 	"context"
+	"log"
 
 	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	link_dp "github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -19,9 +21,20 @@ import (
 
 type OptionsClassification interface {
 	GetOptions() *Options
+	SetOptions(StorageClient store.StorageClient, ResourceType string) *Options
 }
 
 func (o *Options) GetOptions() *Options { return o }
+
+func (o *Options) SetOptions(storageClient store.StorageClient, resourceType string) *Options {
+	return &Options{
+		StorageClient: storageClient,
+		DataProvider:  o.DataProvider,
+		SecretClient:  o.SecretClient,
+		KubeClient:    o.KubeClient,
+		ResourceType:  resourceType,
+	}
+}
 
 // Options represents controller options.
 type Options struct {
@@ -57,6 +70,16 @@ func (r CoreOptions) GetOptions() *Options {
 	}
 }
 
+func (r CoreOptions) SetOptions(storageClient store.StorageClient, resourceType string) *Options {
+	return &Options{
+		StorageClient: storageClient,
+		DataProvider:  r.DataProvider,
+		SecretClient:  r.SecretClient,
+		KubeClient:    r.KubeClient,
+		ResourceType:  resourceType,
+	}
+}
+
 type LinkOptions struct {
 	Options
 
@@ -67,10 +90,17 @@ type LinkOptions struct {
 func (r LinkOptions) GetOptions() *Options {
 	return &Options{
 		StorageClient: r.StorageClient,
+		ResourceType:  r.ResourceType,
+	}
+}
+
+func (r LinkOptions) SetOptions(storageClient store.StorageClient, resourceType string) *Options {
+	return &Options{
+		StorageClient: storageClient,
 		DataProvider:  r.DataProvider,
 		SecretClient:  r.SecretClient,
 		KubeClient:    r.KubeClient,
-		ResourceType:  r.ResourceType,
+		ResourceType:  resourceType,
 	}
 }
 
@@ -120,11 +150,17 @@ func (b *BaseController) ResourceType() string {
 
 // DeploymentProcessor gets the core rp deployment processor for this controller.
 func (b *BaseController) DeploymentProcessor() interface{} {
+	logger, flush, err := radlogger.NewLogger("asyncoperation.controller")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer flush()
 	switch v := b.options.(type) {
 	case CoreOptions:
 		return v.GetDeploymentProcessor()
 	case LinkOptions:
 		return v.GetDeploymentProcessor()
 	}
+	logger.Info("Invalid Option type")
 	return nil
 }
