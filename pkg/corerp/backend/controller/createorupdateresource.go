@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
@@ -34,7 +35,7 @@ type CreateOrUpdateResource struct {
 }
 
 // NewCreateOrUpdateResource creates the CreateOrUpdateResource controller instance.
-func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateResource(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
@@ -84,13 +85,13 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 	if err = obj.As(dataModel); err != nil {
 		return ctrl.Result{}, err
 	}
-
-	rendererOutput, err := c.DeploymentProcessor().Render(ctx, id, dataModel)
+	dp := c.DeploymentProcessor().(deployment.DeploymentProcessor)
+	rendererOutput, err := dp.Render(ctx, id, dataModel)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	deploymentOutput, err := c.DeploymentProcessor().Deploy(ctx, id, rendererOutput)
+	deploymentOutput, err := dp.Deploy(ctx, id, rendererOutput)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -106,7 +107,7 @@ func (c *CreateOrUpdateResource) Run(ctx context.Context, request *ctrl.Request)
 
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(deploymentDataModel.OutputResources(), oldOutputResources)
-		err = c.DeploymentProcessor().Delete(ctx, id, diff)
+		err = dp.Delete(ctx, id, diff)
 		if err != nil {
 			return ctrl.Result{}, err
 		}

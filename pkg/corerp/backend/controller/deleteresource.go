@@ -10,6 +10,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
+	"github.com/project-radius/radius/pkg/corerp/backend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -22,7 +23,7 @@ type DeleteResource struct {
 }
 
 // NewDeleteResource creates the DeleteResource controller instance.
-func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteResource(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
@@ -51,8 +52,8 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	if !ok {
 		return ctrl.NewFailedResult(v1.ErrorDetails{Message: "deployment data model conversion error"}), nil
 	}
-
-	err = c.DeploymentProcessor().Delete(ctx, id, deploymentDataModel.OutputResources())
+	dp := c.DeploymentProcessor().(deployment.DeploymentProcessor)
+	err = dp.Delete(ctx, id, deploymentDataModel.OutputResources())
 	if err != nil {
 		return ctrl.Result{}, err
 	}

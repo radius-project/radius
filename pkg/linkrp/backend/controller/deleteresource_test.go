@@ -77,9 +77,11 @@ func TestDeleteResourceRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			opts := ctrl.Options{
-				StorageClient: msc,
-				GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
+			opts := ctrl.LinkOptions{
+				Options: ctrl.Options{
+					StorageClient: msc,
+				},
+				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},
 			}
@@ -129,9 +131,11 @@ func TestDeleteResourceRunInvalidResourceType_20220315PrivatePreview(t *testing.
 			Get(gomock.Any(), gomock.Any()).
 			Return(&store.Object{}, nil).
 			Times(1)
-		opts := ctrl.Options{
-			StorageClient: msc,
-			GetLinkDeploymentProcessor: func() deployment.DeploymentProcessor {
+		opts := ctrl.LinkOptions{
+			Options: ctrl.Options{
+				StorageClient: msc,
+			},
+			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 				return mdp
 			},
 		}

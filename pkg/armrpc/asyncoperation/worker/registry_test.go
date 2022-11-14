@@ -29,13 +29,15 @@ func TestRegister_Get(t *testing.T) {
 	opGet := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationGet}
 	opPut := v1.OperationType{Type: "Applications.Core/environments", Method: v1.OperationPut}
 
-	ctrlOpts := ctrl.Options{
-		StorageClient:          nil,
-		DataProvider:           mockSP,
+	ctrlOpts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: nil,
+			DataProvider:  mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor { return nil },
 	}
 
-	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+	err := registry.Register(context.TODO(), opGet.Type, opGet.Method, func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 			fn: func(ctx context.Context) (ctrl.Result, error) {
@@ -45,7 +47,7 @@ func TestRegister_Get(t *testing.T) {
 	}, ctrlOpts)
 	require.NoError(t, err)
 
-	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(opts ctrl.Options) (ctrl.Controller, error) {
+	err = registry.Register(context.TODO(), opPut.Type, opPut.Method, func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 		return &testAsyncController{
 			BaseController: ctrl.NewBaseAsyncController(ctrlOpts),
 		}, nil

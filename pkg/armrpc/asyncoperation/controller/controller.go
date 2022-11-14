@@ -17,6 +17,12 @@ import (
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type OptionsClassification interface {
+	GetOptions() *Options
+}
+
+func (o *Options) GetOptions() *Options { return o }
+
 // Options represents controller options.
 type Options struct {
 	// StorageClient is the data storage client.
@@ -33,12 +39,39 @@ type Options struct {
 
 	// ResourceType is the string that represents the resource type.
 	ResourceType string
+}
+type CoreOptions struct {
+	Options
 
 	// GetDeploymentProcessor is the factory function to create core rp DeploymentProcessor instance.
 	GetDeploymentProcessor func() deployment.DeploymentProcessor
+}
+
+func (r CoreOptions) GetOptions() *Options {
+	return &Options{
+		StorageClient: r.StorageClient,
+		DataProvider:  r.DataProvider,
+		SecretClient:  r.SecretClient,
+		KubeClient:    r.KubeClient,
+		ResourceType:  r.ResourceType,
+	}
+}
+
+type LinkOptions struct {
+	Options
 
 	// GetLinkDeploymentProcessor is the factory function to create link rp DeploymentProcessor instance.
-	GetLinkDeploymentProcessor func() link_dp.DeploymentProcessor
+	GetDeploymentProcessor func() link_dp.DeploymentProcessor
+}
+
+func (r LinkOptions) GetOptions() *Options {
+	return &Options{
+		StorageClient: r.StorageClient,
+		DataProvider:  r.DataProvider,
+		SecretClient:  r.SecretClient,
+		KubeClient:    r.KubeClient,
+		ResourceType:  r.ResourceType,
+	}
 }
 
 // Controller is an interface to implement async operation controller.
@@ -52,45 +85,46 @@ type Controller interface {
 
 // BaseController is the base struct of async operation controller.
 type BaseController struct {
-	options Options
+	options OptionsClassification
 }
 
 // NewBaseAsyncController creates BaseAsyncController instance.
-func NewBaseAsyncController(options Options) BaseController {
+func NewBaseAsyncController(options OptionsClassification) BaseController {
 	return BaseController{options}
 }
 
 // StorageClient gets storage client for this controller.
 func (b *BaseController) StorageClient() store.StorageClient {
-	return b.options.StorageClient
+	return b.options.GetOptions().StorageClient
 }
 
 // DataProvider gets data storage provider for this controller.
 func (b *BaseController) DataProvider() dataprovider.DataStorageProvider {
-	return b.options.DataProvider
+	return b.options.GetOptions().DataProvider
 }
 
 // SecretClient gets secret client for this controller.
 func (b *BaseController) SecretClient() rp.SecretValueClient {
-	return b.options.SecretClient
+	return b.options.GetOptions().SecretClient
 }
 
 // KubeClient gets Kubernetes client for this controller.
 func (b *BaseController) KubeClient() runtimeclient.Client {
-	return b.options.KubeClient
+	return b.options.GetOptions().KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
 func (b *BaseController) ResourceType() string {
-	return b.options.ResourceType
+	return b.options.GetOptions().ResourceType
 }
 
 // DeploymentProcessor gets the core rp deployment processor for this controller.
-func (b *BaseController) DeploymentProcessor() deployment.DeploymentProcessor {
-	return b.options.GetDeploymentProcessor()
-}
-
-// LinkDeploymentProcessor gets the link rp deployment processor for this controller.
-func (b *BaseController) LinkDeploymentProcessor() link_dp.DeploymentProcessor {
-	return b.options.GetLinkDeploymentProcessor()
+func (b *BaseController) DeploymentProcessor() interface{} {
+	switch v := b.options.(type) {
+	case CoreOptions:
+		return v.GetDeploymentProcessor()
+	case LinkOptions:
+		return v.GetDeploymentProcessor()
+	}
+	return nil
 }

@@ -135,9 +135,11 @@ func TestStart_UnknownOperation(t *testing.T) {
 		Return(tCtx.mockSC, nil).
 		Times(1)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -156,7 +158,7 @@ func TestStart_UnknownOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, "UNDEFINED",
-		func(opts ctrl.Options) (ctrl.Controller, error) {
+		func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 			return testCtrl, nil
 		}, opts)
 
@@ -199,9 +201,11 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{MaxOperationRetryCount: expectedDequeueCount}, tCtx.mockSM, tCtx.testQueue, registry)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 	}
 
 	testCtrl := &testAsyncController{
@@ -215,10 +219,12 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(opts ctrl.Options) (ctrl.Controller, error) {
+		func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 			return testCtrl, nil
-		}, ctrl.Options{
-			DataProvider: tCtx.mockSP,
+		}, ctrl.CoreOptions{
+			Options: ctrl.Options{
+				DataProvider: tCtx.mockSP,
+			},
 		})
 	require.NoError(t, err)
 
@@ -258,9 +264,11 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -286,7 +294,7 @@ func TestStart_MaxConcurrency(t *testing.T) {
 		ctx,
 		testResourceType,
 		v1.OperationPut,
-		func(opts ctrl.Options) (ctrl.Controller, error) {
+		func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 			return testCtrl, nil
 		}, opts)
 	require.NoError(t, err)
@@ -334,9 +342,11 @@ func TestStart_RunOperation(t *testing.T) {
 	registry := NewControllerRegistry(tCtx.mockSP)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, registry)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -358,7 +368,7 @@ func TestStart_RunOperation(t *testing.T) {
 	err := registry.Register(
 		ctx,
 		testResourceType, v1.OperationPut,
-		func(opts ctrl.Options) (ctrl.Controller, error) {
+		func(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 			return testCtrl, nil
 		}, opts)
 	require.NoError(t, err)
@@ -403,9 +413,11 @@ func TestRunOperation_Successfully(t *testing.T) {
 	require.NoError(t, err)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -440,9 +452,11 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -478,9 +492,11 @@ func TestRunOperation_CancelContext(t *testing.T) {
 
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
-	opts := ctrl.Options{
-		StorageClient: nil,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: nil,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return nil
 		},
@@ -531,9 +547,11 @@ func TestRunOperation_Timeout(t *testing.T) {
 	require.NoError(t, err)
 	worker := New(Options{}, tCtx.mockSM, tCtx.testQueue, nil)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewMockDeploymentProcessor(mctrl)
 		},
@@ -566,9 +584,11 @@ func TestRunOperation_PanicController(t *testing.T) {
 
 	worker := New(Options{}, nil, tCtx.testQueue, nil)
 
-	opts := ctrl.Options{
-		StorageClient: tCtx.mockSC,
-		DataProvider:  tCtx.mockSP,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			StorageClient: tCtx.mockSC,
+			DataProvider:  tCtx.mockSP,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return nil
 		},

@@ -212,8 +212,10 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			opts := ctrl.Options{
-				StorageClient: msc,
+			opts := ctrl.CoreOptions{
+				Options: ctrl.Options{
+					StorageClient: msc,
+				},
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},
@@ -408,8 +410,10 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 				}
 			}
 
-			opts := ctrl.Options{
-				StorageClient: msc,
+			opts := ctrl.CoreOptions{
+				Options: ctrl.Options{
+					StorageClient: msc,
+				},
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mdp
 				},

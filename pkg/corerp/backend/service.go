@@ -65,10 +65,12 @@ func (w *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
-	opts := ctrl.Options{
-		DataProvider: w.StorageProvider,
-		SecretClient: w.SecretClient,
-		KubeClient:   w.KubeClient,
+	opts := ctrl.CoreOptions{
+		Options: ctrl.Options{
+			DataProvider: w.StorageProvider,
+			SecretClient: w.SecretClient,
+			KubeClient:   w.KubeClient,
+		},
 		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 			return deployment.NewDeploymentProcessor(coreAppModel, w.StorageProvider, w.SecretClient, w.KubeClient, w.KubeClientSet)
 		},

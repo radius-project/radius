@@ -27,7 +27,7 @@ type DeleteResource struct {
 }
 
 // NewDeleteResource creates the DeleteResource controller instance.
-func NewDeleteResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteResource(opts ctrl.OptionsClassification) (ctrl.Controller, error) {
 	return &DeleteResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
@@ -47,7 +47,8 @@ func (c *DeleteResource) Run(ctx context.Context, request *ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	err = c.LinkDeploymentProcessor().Delete(ctx, resourceData)
+	dp := c.DeploymentProcessor().(deployment.DeploymentProcessor)
+	err = dp.Delete(ctx, resourceData)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
