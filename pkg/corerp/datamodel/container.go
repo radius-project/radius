@@ -195,23 +195,6 @@ type TCPHealthProbeProperties struct {
 	ContainerPort int32 `json:"containerPort,omitempty"`
 }
 
-// ExtensionKind
-type ExtensionKind string
-
-const (
-	ManualScaling               ExtensionKind = "manualScaling"
-	DaprSidecar                 ExtensionKind = "daprSidecar"
-	ContainerKubernetesMetadata ExtensionKind = "kubernetesMetadata"
-)
-
-// Extension of a resource.
-type Extension struct {
-	Kind                        ExtensionKind                         `json:"kind,omitempty"`
-	ManualScaling               *ManualScalingExtension               `json:"manualScaling,omitempty"`
-	DaprSidecar                 *DaprSidecarExtension                 `json:"daprSidecar,omitempty"`
-	ContainerKubernetesMetadata *ContainerKubernetesMetadataExtension `json:"kubernetesMetadata,omitempty"`
-}
-
 // ManualScalingExtension - ManualScaling Extension
 type ManualScalingExtension struct {
 	Replicas *int32 `json:"replicas,omitempty"`

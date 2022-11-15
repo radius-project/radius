@@ -634,7 +634,7 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "global.json#/definitions/Extension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -650,7 +650,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "global.json#/definitions/Extension"
         }
       ],
       "type": "object",
@@ -691,19 +691,15 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "Extension": {
-      "description": "Extension of a resource.",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "description": "Specifies the extensions of a resource.",
-          "type": "string"
+    "ContainerKubernetesMetadataExtension": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "container.json#/definitions/KubernetesMetadataExtension"
         }
-      },
-      "required": [
-        "kind"
       ],
-      "type": "object"
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Environment.",
+      "additionalProperties": false
     },
     "ContainerProperties": {
       "allOf": [

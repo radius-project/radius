@@ -29,3 +29,8 @@ func (e *Application) ResourceTypeName() string {
 type ApplicationProperties struct {
 	rp.BasicResourceProperties
 }
+
+// ApplicationMetadataExtension - Specifies user defined labels and annotations
+type ApplicationMetadataExtension struct {
+	BaseKubernetesMetadataExtension
+}

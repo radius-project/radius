@@ -313,6 +313,15 @@
           }
         }
       },
+      "ApplicationKubernetesMetadataExtension": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "container.json#/definitions/KubernetesMetadataExtension"
+          }
+        ],
+        "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Application."
+      },
       "ApplicationProperties": {
         "description": "Application properties",
         "type": "object",
