@@ -26,11 +26,11 @@ var secretClientFactory = map[SecretProviderType]secretFactoryFunc{
 	TypeKubernetesSecret: initKubernetesSecretClient,
 }
 
-func initETCDSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
+func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secret.Client, error) {
 	// etcd is a separate process run for development storage.
 	// data provider already creates an etcd process which can be re-used instead of a new process for secret.
 	client, err := dataprovider.InitETCDClient(ctx, dataprovider.StorageProviderOptions{
-		ETCD: opt.ETCD,
+		ETCD: opts.ETCD,
 	}, "")
 	if err != nil {
 		return nil, err
