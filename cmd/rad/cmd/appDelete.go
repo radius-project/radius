@@ -37,8 +37,7 @@ func deleteApplication(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	config := ConfigFromContext(cmd.Context())
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
 	}

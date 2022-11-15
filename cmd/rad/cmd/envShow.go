@@ -25,12 +25,11 @@ func init() {
 	envCmd.AddCommand(envShowCmd)
 }
 func showEnvironment(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err
 	}
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
 	}

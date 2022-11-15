@@ -80,6 +80,7 @@ rad deploy myapp.bicep --parameters @myfile.json --parameters version=latest
 
 	commonflags.AddWorkspaceFlag(cmd)
 	commonflags.AddEnvironmentNameFlag(cmd)
+	commonflags.AddApplicationNameFlag(cmd)
 	cmd.Flags().StringArrayP("parameters", "p", []string{}, "Specify parameters for the deployment")
 
 	return cmd, runner
@@ -93,6 +94,8 @@ type Runner struct {
 	Deploy            deploy.Interface
 	Output            output.Interface
 
+	ApplicationID   string
+	ApplicationName string
 	EnvironmentID   string
 	EnvironmentName string
 	FilePath        string
@@ -113,7 +116,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad deploy` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
@@ -125,6 +128,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	r.Workspace = workspace
 
 	r.EnvironmentName, err = cli.RequireEnvironmentName(cmd, args, *workspace)
+	if err != nil {
+		return err
+	}
+
+	// This might be empty, and that's fine!
+	r.ApplicationName, err = cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
 		return err
 	}
@@ -141,6 +150,18 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return &cli.FriendlyError{Message: fmt.Sprintf("environment %q does not exist in scope %q. Run `rad env create` try again \n", r.EnvironmentName, r.Workspace.Scope)}
 	} else if err != nil {
 		return err
+	}
+
+	// Verify application if provided
+	if r.ApplicationName != "" {
+		_, err = client.ShowApplication(cmd.Context(), r.ApplicationName)
+		if clients.Is404Error(err) {
+			return &cli.FriendlyError{Message: fmt.Sprintf("application %q does not exist in scope %q. Run `rad init` and try again \n", r.ApplicationName, workspace.Scope)}
+		} else if err != nil {
+			return err
+		}
+
+		r.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
 
 	r.FilePath = args[0]
@@ -166,12 +187,20 @@ func (r *Runner) Run(ctx context.Context) error {
 		return err
 	}
 
-	progressText := fmt.Sprintf(
-		"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
-			"Deployment In Progress...", r.FilePath, r.EnvironmentName, r.Workspace.Name)
+	progressText := ""
+	if r.ApplicationName == "" {
+		progressText = fmt.Sprintf(
+			"Deploying template '%v' into environment '%v' from workspace '%v'...\n\n"+
+				"Deployment In Progress...", r.FilePath, r.EnvironmentName, r.Workspace.Name)
+	} else {
+		progressText = fmt.Sprintf(
+			"Deploying template '%v' for application '%v' and environment '%v' from workspace '%v'...\n\n"+
+				"Deployment In Progress...", r.FilePath, r.ApplicationName, r.EnvironmentName, r.Workspace.Name)
+	}
 
 	_, err = r.Deploy.DeployWithProgress(ctx, deploy.Options{
 		ConnectionFactory: r.ConnectionFactory,
+		ApplicationID:     r.ApplicationID,
 		EnvironmentID:     r.EnvironmentID,
 		Workspace:         *r.Workspace,
 		Template:          template,

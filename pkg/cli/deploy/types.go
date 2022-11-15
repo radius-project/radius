@@ -31,6 +31,9 @@ type Options struct {
 	// Template should contain a parsed ARM-JSON template.
 	Template map[string]interface{}
 
+	// ApplicationID is the resource ID of the application. If provided, will be used as configuration for the Radius provider.
+	ApplicationID string
+
 	// EnvironmentID is the resource ID of the environment. If provided, will be used as configuration for the Radius provider.
 	EnvironmentID string
 
