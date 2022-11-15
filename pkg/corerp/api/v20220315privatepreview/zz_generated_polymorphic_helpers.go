@@ -11,6 +11,84 @@ package v20220315privatepreview
 
 import "encoding/json"
 
+func unmarshalApplicationExtensionClassification(rawMsg json.RawMessage) (ApplicationExtensionClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ApplicationExtensionClassification
+	switch m["kind"] {
+	case "kubernetesMetadata":
+		b = &ApplicationKubernetesMetadataExtension{}
+	default:
+		b = &ApplicationExtension{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalApplicationExtensionClassificationArray(rawMsg json.RawMessage) ([]ApplicationExtensionClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]ApplicationExtensionClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalApplicationExtensionClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
+func unmarshalContainerExtensionClassification(rawMsg json.RawMessage) (ContainerExtensionClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ContainerExtensionClassification
+	switch m["kind"] {
+	case "daprSidecar":
+		b = &DaprSidecarExtension{}
+	case "kubernetesMetadata":
+		b = &ContainerKubernetesMetadataExtension{}
+	case "manualScaling":
+		b = &ManualScalingExtension{}
+	default:
+		b = &ContainerExtension{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalContainerExtensionClassificationArray(rawMsg json.RawMessage) ([]ContainerExtensionClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var rawMessages []json.RawMessage
+	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
+		return nil, err
+	}
+	fArray := make([]ContainerExtensionClassification, len(rawMessages))
+	for index, rawMessage := range rawMessages {
+		f, err := unmarshalContainerExtensionClassification(rawMessage)
+		if err != nil {
+			return nil, err
+		}
+		fArray[index] = f
+	}
+	return fArray, nil
+}
+
 func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (EnvironmentComputeClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
@@ -29,7 +107,7 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassification, error) {
+func unmarshalEnvironmentExtensionClassification(rawMsg json.RawMessage) (EnvironmentExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -37,19 +115,17 @@ func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassifi
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
-	var b ExtensionClassification
+	var b EnvironmentExtensionClassification
 	switch m["kind"] {
-	case "daprSidecar":
-		b = &DaprSidecarExtension{}
-	case "manualScaling":
-		b = &ManualScalingExtension{}
+	case "kubernetesMetadata":
+		b = &EnvironmentKubernetesMetadataExtension{}
 	default:
-		b = &Extension{}
+		b = &EnvironmentExtension{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }
 
-func unmarshalExtensionClassificationArray(rawMsg json.RawMessage) ([]ExtensionClassification, error) {
+func unmarshalEnvironmentExtensionClassificationArray(rawMsg json.RawMessage) ([]EnvironmentExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil
 	}
@@ -57,9 +133,9 @@ func unmarshalExtensionClassificationArray(rawMsg json.RawMessage) ([]ExtensionC
 	if err := json.Unmarshal(rawMsg, &rawMessages); err != nil {
 		return nil, err
 	}
-	fArray := make([]ExtensionClassification, len(rawMessages))
+	fArray := make([]EnvironmentExtensionClassification, len(rawMessages))
 	for index, rawMessage := range rawMessages {
-		f, err := unmarshalExtensionClassification(rawMessage)
+		f, err := unmarshalEnvironmentExtensionClassification(rawMessage)
 		if err != nil {
 			return nil, err
 		}

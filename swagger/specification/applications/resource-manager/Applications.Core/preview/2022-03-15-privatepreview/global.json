@@ -124,6 +124,20 @@
         "kind"
       ],
       "type": "object"
+    },
+    "Extension": {
+      "description": "Extension of a resource.",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "Specifies the extensions of a resource.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     }
   },
   "parameters": {

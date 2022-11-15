@@ -353,6 +353,40 @@
         }
       }
     },
+    "EnvironmentExtension": {
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/Extension"
+        }
+      ]
+    },
+    "EnvironmentKubernetesMetadataExtension": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/EnvironmentExtension"
+        }
+      ],
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Environment.",
+      "properties": {
+        "annotations": {
+          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "description": "Labels to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-ms-discriminator-value": "kubernetesMetadata"
+    },
     "EnvironmentProperties": {
       "description": "Application environment properties",
       "type": "object",
@@ -382,6 +416,13 @@
             "description": "Specifies Recipe linked to the Environment."
           },
           "type": "object"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EnvironmentExtension"
+          },
+          "description": "Extensions spec of the resource"
         }
       }
     },
