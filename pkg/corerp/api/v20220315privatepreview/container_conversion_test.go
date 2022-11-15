@@ -269,15 +269,3 @@ func getTestContainerEmptyKuberenetesMetadataExt(t *testing.T) []datamodel.Exten
 
 	return extensions
 }
-
-/*
-extensions := []datamodel.Extension{
-		{
-			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
-				Annotations: map[string]string{},
-				Labels:      map[string]string{},
-			},
-		},
-	}
-*/
