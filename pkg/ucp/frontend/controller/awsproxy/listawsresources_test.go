@@ -19,6 +19,7 @@ import (
 	"github.com/google/uuid"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -74,23 +75,25 @@ func Test_ListAWSResources(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
-		"value": []interface{}{
-			map[string]interface{}{
-				"id":   firstTestResource.SingleResourcePath,
-				"name": aws.String(firstTestResource.ResourceName),
-				"type": firstTestResource.ResourceType,
-				"properties": map[string]interface{}{
-					"RetentionPeriodHours": float64(178),
-					"ShardCount":           float64(3),
+		"value": v1.PaginatedList{
+			Value: []interface{}{
+				map[string]interface{}{
+					"id":   firstTestResource.SingleResourcePath,
+					"name": aws.String(firstTestResource.ResourceName),
+					"type": firstTestResource.ResourceType,
+					"properties": map[string]interface{}{
+						"RetentionPeriodHours": float64(178),
+						"ShardCount":           float64(3),
+					},
 				},
-			},
-			map[string]interface{}{
-				"id":   secondTestResource.SingleResourcePath,
-				"name": aws.String(secondTestResource.ResourceName),
-				"type": secondTestResource.ResourceType,
-				"properties": map[string]interface{}{
-					"RetentionPeriodHours": float64(180),
-					"ShardCount":           float64(2),
+				map[string]interface{}{
+					"id":   secondTestResource.SingleResourcePath,
+					"name": aws.String(secondTestResource.ResourceName),
+					"type": secondTestResource.ResourceType,
+					"properties": map[string]interface{}{
+						"RetentionPeriodHours": float64(180),
+						"ShardCount":           float64(2),
+					},
 				},
 			},
 		},
@@ -121,7 +124,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
-		"value": []interface{}{},
+		"value": v1.PaginatedList{},
 	})
 
 	require.Equal(t, expectedResponse, actualResponse)

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -52,9 +53,9 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	return ok, nil
 }
 
-func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
+func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	apiVersion := ctrl.GetAPIVersion(req)
-	listOfPlanes := []interface{}{}
+	items := v1.PaginatedList{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
 			var plane datamodel.Plane
@@ -68,8 +69,8 @@ func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, resu
 				return nil, err
 			}
 
-			listOfPlanes = append(listOfPlanes, versioned)
+			items.Value = append(items.Value, versioned)
 		}
 	}
-	return listOfPlanes, nil
+	return &items, nil
 }

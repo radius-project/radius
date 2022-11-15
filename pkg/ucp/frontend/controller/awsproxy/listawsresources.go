@@ -11,6 +11,7 @@ import (
 	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
@@ -47,7 +48,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	//
 	// https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-operations-list.html
 
-	items := []interface{}{}
+	items := v1.PaginatedList{}
 	for _, result := range response.ResourceDescriptions {
 		properties := map[string]interface{}{}
 		if result.Properties != nil {
@@ -64,7 +65,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 			"type":       id.Type(),
 			"properties": properties,
 		}
-		items = append(items, item)
+		items.Value = append(items.Value, item)
 	}
 
 	body := map[string]interface{}{
