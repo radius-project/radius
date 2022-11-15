@@ -54,32 +54,32 @@
     },
     "extensions": [
       {
-        "extension": {
-          "kind": "manualScaling"
-        },
-        "replicas": 2
+        "kind": "manualScaling",
+        "manualScaling": {
+          "replicas": 2
+        }
       },
       {
-        "extension": {
-          "kind": "daprSidecar"
-        },
-        "appId": "app-id",
-        "appPort": 80,
-        "config": "config",
-        "protocol": "http",
-        "provides": "provides"
+        "kind": "daprSidecar",
+        "daprSidecar": {
+          "appId": "app-id",
+          "appPort": 80,
+          "config": "config",
+          "protocol": "http",
+          "provides": "provides"
+        }
       },
       {
-        "extension": {
-          "kind": "kubernetesMetadata"
-        },
-        "annotations": {
+        "kind": "kubernetesMetadata",
+        "KubernetesMetadata": {
+          "annotations": {
           "prometheus.io/scrape" : "true",
           "prometheus.io/port": "80" 
-        },
-        "labels": {
-          "mbcp.pt/team" : "Credit",
-          "mbcp.pt/contact": "nunog" 
+          },
+          "labels": {
+            "mbcp.pt/team" : "Credit",
+            "mbcp.pt/contact": "radiususer" 
+          }
         }
       }
     ]

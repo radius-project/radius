@@ -125,7 +125,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
-	var extensions []ExtensionClassification
+	var extensions []EnvironmentExtensionClassification
 	if env.Properties.Extensions != nil {
 		for _, e := range env.Properties.Extensions {
 			extensions = append(extensions, fromEnvExtensionClassificationDataModel(e))
@@ -215,21 +215,28 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 }
 
 // fromExtensionClassificationEnvDataModel: Converts from base datamodel to versioned datamodel
-func fromEnvExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
+func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentExtensionClassification {
 	converted := EnvironmentKubernetesMetadataExtension{
+		Kind:        to.StringPtr(string(e.Kind)),
 		Annotations: *to.StringMapPtr(e.KubernetesMetadata.Annotations),
 		Labels:      *to.StringMapPtr(e.KubernetesMetadata.Labels),
 	}
 
-	return converted.GetExtension()
+	return converted.GetEnvironmentExtension()
 }
 
 // toEnvExtensionDataModel: Converts from versioned datamodel to base datamodel
 func toEnvExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *EnvironmentKubernetesMetadataExtension:
+
 		converted := &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
+			/* LJ: To be deleted later
+			KubernetesMetadata: &BaseKubernetesMetadataExtension(datamodel.EnvironmentKubernetesMetadataExtension{
+				Annotations: to.StringMap(c.Annotations),
+				Labels:      to.StringMap(c.Labels),
+			}*/
 		}
 		converted.KubernetesMetadata.Annotations = to.StringMap(c.Annotations)
 		converted.KubernetesMetadata.Labels = to.StringMap(c.Labels)

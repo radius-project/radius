@@ -16,6 +16,12 @@ type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
+<<<<<<< HEAD
+=======
+	// Extensions spec of the resource
+	Extensions []ApplicationExtensionClassification `json:"extensions,omitempty"`
+
+>>>>>>> 6921e5da7 (ran make generate again)
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
@@ -216,7 +222,7 @@ type ContainerProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
-	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+	Extensions []ContainerExtensionClassification `json:"extensions,omitempty"`
 
 	// Configuration for supported external identity providers
 	Identity *IdentitySettings `json:"identity,omitempty"`
@@ -343,6 +349,12 @@ type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
+<<<<<<< HEAD
+=======
+	// Extensions spec of the resource
+	Extensions []EnvironmentExtensionClassification `json:"extensions,omitempty"`
+
+>>>>>>> 6921e5da7 (ran make generate again)
 	// Cloud providers configuration for the environment.
 	Providers *Providers `json:"providers,omitempty"`
 

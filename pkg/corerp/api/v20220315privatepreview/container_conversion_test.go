@@ -49,6 +49,7 @@ func TestContainerConvertVersionedToDataModel(t *testing.T) {
 	require.Equal(t, []outputresource.OutputResource(nil), ct.Properties.Status.OutputResources)
 	require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 	require.Equal(t, 3, len(ct.Properties.Extensions))
+	require.Equal(t, GetContainerExtensions(t), ct.Properties.Extensions)
 
 	require.Equal(t, []string{"/bin/sh"}, ct.Properties.Container.Command)
 	require.Equal(t, []string{"-c", "while true; do echo hello; sleep 10;done"}, ct.Properties.Container.Args)
@@ -136,4 +137,42 @@ func TestContainerConvertFromValidation(t *testing.T) {
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
+}
+
+func GetContainerExtensions(t *testing.T) []datamodel.Extension {
+	var replicavalue int32 = 3
+	ptrreplicaval := &replicavalue
+	extensions := []datamodel.Extension{
+		{
+			Kind: datamodel.DaprSidecar,
+			DaprSidecar: &datamodel.DaprSidecarExtension{
+				AppID:    "app-id",
+				AppPort:  80,
+				Config:   "config",
+				Protocol: "http",
+				Provides: "provides",
+			},
+		},
+		{
+			Kind: datamodel.ManualScaling,
+			ManualScaling: &datamodel.ManualScalingExtension{
+				Replicas: ptrreplicaval,
+			},
+		},
+		{
+			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				Annotations: map[string]string{
+					"prometheus.io/scrape": "true",
+					"prometheus.io/port":   "80",
+				},
+				Labels: map[string]string{
+					"mbcp.pt/team":    "Credit",
+					"mbcp.pt/contact": "radiususer",
+				},
+			},
+		},
+	}
+
+	return extensions
 }

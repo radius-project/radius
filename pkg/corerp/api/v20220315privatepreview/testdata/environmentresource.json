@@ -20,19 +20,19 @@
             }
         },
         "extensions": [
-            {
-              "extension": {
-                "kind": "kubernetesMetadata"
-              },
+          {
+            "kind": "kubernetesMetadata",
+            "kubernetesMetadata": {
               "annotations": {
-                "prometheus.io/scrape" : "true",
-                "prometheus.io/port": "80" 
+              "prometheus.io/scrape" : "true",
+              "prometheus.io/port": "80" 
               },
               "labels": {
                 "mbcp.pt/team" : "Credit",
-                "mbcp.pt/contact": "nunog" 
+                "mbcp.pt/contact": "radiususer" 
               }
             }
-          ]
+          }
+        ]       
     }
 }

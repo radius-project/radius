@@ -36,6 +36,12 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
 				delete(rawMsg, key)
+<<<<<<< HEAD
+=======
+		case "extensions":
+				a.Extensions, err = unmarshalApplicationExtensionClassificationArray(val)
+				delete(rawMsg, key)
+>>>>>>> 6921e5da7 (ran make generate again)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
 				delete(rawMsg, key)
@@ -435,7 +441,7 @@ func (c *ContainerProperties) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Environment", &c.Environment)
 				delete(rawMsg, key)
 		case "extensions":
-				c.Extensions, err = unmarshalExtensionClassificationArray(val)
+				c.Extensions, err = unmarshalContainerExtensionClassificationArray(val)
 				delete(rawMsg, key)
 		case "identity":
 				err = unpopulate(val, "Identity", &c.Identity)
@@ -641,6 +647,12 @@ func (e *EnvironmentProperties) UnmarshalJSON(data []byte) error {
 		case "compute":
 				e.Compute, err = unmarshalEnvironmentComputeClassification(val)
 				delete(rawMsg, key)
+<<<<<<< HEAD
+=======
+		case "extensions":
+				e.Extensions, err = unmarshalEnvironmentExtensionClassificationArray(val)
+				delete(rawMsg, key)
+>>>>>>> 6921e5da7 (ran make generate again)
 		case "providers":
 				err = unpopulate(val, "Providers", &e.Providers)
 				delete(rawMsg, key)

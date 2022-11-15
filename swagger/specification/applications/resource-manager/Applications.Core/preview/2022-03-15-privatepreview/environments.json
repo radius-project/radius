@@ -382,6 +382,13 @@
             "description": "Specifies Recipe linked to the Environment."
           },
           "type": "object"
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/EnvironmentExtension"
+          },
+          "description": "Extensions spec of the resource"
         }
       }
     },

@@ -630,11 +630,18 @@
         }
       }
     },
+    "ContainerExtension": {
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/Extension"
+        }
+      ]
+    },
     "ManualScalingExtension": {
       "type": "object",
       "allOf": [
         {
-          "$ref": "global.json#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -650,7 +657,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "global.json#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "type": "object",
@@ -695,11 +702,28 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "container.json#/definitions/KubernetesMetadataExtension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
-      "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Environment.",
-      "additionalProperties": false
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource",
+      "properties": {
+        "annotations": {
+          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "description": "Labels to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "x-ms-discriminator-value": "kubernetesMetadata"
     },
     "ContainerProperties": {
       "allOf": [
@@ -733,7 +757,7 @@
         "extensions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Extension"
+            "$ref": "#/definitions/ContainerExtension"
           },
           "description": "Extensions spec of the resource"
         }

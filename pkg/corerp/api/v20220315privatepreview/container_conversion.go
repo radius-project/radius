@@ -186,7 +186,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
-	var extensions []ExtensionClassification
+	var extensions []ContainerExtensionClassification
 	if c.Properties.Extensions != nil {
 		for _, e := range c.Properties.Extensions {
 			extensions = append(extensions, fromExtensionClassificationDataModel(e))
@@ -490,9 +490,11 @@ func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 	case *ContainerKubernetesMetadataExtension:
 		converted := &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				Annotations: to.StringMap(c.Annotations),
+				Labels:      to.StringMap(c.Labels),
+			},
 		}
-		converted.KubernetesMetadata.Annotations = to.StringMap(c.Annotations)
-		converted.KubernetesMetadata.Labels = to.StringMap(c.Labels)
 		return *converted
 	}
 
@@ -500,14 +502,14 @@ func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 }
 
 // fromExtensionClassificationDataModel: Converts from base datamodel to versioned datamodel
-func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
+func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		converted := ManualScalingExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
-		return converted.GetExtension()
+		return converted.GetContainerExtension()
 	case datamodel.DaprSidecar:
 		converted := DaprSidecarExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
@@ -517,13 +519,14 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassi
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
 			Provides: to.StringPtr(e.DaprSidecar.Provides),
 		}
-		return converted.GetExtension()
+		return converted.GetContainerExtension()
 	case datamodel.KubernetesMetadata:
 		converted := ContainerKubernetesMetadataExtension{
+			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(e.KubernetesMetadata.Annotations),
 			Labels:      *to.StringMapPtr(e.KubernetesMetadata.Labels),
 		}
-		return converted.GetExtension()
+		return converted.GetContainerExtension()
 	}
 
 	return nil
