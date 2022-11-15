@@ -15,6 +15,10 @@
             "properties": {
               "provisioningState": "Succeeded",
               "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+              "compute": {
+                "kind": "kubernetes",
+                "namespace": "default"
+              },
               "extensions": [
                 {
                   "kind": "kubernetesMetadata",
@@ -36,7 +40,11 @@
             "type": "Applications.Core/applications",
             "properties": {
               "provisioningState": "Succeeded",
-              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1"
+              "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env1",
+              "compute": {
+                "kind": "kubernetes",
+                "namespace": "default"
+              }
             }
           }
         ],
