@@ -18,22 +18,23 @@ var (
 	ErrSecretNotFound            = errors.New("secret not found")
 )
 
-type secretProvider struct {
+// SecretProvider creates client based on the options provided.
+type SecretProvider struct {
 	client  secret.Client
 	options SecretProviderOptions
 	once    sync.Once
 }
 
 // NewSecretProvider creates new SecretProvider instance.
-func NewSecretProvider(opts SecretProviderOptions) *secretProvider {
-	return &secretProvider{
+func NewSecretProvider(opts SecretProviderOptions) *SecretProvider {
+	return &SecretProvider{
 		client:  nil,
 		options: opts,
 	}
 }
 
-// GetSecretClient returns the secret client if it has been initialized already, if not, creates it and then returns it.
-func (p *secretProvider) GetClient(ctx context.Context) (secret.Client, error) {
+// GetClient returns the secret client if it has been initialized already, if not, creates it and then returns it.
+func (p *SecretProvider) GetClient(ctx context.Context) (secret.Client, error) {
 	if p.client != nil {
 		return p.client, nil
 	}

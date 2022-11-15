@@ -39,7 +39,7 @@ func initETCDSecretClient(ctx context.Context, opts SecretProviderOptions) (secr
 	if !ok {
 		return nil, errors.New("No etcd Client detected")
 	}
-	return &etcd.Client{ETCDClient: secretClient.Client}, nil
+	return &etcd.Client{ETCDClient: secretClient.Client()}, nil
 }
 
 func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {

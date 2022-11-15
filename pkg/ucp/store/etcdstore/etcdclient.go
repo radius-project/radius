@@ -52,13 +52,13 @@ const (
 )
 
 func NewETCDClient(c *etcdclient.Client) *ETCDClient {
-	return &ETCDClient{Client: c}
+	return &ETCDClient{client: c}
 }
 
 var _ store.StorageClient = (*ETCDClient)(nil)
 
 type ETCDClient struct {
-	Client *etcdclient.Client
+	client *etcdclient.Client
 }
 
 func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -78,7 +78,7 @@ func (c *ETCDClient) Query(ctx context.Context, query store.Query, options ...st
 	// results as a single page. This would be a nice future improvement
 	//
 	// https://stackoverflow.com/questions/44873514/etcd3-go-client-how-to-paginate-large-sets-of-keys
-	response, err := c.Client.Get(ctx, key, etcdclient.WithPrefix())
+	response, err := c.client.Get(ctx, key, etcdclient.WithPrefix())
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOpt
 	}
 
 	key := keyFromID(parsed)
-	response, err := c.Client.Get(ctx, key)
+	response, err := c.client.Get(ctx, key)
 	if err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 			return &store.ErrConcurrency{}
 		}
 
-		txn, err := c.Client.Txn(ctx).
+		txn, err := c.client.Txn(ctx).
 			If(etcdclient.Compare(etcdclient.ModRevision(key), "=", revision)).
 			Then(etcdclient.OpDelete(key)).
 			Commit()
@@ -190,7 +190,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 	}
 
 	// If we don't have an ETag then things are straightforward :)
-	response, err := c.Client.Delete(ctx, key)
+	response, err := c.client.Delete(ctx, key)
 	if err != nil {
 		return err
 	}
@@ -232,7 +232,7 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 			return &store.ErrConcurrency{}
 		}
 
-		txn, err := c.Client.Txn(ctx).
+		txn, err := c.client.Txn(ctx).
 			If(etcdclient.Compare(etcdclient.ModRevision(key), "=", revision)).
 			Then(etcdclient.OpPut(key, string(b))).
 			Commit()
@@ -250,7 +250,7 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	}
 
 	// If we don't have an ETag then things are pretty straightforward.
-	response, err := c.Client.Put(ctx, key, string(b))
+	response, err := c.client.Put(ctx, key, string(b))
 	if err != nil {
 		return err
 	}
@@ -258,6 +258,10 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	obj.ETag = etag.NewFromRevision(response.Header.Revision)
 
 	return nil
+}
+
+func (c *ETCDClient) Client() *etcdclient.Client {
+	return c.client
 }
 
 func idFromKey(key []byte) (resources.ID, error) {
