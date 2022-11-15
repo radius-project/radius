@@ -41,7 +41,7 @@ const (
 	envVarValue1          = "TEST_VALUE_1"
 	envVarName2           = "TEST_VAR_2"
 	envVarValue2          = "81"
-	secretName            = "test-app-test-container"
+	secretName            = "test-container"
 
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
@@ -1082,10 +1082,16 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	resourceID, _ := resources.ParseResource(testResourceID)
+	testVolName := "test-volume-sp"
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
 			Resource: &datamodel.VolumeResource{
+				BaseResource: apiv1.BaseResource{
+					TrackedResource: apiv1.TrackedResource{
+						Name: testVolName,
+					},
+				},
 				Properties: datamodel.VolumeResourceProperties{
 					BasicResourceProperties: rp.BasicResourceProperties{
 						Application: applicationResourceID,
@@ -1115,7 +1121,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					Data: resourcemodel.KubernetesIdentity{
 						Kind:       "SecretProviderClass",
 						APIVersion: "secrets-store.csi.x-k8s.io/v1alpha1",
-						Name:       "test-volume-sp",
+						Name:       testVolName,
 						Namespace:  "test-ns",
 					},
 				},
@@ -1142,7 +1148,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
 	require.Equal(t, tempVolName, volumes[0].Name)
 	require.Equal(t, "secrets-store.csi.k8s.io", volumes[0].VolumeSource.CSI.Driver, "expected volumesource azurefile to be not nil")
-	require.Equal(t, "test-app-test-container", volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input test-volume-sp")
+	require.Equal(t, testVolName, volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input test-volume-sp")
 	require.Equal(t, true, *volumes[0].VolumeSource.CSI.ReadOnly, "expected readonly attribute to be true")
 
 	// Verify volume mount spec

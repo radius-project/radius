@@ -283,6 +283,8 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// Make the default managed identity name.
 	defaultIdentityName := kubernetes.NormalizeResourceName(resource.Name)
 
+	azIdentityName := azrenderer.MakeResourceName(resource.Name, applicationName)
+
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
 		switch volumeProperties.Kind {
@@ -389,14 +391,14 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
-		managedIdentity, err := azrenderer.MakeManagedIdentity(defaultIdentityName, options.Environment.CloudProviders)
+		managedIdentity, err := azrenderer.MakeManagedIdentity(azIdentityName, options.Environment.CloudProviders)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultIdentityName, &options.Environment)
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(azIdentityName, &options.Environment)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
@@ -404,7 +406,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		// 3. Create Per-container service account.
 		podSAName = defaultIdentityName
-		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultIdentityName, options.Environment.Namespace, resource)
+		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, podSAName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
