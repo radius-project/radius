@@ -117,15 +117,8 @@ func unmarshalEnvironmentExtensionClassification(rawMsg json.RawMessage) (Enviro
 	}
 	var b EnvironmentExtensionClassification
 	switch m["kind"] {
-<<<<<<< HEAD
-	case "daprSidecar":
-		b = &DaprSidecarExtension{}
-	case "manualScaling":
-		b = &ManualScalingExtension{}
-=======
 	case "kubernetesMetadata":
 		b = &EnvironmentKubernetesMetadataExtension{}
->>>>>>> 6921e5da7 (ran make generate again)
 	default:
 		b = &EnvironmentExtension{}
 	}

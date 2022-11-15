@@ -235,21 +235,9 @@
         "produces": [
           "application/json"
         ],
-<<<<<<< HEAD
-        "properties": {
-          "provisioningState": {
-            "readOnly": true,
-            "$ref": "global.json#/definitions/ProvisioningState",
-            "description": "Provisioning state of the application at the time the operation was called."
-          },
-          "environment": {
-            "description": "The resource id of the environment linked to application.",
-            "type": "string"
-=======
         "x-ms-examples": {
           "RadiusApplicationsDelete": {
             "$ref": "./examples/ApplicationsDelete.json"
->>>>>>> 6921e5da7 (ran make generate again)
           }
         },
         "tags": [
