@@ -14,6 +14,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
@@ -25,6 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad env create` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -48,6 +50,7 @@ Applications deployed to an environment will inherit the container runtime, conf
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad env create` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	Output              output.Interface
@@ -62,6 +65,7 @@ type Runner struct {
 	SkipDevRecipes      bool
 }
 
+// NewRunner creates a new instance of the `rad env create` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:        factory.GetConfigHolder(),
@@ -73,6 +77,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad env create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 
@@ -133,7 +138,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 
 	_, err = client.ShowUCPGroup(cmd.Context(), "radius", "local", r.UCPResourceGroup)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Resource group %q could not be found.", r.UCPResourceGroup)}
 	} else if err != nil {
 		return err
@@ -147,6 +152,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad env create` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Creating Environment...")
 	var providers corerp.Providers

@@ -16,7 +16,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
-	"github.com/aws/aws-sdk-go/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
@@ -47,7 +47,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]interface{}{
 		"Name":                 testAWSResourceName,
@@ -118,7 +118,7 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -168,7 +168,7 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
@@ -215,7 +215,7 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 		Schema:   to.Ptr(string(serialized)),
 	}
 
-	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any()).Return(&output, nil)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
 		Err: &smithyhttp.ResponseError{

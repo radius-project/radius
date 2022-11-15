@@ -6,14 +6,11 @@
 package setup
 
 import (
-	"errors"
+	"context"
 	"fmt"
 
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/awserr"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/sts"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/sts"
 	"github.com/spf13/cobra"
 
 	radAWS "github.com/project-radius/radius/pkg/cli/aws"
@@ -60,6 +57,8 @@ func ParseAWSProviderFromArgs(cmd *cobra.Command, interactive bool) (*radAWS.Pro
 }
 
 func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
+	ctx := cmd.Context()
+
 	addAWSCred, err := prompt.ConfirmWithDefault("Add AWS provider for cloud resources [y/N]?", prompt.No)
 	if err != nil {
 		return nil, err
@@ -83,10 +82,12 @@ func parseAWSProviderInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
 		return nil, err
 	}
 
-	return verifyAWSCredentials(keyID, secretAccessKey, region)
+	return verifyAWSCredentials(ctx, keyID, secretAccessKey, region)
 }
 
 func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error) {
+	ctx := cmd.Context()
+
 	addAWSProvider, err := cmd.Flags().GetBool(AWSProviderFlagName)
 	if err != nil {
 		return nil, err
@@ -110,22 +111,18 @@ func parseAWSProviderNonInteractive(cmd *cobra.Command) (*radAWS.Provider, error
 		return nil, err
 	}
 
-	return verifyAWSCredentials(keyID, secretAccessKey, region)
+	return verifyAWSCredentials(ctx, keyID, secretAccessKey, region)
 }
 
-func verifyAWSCredentials(keyID string, secretAccessKey string, region string) (*radAWS.Provider, error) {
-	creds := credentials.NewStaticCredentials(keyID, secretAccessKey, "")
-	awsConfig := aws.NewConfig().WithCredentials(creds).WithMaxRetries(3)
-	mySession, err := session.NewSession(awsConfig)
+func verifyAWSCredentials(ctx context.Context, keyID string, secretAccessKey string, region string) (*radAWS.Provider, error) {
+	credentialsProvider := credentials.NewStaticCredentialsProvider(keyID, secretAccessKey, "")
+	stsClient := sts.New(sts.Options{
+		Region:      region,
+		Credentials: credentialsProvider,
+	})
+	result, err := stsClient.GetCallerIdentity(ctx, &sts.GetCallerIdentityInput{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize a AWS session object: %w", err)
-	}
-	client := sts.New(mySession)
-	result, err := client.GetCallerIdentity(&sts.GetCallerIdentityInput{})
-	awsError := awserr.New("", "", errors.New("")) //placeholder error to be filled by errors.As() below
-	if err != nil && errors.As(err, &awsError) {
-		errStr := "AWS credential verification failed: %s (AWS ErrorCode: %s)"
-		return nil, fmt.Errorf(errStr, awsError.Message(), awsError.Code())
+		return nil, fmt.Errorf("AWS credential verification failed: %s", err.Error())
 	}
 
 	return &radAWS.Provider{

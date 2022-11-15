@@ -457,6 +457,9 @@
             "schema": {
               "$ref": "#/definitions/CredentialResource"
             }
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
@@ -648,6 +651,9 @@
             "schema": {
               "$ref": "#/definitions/CredentialResource"
             }
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {

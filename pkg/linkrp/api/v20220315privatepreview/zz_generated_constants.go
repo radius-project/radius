@@ -34,19 +34,22 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
-// DaprPubSubBrokerPropertiesKind - The DaprPubSubProperties kind
-type DaprPubSubBrokerPropertiesKind string
+// DaprPubSubBrokerPropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
+type DaprPubSubBrokerPropertiesMode string
 
 const (
-	DaprPubSubBrokerPropertiesKindGeneric DaprPubSubBrokerPropertiesKind = "generic"
-	DaprPubSubBrokerPropertiesKindPubsubAzureServicebus DaprPubSubBrokerPropertiesKind = "pubsub.azure.servicebus"
+	DaprPubSubBrokerPropertiesModeRecipe DaprPubSubBrokerPropertiesMode = "recipe"
+	DaprPubSubBrokerPropertiesModeResource DaprPubSubBrokerPropertiesMode = "resource"
+	DaprPubSubBrokerPropertiesModeValues DaprPubSubBrokerPropertiesMode = "values"
 )
 
-// PossibleDaprPubSubBrokerPropertiesKindValues returns the possible values for the DaprPubSubBrokerPropertiesKind const type.
-func PossibleDaprPubSubBrokerPropertiesKindValues() []DaprPubSubBrokerPropertiesKind {
-	return []DaprPubSubBrokerPropertiesKind{	
-		DaprPubSubBrokerPropertiesKindGeneric,
-		DaprPubSubBrokerPropertiesKindPubsubAzureServicebus,
+// PossibleDaprPubSubBrokerPropertiesModeValues returns the possible values for the DaprPubSubBrokerPropertiesMode const type.
+func PossibleDaprPubSubBrokerPropertiesModeValues() []DaprPubSubBrokerPropertiesMode {
+	return []DaprPubSubBrokerPropertiesMode{	
+		DaprPubSubBrokerPropertiesModeRecipe,
+		DaprPubSubBrokerPropertiesModeResource,
+		DaprPubSubBrokerPropertiesModeValues,
 	}
 }
 
@@ -148,6 +151,39 @@ func PossibleRabbitMQMessageQueuePropertiesModeValues() []RabbitMQMessageQueuePr
 	}
 }
 
+// RedisCachePropertiesMode - How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource',
+// or build manually via 'values'. Selection determines which set of fields to additionally require.
+type RedisCachePropertiesMode string
+
+const (
+	RedisCachePropertiesModeRecipe RedisCachePropertiesMode = "recipe"
+	RedisCachePropertiesModeResource RedisCachePropertiesMode = "resource"
+	RedisCachePropertiesModeValues RedisCachePropertiesMode = "values"
+)
+
+// PossibleRedisCachePropertiesModeValues returns the possible values for the RedisCachePropertiesMode const type.
+func PossibleRedisCachePropertiesModeValues() []RedisCachePropertiesMode {
+	return []RedisCachePropertiesMode{	
+		RedisCachePropertiesModeRecipe,
+		RedisCachePropertiesModeResource,
+		RedisCachePropertiesModeValues,
+	}
+}
+
+// ResourceDaprPubSubPropertiesKind - The DaprPubSubProperties kind
+type ResourceDaprPubSubPropertiesKind string
+
+const (
+	ResourceDaprPubSubPropertiesKindPubsubAzureServicebus ResourceDaprPubSubPropertiesKind = "pubsub.azure.servicebus"
+)
+
+// PossibleResourceDaprPubSubPropertiesKindValues returns the possible values for the ResourceDaprPubSubPropertiesKind const type.
+func PossibleResourceDaprPubSubPropertiesKindValues() []ResourceDaprPubSubPropertiesKind {
+	return []ResourceDaprPubSubPropertiesKind{	
+		ResourceDaprPubSubPropertiesKindPubsubAzureServicebus,
+	}
+}
+
 // ResourceDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
 type ResourceDaprStateStoreResourcePropertiesKind string
 
@@ -180,6 +216,20 @@ func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
 		SQLDatabasePropertiesModeRecipe,
 		SQLDatabasePropertiesModeResource,
 		SQLDatabasePropertiesModeValues,
+	}
+}
+
+// ValuesDaprPubSubPropertiesKind - The DaprPubSubProperties kind
+type ValuesDaprPubSubPropertiesKind string
+
+const (
+	ValuesDaprPubSubPropertiesKindGeneric ValuesDaprPubSubPropertiesKind = "generic"
+)
+
+// PossibleValuesDaprPubSubPropertiesKindValues returns the possible values for the ValuesDaprPubSubPropertiesKind const type.
+func PossibleValuesDaprPubSubPropertiesKindValues() []ValuesDaprPubSubPropertiesKind {
+	return []ValuesDaprPubSubPropertiesKind{	
+		ValuesDaprPubSubPropertiesKindGeneric,
 	}
 }
 

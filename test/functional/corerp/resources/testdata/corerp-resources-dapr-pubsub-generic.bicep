@@ -74,6 +74,7 @@ resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {
@@ -91,6 +92,7 @@ resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' 
     application: app.id
     kind: 'generic'
     type: 'pubsub.redis'
+    mode: 'values'
     metadata: {
       redisHost: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       redisPassword: ''

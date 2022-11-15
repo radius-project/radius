@@ -169,7 +169,7 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RedisCacheResponseResource{}
+				actualOutput := &v20220315privatepreview.RedisCacheResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -247,7 +247,7 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RedisCacheResponseResource{}
+				actualOutput := &v20220315privatepreview.RedisCacheResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

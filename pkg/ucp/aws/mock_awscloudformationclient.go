@@ -5,9 +5,10 @@
 package aws
 
 import (
+	context "context"
 	reflect "reflect"
 
-	cloudformation "github.com/aws/aws-sdk-go/service/cloudformation"
+	cloudformation "github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -35,16 +36,21 @@ func (m *MockAWSCloudFormationClient) EXPECT() *MockAWSCloudFormationClientMockR
 }
 
 // DescribeType mocks base method.
-func (m *MockAWSCloudFormationClient) DescribeType(arg0 *cloudformation.DescribeTypeInput) (*cloudformation.DescribeTypeOutput, error) {
+func (m *MockAWSCloudFormationClient) DescribeType(arg0 context.Context, arg1 *cloudformation.DescribeTypeInput, arg2 ...func(*cloudformation.Options)) (*cloudformation.DescribeTypeOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DescribeType", arg0)
+	varargs := []interface{}{arg0, arg1}
+	for _, a := range arg2 {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "DescribeType", varargs...)
 	ret0, _ := ret[0].(*cloudformation.DescribeTypeOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DescribeType indicates an expected call of DescribeType.
-func (mr *MockAWSCloudFormationClientMockRecorder) DescribeType(arg0 interface{}) *gomock.Call {
+func (mr *MockAWSCloudFormationClientMockRecorder) DescribeType(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeType", reflect.TypeOf((*MockAWSCloudFormationClient)(nil).DescribeType), arg0)
+	varargs := append([]interface{}{arg0, arg1}, arg2...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeType", reflect.TypeOf((*MockAWSCloudFormationClient)(nil).DescribeType), varargs...)
 }

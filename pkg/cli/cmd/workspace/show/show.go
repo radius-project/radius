@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad workspace show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -39,6 +40,7 @@ rad workspace show my-workspace`,
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad workspace show` command.
 type Runner struct {
 	ConfigHolder *framework.ConfigHolder
 	Output       output.Interface
@@ -46,6 +48,7 @@ type Runner struct {
 	Workspace    *workspaces.Workspace
 }
 
+// NewRunner creates a new instance of the `rad workspace show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder: factory.GetConfigHolder(),
@@ -53,6 +56,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad workspace show` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	workspace, err := cli.RequireWorkspaceArgs(cmd, r.ConfigHolder.Config, args)
 	if err != nil {
@@ -75,6 +79,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad workspace show` command.
 func (r *Runner) Run(ctx context.Context) error {
 	err := r.Output.WriteFormatted(r.Format, r.Workspace, objectformats.GetWorkspaceTableFormat())
 	if err != nil {

@@ -51,6 +51,7 @@ type GatewayProperties struct {
 	rp.BasicResourceProperties
 	Internal bool                       `json:"internal,omitempty"`
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
+	TLS      *GatewayPropertiesTLS      `json:"tls,omitempty"`
 	Routes   []GatewayRoute             `json:"routes,omitempty"`
 	URL      string                     `json:"url,omitempty"`
 }
@@ -66,4 +67,9 @@ type GatewayRoute struct {
 type GatewayPropertiesHostname struct {
 	FullyQualifiedHostname string `json:"fullyQualifiedHostname,omitempty"`
 	Prefix                 string `json:"prefix,omitempty"`
+}
+
+// GatewayPropertiesTLS - Declare TLS information for the Gateway.
+type GatewayPropertiesTLS struct {
+	SSLPassThrough bool `json:"sslPassThrough,omitempty"`
 }

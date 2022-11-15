@@ -20,11 +20,13 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 		return nil, err
 	}
 	var b DaprPubSubBrokerPropertiesClassification
-	switch m["kind"] {
-	case string(DaprPubSubBrokerPropertiesKindGeneric):
-		b = &DaprPubSubGenericResourceProperties{}
-	case string(DaprPubSubBrokerPropertiesKindPubsubAzureServicebus):
-		b = &DaprPubSubAzureServiceBusResourceProperties{}
+	switch m["mode"] {
+	case string(DaprPubSubBrokerPropertiesModeRecipe):
+		b = &RecipeDaprPubSubProperties{}
+	case string(DaprPubSubBrokerPropertiesModeResource):
+		b = &ResourceDaprPubSubProperties{}
+	case string(DaprPubSubBrokerPropertiesModeValues):
+		b = &ValuesDaprPubSubProperties{}
 	default:
 		b = &DaprPubSubBrokerProperties{}
 	}
@@ -111,6 +113,28 @@ func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessag
 		b = &ValuesRabbitMQMessageQueueProperties{}
 	default:
 		b = &RabbitMQMessageQueueProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalRedisCachePropertiesClassification(rawMsg json.RawMessage) (RedisCachePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b RedisCachePropertiesClassification
+	switch m["mode"] {
+	case string(RedisCachePropertiesModeRecipe):
+		b = &RecipeRedisCacheProperties{}
+	case string(RedisCachePropertiesModeResource):
+		b = &ResourceRedisCacheProperties{}
+	case string(RedisCachePropertiesModeValues):
+		b = &ValuesRedisCacheProperties{}
+	default:
+		b = &RedisCacheProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }

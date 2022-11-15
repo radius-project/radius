@@ -26,26 +26,7 @@ type RedisCache struct {
 	LinkMetadata
 }
 
-type RedisCacheResponse struct {
-	v1.TrackedResource
-
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
-	// Properties is the properties of the response resource.
-	Properties RedisCacheResponseProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
-
-	// LinkMetadata represents internal DataModel properties common to all link types.
-	LinkMetadata
-}
-
 func (redis RedisCache) ResourceTypeName() string {
-	return "Applications.Link/redisCaches"
-}
-
-func (redis RedisCacheResponse) ResourceTypeName() string {
 	return "Applications.Link/redisCaches"
 }
 
@@ -53,20 +34,27 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == RedisCacheSecrets{}
 }
 
-// RedisCacheProperties represents the properties of RedisCache resource.
-type RedisCacheResponseProperties struct {
-	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-	Resource          string               `json:"resource,omitempty"`
-	Host              string               `json:"host,omitempty"`
-	Port              int32                `json:"port,omitempty"`
-	Username          string               `json:"username,omitempty"`
+type RedisValuesProperties struct {
+	Host     string `json:"host,omitempty"`
+	Port     int32  `json:"port,omitempty"`
+	Username string `json:"username,omitempty"`
 }
 
+type RedisResourceProperties struct {
+	Resource string `json:"resource,omitempty"`
+}
+
+type RedisRecipeProperties struct {
+	Recipe LinkRecipe `json:"recipe,omitempty"`
+}
 type RedisCacheProperties struct {
-	RedisCacheResponseProperties
-	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
+	rp.BasicResourceProperties
+	RedisValuesProperties
+	RedisResourceProperties
+	RedisRecipeProperties
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Secrets           RedisCacheSecrets    `json:"secrets,omitempty"`
+	Mode              LinkMode             `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

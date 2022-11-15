@@ -7,6 +7,7 @@ package roleassignment
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"strings"
 	"time"
 
@@ -77,7 +78,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 
 		// Sometimes, the managed identity takes a while to propagate and the role assignment creation fails with status code = 400
 		// For other reasons, fail.
-		if detailedError.StatusCode != 400 {
+		if detailedError.StatusCode != http.StatusBadRequest {
 			return nil, fmt.Errorf("failed to create role assignment for role '%s' with error: %v, status code: %v", roleNameOrID, detailedError.Message, detailedError.StatusCode)
 		}
 
@@ -103,11 +104,22 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
 	// Deleting nonexisting role returns 204 so we do not need to check the existence.
 	_, err = roleAssignmentClient.DeleteByID(ctx, roleID, "")
-	if err != nil {
-		return fmt.Errorf("failed to delete role assignment for role '%s': %w", roleID, err)
+	if err == nil {
+		return nil
 	}
 
-	return nil
+	// Extract the detailedError from error.
+	detailedError, ok := clients.ExtractDetailedError(err)
+	if !ok {
+		return err
+	}
+
+	// Ignore when it deletes role from non-existing or deleted resource.
+	if detailedError.StatusCode == http.StatusNotFound {
+		return nil
+	}
+
+	return fmt.Errorf("failed to delete role assignment for role '%s': %w", roleID, err)
 }
 
 // Returns roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"

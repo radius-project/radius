@@ -3,6 +3,7 @@
     "name": "redis0",
     "type": "Applications.Link/redisCaches",
     "properties": {
+        "mode": "resource",
         "resource": 12345
     }
 }

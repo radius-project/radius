@@ -22,6 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad workspace create` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -53,6 +54,7 @@ rad workspace create kubernetes`,
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad workspace create` command.
 type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	ConnectionFactory   connections.Factory
@@ -64,6 +66,7 @@ type Runner struct {
 	KubernetesInterface kubernetes.Interface
 }
 
+// NewRunner creates a new instance of the `rad workspace create` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory:   factory.GetConnectionFactory(),
@@ -75,6 +78,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad workspace create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 
@@ -177,6 +181,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad workspace create` command.
 func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating workspace...")

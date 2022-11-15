@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -21,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad env switch` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -39,6 +41,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad env switch` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	Output            output.Interface
@@ -50,6 +53,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 }
 
+// NewRunner creates a new instance of the `rad env switch` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -58,6 +62,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad env switch` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	config := r.ConfigHolder.Config
 
@@ -98,7 +103,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Validate that the environment exists
 	_, err = client.GetEnvDetails(cmd.Context(), r.EnvironmentName)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Unable to switch environments as requested environment %s does not exist.\n", r.EnvironmentName)}
 	} else if err != nil {
 		return err
@@ -119,6 +124,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad env switch` command.
 func (r *Runner) Run(ctx context.Context) error {
 	err := cli.EditWorkspaces(ctx, r.ConfigHolder.Config, func(section *cli.WorkspaceSection) error {
 		r.Workspace.Environment = r.EnvironmentId.String()
