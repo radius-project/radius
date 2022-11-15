@@ -16,7 +16,7 @@ func TestGetClient_InvalidType(t *testing.T) {
 	secretProvider := NewSecretProvider(SecretProviderOptions{
 		Provider: "invalid_client_type",
 	})
-	client, err := secretProvider.GetSecretClient(context.TODO())
+	client, err := secretProvider.GetClient(context.TODO())
 	require.Equal(t, err, ErrUnsupportedSecretProvider)
 	require.Nil(t, client)
 }

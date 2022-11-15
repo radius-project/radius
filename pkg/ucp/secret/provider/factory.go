@@ -29,13 +29,13 @@ var secretClientFactory = map[SecretProviderType]secretFactoryFunc{
 func initETCDSecretClient(ctx context.Context, opt SecretProviderOptions) (secret.Client, error) {
 	// etcd is a separate process run for development storage.
 	// data provider already creates an etcd process which can be re-used instead of a new process for secret.
-	secretsStorageClient, err := dataprovider.InitETCDClient(ctx, dataprovider.StorageProviderOptions{
+	client, err := dataprovider.InitETCDClient(ctx, dataprovider.StorageProviderOptions{
 		ETCD: opt.ETCD,
 	}, "")
 	if err != nil {
 		return nil, err
 	}
-	secretClient, ok := secretsStorageClient.(*etcdstore.ETCDClient)
+	secretClient, ok := client.(*etcdstore.ETCDClient)
 	if !ok {
 		return nil, errors.New("No etcd Client detected")
 	}
@@ -48,9 +48,9 @@ func initKubernetesSecretClient(ctx context.Context, opt SecretProviderOptions) 
 	if err != nil {
 		return nil, err
 	}
-	secretsClient, err := controller_runtime.New(config, controller_runtime.Options{Scheme: s})
+	client, err := controller_runtime.New(config, controller_runtime.Options{Scheme: s})
 	if err != nil {
 		return nil, err
 	}
-	return &kubernetes_client.Client{K8sClient: secretsClient}, nil
+	return &kubernetes_client.Client{K8sClient: client}, nil
 }
