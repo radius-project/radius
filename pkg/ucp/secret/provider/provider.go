@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	ErrUnsupportedSecretProvider = errors.New("unsupported secrets provider")
-	ErrSecretNotFound            = errors.New("secrets provider not found")
+	ErrUnsupportedSecretProvider = errors.New("unsupported secret provider")
+	ErrSecretNotFound            = errors.New("secret not found")
 )
 
 var _ SecretProvider = (*secretProvider)(nil)
@@ -26,7 +26,7 @@ type secretProvider struct {
 	once         sync.Once
 }
 
-// NewSecretProvider creates new SecretsStorageProvider instance.
+// NewSecretProvider creates new SecretProvider instance.
 func NewSecretProvider(opts SecretProviderOptions) SecretProvider {
 	return &secretProvider{
 		secretClient: nil,
