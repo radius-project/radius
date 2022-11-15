@@ -35,7 +35,32 @@
                               "kind": "azure.com.workload",
                               "oidcIssuer": "https://oidcissuer/oidc",
                               "resource": "/subscriptions/testSub/resourcegroups/testGroup/providers/Microsoft.ManagedIdentity/userAssignedIdentities/app0-container0"
-                            }
+                            },
+                            "extensions": [
+                              {
+                                "kind": "manualScaling",
+                                "replicas": 2
+                              },
+                              {
+                                "kind": "daprSidecar",
+                                "appId": "app-id",
+                                "appPort": 80,
+                                "config": "config",
+                                "protocol": "http",
+                                "provides": "provides"
+                              },
+                              {
+                                "kind": "kubernetesMetadata",
+                                "annotations": {
+                                  "prometheus.io/scrape": "true",
+                                  "prometheus.io/port": "80"
+                                },
+                                "labels": {
+                                  "foo/bar/team": "credit",
+                                  "foo/bar/contact": "radiususer"
+                                }
+                              }
+                            ]
                         }
                     },
                     {

@@ -6,7 +6,20 @@
     "ApplicationResource": {
       "location": "West US",
       "properties": {
-        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0"
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+        "extensions": [
+          {
+            "kind": "kubernetesMetadata",
+            "annotations": {
+              "prometheus.io/scrape": "true",
+              "prometheus.io/port": "80"
+            },
+            "labels": {
+              "foo/bar/team": "credit",
+              "foo/bar/contact": "radiususer"
+            }
+          }
+        ]
       }
     }
   },
@@ -18,7 +31,20 @@
         "type": "Applications.Core/applications",
         "properties": {
           "provisioningState": "Succeeded",
-          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0"
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "extensions": [
+            {
+              "kind": "kubernetesMetadata",
+              "annotations": {
+                "prometheus.io/scrape": "true",
+                "prometheus.io/port": "80"
+              },
+              "labels": {
+                "foo/bar/team": "credit",
+                "foo/bar/contact": "radiususer"
+              }
+            }
+          ]
         }
       }
     }
