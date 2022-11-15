@@ -19,6 +19,11 @@ func TestMakeResourceName(t *testing.T) {
 	}{
 		{
 			"resource",
+			nil,
+			"resource",
+		},
+		{
+			"resource",
 			[]string{"app"},
 			"app-resource",
 		},

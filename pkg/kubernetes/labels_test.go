@@ -7,6 +7,8 @@ package kubernetes
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func TestConvertResourceTypeToLabelValue(t *testing.T) {
@@ -57,6 +59,28 @@ func TestConvertLabelToResourceType(t *testing.T) {
 			if got := ConvertLabelToResourceType(tt.labelValue); got != tt.want {
 				t.Errorf("ConvertLabelToResourceType() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+func TestNormalizeResoureName(t *testing.T) {
+	nameTests := []struct {
+		in  string
+		out string
+	}{
+		{
+			"resource",
+			"resource",
+		},
+		{
+			"Resource",
+			"resource",
+		},
+	}
+
+	for _, tt := range nameTests {
+		t.Run(tt.in, func(t *testing.T) {
+			require.Equal(t, tt.out, NormalizeResourceName(tt.in))
 		})
 	}
 }
