@@ -330,7 +330,7 @@
       "description": "Specifies the metadata that should be applied to Kubernetes resources created by all Containers in this Application.",
       "properties": {
         "annotations": {
-          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "description": "Annotations to be applied to Kubernetes resources output by the resource",
           "type": "object",
           "additionalProperties": {
             "type": "string"
