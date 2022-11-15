@@ -21,7 +21,6 @@ import (
 
 type OptionsClassification interface {
 	GetOptions() *Options
-	SetOptions(StorageClient store.StorageClient, ResourceType string) *Options
 }
 
 func (o *Options) GetOptions() *Options { return o }
@@ -34,6 +33,16 @@ func (o *Options) SetOptions(storageClient store.StorageClient, resourceType str
 		KubeClient:    o.KubeClient,
 		ResourceType:  resourceType,
 	}
+}
+
+func (o *Options) SetStorageClient(storageClient store.StorageClient) *Options {
+	o.StorageClient = storageClient
+	return o
+}
+
+func (o *Options) SetResourceType(resourceType string) *Options {
+	o.ResourceType = resourceType
+	return o
 }
 
 // Options represents controller options.

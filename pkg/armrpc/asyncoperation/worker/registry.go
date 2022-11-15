@@ -42,7 +42,10 @@ func (h *ControllerRegistry) Register(ctx context.Context, resourceType string, 
 	if err != nil {
 		return err
 	}
-	opts = opts.SetOptions(storageClient, resourceType)
+	opts = opts.GetOptions().
+		SetResourceType(resourceType).
+		SetStorageClient(storageClient)
+
 	ctrl, err := factoryFn(opts)
 	if err != nil {
 		return err
