@@ -66,7 +66,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	values := map[string]renderers.ComputedValueReference{
 		renderers.ComponentNameKey: {
-			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
+			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}
 	secrets := map[string]rp.SecretValueReference{}

@@ -119,17 +119,10 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 	}
 }
 
-func MakeResourceName(application string, resource string) string {
-	if application != "" && resource != "" {
-		return strings.ToLower(application + "-" + resource)
-	}
-
-	if application != "" && resource == "" {
-		return strings.ToLower(application)
-	}
-
-	if application == "" && resource != "" {
-		return strings.ToLower(resource)
+// NormalizeResourceName normalizes resource name used for kubernetes resource.
+func NormalizeResourceName(name string) string {
+	if name != "" {
+		return strings.ToLower(name)
 	}
 
 	// We should never have this case

@@ -495,7 +495,7 @@ func Test_Render_Single_Route(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -548,7 +548,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeAName),
+			Name: kubernetes.NormalizeResourceName(routeAName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -556,7 +556,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -604,7 +604,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -681,7 +681,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeAName),
+			Name: kubernetes.NormalizeResourceName(routeAName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -689,7 +689,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -697,7 +697,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeCPath,
@@ -705,7 +705,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeDPath,
@@ -777,7 +777,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,
@@ -813,7 +813,7 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 
 	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), gateway.Name)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), gateway.Name)
 	require.Equal(t, applicationName, gateway.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), gateway.Labels)
 
@@ -842,13 +842,13 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, expectedRouteName), httpRoute.Name)
+	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)
 	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName, ResourceType), httpRoute.Labels)
 
 	require.Nil(t, httpRoute.Spec.VirtualHost)
 
-	expectedServiceName := kubernetes.MakeResourceName(applicationName, expectedRouteName)
+	expectedServiceName := kubernetes.NormalizeResourceName(expectedRouteName)
 
 	expectedHttpRouteSpec := contourv1.HTTPProxySpec{
 		Routes: []contourv1.Route{
@@ -920,7 +920,7 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 
 	includes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,

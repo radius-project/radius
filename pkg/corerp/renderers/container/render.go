@@ -281,7 +281,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	volumes := []corev1.Volume{}
 
 	// Make the default managed identity name.
-	defaultIdentityName := kubernetes.MakeResourceName(applicationName, resource.Name)
+	defaultIdentityName := kubernetes.NormalizeResourceName(resource.Name)
 
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
@@ -336,7 +336,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return []outputresource.OutputResource{}, nil, err
 				}
 
-				spcName := kubernetes.MakeResourceName(defaultIdentityName, vol.Name)
+				spcName := kubernetes.NormalizeResourceName(vol.Name)
 				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, err
@@ -456,7 +456,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
+			Name:      kubernetes.NormalizeResourceName(resource.Name),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
@@ -520,7 +520,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 				source := corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: kubernetes.MakeResourceName(applicationName, resource.Name),
+							Name: kubernetes.NormalizeResourceName(resource.Name),
 						},
 						Key: name,
 					},
@@ -633,7 +633,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
+			Name:      kubernetes.NormalizeResourceName(resource.Name),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},

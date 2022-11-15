@@ -61,7 +61,7 @@ func Test_Render_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprStateStoreAzureStorage, output.LocalID)
 	require.Equal(t, resourcekinds.DaprStateStoreAzureStorage, output.ResourceType.Type)
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := map[string]string{
 		handlers.KubernetesNameKey:       "test-state-store",
@@ -180,7 +180,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 	require.Equal(t, outputresource.LocalIDDaprComponent, output.LocalID)
 	require.Equal(t, resourcekinds.DaprComponent, output.ResourceType.Type)
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := unstructured.Unstructured{
 		Object: map[string]interface{}{
@@ -188,7 +188,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
-				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{

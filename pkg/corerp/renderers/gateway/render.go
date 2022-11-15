@@ -60,7 +60,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
 	applicationName := appId.Name()
-	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
+	gatewayName := kubernetes.NormalizeResourceName(gateway.Name)
 	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options.Environment.Gateway)
 
 	var publicEndpoint string
@@ -111,7 +111,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			return outputresource.OutputResource{}, err
 		}
 
-		routeResourceName := kubernetes.MakeResourceName(applicationName, routeName)
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
 		includes = append(includes, contourv1.Include{
 			Name: routeResourceName,
@@ -141,7 +141,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			APIVersion: contourv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resourceName),
+			Name:      kubernetes.NormalizeResourceName(resourceName),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, gateway.ResourceTypeName()),
 		},
@@ -176,7 +176,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 
 		// Create unique localID for dependency graph
 		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
-		routeResourceName := kubernetes.MakeResourceName(applicationName, routeName)
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
 		if route.ReplacePrefix != "" {

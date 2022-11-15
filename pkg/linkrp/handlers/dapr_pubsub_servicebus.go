@@ -79,7 +79,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprPubSubBrokerResourceType)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], DaprPubSubBrokerResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -115,7 +115,7 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
+				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
 				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprPubSubBrokerResourceType),
 			},
 			"spec": map[string]interface{}{
@@ -146,7 +146,7 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      kubernetes.MakeResourceName(properties[ApplicationName].(string), properties[ResourceName].(string)),
+				"name":      kubernetes.NormalizeResourceName(properties[ResourceName].(string)),
 			},
 		},
 	}
