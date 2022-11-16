@@ -13,35 +13,30 @@ import (
 
 func TestMakeResourceName(t *testing.T) {
 	nameTests := []struct {
+		prefix string
 		name   string
-		prefix []string
 		out    string
 	}{
 		{
+			"",
 			"resource",
-			nil,
 			"resource",
 		},
 		{
+			"app",
 			"resource",
-			[]string{"app"},
-			"appresource",
-		},
-		{
-			"Resource",
-			[]string{"App", "-"},
 			"app-resource",
 		},
 		{
-			"resource",
-			[]string{"env", "app"},
-			"envappresource",
+			"app",
+			"Resource",
+			"app-resource",
 		},
 	}
 
 	for _, tt := range nameTests {
 		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.out, MakeResourceName(tt.name, tt.prefix...))
+			require.Equal(t, tt.out, MakeResourceName(tt.prefix, tt.name, Separator))
 		})
 	}
 }

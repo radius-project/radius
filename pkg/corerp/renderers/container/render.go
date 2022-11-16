@@ -285,7 +285,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
 	// To avoid the naming conflicts, we add the application name prefix to resource name.
-	azIdentityName := azrenderer.MakeResourceName(resource.Name, applicationName, azrenderer.Separator)
+	azIdentityName := azrenderer.MakeResourceName(applicationName, resource.Name, azrenderer.Separator)
 
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
