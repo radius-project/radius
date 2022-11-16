@@ -96,7 +96,7 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(appId.Name() + resourceTypeSuffix + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resourceTypeSuffix + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

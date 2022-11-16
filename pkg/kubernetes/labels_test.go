@@ -78,13 +78,19 @@ func TestNormalizeResoureName(t *testing.T) {
 		},
 		{
 			"",
-			"resource-name",
+			"panic",
 		},
 	}
 
 	for _, tt := range nameTests {
 		t.Run(tt.in, func(t *testing.T) {
-			require.Equal(t, tt.out, NormalizeResourceName(tt.in))
+			if tt.in == "" {
+				require.Panics(t, func() {
+					NormalizeResourceName(tt.in)
+				})
+			} else {
+				require.Equal(t, tt.out, NormalizeResourceName(tt.in))
+			}
 		})
 	}
 }

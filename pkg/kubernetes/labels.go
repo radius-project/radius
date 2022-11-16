@@ -120,13 +120,13 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 }
 
 // NormalizeResourceName normalizes resource name used for kubernetes resource.
+// If name is empty, it will panic.
 func NormalizeResourceName(name string) string {
-	if name != "" {
-		return strings.ToLower(name)
+	if name == "" {
+		// This should not happen.
+		panic("resource name is empty")
 	}
-
-	// We should never have this case
-	return "resource-name"
+	return strings.ToLower(name)
 }
 
 // ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it

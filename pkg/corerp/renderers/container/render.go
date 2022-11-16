@@ -213,7 +213,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 			ports = append(ports, corev1.ContainerPort{
 				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(applicationName + routeTypeSuffix + routeName),
+				Name:          kubernetes.GetShortenedTargetPortName(routeTypeSuffix + routeName),
 				ContainerPort: port.ContainerPort,
 				Protocol:      corev1.ProtocolTCP,
 			})

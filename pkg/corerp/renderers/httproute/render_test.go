@@ -86,7 +86,7 @@ func Test_Render_WithPort(t *testing.T) {
 	expectedServicePort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       port,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeSuffix + resource.Name)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(ResourceTypeSuffix + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedServicePort, servicePort)
@@ -131,7 +131,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       defaultPort,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeSuffix + resource.Name)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(ResourceTypeSuffix + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedPort, port)
@@ -177,7 +177,7 @@ func Test_Render_WithNameSpace(t *testing.T) {
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
 		Port:       defaultPort,
-		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + ResourceTypeSuffix + resource.Name)),
+		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(ResourceTypeSuffix + resource.Name)),
 		Protocol:   "TCP",
 	}
 	require.Equal(t, expectedPort, port)
