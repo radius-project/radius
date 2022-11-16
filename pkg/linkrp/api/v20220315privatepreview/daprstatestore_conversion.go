@@ -41,7 +41,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
-		converted.Properties.Mode = datamodel.DaprStateStoreModeRecipe
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Resource = to.String(v.Resource)
@@ -54,7 +54,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if *v.Kind != ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage && *v.Kind != ResourceDaprStateStoreResourcePropertiesKindStateSqlserver {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s or %s when mode is 'values'", ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage, ResourceDaprStateStoreResourcePropertiesKindStateSqlserver))
 		}
-		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
+		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Kind = toDaprStateStoreKindResourceDataModel(v.Kind)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
@@ -67,7 +67,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if *v.Kind != ValuesDaprStateStoreResourcePropertiesKindGeneric {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", ValuesDaprStateStoreResourcePropertiesKindGeneric))
 		}
-		converted.Properties.Mode = datamodel.DaprStateStoreModeResource
+		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Kind = datamodel.DaprStateStoreKindGeneric
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
@@ -94,7 +94,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 	dst.Tags = *to.StringMapPtr(daprStateStore.Tags)
 
 	switch daprStateStore.Properties.Mode {
-	case datamodel.DaprStateStoreModeRecipe:
+	case datamodel.LinkModeRecipe:
 		mode := DaprStateStorePropertiesModeRecipe
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
@@ -111,7 +111,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Version:           to.StringPtr(daprStateStore.Properties.Version),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
-	case datamodel.DaprStateStoreModeResource:
+	case datamodel.LinkModeResource:
 		mode := DaprStateStorePropertiesModeResource
 		dst.Properties = &ResourceDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
@@ -126,7 +126,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Resource:          to.StringPtr(daprStateStore.Properties.Resource),
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
-	case datamodel.DaprStateStoreModeValues:
+	case datamodel.LinkModeValues:
 		mode := DaprStateStorePropertiesModeValues
 		kind := ValuesDaprStateStoreResourcePropertiesKindGeneric
 		dst.Properties = &ValuesDaprStateStoreResourceProperties{

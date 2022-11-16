@@ -82,6 +82,36 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		}
 	}
 }
+
+func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
+	testsFile := "rabbitmqinvalid.json"
+	rawPayload := loadTestData(testsFile)
+	var testset []TestData
+	err := json.Unmarshal(rawPayload, &testset)
+	require.NoError(t, err)
+	for _, testData := range testset {
+		versionedResource := &RabbitMQMessageQueueResource{}
+		err := json.Unmarshal(testData.Payload, versionedResource)
+		require.NoError(t, err)
+		var expectedErr conv.ErrClientRP
+		description := testData.Description
+		if description == "unsupported_mode" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "Unsupported mode abc"
+		}
+		if description == "invalid_properties_with_mode_recipe" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "recipe is a required property for mode 'recipe'"
+		}
+		if description == "invalid_properties_with_mode_values" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "queue is a required property for mode 'values'"
+		}
+		_, err = versionedResource.ConvertTo()
+		require.Equal(t, &expectedErr, err)
+	}
+}
+
 func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src conv.DataModelInterface

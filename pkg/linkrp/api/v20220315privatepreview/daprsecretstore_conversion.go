@@ -6,6 +6,8 @@
 package v20220315privatepreview
 
 import (
+	"fmt"
+
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -37,13 +39,13 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 	}
 	switch v := src.Properties.(type) {
 	case *ValuesDaprSecretStoreProperties:
-		if v.Type == nil || v.Version == nil || v.Metadata == nil {
-			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
+		if v.Type == nil || v.Version == nil || v.Metadata == nil || v.Kind == nil {
+			return nil, conv.NewClientErrInvalidRequest("type/version/metadata/kind are required properties for mode 'values'")
 		}
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.DaprSecretStorePropertiesModeValues
+		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Kind = toDaprSecretStoreKindDataModel(v.Kind)
 	case *RecipeDaprSecretStoreProperties:
 		if v.Recipe == nil {
@@ -53,9 +55,9 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Mode = datamodel.DaprSecretStorePropertiesModeValues
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 	default:
-		return nil, conv.NewClientErrInvalidRequest("Invalid Mode for DaprSecretStore")
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetDaprSecretStoreProperties().Mode))
 	}
 	return converted, nil
 }
@@ -74,7 +76,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Location = to.StringPtr(daprSecretStore.Location)
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
-	case datamodel.DaprSecretStorePropertiesModeValues:
+	case datamodel.LinkModeValues:
 		mode := DaprSecretStorePropertiesModeValues
 		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
@@ -90,7 +92,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 			Metadata:          daprSecretStore.Properties.Metadata,
 			ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
 		}
-	case datamodel.DaprSecretStorePropertiesModeRecipe:
+	case datamodel.LinkModeRecipe:
 		mode := DaprSecretStorePropertiesModeRecipe
 		var recipe *Recipe
 		if daprSecretStore.Properties.Recipe.Name != "" {

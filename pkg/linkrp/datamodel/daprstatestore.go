@@ -19,14 +19,6 @@ const (
 	DaprStateStoreKindUnknown           DaprStateStoreKind = "unknown"
 )
 
-type DaprStateStoreMode string
-
-const (
-	DaprStateStoreModeRecipe   DaprStateStoreMode = "recipe"
-	DaprStateStoreModeResource DaprStateStoreMode = "resource"
-	DaprStateStoreModeValues   DaprStateStoreMode = "values"
-)
-
 // DaprStateStore represents DaprStateStore link resource.
 type DaprStateStore struct {
 	v1.TrackedResource
@@ -53,7 +45,7 @@ type DaprStateStoreProperties struct {
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
 	Kind              DaprStateStoreKind     `json:"kind,omitempty"`
-	Mode              DaprStateStoreMode     `json:"mode,omitempty"`
+	Mode              LinkMode               `json:"mode,omitempty"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`
 	Recipe            LinkRecipe             `json:"recipe,omitempty"`
 	Resource          string                 `json:"resource,omitempty"`
