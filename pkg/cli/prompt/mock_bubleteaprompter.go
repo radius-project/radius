@@ -7,7 +7,6 @@ package prompt
 import (
 	reflect "reflect"
 
-	tea "github.com/charmbracelet/bubbletea"
 	gomock "github.com/golang/mock/gomock"
 )
 
@@ -51,7 +50,7 @@ func (mr *MockBubbleTeaPrompterMockRecorder) GetListInput(arg0, arg1 interface{}
 }
 
 // GetTextInput mocks base method.
-func (m *MockBubbleTeaPrompter) GetTextInput(arg0 tea.Program) (string, error) {
+func (m *MockBubbleTeaPrompter) GetTextInput(arg0 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetTextInput", arg0)
 	ret0, _ := ret[0].(string)
