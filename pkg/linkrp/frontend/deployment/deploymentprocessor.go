@@ -382,7 +382,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
 		envId = obj.Properties.Environment
-		if obj.Properties.Mode == datamodel.DaprStateStoreModeRecipe {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
@@ -396,7 +396,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
 		envId = obj.Properties.Environment
-		if obj.Properties.Mode == datamodel.DaprPubSubBrokerModeRecipe {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}

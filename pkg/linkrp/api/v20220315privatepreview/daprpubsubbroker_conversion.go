@@ -50,7 +50,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if *v.Kind != ResourceDaprPubSubPropertiesKindPubsubAzureServicebus {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'resource'", ResourceDaprPubSubPropertiesKindPubsubAzureServicebus))
 		}
-		converted.Properties.Mode = datamodel.DaprPubSubBrokerModeResource
+		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindAzureServiceBus
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Type = to.String(v.Type)
@@ -63,7 +63,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if *v.Kind != ValuesDaprPubSubPropertiesKindGeneric {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", ValuesDaprPubSubPropertiesKindGeneric))
 		}
-		converted.Properties.Mode = datamodel.DaprPubSubBrokerModeValues
+		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindGeneric
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
@@ -73,7 +73,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
-		converted.Properties.Mode = datamodel.DaprPubSubBrokerModeRecipe
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Type = to.String(v.Type)
@@ -101,7 +101,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 	dst.Tags = *to.StringMapPtr(daprPubSub.Tags)
 
 	switch daprPubSub.Properties.Mode {
-	case datamodel.DaprPubSubBrokerModeRecipe:
+	case datamodel.LinkModeRecipe:
 		mode := DaprPubSubBrokerPropertiesModeRecipe
 		dst.Properties = &RecipeDaprPubSubProperties{
 			Status: &ResourceStatus{
@@ -119,7 +119,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Metadata:          daprPubSub.Properties.Metadata,
 			Recipe:            fromRecipeDataModel(daprPubSub.Properties.Recipe),
 		}
-	case datamodel.DaprPubSubBrokerModeResource:
+	case datamodel.LinkModeResource:
 		mode := DaprPubSubBrokerPropertiesModeResource
 		kind := ResourceDaprPubSubPropertiesKindPubsubAzureServicebus
 		dst.Properties = &ResourceDaprPubSubProperties{
@@ -136,7 +136,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Resource:          to.StringPtr(daprPubSub.Properties.Resource),
 			Metadata:          daprPubSub.Properties.Metadata,
 		}
-	case datamodel.DaprPubSubBrokerModeValues:
+	case datamodel.LinkModeValues:
 		mode := DaprPubSubBrokerPropertiesModeValues
 		kind := ValuesDaprPubSubPropertiesKindGeneric
 		dst.Properties = &ValuesDaprPubSubProperties{

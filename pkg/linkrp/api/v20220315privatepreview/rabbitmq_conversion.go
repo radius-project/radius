@@ -43,16 +43,16 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 			return nil, conv.NewClientErrInvalidRequest("queue is a required property for mode 'values'")
 		}
 		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.RabbitMQMessageQueuePropertiesModeValues
+		converted.Properties.Mode = datamodel.LinkModeValues
 	case *RecipeRabbitMQMessageQueueProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Queue = to.String(v.Queue)
-		converted.Properties.Mode = datamodel.RabbitMQMessageQueuePropertiesModeRecipe
+		converted.Properties.Mode = datamodel.LinkModeRecipe
 	default:
-		return nil, conv.NewClientErrInvalidRequest("Invalid Mode for rabbitmq message queue")
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRabbitMQMessageQueueProperties().Mode))
 	}
 	if src.Properties.GetRabbitMQMessageQueueProperties().Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
@@ -76,7 +76,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Location = to.StringPtr(rabbitmq.Location)
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	switch rabbitmq.Properties.Mode {
-	case datamodel.RabbitMQMessageQueuePropertiesModeValues:
+	case datamodel.LinkModeValues:
 		mode := RabbitMQMessageQueuePropertiesModeValues
 		dst.Properties = &ValuesRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
@@ -88,7 +88,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 			Mode:              &mode,
 			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
 		}
-	case datamodel.RabbitMQMessageQueuePropertiesModeRecipe:
+	case datamodel.LinkModeRecipe:
 		mode := RabbitMQMessageQueuePropertiesModeRecipe
 		var recipe *Recipe
 		if rabbitmq.Properties.Recipe.Name != "" {
