@@ -106,7 +106,7 @@ var testAzurePlane = v20220901privatepreview.PlaneResource{
 }
 
 var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
-	ID:       to.Ptr(testUCPNativePlaneID + "/resourceGroups/rg1"),
+	ID:       to.Ptr(testUCPNativePlaneID + "/resourcegroups/rg1"),
 	Name:     to.Ptr("rg1"),
 	Type:     to.Ptr(resourcegroups.ResourceGroupType),
 	Location: to.Ptr(v1.LocationGlobal),
@@ -223,6 +223,23 @@ func Test_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
+func Test_APIValidationIsApplied(t *testing.T) {
+	ucp, ucpClient, _ := initialize(t)
+	// Send a request that will be proxied to the RP
+	requestBody := v20220901privatepreview.ResourceGroupResource{
+		Tags: map[string]*string{},
+		// Missing location
+	}
+	body, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+	require.NoError(t, err)
+	response, err := ucpClient.httpClient.Do(createResourceGroupRequest)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+}
+
 func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClient) {
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)
@@ -325,7 +342,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 		return nil, &store.ErrNotFound{}
 	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
-	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourceGroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)

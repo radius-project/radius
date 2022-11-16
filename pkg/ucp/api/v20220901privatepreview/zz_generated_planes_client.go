@@ -76,15 +76,15 @@ func (client *PlanesClient) CreateOrUpdate(ctx context.Context, planeType string
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
 func (client *PlanesClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, planeName string, plane PlaneResource, options *PlanesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}"
+	urlPath := "/planes/{PlaneType}/{PlaneName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -128,15 +128,15 @@ func (client *PlanesClient) Delete(ctx context.Context, planeType string, planeN
 
 // deleteCreateRequest creates the Delete request.
 func (client *PlanesClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}"
+	urlPath := "/planes/{PlaneType}/{PlaneName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -171,15 +171,15 @@ func (client *PlanesClient) Get(ctx context.Context, planeType string, planeName
 
 // getCreateRequest creates the Get request.
 func (client *PlanesClient) getCreateRequest(ctx context.Context, planeType string, planeName string, options *PlanesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}"
+	urlPath := "/planes/{PlaneType}/{PlaneName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

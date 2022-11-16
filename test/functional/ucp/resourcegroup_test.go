@@ -23,7 +23,7 @@ import (
 func Test_ResourceGroup_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_ResourceGroup_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
 		// Create resource groups
-		rgID := "/planes/radius/local/resourceGroups/test-rg"
+		rgID := "/planes/radius/local/resourcegroups/test-rg"
 		apiVersion := v20220901privatepreview.Version
 		rgURL := fmt.Sprintf("%s%s?api-version=%s", url, rgID, apiVersion)
 
