@@ -11,14 +11,16 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/google/uuid"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
-	"github.com/wI2L/jsondiff"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResourceWithPost)(nil)
@@ -35,7 +37,6 @@ func NewCreateOrUpdateAWSResourceWithPost(opts ctrl.Options) (armrpc_controller.
 
 func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := ucplog.GetLogger(ctx)
-	// Lookup resource type schema
 	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
@@ -52,7 +53,15 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 		return armrpc_rest.NewBadRequestARMResponse(e), nil
 	}
 
-	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, cloudFormationClient, req.URL.Path, resourceType, properties)
+	describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+		Type:     types.RegistryTypeResource,
+		TypeName: aws.String(resourceType),
+	})
+	if err != nil {
+		return awserror.HandleAWSError(err)
+	}
+
+	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
@@ -102,20 +111,13 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	if existing {
 		logger.Info("Updating resource", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
-		// For an existing resource we need to convert the desired state into a JSON-patch document
-		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
+
+		// Generate patch
+		currentState := []byte(*getResponse.ResourceDescription.Properties)
+		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
+		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
 		if err != nil {
 			return awserror.HandleAWSError(err)
-		}
-
-		// We need to take out readonly properties. Those are usually not specified by the client, and so
-		// our library will generate "remove" operations.
-		//
-		// Iterate backwards because we're removing items from the array
-		for i := len(patch) - 1; i >= 0; i-- {
-			if patch[i].Type == "remove" {
-				patch = append(patch[:i], patch[i+1:]...)
-			}
 		}
 
 		// Call update only if the patch is not empty
@@ -139,7 +141,6 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 				return awserror.HandleAWSError(err)
 			}
 		} else {
-			logger.Info("No changes detected, skipping update", "resourceType", resourceType, "resourceID", awsResourceIdentifier)
 			// mark provisioning state as succeeded here
 			// and return 200, telling the deployment engine that the resource has already been created
 			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded

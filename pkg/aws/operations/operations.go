@@ -25,18 +25,17 @@ type ResourceTypeSchema struct {
 // FlattenProperties flattens a state object.
 // For example:
 //
-//   "NumShards": 1
-//   "ClusterEndpoint": {
-//     "Address": "test-address"
-//     "Port": 3000
-//   }
+//	"NumShards": 1
+//	"ClusterEndpoint": {
+//	  "Address": "test-address"
+//	  "Port": 3000
+//	}
 //
 // Gets transformed to:
 //
-//   "NumShards": 1
-//   "ClusterEndpoint/Address": "test-address"
-//   "ClusterEndpoint/Port": 3000
-//
+//	"NumShards": 1
+//	"ClusterEndpoint/Address": "test-address"
+//	"ClusterEndpoint/Port": 3000
 func FlattenProperties(state map[string]interface{}) map[string]interface{} {
 	flattenedState := map[string]interface{}{}
 
@@ -60,19 +59,17 @@ func FlattenProperties(state map[string]interface{}) map[string]interface{} {
 // UnflattenProperties unflattens a flattened state object.
 // For example:
 //
-//   "NumShards": 1
-//   "ClusterEndpoint/Address": "test-address"
-//   "ClusterEndpoint/Port": 3000
-//
+//	"NumShards": 1
+//	"ClusterEndpoint/Address": "test-address"
+//	"ClusterEndpoint/Port": 3000
 //
 // Gets transformed to:
 //
-//   "NumShards": 1
-//   "ClusterEndpoint": {
-//     "Address": "test-address"
-//     "Port": 3000
-//   }
-//
+//	"NumShards": 1
+//	"ClusterEndpoint": {
+//	  "Address": "test-address"
+//	  "Port": 3000
+//	}
 func UnflattenProperties(state map[string]interface{}) map[string]interface{} {
 	unflattenedState := map[string]interface{}{}
 
@@ -167,4 +164,13 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 
 	// Calculate the patch based on the current state and the updated desired state
 	return jsondiff.CompareJSON(currentState, updatedDesiredState)
+}
+
+// ParsePropertyName transforms a propertyIdentifer of the form /properties/<propertyName> to <propertyName>
+func ParsePropertyName(propertyIdentifier string) (string, error) {
+	prefix := "/properties/"
+	if strings.HasPrefix(propertyIdentifier, prefix) {
+		return strings.Replace(propertyIdentifier, prefix, "", 1), nil
+	}
+	return "", fmt.Errorf("property identifier %s is not in the format /properties/<propertyName>", propertyIdentifier)
 }
