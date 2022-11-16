@@ -56,7 +56,7 @@ func (c *Client) Save(ctx context.Context, name string, value []byte) error {
 	res := &corev1.Secret{}
 	err := c.K8sClient.Get(ctx, secretObjectKey, res)
 	if err != nil {
-		if is404Error(err) {
+		if k8s_error.IsNotFound(err) {
 			return c.K8sClient.Create(ctx, secret)
 		}
 		return err
@@ -78,7 +78,7 @@ func (c *Client) Delete(ctx context.Context, name string) error {
 	}
 	err := c.K8sClient.Delete(ctx, secretObject)
 	if err != nil {
-		if is404Error(err) {
+		if k8s_error.IsNotFound(err) {
 			return &secret.ErrNotFound{}
 		}
 		return err
@@ -99,18 +99,10 @@ func (c *Client) Get(ctx context.Context, name string) ([]byte, error) {
 	}
 	err := c.K8sClient.Get(ctx, secretObjectKey, res)
 	if err != nil {
-		if is404Error(err) {
+		if k8s_error.IsNotFound(err) {
 			return nil, &secret.ErrNotFound{}
 		}
 		return nil, err
 	}
 	return res.Data[SecretKey], nil
-}
-
-func is404Error(err error) bool {
-	statusErr, ok := err.(*k8s_error.StatusError)
-	if ok && statusErr.ErrStatus.Code == 404 {
-		return true
-	}
-	return false
 }

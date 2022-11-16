@@ -52,12 +52,11 @@ type validator struct {
 	TypeName   string
 	APIVersion string
 
-	rootScopePrefix     string
-	rootScopeParam      string
-	specDoc             *loads.Document
-	paramCache          map[string]map[string]spec.Parameter
-	paramCacheMu        *sync.RWMutex
-	ignoreUndefinedPath bool
+	rootScopePrefix string
+	rootScopeParam  string
+	specDoc         *loads.Document
+	paramCache      map[string]map[string]spec.Parameter
+	paramCacheMu    *sync.RWMutex
 }
 
 // findParam looks up the correct spec.Parameter which a unique parameter is defined by a combination
@@ -136,7 +135,7 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
-		if errors.Is(err, ErrUndefinedRoute) && !v.ignoreUndefinedPath {
+		if errors.Is(err, ErrUndefinedRoute) {
 			return []ValidationError{{
 				Code:    v1.CodeInvalidRequestContent,
 				Message: "failed to parse route: " + err.Error(),

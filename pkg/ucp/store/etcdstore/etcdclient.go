@@ -260,6 +260,10 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	return nil
 }
 
+func (c *ETCDClient) Client() *etcdclient.Client {
+	return c.client
+}
+
 func idFromKey(key []byte) (resources.ID, error) {
 	parts := strings.Split(string(key), SectionSeparator)
 	// sample valid key:

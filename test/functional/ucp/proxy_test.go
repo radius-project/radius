@@ -73,9 +73,10 @@ func Test_ProxyOperations(t *testing.T) {
 		nativePlaneID := "/planes/testnativetype/testnativeplane"
 		nativeplaneURL := fmt.Sprintf("%s%s?api-version=%s", url, nativePlaneID, apiVersion)
 		nativePlane := v20220901privatepreview.PlaneResource{
-			ID:   to.Ptr(nonNativePlaneID),
-			Type: to.Ptr("System.Planes/testnativetype"),
-			Name: to.Ptr("testnativeplane"),
+			ID:       to.Ptr(nonNativePlaneID),
+			Type:     to.Ptr("System.Planes/testnativetype"),
+			Name:     to.Ptr("testnativeplane"),
+			Location: to.Ptr(v1.LocationGlobal),
 			Properties: &v20220901privatepreview.PlaneResourceProperties{
 				Kind: to.Ptr(v20220901privatepreview.PlaneKindUCPNative),
 				ResourceProviders: map[string]*string{

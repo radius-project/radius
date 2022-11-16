@@ -101,7 +101,12 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type CredentialResource.
 func (c CredentialResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "id", c.ID)
+	populate(objectMap, "location", c.Location)
+	populate(objectMap, "name", c.Name)
 	populate(objectMap, "properties", c.Properties)
+	populate(objectMap, "tags", c.Tags)
+	populate(objectMap, "type", c.Type)
 	return json.Marshal(objectMap)
 }
 
@@ -114,8 +119,23 @@ func (c *CredentialResource) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "id":
+				err = unpopulate(val, "ID", &c.ID)
+				delete(rawMsg, key)
+		case "location":
+				err = unpopulate(val, "Location", &c.Location)
+				delete(rawMsg, key)
+		case "name":
+				err = unpopulate(val, "Name", &c.Name)
+				delete(rawMsg, key)
 		case "properties":
 				c.Properties, err = unmarshalCredentialResourcePropertiesClassification(val)
+				delete(rawMsg, key)
+		case "tags":
+				err = unpopulate(val, "Tags", &c.Tags)
+				delete(rawMsg, key)
+		case "type":
+				err = unpopulate(val, "Type", &c.Type)
 				delete(rawMsg, key)
 		}
 		if err != nil {

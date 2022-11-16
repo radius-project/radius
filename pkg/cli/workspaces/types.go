@@ -5,6 +5,8 @@
 
 package workspaces
 
+import "github.com/project-radius/radius/pkg/cli/config"
+
 // Workspace represents configuration for the rad CLI.
 //
 // Workspaces may:
@@ -17,6 +19,10 @@ package workspaces
 type Workspace struct {
 	// Source indicates how the workspace was loaded.
 	Source Source `json:"-" mapstructure:"-" yaml:"-"`
+
+	// Directory config contains per-directory overrides and settings that affect the behavior of `rad`.
+	// This is not stored in the `~/.rad/config.yaml`.
+	DirectoryConfig config.DirectoryConfig `json:"-" mapstructure:"-" yaml:"-"`
 
 	// Name is the name of the workspace. The name is not stored as part of the workspace entry but is populated
 	// by the configuration APIs in this package.

@@ -44,3 +44,16 @@ test-functional-ucp: ## Runs UCP functional tests
 
 test-validate-bicep: ## Validates that all .bicep files compile cleanly
 	BICEP_PATH="${HOME}/.rad/bin" ./build/validate-bicep.sh
+
+.PHONY: oav-installed
+oav-installed:
+	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
+	@which autorest > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
+	@echo "$(ARROW) OK"
+
+.PHONY: test-ucp-spec-examples 
+test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
+	@echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
+	oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
+
+

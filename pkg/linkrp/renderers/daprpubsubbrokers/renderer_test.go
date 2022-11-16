@@ -52,7 +52,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    resourcekinds.DaprGeneric,
-			Mode:    datamodel.DaprPubSubBrokerModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
 			Metadata: map[string]interface{}{
@@ -108,7 +108,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    resourcekinds.DaprGeneric,
-			Mode:    datamodel.DaprPubSubBrokerModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
 		},
@@ -134,7 +134,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			Mode: datamodel.DaprPubSubBrokerModeValues,
+			Mode: datamodel.LinkModeValues,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -162,7 +162,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: resourcekinds.DaprGeneric,
-			Mode: datamodel.DaprPubSubBrokerModeValues,
+			Mode: datamodel.LinkModeValues,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -234,7 +234,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			},
 			Kind:     resourcekinds.DaprPubSubTopicAzureServiceBus,
 			Topic:    "test-topic",
-			Mode:     datamodel.DaprPubSubBrokerModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: serviceBusResourceID,
 		},
 	}
@@ -277,7 +277,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Mode:     datamodel.DaprPubSubBrokerModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: serviceBusResourceID,
 		},
 	}
@@ -320,7 +320,7 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     resourcekinds.DaprPubSubTopicAzureServiceBus,
-			Mode:     datamodel.DaprPubSubBrokerModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 		},
 	}
@@ -345,7 +345,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    resourcekinds.DaprGeneric,
-			Mode:    datamodel.DaprPubSubBrokerModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
 			Metadata: map[string]interface{}{
@@ -373,7 +373,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    resourcekinds.DaprGeneric,
-			Mode:    datamodel.DaprPubSubBrokerModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
 			Metadata: map[string]interface{}{

@@ -25,8 +25,8 @@ import (
 const (
 	planeCollectionPath       = "/planes"
 	awsPlaneType              = "/planes/aws"
-	planeItemPath             = "/planes/{PlaneType}/{PlaneID}"
-	planeCollectionByType     = "/planes/{PlaneType}"
+	planeItemPath             = "/planes/{planeType}/{planeName}"
+	planeCollectionByType     = "/planes/{planeType}"
 	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
@@ -80,8 +80,8 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	planeCollectionByTypeSubRouter := rootScopeRouter.Path(planeCollectionByType).Subrouter()
 	planeSubRouter := rootScopeRouter.Path(planeItemPath).Subrouter()
 
-	var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
-	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
+	var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resourcegroups")
+	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{resourceGroupName}")
 	resourceGroupCollectionSubRouter := rootScopeRouter.Path(resourceGroupCollectionPath).Subrouter()
 	resourceGroupSubRouter := rootScopeRouter.Path(resourceGroupItemPath).Subrouter()
 
@@ -192,6 +192,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
+			// Note that the API validation is not applied to the router used for proxying
 			ParentRouter:   router,
 			Path:           fmt.Sprintf("%s%s", baseURL, planeItemPath),
 			HandlerFactory: planes_ctrl.NewProxyPlane,

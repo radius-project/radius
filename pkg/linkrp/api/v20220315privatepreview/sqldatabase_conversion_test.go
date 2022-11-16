@@ -92,6 +92,39 @@ func TestSqlDatabase_ConvertDataModelToVersioned(t *testing.T) {
 	}
 }
 
+func TestSqlDatabase_ConvertVersionedToDataModel_InvalidRequest(t *testing.T) {
+	testsFile := "sqldatabaseinvalid.json"
+	rawPayload := loadTestData(testsFile)
+	var testset []TestData
+	err := json.Unmarshal(rawPayload, &testset)
+	require.NoError(t, err)
+	for _, testData := range testset {
+		versionedResource := &SQLDatabaseResource{}
+		err := json.Unmarshal(testData.Payload, versionedResource)
+		require.NoError(t, err)
+		var expectedErr conv.ErrClientRP
+		description := testData.Description
+		if description == "unsupported_mode" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "Unsupported mode abc"
+		}
+		if description == "invalid_properties_with_mode_resource" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "resource is a required property for mode 'resource'"
+		}
+		if description == "invalid_properties_with_mode_recipe" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "recipe is a required property for mode 'recipe'"
+		}
+		if description == "invalid_properties_with_mode_values" {
+			expectedErr.Code = "BadRequest"
+			expectedErr.Message = "database/server are required properties for mode 'values'"
+		}
+		_, err = versionedResource.ConvertTo()
+		require.Equal(t, &expectedErr, err)
+	}
+}
+
 func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
 		src conv.DataModelInterface
@@ -106,4 +139,9 @@ func TestSqlDatabase_ConvertFromValidation(t *testing.T) {
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
+}
+
+type TestData struct {
+	Description string          `json:"description,omitempty"`
+	Payload     json.RawMessage `json:"payload,omitempty"`
 }

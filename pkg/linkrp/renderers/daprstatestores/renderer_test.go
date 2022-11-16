@@ -48,7 +48,7 @@ func Test_Render_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
-			Mode:     datamodel.DaprStateStoreModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
@@ -90,7 +90,7 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     "state.azure.tablestorage",
-			Mode:     datamodel.DaprStateStoreModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
@@ -115,7 +115,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "state.azure.tablestorage",
-			Mode: datamodel.DaprStateStoreModeResource,
+			Mode: datamodel.LinkModeResource,
 		},
 	}
 	renderer.StateStores = SupportedStateStoreKindValues
@@ -139,7 +139,7 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     "state.azure.cosmosdb",
-			Mode:     datamodel.DaprStateStoreModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
@@ -164,7 +164,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    datamodel.DaprStateStoreKindGeneric,
-			Mode:    datamodel.DaprStateStoreModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    stateStoreType,
 			Version: daprStateStoreVersion,
 			Metadata: map[string]interface{}{
@@ -220,7 +220,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:    "generic",
-			Mode:    datamodel.DaprStateStoreModeValues,
+			Mode:    datamodel.LinkModeValues,
 			Type:    stateStoreType,
 			Version: daprStateStoreVersion,
 		},
@@ -246,7 +246,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			Mode: datamodel.DaprStateStoreModeValues,
+			Mode: datamodel.LinkModeValues,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -274,7 +274,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind: "generic",
-			Mode: datamodel.DaprStateStoreModeValues,
+			Mode: datamodel.LinkModeValues,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -303,7 +303,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
-			Mode:     datamodel.DaprStateStoreModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
@@ -327,7 +327,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 				Environment: environmentID,
 			},
 			Kind:     datamodel.DaprStateStoreKindAzureTableStorage,
-			Mode:     datamodel.DaprStateStoreModeResource,
+			Mode:     datamodel.LinkModeResource,
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}

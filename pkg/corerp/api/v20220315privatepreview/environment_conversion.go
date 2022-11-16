@@ -69,6 +69,15 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 	}
+
+	var extensions []datamodel.Extension
+	if src.Properties.Extensions != nil {
+		for _, e := range src.Properties.Extensions {
+			extensions = append(extensions, toEnvExtensionDataModel(e))
+		}
+		converted.Properties.Extensions = extensions
+	}
+
 	return converted, nil
 }
 
@@ -114,6 +123,14 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 				},
 			}
 		}
+	}
+
+	var extensions []EnvironmentExtensionClassification
+	if env.Properties.Extensions != nil {
+		for _, e := range env.Properties.Extensions {
+			extensions = append(extensions, fromEnvExtensionClassificationDataModel(e))
+		}
+		dst.Properties.Extensions = extensions
 	}
 
 	return nil
@@ -195,4 +212,40 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 	}
 
 	return &k
+}
+
+// fromExtensionClassificationEnvDataModel: Converts from base datamodel to versioned datamodel
+func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentExtensionClassification {
+
+	switch e.Kind {
+	case datamodel.KubernetesMetadata:
+		var ann, lbl = getFromExtensionClassificationFields(e)
+		converted := EnvironmentKubernetesMetadataExtension{
+			Kind:        to.StringPtr(string(e.Kind)),
+			Annotations: *to.StringMapPtr(ann),
+			Labels:      *to.StringMapPtr(lbl),
+		}
+
+		return converted.GetEnvironmentExtension()
+	}
+
+	return nil
+}
+
+// toEnvExtensionDataModel: Converts from versioned datamodel to base datamodel
+func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Extension {
+	switch c := e.(type) {
+	case *EnvironmentKubernetesMetadataExtension:
+
+		converted := datamodel.Extension{
+			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				Annotations: to.StringMap(c.Annotations),
+				Labels:      to.StringMap(c.Labels),
+			},
+		}
+		return converted
+	}
+
+	return datamodel.Extension{}
 }

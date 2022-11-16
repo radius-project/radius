@@ -99,8 +99,23 @@ func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *Cre
 
 // CredentialResource - Credential to a plane instance
 type CredentialResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
 	// REQUIRED; Credential properties
 	Properties CredentialResourcePropertiesClassification `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
 // CredentialResourceList - The list of credentials.

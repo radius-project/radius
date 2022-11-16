@@ -1,9 +1,9 @@
 {
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
-    "PlaneType": "radius",
-    "PlaneName": "local",
-    "ResourceGroup": "rg1"
+    "resourceGroupName": "rg1",
+    "planeType": "radius",
+    "planeName": "local"
   },
   "responses": {
     "200": {},

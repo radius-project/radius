@@ -48,7 +48,7 @@ generate-rad-linkrp-client: generate-node-installed generate-autorest-installed 
 	autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-node-installed generate-autorest-installed ## Generates the UCP client SDK (Autorest).
+generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
 

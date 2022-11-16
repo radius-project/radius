@@ -1,13 +1,14 @@
 {
   "parameters": {
     "api-version": "2022-09-01-privatepreview",
-    "PlaneType": "radius",
-    "PlaneName": "local",
-    "PlaneResource": {
+    "planeName": "local",
+    "planeType": "radius",
+    "Plane": {
       "location": "global",
       "properties": {
+        "kind": "UCPNative",
         "resourceProviders": {
-            "Applications.Core": "http://localhost:7443"
+          "Applications.Core": "http://localhost:7443"
         }
       }
     }
@@ -15,10 +16,12 @@
   "responses": {
     "200": {
       "body": {
+        "location": "global",
         "id": "/planes/radius/local",
         "name": "local",
         "type": "System.Planes/radius",
         "properties": {
+          "kind": "UCPNative",
           "resourceProviders": {
             "Applications.Core": "http://localhost:7443"
           }

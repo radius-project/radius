@@ -630,11 +630,18 @@
         }
       }
     },
+    "ContainerExtension": {
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/Extension"
+        }
+      ]
+    },
     "ManualScalingExtension": {
       "type": "object",
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "description": "ManualScaling Extension",
@@ -650,7 +657,7 @@
     "DaprSidecarExtension": {
       "allOf": [
         {
-          "$ref": "#/definitions/Extension"
+          "$ref": "#/definitions/ContainerExtension"
         }
       ],
       "type": "object",
@@ -691,19 +698,32 @@
       "additionalProperties": false,
       "x-ms-discriminator-value": "daprSidecar"
     },
-    "Extension": {
-      "description": "Extension of a resource.",
-      "discriminator": "kind",
+    "ContainerKubernetesMetadataExtension": {
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ContainerExtension"
+        }
+      ],
+      "description": "Specifies the metadata that should be applied to Kubernetes resources created for the Container resource",
       "properties": {
-        "kind": {
-          "description": "Specifies the extensions of a resource.",
-          "type": "string"
+        "annotations": {
+          "description": "Annotations to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "labels": {
+          "description": "Labels to be applied to the Kubernetes resources output by the resource",
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
         }
       },
-      "required": [
-        "kind"
-      ],
-      "type": "object"
+      "additionalProperties": false,
+      "x-ms-discriminator-value": "kubernetesMetadata"
     },
     "ContainerProperties": {
       "allOf": [
@@ -737,7 +757,7 @@
         "extensions": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/Extension"
+            "$ref": "#/definitions/ContainerExtension"
           },
           "description": "Extensions spec of the resource"
         }

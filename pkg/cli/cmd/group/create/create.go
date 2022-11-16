@@ -67,9 +67,7 @@ func NewRunner(factory framework.Factory) *Runner {
 
 // Validate runs validation for the `rad group create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	config := r.ConfigHolder.Config
-
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}

@@ -70,7 +70,7 @@ func (client *ResourceGroupsClient) CreateOrUpdate(ctx context.Context, planeTyp
 	if err != nil {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
+	if !runtime.HasStatusCode(resp, http.StatusOK) {
 		return ResourceGroupsClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)

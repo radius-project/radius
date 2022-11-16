@@ -18,14 +18,6 @@ const (
 	DaprPubSubBrokerKindUnknown         DaprPubSubBrokerKind = "unknown"
 )
 
-type DaprPubSubBrokerMode string
-
-const (
-	DaprPubSubBrokerModeRecipe   DaprPubSubBrokerMode = "recipe"
-	DaprPubSubBrokerModeResource DaprPubSubBrokerMode = "resource"
-	DaprPubSubBrokerModeValues   DaprPubSubBrokerMode = "values"
-)
-
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
 type DaprPubSubBroker struct {
 	v1.TrackedResource
@@ -53,7 +45,7 @@ type DaprPubSubBrokerProperties struct {
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
 	Kind              DaprPubSubBrokerKind   `json:"kind"`
 	Topic             string                 `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode              DaprPubSubBrokerMode   `json:"mode"`
+	Mode              LinkMode               `json:"mode"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`
 	Recipe            LinkRecipe             `json:"recipe"`
 	Resource          string                 `json:"resource,omitempty"`

@@ -22,7 +22,12 @@ func DeployWithProgress(ctx context.Context, options Options) (clients.Deploymen
 		return clients.DeploymentResult{}, err
 	}
 
-	err = bicep.InjectEnvironmentParam(options.Template, options.Parameters, ctx, options.EnvironmentID)
+	err = bicep.InjectEnvironmentParam(options.Template, options.Parameters, options.EnvironmentID)
+	if err != nil {
+		return clients.DeploymentResult{}, err
+	}
+
+	err = bicep.InjectApplicationParam(options.Template, options.Parameters, options.ApplicationID)
 	if err != nil {
 		return clients.DeploymentResult{}, err
 	}
