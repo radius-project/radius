@@ -42,7 +42,7 @@ func TestNormalizePath(t *testing.T) {
 	for _, tt := range tests {
 		w := httptest.NewRecorder()
 		r := mux.NewRouter()
-		r.Path("/planes/{planeType}/{planeName}/resourcegroups/{resourceGroup}/providers/Applications.Core/{resourceType}/{resourceName}").Methods(http.MethodPost).HandlerFunc(
+		r.Path("/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/Applications.Core/{resourceType}/{resourceName}").Methods(http.MethodPost).HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(r.URL.Path))
 			})
