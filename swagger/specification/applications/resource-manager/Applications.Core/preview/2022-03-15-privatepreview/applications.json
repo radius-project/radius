@@ -275,7 +275,7 @@
     }
   },
   "definitions": {
-    "KubernetesCompute": {
+    "KubernetesAppCompute": {
       "description": "Specifies the properties for Kubernetes compute application",
       "allOf": [
         {

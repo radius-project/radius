@@ -11,6 +11,24 @@ package v20220315privatepreview
 
 import "encoding/json"
 
+func unmarshalApplicationComputeClassification(rawMsg json.RawMessage) (ApplicationComputeClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b ApplicationComputeClassification
+	switch m["kind"] {
+	case "kubernetes":
+		b = &KubernetesAppCompute{}
+	default:
+		b = &ApplicationCompute{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
 func unmarshalApplicationExtensionClassification(rawMsg json.RawMessage) (ApplicationExtensionClassification, error) {
 	if rawMsg == nil {
 		return nil, nil

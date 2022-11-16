@@ -74,9 +74,20 @@
 
 ## ApplicationProperties
 ### Properties
+* **compute**: [ApplicationCompute](#applicationcompute) (Required): Compute resource used by application resource.
 * **environment**: string (Required): The resource id of the environment linked to application.
 * **extensions**: [ApplicationExtension](#applicationextension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+
+## ApplicationCompute
+* **Discriminator**: kind
+
+### Base Properties
+### KubernetesAppCompute
+#### Properties
+* **kind**: 'kubernetes' (Required): Type of compute resource.
+* **namespace**: string (Required): The namespace to use for the application.
+
 
 ## ApplicationExtension
 * **Discriminator**: kind
