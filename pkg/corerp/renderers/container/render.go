@@ -280,12 +280,12 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// Add volumes
 	volumes := []corev1.Volume{}
 
-	// Create Kubernetes resource name for identity related resources.
+	// Create Kubernetes resource name scoped in Kubernetes namespace
 	kubeIdentityName := kubernetes.NormalizeResourceName(resource.Name)
 
-	// Create Azure resource name for managed/federated identity-scoped in environment level. To avoid the naming conflicts,
-	// we add the application name prefix to resource name.
-	azIdentityName := azrenderer.MakeResourceName(resource.Name, applicationName)
+	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
+	// To avoid the naming conflicts, we add the application name prefix to resource name.
+	azIdentityName := azrenderer.MakeResourceName(resource.Name, applicationName, azrenderer.Separator)
 
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
