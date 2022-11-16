@@ -24,5 +24,8 @@ func MakeResourceName(prefix, name, separator string) string {
 	if name == "" {
 		panic("name is empty.")
 	}
-	return strings.ToLower(prefix + separator + name)
+	if prefix != "" {
+		prefix += separator
+	}
+	return strings.ToLower(prefix + name)
 }
