@@ -95,9 +95,9 @@ func Test_Render_WithPort(t *testing.T) {
 func Test_Render_WithDefaultPort(t *testing.T) {
 	r := &Renderer{}
 
-	defaultPort := kubernetes.GetDefaultPort()
+	defaultPort := renderers.DefaultPort
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := makeHTTPRouteProperties(defaultPort)
+	properties := makeHTTPRouteProperties(int32(defaultPort))
 	resource := makeResource(t, &properties)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
@@ -130,7 +130,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
-		Port:       defaultPort,
+		Port:       int32(defaultPort),
 		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(ResourceTypeSuffix + resource.Name)),
 		Protocol:   "TCP",
 	}
@@ -140,7 +140,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 func Test_Render_WithNameSpace(t *testing.T) {
 	r := &Renderer{}
 
-	defaultPort := kubernetes.GetDefaultPort()
+	defaultPort := int32(renderers.DefaultPort)
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := makeHTTPRouteProperties(defaultPort)
 	resource := makeResource(t, &properties)

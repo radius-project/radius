@@ -39,7 +39,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	outputResources := []outputresource.OutputResource{}
 
 	if route.Properties.Port == 0 {
-		defaultPort := kubernetes.GetDefaultPort()
+		defaultPort := int32(renderers.DefaultPort)
 		route.Properties.Port = defaultPort
 	}
 

@@ -99,12 +99,20 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
-	includes := []contourv1.Include{}
-
 	if len(gateway.Properties.Routes) < 1 {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
+	if gateway.Properties.TLS != nil {
+		return MakeHTTPSGateway(options, gateway, resourceName, applicationName, hostname)
+	} else {
+		return MakeHTTPGateway(options, gateway, resourceName, applicationName, hostname)
+	}
+
+}
+
+func MakeHTTPGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
+	includes := []contourv1.Include{}
 	for _, route := range gateway.Properties.Routes {
 		routeName, err := getRouteName(&route)
 		if err != nil {
@@ -154,6 +162,105 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
 }
 
+// MakeHTTPSGateway creates the kubernetes gateway construct from the gateway corerp datamodel for secure services.
+// TLS certificates / decryption support to be added. Currently supports only passthrough
+func MakeHTTPSGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
+	if !gateway.Properties.TLS.SSLPassThrough {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only passthrough is supported for TLS currently")
+	}
+
+	includes := []contourv1.Include{}
+	if len(gateway.Properties.Routes) > 1 {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with SSLPassThrough set to true")
+	}
+
+	route := gateway.Properties.Routes[0] // there can be only one route as part of gateway with sslpassthrough set to true
+	if route.Path != "" || route.ReplacePrefix != "" {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+	}
+
+	routeName, err := getRouteName(&route)
+	if err != nil {
+		return outputresource.OutputResource{}, err
+	}
+
+	routeResourceName := kubernetes.NormalizeResourceName(routeName)
+
+	includes = append(includes, contourv1.Include{
+		Name: routeResourceName,
+		Conditions: []contourv1.MatchCondition{
+			{
+				Prefix: "/",
+			},
+		},
+	})
+
+	virtualHostname := hostname
+	if hostname == "" {
+		// If the given hostname is empty, use the application name
+		// in order to make sure that this resource is seen as a root proxy.
+		virtualHostname = applicationName
+	}
+
+	virtualHost := &contourv1.VirtualHost{
+		Fqdn: virtualHostname,
+	}
+
+	var tcpProxy *contourv1.TCPProxy
+	if gateway.Properties.TLS.SSLPassThrough {
+		virtualHost.TLS = &contourv1.TLS{
+			Passthrough: true,
+		}
+
+		dependencies := options.Dependencies
+		routeProperties := dependencies[route.Destination]
+		port := renderers.DefaultSecurePort
+
+		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
+		routePort, ok := routeProperties.ComputedValues["port"].(float64)
+		if ok {
+			port = int(routePort)
+		}
+
+		routeName, err := getRouteName(&route)
+		if err != nil {
+			return outputresource.OutputResource{}, err
+		}
+
+		// Create unique localID for dependency graph
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
+
+		tcpProxy = &contourv1.TCPProxy{
+			Services: []contourv1.Service{
+				{
+					Name: routeResourceName,
+					Port: int(port),
+				},
+			},
+		}
+	}
+
+	// The root HTTPProxy object acts as the Gateway
+	rootHTTPProxy := &contourv1.HTTPProxy{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "HTTPProxy",
+			APIVersion: contourv1.SchemeGroupVersion.String(),
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      kubernetes.NormalizeResourceName(resourceName),
+			Namespace: options.Environment.Namespace,
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, gateway.ResourceTypeName()),
+		},
+		Spec: contourv1.HTTPProxySpec{
+			VirtualHost: virtualHost,
+			TCPProxy:    tcpProxy,
+			Includes:    includes,
+		},
+	}
+
+	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
+}
+
 // MakeHttpRoutes creates the kubernetes httproute construct from the corerp gateway datamodel
 func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway, gateway *datamodel.GatewayProperties, gatewayName string, applicationName string) ([]outputresource.OutputResource, error) {
 	dependencies := options.Dependencies
@@ -161,12 +268,12 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 
 	for _, route := range gateway.Routes {
 		routeProperties := dependencies[route.Destination]
-		port := kubernetes.GetDefaultPort()
+		port := renderers.DefaultPort
 
 		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
 		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
-			port = int32(routePort)
+			port = int(routePort)
 		}
 
 		routeName, err := getRouteName(&route)
