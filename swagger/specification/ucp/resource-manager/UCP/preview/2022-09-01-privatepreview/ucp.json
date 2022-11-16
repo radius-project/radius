@@ -447,9 +447,6 @@
             "$ref": "#/parameters/CredentialNameParameter"
           },
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
-          },
-          {
             "name": "Credential",
             "description": "Credential details",
             "in": "body",
@@ -639,9 +636,6 @@
           },
           {
             "$ref": "#/parameters/CredentialNameParameter"
-          },
-          {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           },
           {
             "name": "Credential",
