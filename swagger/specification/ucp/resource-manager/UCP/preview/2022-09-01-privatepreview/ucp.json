@@ -63,7 +63,7 @@
           "deprecated": false
         }
       },
-      "/planes/{planeType}/{planeName}": {
+      "/planes/{PlaneType}/{PlaneName}": {
         "get": {
           "description": "Gets the properties of a UCP Plane.",
           "operationId": "Planes_Get",
@@ -200,7 +200,7 @@
           }
         }
       },
-      "/planes/{planeType}/{planeName}/resourcegroups": {
+      "/planes/{PlaneType}/{PlaneName}/resourcegroups": {
         "get": {
           "description": "List all resource groups.",
           "operationId": "ResourceGroups_List",
@@ -243,7 +243,7 @@
           "deprecated": false
         }
       },
-      "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}": {
+      "/planes/{PlaneType}/{PlaneName}/resourcegroups/{ResourceGroup}": {
         "get": {
           "description": "Gets the properties of a UCP ResourceGroup.",
           "operationId": "ResourceGroups_Get",
@@ -389,7 +389,7 @@
           }
         }
       },
-    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials/{credentialName}": {
+    "/planes/{PlaneType}/{PlaneName}/providers/System.Azure/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
         "operationId": "AzureCredentials_Get",
@@ -539,7 +539,7 @@
 
     },
 
-    "/planes/{planeType}/{planeName}/providers/System.Azure/credentials": {
+    "/planes/{PlaneType}/{PlaneName}/providers/System.Azure/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
         "operationId": "AzureCredentials_List",
@@ -582,7 +582,7 @@
         "deprecated": false
       }
     },
-    "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}": {
+    "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
         "operationId": "AWSCredentials_Get",
@@ -732,7 +732,7 @@
 
     },
 
-    "/planes/{planeType}/{planeName}/providers/System.AWS/credentials": {
+    "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials": {
       "get": {
         "description": "List the credentials for this plane instance",
         "operationId": "AWSCredentials_List",
@@ -1051,7 +1051,7 @@
     },
     "parameters": {
       "PlaneTypeParameter": {
-        "name": "planeType",
+        "name": "PlaneType",
         "in": "path",
         "required": true,
         "type": "string",
@@ -1061,7 +1061,7 @@
         "x-ms-parameter-location": "method"
       },
       "PlaneNameParameter": {
-          "name": "planeName",
+          "name": "PlaneName",
           "in": "path",
           "required": true,
           "type": "string",
@@ -1071,7 +1071,7 @@
           "x-ms-parameter-location": "method"
       },
       "ResourceGroupNameParameter": {
-        "name": "resourceGroupName",
+        "name": "ResourceGroup",
         "in": "path",
         "required": true,
         "type": "string",

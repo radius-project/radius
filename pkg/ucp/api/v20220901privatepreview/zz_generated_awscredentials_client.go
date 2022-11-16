@@ -76,15 +76,15 @@ func (client *AWSCredentialsClient) Delete(ctx context.Context, planeType string
 
 // deleteCreateRequest creates the Delete request.
 func (client *AWSCredentialsClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -124,15 +124,15 @@ func (client *AWSCredentialsClient) Get(ctx context.Context, planeType string, p
 
 // getCreateRequest creates the Get request.
 func (client *AWSCredentialsClient) getCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
+	urlPath := "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -180,15 +180,15 @@ func (client *AWSCredentialsClient) List(ctx context.Context, planeType string, 
 
 // listCreateRequest creates the List request.
 func (client *AWSCredentialsClient) listCreateRequest(ctx context.Context, planeType string, planeName string, options *AWSCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials"
+	urlPath := "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneType}", url.PathEscape(planeType))
 	if planeName == "" {
 		return nil, errors.New("parameter planeName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{PlaneName}", url.PathEscape(planeName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err

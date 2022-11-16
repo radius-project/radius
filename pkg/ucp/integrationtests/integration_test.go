@@ -223,6 +223,23 @@ func Test_NotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, response.StatusCode)
 }
 
+func Test_APIValidationIsApplied(t *testing.T) {
+	ucp, ucpClient, _ := initialize(t)
+	// Send a request that will be proxied to the RP
+	requestBody := v20220901privatepreview.ResourceGroupResource{
+		Tags: map[string]*string{},
+		// Missing location
+	}
+	body, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+	require.NoError(t, err)
+	response, err := ucpClient.httpClient.Do(createResourceGroupRequest)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusBadRequest, response.StatusCode)
+}
+
 func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClient) {
 	body, err := json.Marshal(applicationList)
 	require.NoError(t, err)

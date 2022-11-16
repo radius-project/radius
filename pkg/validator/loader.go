@@ -49,10 +49,9 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 }
 
 // GetValidator returns the cached validator.
-func (l *Loader) GetValidator(resourceType, version string, ignoreUndefinedPath bool) (Validator, bool) {
+func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	// ARM types are compared case-insensitively
 	v, ok := l.validators[getValidatorKey(resourceType, version)]
-	v.ignoreUndefinedPath = ignoreUndefinedPath
 	if ok {
 		return &v, true
 	}
