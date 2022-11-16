@@ -106,7 +106,7 @@ var testAzurePlane = v20220901privatepreview.PlaneResource{
 }
 
 var testResourceGroup = v20220901privatepreview.ResourceGroupResource{
-	ID:       to.Ptr(testUCPNativePlaneID + "/resourceGroups/rg1"),
+	ID:       to.Ptr(testUCPNativePlaneID + "/resourcegroups/rg1"),
 	Name:     to.Ptr("rg1"),
 	Type:     to.Ptr(resourcegroups.ResourceGroupType),
 	Location: to.Ptr(v1.LocationGlobal),
@@ -342,7 +342,7 @@ func createResourceGroup(t *testing.T, ucp *httptest.Server, ucpClient Client, d
 		return nil, &store.ErrNotFound{}
 	})
 	db.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any())
-	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourceGroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
+	createResourceGroupRequest, err := http.NewRequest("PUT", ucp.URL+basePath+"/planes/radius/local/resourcegroups/rg1?api-version=2022-09-01-privatepreview", bytes.NewBuffer(body))
 	require.NoError(t, err)
 	createResourceGroupResponse, err := ucpClient.httpClient.Do(createResourceGroupRequest)
 	require.NoError(t, err)
