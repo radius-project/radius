@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/manifoldco/promptui"
 	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
+	"github.com/project-radius/radius/pkg/cli/prompt/text"
 )
 
 type BinaryAnswer int
@@ -238,24 +239,35 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 // BubbleTeaPrompter contains operation to get user inputs for cli
 type BubbleTeaPrompter interface {
 	// GetTextInput prompts user for a text input
-	GetTextInput(program tea.Program) (string, error)
+	GetTextInput(promptMsg string) (string, error)
 
 	// GetListInput prompts user to select from a list
-	GetListInput(items []string, label string) (int, string, error)
+	GetListInput(items []string, promptMsg string) (int, string, error)
 }
 
 // BubbleTeaPrompterImpl implements BubbleTeaPrompter
 type BubbleTeaPrompterImpl struct{}
 
 // GetTextInput prompts user for a text input
-func (i *BubbleTeaPrompterImpl) GetInput(program tea.Program) (string, error) {
+func (i *BubbleTeaPrompterImpl) GetTextInput(promptMsg string) (string, error) {
 	// TODO: implement text model
-	return "", nil
+	tm := text.NewTextModel(promptMsg)
+	model, err := tea.NewProgram(tm).Run()
+	if err != nil {
+		return "", err
+	}
+	tm, ok := model.(text.Model)
+	if !ok {
+		return "", &ErrUnsupportedModel{}
+	}
+	fmt.Println("Entered value:", tm.GetValue())
+
+	return tm.GetValue(), nil
 }
 
 // GetListInput prompts user to select from a list
-func (i *BubbleTeaPrompterImpl) RunSelect(items []string, label string) (int, string, error) {
-	lm := cli_list.NewListModel(items, label)
+func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (int, string, error) {
+	lm := cli_list.NewListModel(items, promptMsg)
 	model, err := tea.NewProgram(lm).Run()
 	if err != nil {
 		return -1, "", err

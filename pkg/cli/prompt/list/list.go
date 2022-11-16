@@ -66,14 +66,14 @@ func (d itemHandler) Render(w io.Writer, m list.Model, index int, listItem list.
 }
 
 // NewListModel returns a list model for bubble tea prompt.
-func NewListModel(choices []string, title string) ListModel {
+func NewListModel(choices []string, promptMsg string) ListModel {
 	items := make([]list.Item, len(choices))
 	for i, choice := range choices {
 		items[i] = item(choice)
 	}
 
 	l := list.New(items, itemHandler{}, defaultWidth, listHeight)
-	l.Title = title
+	l.Title = promptMsg
 	l.SetShowStatusBar(false)
 	l.Styles.Title = titleStyle
 
