@@ -233,7 +233,7 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 	}
 }
 
-//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt BubbleTeaPrompter
+//go:generate mockgen -destination=./mock_bubleteaprompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt BubbleTeaPrompter
 
 // BubbleTeaPrompter contains operation to get user inputs for cli
 type BubbleTeaPrompter interface {
