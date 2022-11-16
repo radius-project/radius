@@ -275,7 +275,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 	// This is the default service account name. If a volume is associated with federated identity, new service account
 	// will be created and set for container pods.
-	podSAName := defaultServiceAccountName
+	serviceAccountName := defaultServiceAccountName
 
 	// Add volumes
 	volumes := []corev1.Volume{}
@@ -400,15 +400,15 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		podSAName = kubeIdentityName
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(podSAName, &options.Environment)
+		serviceAccountName = kubeIdentityName
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(serviceAccountName, &options.Environment)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, podSAName, options.Environment.Namespace, resource)
+		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
@@ -474,7 +474,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: podSAName,
+					ServiceAccountName: serviceAccountName,
 					Containers:         []corev1.Container{container},
 					Volumes:            volumes,
 				},
