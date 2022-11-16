@@ -25,8 +25,8 @@ import (
 const (
 	planeCollectionPath       = "/planes"
 	awsPlaneType              = "/planes/aws"
-	planeItemPath             = "/planes/{PlaneType}/{PlaneName}"
-	planeCollectionByType     = "/planes/{PlaneType}"
+	planeItemPath             = "/planes/{planeType}/{planeName}"
+	planeCollectionByType     = "/planes/{planeType}"
 	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
@@ -81,7 +81,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	planeSubRouter := rootScopeRouter.Path(planeItemPath).Subrouter()
 
 	var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resourcegroups")
-	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
+	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{resourceGroupName}")
 	resourceGroupCollectionSubRouter := rootScopeRouter.Path(resourceGroupCollectionPath).Subrouter()
 	resourceGroupSubRouter := rootScopeRouter.Path(resourceGroupItemPath).Subrouter()
 
