@@ -791,8 +791,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			LocalID:  outputresource.LocalIDFederatedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
-				"federatedidentityname":    "test-app-test-container",
-				"federatedidentitysubject": "system:serviceaccount:default:test-app-test-container",
+				"federatedidentityname":    "test-container",
+				"federatedidentitysubject": "system:serviceaccount:default:test-container",
 				"federatedidentityissuer":  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
 			Dependencies: []outputresource.Dependency{

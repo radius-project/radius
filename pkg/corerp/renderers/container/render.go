@@ -398,14 +398,14 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(azIdentityName, &options.Environment)
+		podSAName = defaultIdentityName
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(podSAName, &options.Environment)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		podSAName = defaultIdentityName
 		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, podSAName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
