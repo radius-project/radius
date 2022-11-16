@@ -38,6 +38,7 @@ type EnvironmentProperties struct {
 	Recipes       map[string]EnvironmentRecipeProperties `json:"recipes,omitempty"`
 	Providers     Providers                              `json:"providers,omitempty"`
 	UseDevRecipes bool                                   `json:"useDevRecipes,omitempty"`
+	Extensions    []Extension                            `json:"extensions,omitempty"`
 }
 
 // EnvironmentCompute represents the compute resource of Environment.
@@ -70,4 +71,9 @@ type Providers struct {
 // ProvidersAzure represents the azure provider configs
 type ProvidersAzure struct {
 	Scope string `json:"scope,omitempty"`
+}
+
+// EnvironmentKubernetesMetadataExtension - Specifies user defined labels and annotations
+type EnvironmentKubernetesMetadataExtension struct {
+	BaseKubernetesMetadataExtension
 }

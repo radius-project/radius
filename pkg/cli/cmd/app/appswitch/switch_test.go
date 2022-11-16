@@ -12,6 +12,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/test/radcli"
@@ -53,6 +54,36 @@ func Test_Validate(t *testing.T) {
 			},
 			ConfigureMocks: func(mocks radcli.ValidateMocks) {
 				createShowApplicationError(mocks.ApplicationManagementClient)
+			},
+		},
+		{
+			Name:          "Switch Command with flag",
+			Input:         []string{"-a", "validAppToSwitchTo"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createShowApplicationSuccess(mocks.ApplicationManagementClient)
+			},
+		},
+		{
+			// Test that DirectoryConfig does NOT affect this comment. 'app switch' only operates on config.yaml.
+			Name:          "Switch Command requires flag or arg",
+			Input:         []string{"-a", "validAppToSwitchTo"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+				DirectoryConfig: &config.DirectoryConfig{
+					Workspace: config.DirectoryWorkspaceConfig{
+						Application: "somethingElse",
+					},
+				},
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				createShowApplicationSuccess(mocks.ApplicationManagementClient)
 			},
 		},
 	}

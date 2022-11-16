@@ -186,7 +186,7 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 		}
 	}
 
-	var extensions []ExtensionClassification
+	var extensions []ContainerExtensionClassification
 	if c.Properties.Extensions != nil {
 		for _, e := range c.Properties.Extensions {
 			extensions = append(extensions, fromExtensionClassificationDataModel(e))
@@ -464,18 +464,19 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 	return &r
 }
 
-func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
+// toExtensionDataModel: Converts from versioned datamodel to base datamodel
+func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.ManualScaling,
 			ManualScaling: &datamodel.ManualScalingExtension{
 				Replicas: c.Replicas,
 			},
 		}
-		return *converted
+		return converted
 	case *DaprSidecarExtension:
-		converted := &datamodel.Extension{
+		converted := datamodel.Extension{
 			Kind: datamodel.DaprSidecar,
 			DaprSidecar: &datamodel.DaprSidecarExtension{
 				AppID:    to.String(c.AppID),
@@ -485,20 +486,30 @@ func toExtensionDataModel(e ExtensionClassification) datamodel.Extension {
 				Provides: to.String(c.Provides),
 			},
 		}
-		return *converted
+		return converted
+	case *ContainerKubernetesMetadataExtension:
+		converted := datamodel.Extension{
+			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				Annotations: to.StringMap(c.Annotations),
+				Labels:      to.StringMap(c.Labels),
+			},
+		}
+		return converted
 	}
 
 	return datamodel.Extension{}
 }
 
-func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassification {
+// fromExtensionClassificationDataModel: Converts from base datamodel to versioned datamodel
+func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
 		converted := ManualScalingExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
-		return converted.GetExtension()
+		return converted.GetContainerExtension()
 	case datamodel.DaprSidecar:
 		converted := DaprSidecarExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
@@ -508,7 +519,15 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ExtensionClassi
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
 			Provides: to.StringPtr(e.DaprSidecar.Provides),
 		}
-		return converted.GetExtension()
+		return converted.GetContainerExtension()
+	case datamodel.KubernetesMetadata:
+		var ann, lbl = getFromExtensionClassificationFields(e)
+		converted := ContainerKubernetesMetadataExtension{
+			Kind:        to.StringPtr(string(e.Kind)),
+			Annotations: *to.StringMapPtr(ann),
+			Labels:      *to.StringMapPtr(lbl),
+		}
+		return converted.GetContainerExtension()
 	}
 
 	return nil
@@ -527,4 +546,20 @@ func toVolumeBaseDataModel(v Volume) datamodel.VolumeBase {
 	return datamodel.VolumeBase{
 		MountPath: *v.MountPath,
 	}
+}
+
+func getFromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
+	var ann map[string]string
+	var lbl map[string]string
+
+	if e.KubernetesMetadata != nil {
+		if e.KubernetesMetadata.Annotations != nil {
+			ann = e.KubernetesMetadata.Annotations
+		}
+		if e.KubernetesMetadata.Labels != nil {
+			lbl = e.KubernetesMetadata.Labels
+		}
+	}
+
+	return ann, lbl
 }

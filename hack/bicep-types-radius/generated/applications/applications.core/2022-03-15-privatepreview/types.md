@@ -75,7 +75,29 @@
 ## ApplicationProperties
 ### Properties
 * **environment**: string (Required): The resource id of the environment linked to application.
+* **extensions**: [ApplicationExtension](#applicationextension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+
+## ApplicationExtension
+* **Discriminator**: kind
+
+### Base Properties
+### ApplicationKubernetesMetadataExtension
+#### Properties
+* **annotations**: [ApplicationKubernetesMetadataExtensionAnnotations](#applicationkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [ApplicationKubernetesMetadataExtensionLabels](#applicationkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
+
+## ApplicationKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ApplicationKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
 
 ## SystemData
 ### Properties
@@ -97,7 +119,7 @@
 * **connections**: [ContainerPropertiesConnections](#containerpropertiesconnections): Dictionary of <ConnectionProperties>
 * **container**: [Container](#container) (Required): Definition of a container.
 * **environment**: string: The resource id of the environment linked to the resource
-* **extensions**: [Extension](#extension)[]: Extensions spec of the resource
+* **extensions**: [ContainerExtension](#containerextension)[]: Extensions spec of the resource
 * **identity**: [IdentitySettings](#identitysettings)
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
@@ -199,7 +221,7 @@
 * **source**: string (Required): The source of the volume
 
 
-## Extension
+## ContainerExtension
 * **Discriminator**: kind
 
 ### Base Properties
@@ -212,11 +234,27 @@
 * **protocol**: 'TCP' | 'UDP' | 'grpc' | 'http': Protocol in use by the port
 * **provides**: string: Specifies the resource id of a dapr.io.InvokeHttpRoute that can route traffic to this resource.
 
+### ContainerKubernetesMetadataExtension
+#### Properties
+* **annotations**: [ContainerKubernetesMetadataExtensionAnnotations](#containerkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [ContainerKubernetesMetadataExtensionLabels](#containerkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
 ### ManualScalingExtension
 #### Properties
 * **kind**: 'manualScaling' (Required): Specifies the extensions of a resource.
 * **replicas**: int: Replica count.
 
+
+## ContainerKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## ContainerKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
 
 ## IdentitySettings
 ### Properties
@@ -236,6 +274,7 @@
 ## EnvironmentProperties
 ### Properties
 * **compute**: [EnvironmentCompute](#environmentcompute) (Required): Compute resource used by application environment resource.
+* **extensions**: [EnvironmentExtension](#environmentextension)[]: Extensions spec of the resource
 * **providers**: [Providers](#providers): Cloud providers configuration
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
@@ -252,6 +291,27 @@
 * **kind**: 'kubernetes' (Required): Type of compute resource.
 * **namespace**: string (Required): The namespace to use for the environment.
 
+
+## EnvironmentExtension
+* **Discriminator**: kind
+
+### Base Properties
+### EnvironmentKubernetesMetadataExtension
+#### Properties
+* **annotations**: [EnvironmentKubernetesMetadataExtensionAnnotations](#environmentkubernetesmetadataextensionannotations): Annotations to be applied to the Kubernetes resources output by the resource
+* **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
+* **labels**: [EnvironmentKubernetesMetadataExtensionLabels](#environmentkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
+
+
+## EnvironmentKubernetesMetadataExtensionAnnotations
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
+
+## EnvironmentKubernetesMetadataExtensionLabels
+### Properties
+### Additional Properties
+* **Additional Properties Type**: string
 
 ## Providers
 ### Properties

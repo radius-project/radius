@@ -568,7 +568,7 @@
         "deprecated": false
       }
     },
-    "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}": {
+    "/planes/{PlaneType}/{PlaneName}/providers/System.AWS/credentials/{credentialName}": {
       "get": {
         "description": "Get name of the secret that is holding credentials for the plane instance",
         "operationId": "AWSCredentials_Get",
