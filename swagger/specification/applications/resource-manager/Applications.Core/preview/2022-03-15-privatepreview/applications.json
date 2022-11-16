@@ -275,39 +275,6 @@
     }
   },
   "definitions": {
-    "KubernetesAppCompute": {
-      "description": "Specifies the properties for Kubernetes compute application",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ApplicationCompute"
-        }
-      ],
-      "type": "object",
-      "properties": {
-        "namespace": {
-          "type": "string",
-          "description": "The namespace to use for the application."
-        }
-      },
-      "required": [
-        "namespace"
-      ],
-      "x-ms-discriminator-value": "kubernetes"
-    },
-    "ApplicationCompute": {
-      "description": "Compute resource used by application resource.",
-      "type": "object",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Type of compute resource."
-        }
-      },
-      "required": [
-        "kind"
-      ]
-    },
     "ApplicationResourceList": {
       "description": "The list of applications.",
       "type": "object",
@@ -353,6 +320,25 @@
         }
       ]
     },
+    "ApplicationKubernetesNamespaceExtension": {
+      "description": "Specifies the properties for Kubernetes compute application",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ApplicationExtension"  
+        }
+      ],
+      "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "The namespace to use for the application."
+        }
+      },
+      "required": [
+        "namespace"
+      ],
+      "x-ms-discriminator-value": "kubernetesNamespaceOverride"
+    },
     "ApplicationKubernetesMetadataExtension": {
       "type": "object",
       "allOf": [
@@ -384,8 +370,7 @@
       "description": "Application properties",
       "type": "object",
       "required": [
-        "environment",
-        "compute"
+        "environment"
       ],
       "properties": {
         "provisioningState": {
@@ -403,9 +388,6 @@
             "$ref": "#/definitions/ApplicationExtension"
           },
           "description": "Extensions spec of the resource"
-        },
-          "compute": {
-            "$ref": "#/definitions/ApplicationCompute"
         }
       }
     }

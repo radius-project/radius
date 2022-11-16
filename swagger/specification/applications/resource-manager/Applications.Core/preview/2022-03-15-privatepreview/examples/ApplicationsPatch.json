@@ -7,10 +7,6 @@
       "location": "West US",
       "properties": {
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-        "compute": {
-          "kind": "kubernetes",
-          "namespace": "default"
-        },
         "extensions": [
           {
             "kind": "kubernetesMetadata",
@@ -22,6 +18,10 @@
               "foo/bar/team": "credit",
               "foo/bar/contact": "radiususer"
             }
+          },
+          {
+            "kind": "kubernetesNamespaceOverride",
+            "namespace": "app-ns"
           }
         ]
       }
@@ -36,10 +36,6 @@
         "properties": {
           "provisioningState": "Succeeded",
           "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
-          "compute": {
-            "kind": "kubernetes",
-            "namespace": "default"
-          },
           "extensions": [
             {
               "kind": "kubernetesMetadata",
@@ -51,6 +47,10 @@
                 "foo/bar/team": "credit",
                 "foo/bar/contact": "radiususer"
               }
+            },
+            {
+              "kind": "kubernetesNamespaceOverride",
+              "namespace": "app-ns"
             }
           ]
         }

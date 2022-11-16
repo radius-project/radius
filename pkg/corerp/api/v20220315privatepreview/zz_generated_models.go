@@ -11,28 +11,10 @@ package v20220315privatepreview
 
 import "time"
 
-// ApplicationComputeClassification provides polymorphic access to related types.
-// Call the interface's GetApplicationCompute() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *ApplicationCompute, *KubernetesAppCompute
-type ApplicationComputeClassification interface {
-	// GetApplicationCompute returns the ApplicationCompute content of the underlying type.
-	GetApplicationCompute() *ApplicationCompute
-}
-
-// ApplicationCompute - Compute resource used by application resource.
-type ApplicationCompute struct {
-	// REQUIRED; Type of compute resource.
-	Kind *string `json:"kind,omitempty"`
-}
-
-// GetApplicationCompute implements the ApplicationComputeClassification interface for type ApplicationCompute.
-func (a *ApplicationCompute) GetApplicationCompute() *ApplicationCompute { return a }
-
 // ApplicationExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetApplicationExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *ApplicationExtension, *ApplicationKubernetesMetadataExtension
+// - *ApplicationExtension, *ApplicationKubernetesMetadataExtension, *ApplicationKubernetesNamespaceExtension
 type ApplicationExtensionClassification interface {
 	ExtensionClassification
 	// GetApplicationExtension returns the ApplicationExtension content of the underlying type.
@@ -81,11 +63,31 @@ func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
 	}
 }
 
+// ApplicationKubernetesNamespaceExtension - Specifies the properties for Kubernetes compute application
+type ApplicationKubernetesNamespaceExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the application.
+	Namespace *string `json:"namespace,omitempty"`
+}
+
+// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetApplicationExtension() *ApplicationExtension {
+	return &ApplicationExtension{
+		Kind: a.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; Compute resource used by application resource.
-	Compute ApplicationComputeClassification `json:"compute,omitempty"`
-
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
@@ -702,8 +704,8 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *ApplicationExtension, *ContainerExtension, *ContainerKubernetesMetadataExtension, *DaprSidecarExtension, *EnvironmentExtension,
-// - *Extension, *ManualScalingExtension
+// - *ApplicationExtension, *ApplicationKubernetesNamespaceExtension, *ContainerExtension, *ContainerKubernetesMetadataExtension,
+// - *DaprSidecarExtension, *EnvironmentExtension, *Extension, *ManualScalingExtension
 type ExtensionClassification interface {
 	// GetExtension returns the Extension content of the underlying type.
 	GetExtension() *Extension
@@ -1018,22 +1020,6 @@ type KeyObjectProperties struct {
 
 	// Key version
 	Version *string `json:"version,omitempty"`
-}
-
-// KubernetesAppCompute - Specifies the properties for Kubernetes compute application
-type KubernetesAppCompute struct {
-	// REQUIRED; Type of compute resource.
-	Kind *string `json:"kind,omitempty"`
-
-	// REQUIRED; The namespace to use for the application.
-	Namespace *string `json:"namespace,omitempty"`
-}
-
-// GetApplicationCompute implements the ApplicationComputeClassification interface for type KubernetesAppCompute.
-func (k *KubernetesAppCompute) GetApplicationCompute() *ApplicationCompute {
-	return &ApplicationCompute{
-		Kind: k.Kind,
-	}
 }
 
 // KubernetesCompute - Specifies the properties for Kubernetes compute environment
