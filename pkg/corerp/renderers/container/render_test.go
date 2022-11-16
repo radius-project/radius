@@ -1148,7 +1148,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
 	require.Equal(t, tempVolName, volumes[0].Name)
 	require.Equal(t, "secrets-store.csi.k8s.io", volumes[0].VolumeSource.CSI.Driver, "expected volumesource azurefile to be not nil")
-	require.Equal(t, testVolName, volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input test-volume-sp")
+	require.Equalf(t, testVolName, volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input %s", testVolName)
 	require.Equal(t, true, *volumes[0].VolumeSource.CSI.ReadOnly, "expected readonly attribute to be true")
 
 	// Verify volume mount spec

@@ -76,6 +76,10 @@ func TestNormalizeResoureName(t *testing.T) {
 			"Resource",
 			"resource",
 		},
+		{
+			"",
+			"resource-name",
+		},
 	}
 
 	for _, tt := range nameTests {

@@ -12,9 +12,9 @@ func MakeResourceName(name string, prefix ...string) string {
 	var sb strings.Builder
 
 	for _, p := range prefix {
-		_, _ = sb.WriteString(strings.ToLower(p))
-		_, _ = sb.WriteString("-")
+		sb.WriteString(strings.ToLower(p))
+		sb.WriteString("-")
 	}
-	_, _ = sb.WriteString(strings.ToLower(name))
+	sb.WriteString(strings.ToLower(name))
 	return sb.String()
 }

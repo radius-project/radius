@@ -51,7 +51,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			Value: route.Properties.Port,
 		},
 		"url": {
-			// TODO: Check if it requires the FQDN for route name
 			Value: fmt.Sprintf("http://%s:%d", kubernetes.NormalizeResourceName(route.Name), route.Properties.Port),
 		},
 		"scheme": {

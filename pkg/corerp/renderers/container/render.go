@@ -280,9 +280,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// Add volumes
 	volumes := []corev1.Volume{}
 
-	// Make the default managed identity name.
-	defaultIdentityName := kubernetes.NormalizeResourceName(resource.Name)
+	// Create Kubernetes resource name for identity related resources.
+	kubeIdentityName := kubernetes.NormalizeResourceName(resource.Name)
 
+	// Create Azure resource name for managed/federated identity-scoped in environment level. To avoid the naming conflicts,
+	// we add the application name prefix to resource name.
 	azIdentityName := azrenderer.MakeResourceName(resource.Name, applicationName)
 
 	for volumeName, volumeProperties := range cc.Container.Volumes {
@@ -398,7 +400,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		podSAName = defaultIdentityName
+		podSAName = kubeIdentityName
 		fedIdentity, err := azrenderer.MakeFederatedIdentity(podSAName, &options.Environment)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
