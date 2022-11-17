@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"path"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -29,20 +28,21 @@ func Test_ListAWSResources(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	streamOneResourceName := "streamone"
-	streamOneResponseBody := map[string]interface{}{
+	firstTestResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	secondTestResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
+	firstTestResourceResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
-	streamOneResponseBodyBytes, err := json.Marshal(streamOneResponseBody)
+	firstTestResourceResponseBodyBytes, err := json.Marshal(firstTestResourceResponseBody)
 	require.NoError(t, err)
 
-	streamTwoResourceName := "streamtwo"
-	streamTwoResponseBody := map[string]interface{}{
-		"RetentionPeriodHours": 178,
-		"ShardCount":           3,
+	secondTestResourceResponseBody := map[string]interface{}{
+		"RetentionPeriodHours": 180,
+		"ShardCount":           2,
 	}
-	streamTwoResponseBodyBytes, err := json.Marshal(streamTwoResponseBody)
+	secondTestResourceResponseBodyBytes, err := json.Marshal(secondTestResourceResponseBody)
 	require.NoError(t, err)
 
 	testOptions := setupTest(t)
@@ -50,12 +50,12 @@ func Test_ListAWSResources(t *testing.T) {
 		&cloudcontrol.ListResourcesOutput{
 			ResourceDescriptions: []types.ResourceDescription{
 				{
-					Identifier: aws.String(streamOneResourceName),
-					Properties: aws.String(string(streamOneResponseBodyBytes)),
+					Identifier: aws.String(firstTestResource.ResourceName),
+					Properties: aws.String(string(firstTestResourceResponseBodyBytes)),
 				},
 				{
-					Identifier: aws.String(streamTwoResourceName),
-					Properties: aws.String(string(streamTwoResponseBodyBytes)),
+					Identifier: aws.String(secondTestResource.ResourceName),
+					Properties: aws.String(string(secondTestResourceResponseBodyBytes)),
 				},
 			},
 		}, nil)
@@ -66,7 +66,7 @@ func Test_ListAWSResources(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	request, err := http.NewRequest(http.MethodGet, firstTestResource.CollectionPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -75,21 +75,21 @@ func Test_ListAWSResources(t *testing.T) {
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
 		"value": []interface{}{
 			map[string]interface{}{
-				"id":   path.Join(testAWSResourceCollectionPath, streamOneResourceName),
-				"name": aws.String(streamOneResourceName),
-				"type": testAWSResourceType,
+				"id":   firstTestResource.SingleResourcePath,
+				"name": aws.String(firstTestResource.ResourceName),
+				"type": firstTestResource.ResourceType,
 				"properties": map[string]interface{}{
 					"RetentionPeriodHours": float64(178),
 					"ShardCount":           float64(3),
 				},
 			},
 			map[string]interface{}{
-				"id":   path.Join(testAWSResourceCollectionPath, streamTwoResourceName),
-				"name": aws.String(streamTwoResourceName),
-				"type": testAWSResourceType,
+				"id":   secondTestResource.SingleResourcePath,
+				"name": aws.String(secondTestResource.ResourceName),
+				"type": secondTestResource.ResourceType,
 				"properties": map[string]interface{}{
-					"RetentionPeriodHours": float64(178),
-					"ShardCount":           float64(3),
+					"RetentionPeriodHours": float64(180),
+					"ShardCount":           float64(2),
 				},
 			},
 		},
@@ -102,6 +102,8 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
 
@@ -111,7 +113,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -128,6 +130,8 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
@@ -137,7 +141,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -150,6 +154,8 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 func Test_ListAWSResource_SmithyError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
@@ -167,7 +173,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSResourceCollectionPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.CollectionPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

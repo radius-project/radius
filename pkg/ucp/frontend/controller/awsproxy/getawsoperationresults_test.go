@@ -24,6 +24,8 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
@@ -39,7 +41,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationResultsPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -54,6 +56,8 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
@@ -69,7 +73,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationResultsPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)

@@ -29,6 +29,8 @@ func Test_GetAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
@@ -40,7 +42,7 @@ func Test_GetAWSResource(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Identifier: aws.String(testAWSResourceName),
+				Identifier: aws.String(testResource.ResourceName),
 				Properties: aws.String(string(getResponseBodyBytes)),
 			},
 		}, nil)
@@ -51,15 +53,15 @@ func Test_GetAWSResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
 	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
-		"id":   testAWSSingleResourcePath,
-		"name": aws.String(testAWSResourceName),
-		"type": testAWSResourceType,
+		"id":   testResource.SingleResourcePath,
+		"name": aws.String(testResource.ResourceName),
+		"type": testResource.ResourceType,
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
@@ -74,6 +76,8 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -86,13 +90,13 @@ func Test_GetAWSResource_NotFound(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	id, err := resources.ParseResource(testAWSSingleResourcePath)
+	id, err := resources.ParseResource(testResource.SingleResourcePath)
 	require.NoError(t, err)
 
 	expectedResponse := armrpc_rest.NewNotFoundResponse(id)
@@ -103,6 +107,8 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
 
@@ -112,7 +118,7 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -125,6 +131,8 @@ func Test_GetAWSResource_UnknownError(t *testing.T) {
 func Test_GetAWSResource_SmithyError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{
@@ -142,7 +150,7 @@ func Test_GetAWSResource_SmithyError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

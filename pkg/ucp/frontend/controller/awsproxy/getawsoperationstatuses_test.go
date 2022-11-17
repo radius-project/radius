@@ -25,8 +25,9 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	eventTime := time.Now()
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
 
+	eventTime := time.Now()
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
@@ -43,7 +44,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationStatusesPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -60,6 +61,8 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
 
 	eventTime := time.Now()
 	errorCode := types.HandlerErrorCodeInternalFailure
@@ -83,7 +86,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationStatusesPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
