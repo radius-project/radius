@@ -301,8 +301,8 @@ func Test_ParsePropertyName(t *testing.T) {
 		},
 		{
 			"ParsePropertyName successfully parses sub-properties",
-			"/properties/propertyName",
-			"propertyName",
+			"/properties/propertyName/subProperty/subSubProperty",
+			"propertyName/subProperty/subSubProperty",
 			nil,
 		},
 		{
