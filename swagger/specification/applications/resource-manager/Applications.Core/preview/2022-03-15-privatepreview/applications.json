@@ -321,7 +321,7 @@
       ]
     },
     "ApplicationKubernetesNamespaceExtension": {
-      "description": "Specifies the properties for Kubernetes compute application",
+      "description": "Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments resource.",
       "type": "object",
       "allOf": [
         {

@@ -63,7 +63,8 @@ func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
 	}
 }
 
-// ApplicationKubernetesNamespaceExtension - Specifies the properties for Kubernetes compute application
+// ApplicationKubernetesNamespaceExtension - Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments
+// resource.
 type ApplicationKubernetesNamespaceExtension struct {
 	// REQUIRED; Specifies the extensions of a resource.
 	Kind *string `json:"kind,omitempty"`
