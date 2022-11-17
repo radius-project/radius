@@ -17,18 +17,16 @@ import (
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 
-    if src.Properties.TLS != nil {
-		tls := &datamodel.GatewayPropertiesTLS{}	
+	var tls *datamodel.GatewayPropertiesTLS
+	if src.Properties.TLS != nil {
+		tls := &datamodel.GatewayPropertiesTLS{}
 		if src.Properties.TLS.SSLPassThrough != nil {
-			tls.SSLPassThrough= to.Bool(src.Properties.TLS.SSLPassThrough)
+			tls.SSLPassThrough = to.Bool(src.Properties.TLS.SSLPassThrough)
 		} else {
-			tls.SSLPassThrough= to.Bool(false)
+			tls.SSLPassThrough = false
 		}
 	}
 
-	var tls *datamodel.GatewayPropertiesTLS
-	if src.Properties.TLS != nil {
-		
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	routes := []datamodel.GatewayRoute{}
 	if src.Properties.Routes != nil {
