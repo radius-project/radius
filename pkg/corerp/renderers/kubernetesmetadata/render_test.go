@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -29,20 +30,34 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource conv.DataModelInte
 }
 
 func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	// Return a deployment so the manualscale extension can modify it
+	// Return a deployment so the extension can modify it
 	deployment := appsv1.Deployment{}
-	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
-	return renderers.RendererOutput{Resources: resources}, nil
+
+	deploymentResource := outputresource.OutputResource{
+		Resource: &deployment,
+		ResourceType: resourcemodel.ResourceType{
+			Type:     resourcekinds.Deployment,
+			Provider: resourcemodel.ProviderKubernetes,
+		},
+		LocalID: outputresource.LocalIDDeployment,
+	}
+
+	output := renderers.RendererOutput{
+		Resources: []outputresource.OutputResource{deploymentResource},
+	}
+
+	return output, nil
 }
 
 func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
-	var ann = map[string]string{
+	ann := map[string]string{
 		"test.ann1": "ann1.val",
 		"test.ann2": "ann1.val",
 		"test.ann3": "ann1.val",
 	}
-	var lbl = map[string]string{
+
+	lbl := map[string]string{
 		"test.lbl1": "lbl1.val",
 		"test.lbl2": "lbl2.val",
 		"test.lbl3": "lbl3.val",
@@ -59,8 +74,34 @@ func Test_Render_Success(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
-	require.Equal(t, ann, deployment.Spec.Template.ObjectMeta.Annotations)
-	require.Equal(t, lbl, deployment.Spec.Template.ObjectMeta.Labels)
+	require.Equal(t, ann, deployment.Spec.Template.Annotations)
+	require.Equal(t, lbl, deployment.Spec.Template.Labels)
+}
+
+func Test_Render_NoExtension(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+	}
+
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+
+	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Nil(t, deployment.Spec.Template.Annotations)
+	require.Nil(t, deployment.Spec.Template.Labels)
 }
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {

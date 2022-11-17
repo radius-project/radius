@@ -73,9 +73,11 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 						if lbls, ok := r.getLabels(o); ok {
 							var lbl map[string]string
 							lbl = labels.Merge(lbls, e.KubernetesMetadata.Labels)
-							r.setLabelsAnnotations(o, lbl, true)
+							// r.setLabelsAnnotations(o, ann, true) -- real call
+							r.setLabels(o, lbl, true)
 						}
 					}
+
 				}
 			}
 		default:
@@ -109,12 +111,22 @@ func (r *Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {
 
 // setAnnotations sets the value of annotations/labels
 func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]string, isLabel bool) {
-	if un, ok := o.(*unstructured.Unstructured); ok {
+	// this is unable to be cast.. why why why?7
+	un, ok := o.(*unstructured.Unstructured)
+	if ok {
 		if isLabel {
 			un.SetLabels(keyvalue)
 		} else {
 			un.SetAnnotations(keyvalue)
 		}
+	}
+}
+
+// setAnnotations sets the value of annotations/labels
+// this works but we should try and make unstructured.Unstructured (setLabelsAnnotations above) work
+func (r *Renderer) setLabels(o runtime.Object, keyvalue map[string]string, isLabel bool) {
+	if dep, ok := o.(*appsv1.Deployment); ok {
+		dep.Spec.Template.Labels = keyvalue
 	}
 }
 
