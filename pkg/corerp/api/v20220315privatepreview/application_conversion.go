@@ -42,6 +42,7 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 	var extensions []datamodel.Extension
 	if src.Properties.Extensions != nil {
 		for _, e := range src.Properties.Extensions {
+			//TODO : Check whether namespace extension has already been defined
 			extensions = append(extensions, toAppExtensionDataModel(e))
 		}
 		converted.Properties.Extensions = extensions
@@ -92,6 +93,16 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationE
 		}
 
 		return converted.GetApplicationExtension()
+
+	case datamodel.KubernetesNamespaceOverride:
+		var namespace = getFromExtensionNamespace(e)
+		converted := ApplicationKubernetesNamespaceExtension{
+			Kind:      to.StringPtr(string(e.Kind)),
+			Namespace: &namespace,
+		}
+
+		return converted.GetApplicationExtension()
+
 	}
 
 	return nil
@@ -110,7 +121,28 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) datamodel.Ext
 			},
 		}
 		return converted
+
+	case *ApplicationKubernetesNamespaceExtension:
+		converted := datamodel.Extension{
+			Kind: datamodel.KubernetesNamespaceOverride,
+			KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
+				Namespace: *c.Namespace,
+			},
+		}
+		return converted
 	}
 
 	return datamodel.Extension{}
+}
+
+func getFromExtensionNamespace(e datamodel.Extension) string {
+	var namespace string
+
+	if e.KubernetesNamespaceOverride != nil {
+		if e.KubernetesNamespaceOverride.Namespace != "" {
+			namespace = e.KubernetesNamespaceOverride.Namespace
+		}
+	}
+
+	return namespace
 }

@@ -61,9 +61,9 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", ct.Properties.Environment)
 				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 				if tt.emptyExt {
-					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestKubernetesEmptyMetadataAppExtensions(t), ct.Properties.Extensions)
 				} else {
-					require.Equal(t, getTestKubernetesMetadataExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestKubernetesMetadataAppExtensions(t), ct.Properties.Extensions)
 				}
 			}
 		})
@@ -110,8 +110,9 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "Applications.Core/applications", r.Type)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", r.Properties.Environment)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
+				require.Equal(t, "kubernetesNamespaceOverride", *versioned.Properties.Extensions[1].GetExtension().Kind)
 				if !tt.emptyExt {
-					require.Equal(t, 1, len(versioned.Properties.Extensions))
+					require.Equal(t, 2, len(versioned.Properties.Extensions))
 				}
 			}
 		})
@@ -132,4 +133,26 @@ func TestApplicationConvertFromValidation(t *testing.T) {
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
+}
+
+func getTestKubernetesMetadataAppExtensions(t *testing.T) []datamodel.Extension {
+	extensions := append(getTestKubernetesMetadataExtensions(t), datamodel.Extension{
+		Kind: datamodel.KubernetesNamespaceOverride,
+		KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
+			Namespace: "app0-ns",
+		},
+	})
+
+	return extensions
+}
+
+func getTestKubernetesEmptyMetadataAppExtensions(t *testing.T) []datamodel.Extension {
+	extensions := append(getTestKubernetesEmptyMetadataExtensions(t), datamodel.Extension{
+		Kind: datamodel.KubernetesNamespaceOverride,
+		KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
+			Namespace: "",
+		},
+	})
+
+	return extensions
 }
