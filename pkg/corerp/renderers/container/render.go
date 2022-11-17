@@ -213,7 +213,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 			ports = append(ports, corev1.ContainerPort{
 				// Name generation logic has to match the code in HttpRoute
-				Name:          kubernetes.GetShortenedTargetPortName(applicationName + routeTypeSuffix + routeName),
+				Name:          kubernetes.GetShortenedTargetPortName(routeTypeSuffix + routeName),
 				ContainerPort: port.ContainerPort,
 				Protocol:      corev1.ProtocolTCP,
 			})
@@ -275,13 +275,17 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 	// This is the default service account name. If a volume is associated with federated identity, new service account
 	// will be created and set for container pods.
-	podSAName := defaultServiceAccountName
+	serviceAccountName := defaultServiceAccountName
 
 	// Add volumes
 	volumes := []corev1.Volume{}
 
-	// Make the default managed identity name.
-	defaultIdentityName := kubernetes.MakeResourceName(applicationName, resource.Name)
+	// Create Kubernetes resource name scoped in Kubernetes namespace
+	kubeIdentityName := kubernetes.NormalizeResourceName(resource.Name)
+
+	// Create Azure resource name for managed/federated identity-scoped in resource group specified by Environment resource.
+	// To avoid the naming conflicts, we add the application name prefix to resource name.
+	azIdentityName := azrenderer.MakeResourceName(applicationName, resource.Name, azrenderer.Separator)
 
 	for volumeName, volumeProperties := range cc.Container.Volumes {
 		// Based on the kind, create a persistent/ephemeral volume
@@ -336,7 +340,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return []outputresource.OutputResource{}, nil, err
 				}
 
-				spcName := kubernetes.MakeResourceName(defaultIdentityName, vol.Name)
+				spcName := kubernetes.NormalizeResourceName(vol.Name)
 				secretProvider, err := azrenderer.MakeKeyVaultSecretProviderClass(applicationName, spcName, vol, objectSpec, &options.Environment)
 				if err != nil {
 					return []outputresource.OutputResource{}, nil, err
@@ -389,22 +393,22 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	// In order to enable per-container identity, it creates user-assigned managed identity, federated identity, and service account.
 	if identityRequired {
 		// 1. Create Per-Container managed identity.
-		managedIdentity, err := azrenderer.MakeManagedIdentity(defaultIdentityName, options.Environment.CloudProviders)
+		managedIdentity, err := azrenderer.MakeManagedIdentity(azIdentityName, options.Environment.CloudProviders)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *managedIdentity)
 
 		// 2. Create Per-container federated identity resource.
-		fedIdentity, err := azrenderer.MakeFederatedIdentity(defaultIdentityName, &options.Environment)
+		serviceAccountName = kubeIdentityName
+		fedIdentity, err := azrenderer.MakeFederatedIdentity(serviceAccountName, &options.Environment)
 		if err != nil {
 			return []outputresource.OutputResource{}, nil, err
 		}
 		outputResources = append(outputResources, *fedIdentity)
 
 		// 3. Create Per-container service account.
-		podSAName = defaultIdentityName
-		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, defaultIdentityName, options.Environment.Namespace, resource)
+		saAccount := azrenderer.MakeFederatedIdentitySA(applicationName, serviceAccountName, options.Environment.Namespace, resource)
 		outputResources = append(outputResources, *saAccount)
 
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
@@ -456,7 +460,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			APIVersion: "apps/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
+			Name:      kubernetes.NormalizeResourceName(resource.Name),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},
@@ -470,7 +474,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
-					ServiceAccountName: podSAName,
+					ServiceAccountName: serviceAccountName,
 					Containers:         []corev1.Container{container},
 					Volumes:            volumes,
 				},
@@ -520,7 +524,7 @@ func getEnvVarsAndSecretData(resource *datamodel.ContainerResource, applicationN
 				source := corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: kubernetes.MakeResourceName(applicationName, resource.Name),
+							Name: kubernetes.NormalizeResourceName(resource.Name),
 						},
 						Key: name,
 					},
@@ -633,7 +637,7 @@ func (r Renderer) makeSecret(ctx context.Context, resource datamodel.ContainerRe
 			APIVersion: corev1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resource.Name),
+			Name:      kubernetes.NormalizeResourceName(resource.Name),
 			Namespace: options.Environment.Namespace,
 			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resource.Name, resource.ResourceTypeName()),
 		},

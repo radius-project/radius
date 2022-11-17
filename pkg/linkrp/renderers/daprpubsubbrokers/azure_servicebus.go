@@ -70,7 +70,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			Value: serviceBusNamespaceName,
 		},
 		PubSubNameKey: {
-			Value:             kubernetes.MakeResourceName(applicationName, resource.Name),
+			Value:             kubernetes.NormalizeResourceName(resource.Name),
 			LocalID:           outputresource.LocalIDAzureServiceBusNamespace,
 			PropertyReference: handlers.ResourceName,
 		},
@@ -78,7 +78,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			Value: topicName,
 		},
 		renderers.ComponentNameKey: {
-			Value: kubernetes.MakeResourceName(applicationName, resource.Name),
+			Value: kubernetes.NormalizeResourceName(resource.Name),
 		},
 	}
 

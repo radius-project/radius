@@ -102,7 +102,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, resourcekinds.DaprComponent, outputResource.ResourceType.Type)
 	expectedComputedValues := map[string]renderers.ComputedValueReference{
 		renderers.ComponentNameKey: {
-			Value: "test-app-test-secret-store",
+			Value: "test-secret-store",
 		},
 	}
 	require.Equal(t, expectedComputedValues, result.ComputedValues)
@@ -113,7 +113,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			"kind":       k8sKind,
 			"metadata": map[string]interface{}{
 				"namespace": "radius-test",
-				"name":      kubernetes.MakeResourceName(applicationName, resourceName),
+				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
 			"spec": map[string]interface{}{
@@ -266,5 +266,5 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 
 	rendererOutput, err := renderer.Render(ctx, &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
-	require.Equal(t, kubernetes.MakeResourceName("", "test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
+	require.Equal(t, kubernetes.NormalizeResourceName("test-secret-store"), rendererOutput.ComputedValues[renderers.ComponentNameKey].Value)
 }

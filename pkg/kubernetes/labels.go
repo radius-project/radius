@@ -119,21 +119,17 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 	}
 }
 
-func MakeResourceName(application string, resource string) string {
-	if application != "" && resource != "" {
-		return strings.ToLower(application + "-" + resource)
+// NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
+// All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
+// Therefore, this function will lowercase the name without allowed character validation.
+// If name is empty, it will panic.
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+func NormalizeResourceName(name string) string {
+	if name == "" {
+		// This should not happen.
+		panic("resource name is empty")
 	}
-
-	if application != "" && resource == "" {
-		return strings.ToLower(application)
-	}
-
-	if application == "" && resource != "" {
-		return strings.ToLower(resource)
-	}
-
-	// We should never have this case
-	return "resource-name"
+	return strings.ToLower(name)
 }
 
 // ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it

@@ -77,7 +77,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
+	err = checkResourceNameUniqueness(ctx, handler.k8s, kubernetes.NormalizeResourceName(properties[ResourceName]), properties[KubernetesNamespaceKey], DaprStateStoreResourceType)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -113,7 +113,7 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 			"kind":       properties[KubernetesKindKey],
 			"metadata": map[string]interface{}{
 				"namespace": properties[KubernetesNamespaceKey],
-				"name":      kubernetes.MakeResourceName(properties[ApplicationName], properties[ResourceName]),
+				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
 				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
 			},
 			"spec": map[string]interface{}{

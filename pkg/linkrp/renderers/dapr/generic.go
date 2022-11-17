@@ -54,7 +54,7 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 			"kind":       "Component",
 			"metadata": map[string]interface{}{
 				"namespace": namespace,
-				"name":      kubernetes.MakeResourceName(appName, resourceName),
+				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName, resourceType),
 			},
 			"spec": map[string]interface{}{

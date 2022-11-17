@@ -41,7 +41,7 @@ const (
 	envVarValue1          = "TEST_VALUE_1"
 	envVarName2           = "TEST_VAR_2"
 	envVarValue2          = "81"
-	secretName            = "test-app-test-container"
+	secretName            = "test-container"
 
 	tempVolName      = "TempVolume"
 	tempVolMountPath = "/tmpfs"
@@ -436,7 +436,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		routeID := makeResourceID(t, "Applications.Core/httpRoutes", "A")
 
 		expected := v1.ContainerPort{
-			Name:          kubernetes.GetShortenedTargetPortName(applicationName + "httpRoutes" + routeID.Name()),
+			Name:          kubernetes.GetShortenedTargetPortName("httpRoutes" + routeID.Name()),
 			ContainerPort: 5000,
 			Protocol:      v1.ProtocolTCP,
 		}
@@ -791,8 +791,8 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 			LocalID:  outputresource.LocalIDFederatedIdentity,
 			Deployed: false,
 			Resource: map[string]string{
-				"federatedidentityname":    "test-app-test-container",
-				"federatedidentitysubject": "system:serviceaccount:default:test-app-test-container",
+				"federatedidentityname":    "test-container",
+				"federatedidentitysubject": "system:serviceaccount:default:test-container",
 				"federatedidentityissuer":  "https://radiusoidc/00000000-0000-0000-0000-000000000000",
 			},
 			Dependencies: []outputresource.Dependency{
@@ -1082,10 +1082,16 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	}
 	resource := makeResource(t, properties)
 	resourceID, _ := resources.ParseResource(testResourceID)
+	testVolName := "test-volume-sp"
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
 			Resource: &datamodel.VolumeResource{
+				BaseResource: apiv1.BaseResource{
+					TrackedResource: apiv1.TrackedResource{
+						Name: testVolName,
+					},
+				},
 				Properties: datamodel.VolumeResourceProperties{
 					BasicResourceProperties: rp.BasicResourceProperties{
 						Application: applicationResourceID,
@@ -1115,7 +1121,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 					Data: resourcemodel.KubernetesIdentity{
 						Kind:       "SecretProviderClass",
 						APIVersion: "secrets-store.csi.x-k8s.io/v1alpha1",
-						Name:       "test-volume-sp",
+						Name:       testVolName,
 						Namespace:  "test-ns",
 					},
 				},
@@ -1142,7 +1148,7 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	require.Lenf(t, volumes, 1, "expected 1 volume, instead got %+v", len(volumes))
 	require.Equal(t, tempVolName, volumes[0].Name)
 	require.Equal(t, "secrets-store.csi.k8s.io", volumes[0].VolumeSource.CSI.Driver, "expected volumesource azurefile to be not nil")
-	require.Equal(t, "test-app-test-container", volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input test-volume-sp")
+	require.Equalf(t, testVolName, volumes[0].VolumeSource.CSI.VolumeAttributes["secretProviderClass"], "expected secret provider class to match the input %s", testVolName)
 	require.Equal(t, true, *volumes[0].VolumeSource.CSI.ReadOnly, "expected readonly attribute to be true")
 
 	// Verify volume mount spec
