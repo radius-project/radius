@@ -63,16 +63,14 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				if e.KubernetesMetadata != nil {
 					if e.KubernetesMetadata.Annotations != nil {
 						if annotations, ok := r.getAnnotations(o); ok {
-							var ann map[string]string
-							ann = labels.Merge(annotations, e.KubernetesMetadata.Annotations)
+							var ann map[string]string = labels.Merge(annotations, e.KubernetesMetadata.Annotations)
 							r.setLabelsAnnotations(o, ann, false)
 						}
 					}
 
 					if e.KubernetesMetadata.Labels != nil {
 						if lbls, ok := r.getLabels(o); ok {
-							var lbl map[string]string
-							lbl = labels.Merge(lbls, e.KubernetesMetadata.Labels)
+							var lbl map[string]string = labels.Merge(lbls, e.KubernetesMetadata.Labels)
 							// r.setLabelsAnnotations(o, ann, true) -- real call
 							r.setLabels(o, lbl, true)
 						}

@@ -99,12 +99,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 2. fetch the application resource from the DB to get the environment info
-	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID, resourceID.String())
+	appProperties, err := dp.getApplicationProperties(ctx, res.AppID, resourceID.String())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	env, err := dp.fetchEnvironment(ctx, environment, resourceID)
+	env, err := dp.fetchEnvironment(ctx, appProperties.BasicResourceProperties.Environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -611,34 +611,34 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	return rendererDependency, nil
 }
 
-// getEnvironmentFromApplication returns environment id linked to the application fetched from the db
-func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID, resourceID string) (string, error) {
+// getApplicationProperties returns application properties linked to the application fetched from the db
+func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, appID resources.ID, resourceID string) (*datamodel.ApplicationProperties, error) {
 	errMsg := "failed to fetch the application %q for the resource %q. Err: %w"
 
 	appIDType := appID.Type()
 	app := &datamodel.Application{}
 	if !strings.EqualFold(appIDType, app.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
 	}
 
 	sc, err := dp.sp.GetStorageClient(ctx, appIDType)
 	if err != nil {
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 
 	res, err := sc.Get(ctx, appID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
 		}
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 	err = res.As(app)
 	if err != nil {
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 
-	return app.Properties.Environment, nil
+	return &app.Properties, nil
 }
 
 // fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
