@@ -99,21 +99,30 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
+	includes := []contourv1.Include{}
+	sslPassThrough := false
+
 	if len(gateway.Properties.Routes) < 1 {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
 	if gateway.Properties.TLS != nil {
-		return MakeHTTPSGateway(options, gateway, resourceName, applicationName, hostname)
-	} else {
-		return MakeHTTPGateway(options, gateway, resourceName, applicationName, hostname)
+		if !gateway.Properties.TLS.SSLPassThrough {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only passthrough is supported for TLS currently")
+		} else {
+			sslPassThrough = true
+		}
 	}
 
-}
+	if sslPassThrough && len(gateway.Properties.Routes) > 1 {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with SSLPassThrough set to true")
+	}
 
-func MakeHTTPGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
-	includes := []contourv1.Include{}
-	for _, route := range gateway.Properties.Routes {
+	var route datamodel.GatewayRoute //route will hold the one sslpassthrough route, if sslpassthrough is true
+	for _, route = range gateway.Properties.Routes {
+		if sslPassThrough && route.Path != "" || route.ReplacePrefix != "" {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+		}
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return outputresource.OutputResource{}, err
@@ -121,14 +130,25 @@ func MakeHTTPGateway(options renderers.RenderOptions, gateway *datamodel.Gateway
 
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
-		includes = append(includes, contourv1.Include{
-			Name: routeResourceName,
-			Conditions: []contourv1.MatchCondition{
-				{
-					Prefix: route.Path,
+		if !sslPassThrough {
+			includes = append(includes, contourv1.Include{
+				Name: routeResourceName,
+				Conditions: []contourv1.MatchCondition{
+					{
+						Prefix: route.Path,
+					},
 				},
-			},
-		})
+			})
+		} else {
+			includes = append(includes, contourv1.Include{
+				Name: routeResourceName,
+				Conditions: []contourv1.MatchCondition{
+					{
+						Prefix: "/",
+					},
+				},
+			})
+		}
 	}
 
 	virtualHostname := hostname
@@ -140,6 +160,40 @@ func MakeHTTPGateway(options renderers.RenderOptions, gateway *datamodel.Gateway
 
 	virtualHost := &contourv1.VirtualHost{
 		Fqdn: virtualHostname,
+	}
+
+	var tcpProxy *contourv1.TCPProxy
+	if sslPassThrough {
+		virtualHost.TLS = &contourv1.TLS{
+			Passthrough: true,
+		}
+
+		dependencies := options.Dependencies
+		routeProperties := dependencies[route.Destination]
+		port := renderers.DefaultSecurePort
+
+		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
+		routePort, ok := routeProperties.ComputedValues["port"].(float64)
+		if ok {
+			port = int(routePort)
+		}
+
+		routeName, err := getRouteName(&route)
+		if err != nil {
+			return outputresource.OutputResource{}, err
+		}
+
+		// Create unique localID for dependency graph
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
+
+		tcpProxy = &contourv1.TCPProxy{
+			Services: []contourv1.Service{
+				{
+					Name: routeResourceName,
+					Port: int(port),
+				},
+			},
+		}
 	}
 
 	// The root HTTPProxy object acts as the Gateway
@@ -157,6 +211,9 @@ func MakeHTTPGateway(options renderers.RenderOptions, gateway *datamodel.Gateway
 			VirtualHost: virtualHost,
 			Includes:    includes,
 		},
+	}
+	if sslPassThrough {
+		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
