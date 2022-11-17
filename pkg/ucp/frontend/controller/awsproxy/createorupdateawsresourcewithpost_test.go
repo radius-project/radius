@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -27,11 +28,11 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSMemoryDBClusterResourceType)
+	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -126,37 +127,18 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	resourceTypeAWS := "AWS::MemoryDB::Cluster"
-	resourceId := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster/mycluster"
-	resourceType := "AWS.MemoryDB/Cluster"
-	resourceName := "mycluster"
+	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
+
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
+	}
 
 	testOptions := setupTest(t)
-	typeSchema := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
-			"/properties/ClusterName",
-		},
-		"readOnlyProperties": []interface{}{
-			"/properties/ClusterEndpoint/Address",
-			"/properties/ClusterEndpoint/Port",
-			"/properties/ARN",
-		},
-		"createOnlyProperties": []interface{}{
-			"/properties/ClusterName",
-			"/properties/Port",
-		},
-	}
-	serialized, err := json.Marshal(typeSchema)
-	require.NoError(t, err)
-	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(resourceTypeAWS),
-		Schema:   aws.String(string(serialized)),
-	}
-
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
 	getResponseBody := map[string]interface{}{
-		"ClusterName": resourceName,
+		"ClusterName": testResource.ResourceName,
 		"ClusterEndpoint": map[string]interface{}{
 			"Address": "test",
 			"Port":    6379,
@@ -177,7 +159,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
-			"ClusterName":         resourceName,
+			"ClusterName":         testResource.ResourceName,
 			"Port":                6379,
 			"NumReplicasPerShard": 1,
 		},
@@ -209,11 +191,11 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{
-		"id":   resourceId,
-		"name": resourceName,
-		"type": resourceType,
+		"id":   testResource.SingleResourcePath,
+		"name": testResource.ResourceName,
+		"type": testResource.ResourceType,
 		"properties": map[string]interface{}{
-			"ClusterName": resourceName,
+			"ClusterName": testResource.ResourceName,
 			"ClusterEndpoint": map[string]interface{}{
 				"Address": "test",
 				"Port":    float64(6379),
@@ -236,13 +218,13 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSRedShiftEndpointAuthorizationResourceType)
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -319,13 +301,13 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSRedShiftEndpointAuthorizationResourceType)
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)

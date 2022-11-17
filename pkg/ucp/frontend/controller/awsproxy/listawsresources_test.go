@@ -16,6 +16,7 @@ import (
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -28,8 +29,8 @@ func Test_ListAWSResources(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	firstTestResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
-	secondTestResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	firstTestResource := CreateKinesisStreamTestResource(uuid.NewString())
+	secondTestResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	firstTestResourceResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
@@ -102,7 +103,7 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(&cloudcontrol.ListResourcesOutput{}, nil)
@@ -130,7 +131,7 @@ func Test_ListAWSResource_UnknownError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, errors.New("something bad happened"))
@@ -155,7 +156,7 @@ func Test_ListAWSResource_SmithyError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().ListResources(gomock.Any(), gomock.Any()).Return(nil, &smithy.OperationError{

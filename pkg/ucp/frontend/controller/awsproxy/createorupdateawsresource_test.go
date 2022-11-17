@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -27,7 +28,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
@@ -103,13 +104,11 @@ func Test_UpdateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSMemoryDBClusterResourceType)
+	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
-	serialized, err := json.Marshal(testResource.TypeSchema)
-	require.NoError(t, err)
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(string(serialized)),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	getResponseBody := map[string]interface{}{
@@ -202,11 +201,11 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	getResponseBody := map[string]interface{}{

@@ -17,6 +17,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -27,11 +28,11 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -99,11 +100,11 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -153,13 +154,13 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSRedShiftEndpointAuthorizationResourceType)
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)

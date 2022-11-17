@@ -170,7 +170,7 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 func ParsePropertyName(propertyIdentifier string) (string, error) {
 	prefix := "/properties/"
 	if strings.HasPrefix(propertyIdentifier, prefix) {
-		return strings.Replace(propertyIdentifier, prefix, "", 1), nil
+		return strings.TrimPrefix(propertyIdentifier, prefix), nil
 	}
 	return "", fmt.Errorf("property identifier %s is not in the format /properties/<propertyName>", propertyIdentifier)
 }

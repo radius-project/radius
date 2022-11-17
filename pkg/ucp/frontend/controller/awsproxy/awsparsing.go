@@ -70,15 +70,15 @@ func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]stri
 		return nil, fmt.Errorf("primaryIdentifier is not an array")
 	}
 
-	primaryIdentifiersString := make([]string, len(primaryIdentifiers))
-	for i, primaryIdentifier := range primaryIdentifiers {
-		primaryIdentifiersString[i] = primaryIdentifier.(string)
+	var primaryIdentifiersString []string
+	for _, primaryIdentifier := range primaryIdentifiers {
+		primaryIdentifiersString = append(primaryIdentifiersString, primaryIdentifier.(string))
 	}
 
 	return primaryIdentifiersString, nil
 }
 
-func getResourceIDWithMultiIdentifiers(ctx context.Context, properties map[string]interface{}, schema string) (string, error) {
+func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]interface{}, schema string) (string, error) {
 	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
 	if err != nil {
 		return "", err

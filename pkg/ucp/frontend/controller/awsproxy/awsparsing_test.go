@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestResourceIDWithMultiIdentifiers(t *testing.T) {
+func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 	ctx := context.Background()
 
 	schemaObject := map[string]interface{}{
@@ -34,12 +34,12 @@ func TestResourceIDWithMultiIdentifiers(t *testing.T) {
 		"DeviceId":        "device-id",
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, properties, schema)
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
 	require.NoError(t, err)
 	require.Equal(t, "global-network-id|device-id", resourceID)
 }
 
-func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
+func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
 	ctx := context.Background()
 
 	schemaObject := map[string]interface{}{
@@ -58,7 +58,7 @@ func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T)
 		"GlobalNetworkId": "global-network-id",
 	}
 
-	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, properties, schema)
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
 	require.Equal(t, resourceID, "")
 	require.Error(t, err)
 	require.EqualError(t, err, "mandatory property DeviceId is missing")

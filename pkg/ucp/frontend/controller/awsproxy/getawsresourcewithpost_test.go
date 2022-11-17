@@ -21,6 +21,7 @@ import (
 	"github.com/aws/smithy-go"
 	smithyhttp "github.com/aws/smithy-go/transport/http"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	"gotest.tools/assert"
 
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -35,11 +36,11 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -100,11 +101,11 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -144,11 +145,11 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -185,11 +186,11 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSKinesisStreamResourceType)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)
@@ -239,13 +240,13 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	testResource := CreateAWSTestResource(AWSRedShiftEndpointAuthorizationResourceType)
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
-		Schema:   aws.String(testResource.SerializedTypeSchema),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	testOptions := setupTest(t)

@@ -63,7 +63,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return awserror.HandleAWSError(err)
 	}
 
-	awsResourceIdentifier, err := getResourceIDWithMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
+	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
 	if err != nil {
 		e := v1.ErrorResponse{
 			Error: v1.ErrorDetails{
