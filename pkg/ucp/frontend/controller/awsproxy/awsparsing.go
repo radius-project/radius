@@ -60,7 +60,15 @@ func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]stri
 		return nil, err
 	}
 
-	primaryIdentifiers := schemaObject["primaryIdentifier"].([]interface{})
+	primaryIdentifiersObject, exists := schemaObject["primaryIdentifier"]
+	if !exists {
+		return nil, fmt.Errorf("primaryIdentifier not found in schema")
+	}
+
+	primaryIdentifiers, ok := primaryIdentifiersObject.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("primaryIdentifier is not an array")
+	}
 
 	primaryIdentifiersString := make([]string, len(primaryIdentifiers))
 	for i, primaryIdentifier := range primaryIdentifiers {

@@ -92,3 +92,35 @@ func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"/properties/GlobalNetworkId", "/properties/DeviceId"}, primaryIdentifiers)
 }
+
+func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) {
+	ctx := context.Background()
+
+	schemaObject := map[string]interface{}{}
+
+	schemaBytes, err := json.Marshal(schemaObject)
+	require.NoError(t, err)
+
+	schema := string(schemaBytes)
+
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	require.Nil(t, primaryIdentifiers)
+	require.EqualError(t, err, "primaryIdentifier not found in schema")
+}
+
+func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testing.T) {
+	ctx := context.Background()
+
+	schemaObject := map[string]interface{}{
+		"primaryIdentifier": "/properties/GlobalNetworkId",
+	}
+
+	schemaBytes, err := json.Marshal(schemaObject)
+	require.NoError(t, err)
+
+	schema := string(schemaBytes)
+
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	require.Nil(t, primaryIdentifiers)
+	require.EqualError(t, err, "primaryIdentifier is not an array")
+}
