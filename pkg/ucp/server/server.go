@@ -17,6 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -27,7 +29,9 @@ const (
 type Options struct {
 	Port                   string
 	DBClient               store.StorageClient
+	SecretClient           secret.Client
 	StorageProviderOptions dataprovider.StorageProviderOptions
+	SecretProviderOptions  provider.SecretProviderOptions
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane
@@ -54,12 +58,14 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 	storeOpts := opts.Config.StorageProvider
 	planes := opts.Config.Planes
+	secretsOpts := opts.Config.SecretProvider
 
 	return Options{
 		Port:                   port,
 		TLSCertDir:             tlsCertDir,
 		BasePath:               basePath,
 		StorageProviderOptions: storeOpts,
+		SecretProviderOptions:  secretsOpts,
 		InitialPlanes:          planes,
 	}, nil
 }
@@ -74,6 +80,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 			TLSCertDir:             options.TLSCertDir,
 			BasePath:               options.BasePath,
 			StorageProviderOptions: options.StorageProviderOptions,
+			SecretProviderOptions: options.SecretProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
 		}),
 	}
