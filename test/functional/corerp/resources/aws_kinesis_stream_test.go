@@ -34,8 +34,9 @@ func Test_AWS_KinesisStream(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.KinesisResourceType,
+						Name:       name,
+						Type:       validation.KinesisResourceType,
+						Identifier: name,
 					},
 				},
 			},
@@ -60,8 +61,9 @@ func Test_KinesisStreamExisting(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.KinesisResourceType,
+						Name:       name,
+						Type:       validation.KinesisResourceType,
+						Identifier: name,
 					},
 				},
 			},
