@@ -43,7 +43,10 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 	if src.Properties.Extensions != nil {
 		for _, e := range src.Properties.Extensions {
 			//TODO : Check whether namespace extension has already been defined
-			extensions = append(extensions, toAppExtensionDataModel(e))
+			ext := toAppExtensionDataModel(e)
+			if ext != nil {
+				extensions = append(extensions, *ext)
+			}
 		}
 		converted.Properties.Extensions = extensions
 	}
@@ -109,30 +112,30 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationE
 }
 
 // toAppExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toAppExtensionDataModel(e ApplicationExtensionClassification) datamodel.Extension {
+func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Extension {
 	switch c := e.(type) {
 	case *ApplicationKubernetesMetadataExtension:
-
-		converted := datamodel.Extension{
+		return &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return converted
 
 	case *ApplicationKubernetesNamespaceExtension:
-		converted := datamodel.Extension{
+		if c.Namespace == nil || *c.Namespace == "" {
+			return nil
+		}
+		return &datamodel.Extension{
 			Kind: datamodel.KubernetesNamespaceOverride,
 			KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
 				Namespace: *c.Namespace,
 			},
 		}
-		return converted
 	}
 
-	return datamodel.Extension{}
+	return nil
 }
 
 func getFromExtensionNamespace(e datamodel.Extension) string {

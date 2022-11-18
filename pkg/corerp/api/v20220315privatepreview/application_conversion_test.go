@@ -61,7 +61,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", ct.Properties.Environment)
 				require.Equal(t, "2022-03-15-privatepreview", ct.InternalMetadata.UpdatedAPIVersion)
 				if tt.emptyExt {
-					require.Equal(t, getTestKubernetesEmptyMetadataAppExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
 				} else {
 					require.Equal(t, getTestKubernetesMetadataAppExtensions(t), ct.Properties.Extensions)
 				}
@@ -140,17 +140,6 @@ func getTestKubernetesMetadataAppExtensions(t *testing.T) []datamodel.Extension 
 		Kind: datamodel.KubernetesNamespaceOverride,
 		KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
 			Namespace: "app0-ns",
-		},
-	})
-
-	return extensions
-}
-
-func getTestKubernetesEmptyMetadataAppExtensions(t *testing.T) []datamodel.Extension {
-	extensions := append(getTestKubernetesEmptyMetadataExtensions(t), datamodel.Extension{
-		Kind: datamodel.KubernetesNamespaceOverride,
-		KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
-			Namespace: "",
 		},
 	})
 

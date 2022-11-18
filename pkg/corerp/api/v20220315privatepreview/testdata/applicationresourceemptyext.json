@@ -9,8 +9,7 @@
           "kind": "kubernetesMetadata"
         },
         {
-          "kind": "kubernetesNamespaceOverride",
-          "namespace": ""
+          "kind": "kubernetesNamespaceOverride"
         }
       ]
     }
