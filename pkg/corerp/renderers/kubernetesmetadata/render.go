@@ -58,32 +58,30 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				}
 
 				// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
-				if e.KubernetesMetadata != nil {
-					if e.KubernetesMetadata.Annotations != nil {
-						annotations, err := getAnnotations(o)
-						if err != nil {
-							return renderers.RendererOutput{}, err
-						}
-						var ann map[string]string = labels.Merge(annotations, e.KubernetesMetadata.Annotations)
-						errann := setAnnotations(o, ann)
-						if errann != nil {
-							return renderers.RendererOutput{}, err
-						}
+				if e.KubernetesMetadata != nil && e.KubernetesMetadata.Annotations != nil {
+					annotations, err := getAnnotations(o)
+					if err != nil {
+						return renderers.RendererOutput{}, err
 					}
-
-					if e.KubernetesMetadata.Labels != nil {
-						lbls, err := getLabels(o)
-						if err != nil {
-							return renderers.RendererOutput{}, err
-						}
-						var lbl map[string]string = labels.Merge(lbls, e.KubernetesMetadata.Labels)
-						errlbl := setLabels(o, lbl)
-						if errlbl != nil {
-							return renderers.RendererOutput{}, err
-						}
+					annMap := labels.Merge(annotations, e.KubernetesMetadata.Annotations)
+					err = setAnnotations(o, annMap)
+					if err != nil {
+						return renderers.RendererOutput{}, err
 					}
-
 				}
+
+				if e.KubernetesMetadata != nil && e.KubernetesMetadata.Labels != nil {
+					lbls, err := getLabels(o)
+					if err != nil {
+						return renderers.RendererOutput{}, err
+					}
+					lblMap := labels.Merge(lbls, e.KubernetesMetadata.Labels)
+					err = setLabels(o, lblMap)
+					if err != nil {
+						return renderers.RendererOutput{}, err
+					}
+				}
+
 			}
 		default:
 			continue
@@ -111,7 +109,7 @@ func getAnnotations(o runtime.Object) (map[string]string, error) {
 func getLabels(o runtime.Object) (map[string]string, error) {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return nil, errors.New("cannot cast runtime.Object to v1/Deployment")
+		return nil, errors.New("getcannot cast runtime.Object to v1/Deployment")
 	}
 
 	var retlbl map[string]string
@@ -154,7 +152,7 @@ func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]st
 func setLabels(o runtime.Object, lbl map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return errors.New("cannot cast runtime.Object to v1/Deployment")
+		return errors.New("setting labels-cannot cast runtime.Object to v1/Deployment")
 	}
 
 	dep.Spec.Template.Labels = lbl
@@ -165,7 +163,7 @@ func setLabels(o runtime.Object, lbl map[string]string) error {
 func setAnnotations(o runtime.Object, ann map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return errors.New("cannot cast runtime.Object to v1/Deployment")
+		return errors.New("setting annotations-cannot cast runtime.Object to v1/Deployment")
 	}
 
 	dep.Spec.Template.Annotations = ann
