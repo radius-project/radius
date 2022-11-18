@@ -125,7 +125,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	appOptions, err := dp.getAppOptions(ctx, env)
+	appOptions, err := dp.getAppOptions(ctx, appProperties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
