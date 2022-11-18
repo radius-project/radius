@@ -95,9 +95,9 @@ func Test_Render_WithPort(t *testing.T) {
 func Test_Render_WithDefaultPort(t *testing.T) {
 	r := &Renderer{}
 
-	defaultPort := renderers.DefaultPort
+	defaultPort := int32(renderers.DefaultPort)
 	dependencies := map[string]renderers.RendererDependency{}
-	properties := makeHTTPRouteProperties(int32(defaultPort))
+	properties := makeHTTPRouteProperties(defaultPort)
 	resource := makeResource(t, &properties)
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: renderers.EnvironmentOptions{}})
