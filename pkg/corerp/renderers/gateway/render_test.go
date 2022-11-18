@@ -396,6 +396,80 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	validateGateway(t, output.Resources, appName, expectedIncludes)
 }
 
+func Test_Render_Fails_SSLPassThroughWithRoutePath(t *testing.T) {
+	var routes []datamodel.GatewayRoute
+	routeName := "routename"
+	destination := makeRouteResourceID(routeName)
+	path := "/"
+	route := datamodel.GatewayRoute{
+		Destination: destination,
+		Path:        path,
+	}
+	routes = append(routes, route)
+	r := &Renderer{}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		TLS: &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true,
+		},
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
+}
+
+func Test_Render_Fails_SSLPassThroughWithMultipleRoutes(t *testing.T) {
+	var routes []datamodel.GatewayRoute
+	routeName1 := "routename1"
+	destination1 := makeRouteResourceID(routeName1)
+	path := "/"
+	route1 := datamodel.GatewayRoute{
+		Destination: destination1,
+		Path:        path,
+	}
+	routeName2 := "routename2"
+	destination2 := makeRouteResourceID(routeName2)
+	route2 := datamodel.GatewayRoute{
+		Destination: destination2,
+		Path:        path,
+	}
+	routes = append(routes, route1)
+	routes = append(routes, route2)
+
+	r := &Renderer{}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		TLS: &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true,
+		},
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support multiple routes with SSLPassThrough set to true")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
+}
+
 func Test_Render_Fails_WithNoRoute(t *testing.T) {
 	r := &Renderer{}
 
