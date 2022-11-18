@@ -26,8 +26,8 @@
         ],
        
         "tls": {
-            "sslPassThrough": false
-        }
+            "sslPassThrough": true
+        },
         "url": "http://myprefix.myapp.mydomain.com"
     }
 }
