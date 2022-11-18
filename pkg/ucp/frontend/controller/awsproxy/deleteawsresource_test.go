@@ -15,6 +15,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -24,6 +25,8 @@ import (
 func Test_DeleteAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,
@@ -36,7 +39,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceOutput{
 			ResourceDescription: &types.ResourceDescription{
-				Identifier: aws.String(testAWSResourceName),
+				Identifier: aws.String(testResource.ResourceName),
 				Properties: aws.String(string(getResponseBodyBytes)),
 			},
 		}, nil)
@@ -55,7 +58,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodDelete, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -78,6 +81,8 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		nil, &types.ResourceNotFoundException{
@@ -90,13 +95,13 @@ func Test_DeleteAWSResource_ResourceDoesNotExist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodDelete, testAWSSingleResourcePath, nil)
+	request, err := http.NewRequest(http.MethodDelete, testResource.SingleResourcePath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	req := httptest.NewRequest("GET", testAWSSingleResourcePath, nil)
+	req := httptest.NewRequest("GET", testResource.SingleResourcePath, nil)
 	w := httptest.NewRecorder()
 	err = actualResponse.Apply(ctx, w, req)
 	require.NoError(t, err)
