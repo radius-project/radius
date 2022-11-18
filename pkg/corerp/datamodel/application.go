@@ -31,6 +31,11 @@ type ApplicationProperties struct {
 	Extensions []Extension `json:"extensions,omitempty"`
 }
 
+// ApplicationKubernetesNamespaceExtension - Specifies user defined Kubernetes application namespace
+type ApplicationKubernetesNamespaceExtension struct {
+	BaseK8sNSOverrideExtension
+}
+
 // ApplicationKubernetesMetadataExtension - Specifies user defined labels and annotations
 type ApplicationKubernetesMetadataExtension struct {
 	BaseKubernetesMetadataExtension

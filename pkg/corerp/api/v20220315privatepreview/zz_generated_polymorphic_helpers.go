@@ -23,6 +23,8 @@ func unmarshalApplicationExtensionClassification(rawMsg json.RawMessage) (Applic
 	switch m["kind"] {
 	case "kubernetesMetadata":
 		b = &ApplicationKubernetesMetadataExtension{}
+	case "kubernetesNamespaceOverride":
+		b = &ApplicationKubernetesNamespaceExtension{}
 	default:
 		b = &ApplicationExtension{}
 	}
