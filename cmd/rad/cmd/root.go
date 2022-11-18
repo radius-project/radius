@@ -22,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
 	"github.com/project-radius/radius/pkg/cli/setup"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -125,6 +126,7 @@ func initSubCommands() {
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Deploy:            &deploy.Impl{},
+		Logstream:         &logstream.Impl{},
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
