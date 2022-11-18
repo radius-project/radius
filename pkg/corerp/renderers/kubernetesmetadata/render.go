@@ -97,7 +97,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 func getAnnotations(o runtime.Object) (map[string]string, error) {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return nil, errors.New("cannot cast runtime.Object to Deployment")
+		return nil, errors.New("cannot cast runtime.Object to v1/Deployment")
 	}
 
 	var retann map[string]string
@@ -111,7 +111,7 @@ func getAnnotations(o runtime.Object) (map[string]string, error) {
 func getLabels(o runtime.Object) (map[string]string, error) {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return nil, errors.New("cannot cast runtime.Object to Deployment")
+		return nil, errors.New("cannot cast runtime.Object to v1/Deployment")
 	}
 
 	var retlbl map[string]string
@@ -154,7 +154,7 @@ func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]st
 func setLabels(o runtime.Object, lbl map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return errors.New("cannot cast runtime.Object to Deployment")
+		return errors.New("cannot cast runtime.Object to v1/Deployment")
 	}
 
 	dep.Spec.Template.Labels = lbl
@@ -165,7 +165,7 @@ func setLabels(o runtime.Object, lbl map[string]string) error {
 func setAnnotations(o runtime.Object, ann map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return errors.New("cannot cast runtime.Object to Deployment")
+		return errors.New("cannot cast runtime.Object to v1/Deployment")
 	}
 
 	dep.Spec.Template.Annotations = ann
