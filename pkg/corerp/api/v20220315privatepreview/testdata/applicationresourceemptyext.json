@@ -7,9 +7,6 @@
       "extensions": [
         {
           "kind": "kubernetesMetadata"
-        },
-        {
-          "kind": "kubernetesNamespaceOverride"
         }
       ]
     }

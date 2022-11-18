@@ -112,6 +112,7 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, "kubernetesNamespaceOverride", *versioned.Properties.Extensions[1].GetExtension().Kind)
 				if !tt.emptyExt {
+					require.Equal(t, "kubernetesNamespaceOverride", *versioned.Properties.Extensions[1].GetExtension().Kind)
 					require.Equal(t, 2, len(versioned.Properties.Extensions))
 				}
 			}
