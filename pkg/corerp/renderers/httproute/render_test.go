@@ -130,7 +130,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 
 	expectedPort := corev1.ServicePort{
 		Name:       resourceName,
-		Port:       int32(defaultPort),
+		Port:       defaultPort,
 		TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(ResourceTypeSuffix + resource.Name)),
 		Protocol:   "TCP",
 	}
