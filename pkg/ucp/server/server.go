@@ -58,14 +58,14 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 
 	storeOpts := opts.Config.StorageProvider
 	planes := opts.Config.Planes
-	secretsOpts := opts.Config.SecretProvider
+	secretOpts := opts.Config.SecretProvider
 
 	return Options{
 		Port:                   port,
 		TLSCertDir:             tlsCertDir,
 		BasePath:               basePath,
 		StorageProviderOptions: storeOpts,
-		SecretProviderOptions:  secretsOpts,
+		SecretProviderOptions:  secretOpts,
 		InitialPlanes:          planes,
 	}, nil
 }

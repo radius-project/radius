@@ -18,7 +18,7 @@ type Client interface {
 	// Returns ErrInvalid in case of invalid input.
 	Save(ctx context.Context, name string, value []byte) error
 
-	// Delete deletes secret of name.
+	// Delete deletes the secret with the given name.
 	Delete(ctx context.Context, name string) error
 
 	// Get gets secret name if present else returns an error.
