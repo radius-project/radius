@@ -9,7 +9,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcekinds"
-	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -30,23 +29,10 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource conv.DataModelInte
 }
 
 func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	// Return a deployment so the extension can modify it
+	// Return a deployment so the manualscale extension can modify it
 	deployment := appsv1.Deployment{}
-
-	deploymentResource := outputresource.OutputResource{
-		Resource: &deployment,
-		ResourceType: resourcemodel.ResourceType{
-			Type:     resourcekinds.Deployment,
-			Provider: resourcemodel.ProviderKubernetes,
-		},
-		LocalID: outputresource.LocalIDDeployment,
-	}
-
-	output := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{deploymentResource},
-	}
-
-	return output, nil
+	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
+	return renderers.RendererOutput{Resources: resources}, nil
 }
 
 func Test_Render_Success(t *testing.T) {
@@ -56,7 +42,6 @@ func Test_Render_Success(t *testing.T) {
 		"test.ann2": "ann1.val",
 		"test.ann3": "ann1.val",
 	}
-
 	lbl := map[string]string{
 		"test.lbl1": "lbl1.val",
 		"test.lbl2": "lbl2.val",

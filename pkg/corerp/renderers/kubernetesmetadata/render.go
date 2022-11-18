@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -59,20 +58,28 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				}
 
 				// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
-				//
 				if e.KubernetesMetadata != nil {
 					if e.KubernetesMetadata.Annotations != nil {
-						if annotations, ok := r.getAnnotations(o); ok {
-							var ann map[string]string = labels.Merge(annotations, e.KubernetesMetadata.Annotations)
-							r.setLabelsAnnotations(o, ann, false)
+						annotations, err := getAnnotations(o)
+						if err != nil {
+							return renderers.RendererOutput{}, err
+						}
+						var ann map[string]string = labels.Merge(annotations, e.KubernetesMetadata.Annotations)
+						errann := setAnnotations(o, ann)
+						if errann != nil {
+							return renderers.RendererOutput{}, err
 						}
 					}
 
 					if e.KubernetesMetadata.Labels != nil {
-						if lbls, ok := r.getLabels(o); ok {
-							var lbl map[string]string = labels.Merge(lbls, e.KubernetesMetadata.Labels)
-							// r.setLabelsAnnotations(o, ann, true) -- real call
-							r.setLabels(o, lbl, true)
+						lbls, err := getLabels(o)
+						if err != nil {
+							return renderers.RendererOutput{}, err
+						}
+						var lbl map[string]string = labels.Merge(lbls, e.KubernetesMetadata.Labels)
+						errlbl := setLabels(o, lbl)
+						if errlbl != nil {
+							return renderers.RendererOutput{}, err
 						}
 					}
 
@@ -87,63 +94,80 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	return output, nil
 }
 
-func (r *Renderer) getAnnotations(o runtime.Object) (map[string]string, bool) {
-	if dep, ok := o.(*appsv1.Deployment); ok {
-		if dep.Spec.Template.Annotations == nil {
-			dep.Spec.Template.Annotations = map[string]string{}
-		}
-
-		return dep.Spec.Template.Annotations, true
+func getAnnotations(o runtime.Object) (map[string]string, error) {
+	dep, ok := o.(*appsv1.Deployment)
+	if !ok {
+		return nil, errors.New("cannot cast runtime.Object to Deployment")
 	}
 
-	if un, ok := o.(*unstructured.Unstructured); ok {
-		if a := un.GetAnnotations(); a != nil {
-			return a, true
-		}
-
-		return map[string]string{}, true
+	var retann map[string]string
+	if dep.Spec.Template.Annotations != nil {
+		retann = dep.Spec.Template.Annotations
 	}
 
-	return nil, false
+	return retann, nil
+}
+
+func getLabels(o runtime.Object) (map[string]string, error) {
+	dep, ok := o.(*appsv1.Deployment)
+	if !ok {
+		return nil, errors.New("cannot cast runtime.Object to Deployment")
+	}
+
+	var retlbl map[string]string
+	if dep.Spec.Template.Labels != nil {
+		retlbl = dep.Spec.Template.Labels
+	}
+
+	return retlbl, nil
+}
+
+/* Discuss with Justin
+func convertToUnstructured(ro runtime.Object) (unstructured.Unstructured, error) {
+	c, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ro)
+	if err != nil {
+		return unstructured.Unstructured{}, fmt.Errorf("could not convert object %v to unstructured: %w", ro.GetObjectKind(), err)
+	}
+
+	return unstructured.Unstructured{Object: c}, nil
 }
 
 // setAnnotations sets the value of annotations/labels
-func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]string, isLabel bool) {
-	// this is unable to be cast.. why why why?7
-	un, ok := o.(*unstructured.Unstructured)
-	if ok {
-		if isLabel {
-			un.SetLabels(keyvalue)
-		} else {
-			un.SetAnnotations(keyvalue)
-		}
+func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]string, isLabel bool) (*unstructured.Unstructured, error) {
+	un, err := convertToUnstructured(o)
+	if err != nil {
+		return nil, err
 	}
+
+	if isLabel {
+		un.SetLabels(keyvalue)
+	} else {
+		un.SetAnnotations(keyvalue)
+	}
+
+	// After returning &un, how does one cast it back to the runtime/relevant object
+	return &un, nil
+}
+*/
+
+// setLabels sets the value of labels
+func setLabels(o runtime.Object, lbl map[string]string) error {
+	dep, ok := o.(*appsv1.Deployment)
+	if !ok {
+		return errors.New("cannot cast runtime.Object to Deployment")
+	}
+
+	dep.Spec.Template.Labels = lbl
+	return nil
 }
 
 // setAnnotations sets the value of annotations/labels
-// this works but we should try and make unstructured.Unstructured (setLabelsAnnotations above) work
-func (r *Renderer) setLabels(o runtime.Object, keyvalue map[string]string, isLabel bool) {
-	if dep, ok := o.(*appsv1.Deployment); ok {
-		dep.Spec.Template.Labels = keyvalue
-	}
-}
-
-func (r *Renderer) getLabels(o runtime.Object) (map[string]string, bool) {
-	if dep, ok := o.(*appsv1.Deployment); ok {
-		if dep.Spec.Template.Labels == nil {
-			dep.Spec.Template.Labels = map[string]string{}
-		}
-
-		return dep.Spec.Template.Labels, true
+func setAnnotations(o runtime.Object, ann map[string]string) error {
+	dep, ok := o.(*appsv1.Deployment)
+	if !ok {
+		return errors.New("cannot cast runtime.Object to Deployment")
 	}
 
-	if un, ok := o.(*unstructured.Unstructured); ok {
-		if a := un.GetLabels(); a != nil {
-			return a, true
-		}
-
-		return map[string]string{}, true
-	}
-
-	return nil, false
+	dep.Spec.Template.Annotations = ann
+	return nil
 }
