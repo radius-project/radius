@@ -17,7 +17,10 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
+	env_delete "github.com/project-radius/radius/pkg/cli/cmd/env/delete"
+	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
+	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/setup"
 
@@ -165,6 +168,15 @@ func initSubCommands() {
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	envCmd.AddCommand(envCreateCmd)
+
+	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	envCmd.AddCommand(envDeleteCmd)
+
+	envListCmd, _ := env_list.NewCommand(framework)
+	envCmd.AddCommand(envListCmd)
+
+	envShowCmd, _ := env_show.NewCommand(framework)
+	envCmd.AddCommand(envShowCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)
