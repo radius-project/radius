@@ -203,12 +203,12 @@ stages:
         kubectl create secret generic mysecret --from-literal=mysecret=mysecret
       condition: always()
       continueOnError: 'true'
-    - displayName: run sample tests
-      script: |
+    - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/corerptest
         make test-functional-samples
+      displayName: run sample tests
       env:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
