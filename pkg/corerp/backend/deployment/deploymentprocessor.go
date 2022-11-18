@@ -125,7 +125,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: rendererDependencies, Environment: envOptions})
+	appOptions, err := dp.getAppOptions(ctx, env)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: rendererDependencies, Environment: envOptions, Application: appOptions})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -375,6 +380,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
 	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+	envmetadataext := datamodel.EnvironmentKubernetesMetadataExtension{}
 
 	envOpts := renderers.EnvironmentOptions{
 		CloudProviders: &env.Properties.Providers,
@@ -398,6 +404,18 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
 		logger.V(radlogger.Debug).Info("environment identity is not specified.")
+	}
+
+	// Get Environment KubernetesMetadata Info
+	envexts := env.Properties.Extensions
+	for _, ext := range envexts {
+		switch ext.Kind {
+		case datamodel.KubernetesMetadata:
+			if ext.KubernetesMetadata != nil {
+				envmetadataext.BaseKubernetesMetadataExtension = *ext.KubernetesMetadata
+				envOpts.KubernetesMetadata = envmetadataext
+			}
+		}
 	}
 
 	if publicEndpointOverride != "" {
@@ -447,6 +465,26 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	}
 
 	return envOpts, nil
+}
+
+// getAppOptions: Populates and Returns ApplicationOptions.
+func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *datamodel.ApplicationProperties) (renderers.ApplicationOptions, error) {
+	appOpts := renderers.ApplicationOptions{}
+	appmetadataext := datamodel.ApplicationKubernetesMetadataExtension{}
+
+	// Get Environment KubernetesMetadata Info
+	appexts := appProp.Extensions
+	for _, ext := range appexts {
+		switch ext.Kind {
+		case datamodel.KubernetesMetadata:
+			if ext.KubernetesMetadata != nil {
+				appmetadataext.BaseKubernetesMetadataExtension = *ext.KubernetesMetadata
+				appOpts.KubernetesMetadata = appmetadataext
+			}
+		}
+	}
+
+	return appOpts, nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
