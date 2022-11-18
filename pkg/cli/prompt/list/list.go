@@ -84,10 +84,9 @@ func NewListModel(choices []string, promptMsg string) ListModel {
 
 // ListMode represents the bubble tea model to use for user input
 type ListModel struct {
-	List        list.Model
-	Choice      string
-	ChoiceIndex int
-	Quitting    bool
+	List     list.Model
+	Choice   string
+	Quitting bool
 }
 
 // Init used for creating an inital tea command if needed.
@@ -109,7 +108,6 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			i, ok := m.List.SelectedItem().(item)
 			if ok {
 				m.Choice = string(i)
-				m.ChoiceIndex = m.List.Index()
 			}
 			return m, tea.Quit
 		}

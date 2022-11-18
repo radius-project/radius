@@ -17,7 +17,7 @@ func (e *ErrUnsupportedModel) Error() string {
 	return "invalid model for prompt operation"
 }
 
-// Is checks for the error type is ErrUnsupportedModel.
+// Is checks if the error provided is of type ErrUnsupportedModel.
 func (e *ErrUnsupportedModel) Is(target error) bool {
 	t, ok := target.(*ErrUnsupportedModel)
 	if !ok {

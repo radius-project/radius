@@ -34,13 +34,12 @@ func (m *MockBubbleTeaPrompter) EXPECT() *MockBubbleTeaPrompterMockRecorder {
 }
 
 // GetListInput mocks base method.
-func (m *MockBubbleTeaPrompter) GetListInput(arg0 []string, arg1 string) (int, string, error) {
+func (m *MockBubbleTeaPrompter) GetListInput(arg0 []string, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetListInput", arg0, arg1)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(string)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // GetListInput indicates an expected call of GetListInput.

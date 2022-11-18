@@ -242,7 +242,7 @@ type BubbleTeaPrompter interface {
 	GetTextInput(promptMsg string) (string, error)
 
 	// GetListInput prompts user to select from a list
-	GetListInput(items []string, promptMsg string) (int, string, error)
+	GetListInput(items []string, promptMsg string) (string, error)
 }
 
 // BubbleTeaPrompterImpl implements BubbleTeaPrompter
@@ -266,17 +266,17 @@ func (i *BubbleTeaPrompterImpl) GetTextInput(promptMsg string) (string, error) {
 }
 
 // GetListInput prompts user to select from a list
-func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (int, string, error) {
+func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 	model, err := tea.NewProgram(lm).Run()
 	if err != nil {
-		return -1, "", err
+		return "", err
 	}
 
 	lm, ok := model.(cli_list.ListModel)
 	if !ok {
-		return -1, "", &ErrUnsupportedModel{}
+		return "", &ErrUnsupportedModel{}
 	}
 
-	return lm.ChoiceIndex, lm.Choice, nil
+	return lm.Choice, nil
 }
