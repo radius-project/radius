@@ -120,7 +120,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 
 	var route datamodel.GatewayRoute //route will hold the one sslpassthrough route, if sslpassthrough is true
 	for _, route = range gateway.Properties.Routes {
-		if sslPassThrough && route.Path != "" || route.ReplacePrefix != "" {
+		if sslPassThrough && (route.Path != "" || route.ReplacePrefix != "") {
 			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
 		}
 		routeName, err := getRouteName(&route)
