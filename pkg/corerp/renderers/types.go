@@ -17,8 +17,8 @@ import (
 )
 
 const (
-	DefaultPort       = 80
-	DefaultSecurePort = 443
+	DefaultPort       int32 = 80
+	DefaultSecurePort int32 = 443
 )
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer

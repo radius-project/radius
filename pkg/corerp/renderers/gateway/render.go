@@ -129,26 +129,18 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		}
 
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
-
-		if !sslPassThrough {
-			includes = append(includes, contourv1.Include{
-				Name: routeResourceName,
-				Conditions: []contourv1.MatchCondition{
-					{
-						Prefix: route.Path,
-					},
-				},
-			})
-		} else {
-			includes = append(includes, contourv1.Include{
-				Name: routeResourceName,
-				Conditions: []contourv1.MatchCondition{
-					{
-						Prefix: "/",
-					},
-				},
-			})
+		prefix := route.Path
+		if sslPassThrough {
+			prefix = "/"
 		}
+		includes = append(includes, contourv1.Include{
+			Name: routeResourceName,
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: prefix,
+				},
+			},
+		})
 	}
 
 	virtualHostname := hostname
@@ -168,14 +160,11 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			Passthrough: true,
 		}
 
-		dependencies := options.Dependencies
-		routeProperties := dependencies[route.Destination]
+		routeProperties := options.Dependencies[route.Destination]
 		port := renderers.DefaultSecurePort
-
-		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
 		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
-			port = int(routePort)
+			port = int32(routePort)
 		}
 
 		routeName, err := getRouteName(&route)
@@ -183,13 +172,10 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			return outputresource.OutputResource{}, err
 		}
 
-		// Create unique localID for dependency graph
-		routeResourceName := kubernetes.NormalizeResourceName(routeName)
-
 		tcpProxy = &contourv1.TCPProxy{
 			Services: []contourv1.Service{
 				{
-					Name: routeResourceName,
+					Name: kubernetes.NormalizeResourceName(routeName),
 					Port: int(port),
 				},
 			},
@@ -227,11 +213,9 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 	for _, route := range gateway.Routes {
 		routeProperties := dependencies[route.Destination]
 		port := renderers.DefaultPort
-
-		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
 		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
-			port = int(routePort)
+			port = int32(routePort)
 		}
 
 		routeName, err := getRouteName(&route)
