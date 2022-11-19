@@ -31,12 +31,12 @@ type ApplicationProperties struct {
 	Extensions []Extension `json:"extensions,omitempty"`
 }
 
-// ApplicationKubernetesNamespaceExtension - Specifies user defined Kubernetes application namespace
-type ApplicationKubernetesNamespaceExtension struct {
-	BaseK8sNSOverrideExtension
-}
-
-// ApplicationKubernetesMetadataExtension - Specifies user defined labels and annotations
-type ApplicationKubernetesMetadataExtension struct {
-	BaseKubernetesMetadataExtension
+// FindExtension finds the right extension.
+func (a *ApplicationProperties) FindExtension(kind ExtensionKind) *Extension {
+	for _, ext := range a.Extensions {
+		if ext.Kind == kind {
+			return &ext
+		}
+	}
+	return nil
 }

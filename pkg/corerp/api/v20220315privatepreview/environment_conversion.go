@@ -239,7 +239,7 @@ func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Ext
 
 		converted := datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
