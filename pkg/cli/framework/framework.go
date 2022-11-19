@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
@@ -26,6 +27,7 @@ type Factory interface {
 	GetConnectionFactory() connections.Factory
 	GetConfigHolder() *ConfigHolder
 	GetDeploy() deploy.Interface
+	GetLogstream() logstream.Interface
 	GetOutput() output.Interface
 	GetPrompter() prompt.Interface
 	GetConfigFileInterface() ConfigFileInterface
@@ -36,10 +38,11 @@ type Factory interface {
 }
 
 type Impl struct {
-	Bicep bicep.Interface
+	Bicep               bicep.Interface
 	ConnectionFactory   connections.Factory
 	ConfigHolder        *ConfigHolder
-	Deploy deploy.Interface
+	Deploy              deploy.Interface
+	Logstream           logstream.Interface
 	Output              output.Interface
 	Prompter            prompt.Interface
 	ConfigFileInterface ConfigFileInterface
@@ -63,6 +66,10 @@ func (i *Impl) GetConfigHolder() *ConfigHolder {
 
 func (i *Impl) GetDeploy() deploy.Interface {
 	return i.Deploy
+}
+
+func (i *Impl) GetLogstream() logstream.Interface {
+	return i.Logstream
 }
 
 func (i *Impl) GetOutput() output.Interface {

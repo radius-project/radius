@@ -23,6 +23,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -35,11 +37,13 @@ type ServiceOptions struct {
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
 	DBClient                store.StorageClient
+	SecretClient            secret.Client
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
 	BasePath                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
+	SecretProviderOptions   provider.SecretProviderOptions
 	InitialPlanes           []rest.Plane
 }
 
@@ -69,6 +73,14 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 			return nil, err
 		}
 		s.options.DBClient = dbClient
+	}
+
+	if s.options.SecretClient == nil {
+		secretClient, err := s.InitializeSecretClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.options.SecretClient = secretClient
 	}
 
 	ctrlOpts := ctrl.Options{
@@ -123,6 +135,21 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 	}
 
 	return storageClient, nil
+}
+
+// InitializeSecretClient initializes secret client on server startup.
+func (s *Service) InitializeSecretClient(ctx context.Context) (secret.Client, error) {
+	var secretClient secret.Client
+	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
+		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource
+	}
+	secretsProvider := provider.NewSecretProvider(s.options.SecretProviderOptions)
+	secretClient, err := secretsProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return secretClient, nil
 }
 
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP

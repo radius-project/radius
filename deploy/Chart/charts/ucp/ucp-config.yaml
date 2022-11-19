@@ -24,6 +24,9 @@ storageProvider:
   #etcd:
    # inmemory: true
 
+secretProvider:
+  provider: "kubernetes"
+
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
 planes:

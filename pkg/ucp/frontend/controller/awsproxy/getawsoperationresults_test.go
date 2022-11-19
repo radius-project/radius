@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -23,6 +24,8 @@ import (
 func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
@@ -39,7 +42,7 @@ func Test_GetAWSOperationResults_TerminalStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationResultsPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -54,6 +57,8 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
@@ -69,7 +74,7 @@ func Test_GetAWSOperationResults_NonTerminalStatus(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationResultsPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationResultsPath, nil)
 
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)

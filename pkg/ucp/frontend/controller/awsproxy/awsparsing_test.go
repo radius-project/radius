@@ -10,81 +10,58 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
-	"github.com/golang/mock/gomock"
-	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
-func TestResourceIDWithMultiIdentifiers(t *testing.T) {
+func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 	ctx := context.Background()
-	mockCtrl := gomock.NewController(t)
-	mockClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
-	resourceType := "AWS::NetworkManager::Device"
 
-	primaryIdentifiers := map[string]interface{}{
+	schemaObject := map[string]interface{}{
 		"primaryIdentifier": []interface{}{
 			"/properties/GlobalNetworkId",
 			"/properties/DeviceId",
 		},
 	}
-	serialized, err := json.Marshal(primaryIdentifiers)
+
+	schemaBytes, err := json.Marshal(schemaObject)
 	require.NoError(t, err)
-	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(resourceType),
-		Schema:   to.Ptr(string(serialized)),
-	}
 
-	input := cloudformation.DescribeTypeInput{
-		TypeName: aws.String(resourceType),
-		Type:     types.RegistryTypeResource,
-	}
-	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
+	schema := string(schemaBytes)
 
-	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
-	resourceID, err := getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
+	properties := map[string]interface{}{
 		"GlobalNetworkId": "global-network-id",
 		"DeviceId":        "device-id",
-	})
+	}
+
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
 	require.NoError(t, err)
 	require.Equal(t, "global-network-id|device-id", resourceID)
 }
 
-func TestResourceIDWithMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
+func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
 	ctx := context.Background()
-	mockCtrl := gomock.NewController(t)
-	mockClient := awsclient.NewMockAWSCloudFormationClient(mockCtrl)
-	resourceType := "AWS::NetworkManager::Device"
 
-	primaryIdentifiers := map[string]interface{}{
+	schemaObject := map[string]interface{}{
 		"primaryIdentifier": []interface{}{
 			"/properties/GlobalNetworkId",
 			"/properties/DeviceId",
 		},
 	}
-	serialized, err := json.Marshal(primaryIdentifiers)
+
+	schemaBytes, err := json.Marshal(schemaObject)
 	require.NoError(t, err)
-	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(resourceType),
-		Schema:   to.Ptr(string(serialized)),
-	}
 
-	input := cloudformation.DescribeTypeInput{
-		TypeName: aws.String(resourceType),
-		Type:     types.RegistryTypeResource,
-	}
-	mockClient.EXPECT().DescribeType(ctx, &input).Return(&output, nil)
+	schema := string(schemaBytes)
 
-	url := "http://127.0.0.1:9000/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/:put"
-	_, err = getResourceIDWithMultiIdentifiers(ctx, mockClient, url, "AWS::NetworkManager::Device", map[string]interface{}{
+	properties := map[string]interface{}{
 		"GlobalNetworkId": "global-network-id",
-	})
-	require.NotNil(t, err)
-	require.Equal(t, "mandatory property DeviceId is missing", err.Error())
+	}
+
+	resourceID, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, schema)
+	require.Equal(t, resourceID, "")
+	require.Error(t, err)
+	require.EqualError(t, err, "mandatory property DeviceId is missing")
 }
 
 func TestComputeResourceID(t *testing.T) {
@@ -94,4 +71,56 @@ func TestComputeResourceID(t *testing.T) {
 	resourceID := "global-network-id|device-id"
 	computedID := computeResourceID(id, resourceID)
 	require.Equal(t, "/apis/api.ucp.dev/v1alpha3/planes/aws/aws/accounts/841861948707/regions/us-west-2/providers/AWS.NetworkManager/Device/global-network-id|device-id", computedID)
+}
+
+func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
+	ctx := context.Background()
+
+	schemaObject := map[string]interface{}{
+		"primaryIdentifier": []interface{}{
+			"/properties/GlobalNetworkId",
+			"/properties/DeviceId",
+		},
+	}
+
+	schemaBytes, err := json.Marshal(schemaObject)
+	require.NoError(t, err)
+
+	schema := string(schemaBytes)
+
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	require.NoError(t, err)
+	require.Equal(t, []string{"/properties/GlobalNetworkId", "/properties/DeviceId"}, primaryIdentifiers)
+}
+
+func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) {
+	ctx := context.Background()
+
+	schemaObject := map[string]interface{}{}
+
+	schemaBytes, err := json.Marshal(schemaObject)
+	require.NoError(t, err)
+
+	schema := string(schemaBytes)
+
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	require.Nil(t, primaryIdentifiers)
+	require.EqualError(t, err, "primaryIdentifier not found in schema")
+}
+
+func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testing.T) {
+	ctx := context.Background()
+
+	schemaObject := map[string]interface{}{
+		"primaryIdentifier": "/properties/GlobalNetworkId",
+	}
+
+	schemaBytes, err := json.Marshal(schemaObject)
+	require.NoError(t, err)
+
+	schema := string(schemaBytes)
+
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
+	require.Nil(t, primaryIdentifiers)
+	require.EqualError(t, err, "primaryIdentifier is not an array")
 }
