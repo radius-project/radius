@@ -29,24 +29,20 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource conv.DataModelInte
 }
 
 func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	// Return a deployment so the manualscale extension can modify it
+	// Return a deployment so the kubernetes metadata extension renderer can modify it
 	deployment := appsv1.Deployment{}
+	deployment.Annotations = map[string]string{"PriorMetaAnnotation1": "PriorMetaAnnotationVal1", "PriorMetaAnnotation2": "PriorMetaAnnotationVal2"}
+	deployment.Labels = map[string]string{"PriorMetaLabel1": "PriorMetaLabelVal1", "PriorMetaLabel2": "PriorMetaLabelVal2"}
 	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
+
 	return renderers.RendererOutput{Resources: resources}, nil
 }
 
 func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
-	ann := map[string]string{
-		"test.ann1": "ann1.val",
-		"test.ann2": "ann1.val",
-		"test.ann3": "ann1.val",
-	}
-	lbl := map[string]string{
-		"test.lbl1": "lbl1.val",
-		"test.lbl2": "lbl2.val",
-		"test.lbl3": "lbl3.val",
-	}
+
+	// Get expected values
+	metaAnn, metaLbl, specAnn, specLbl := getResultMaps()
 
 	properties := makeProperties(t)
 	resource := makeResource(t, properties)
@@ -59,10 +55,40 @@ func Test_Render_Success(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
-	require.Equal(t, ann, deployment.Annotations)
-	require.Equal(t, lbl, deployment.Labels)
-	require.Equal(t, ann, deployment.Spec.Template.Annotations)
-	require.Equal(t, lbl, deployment.Spec.Template.Labels)
+	require.Equal(t, metaAnn, deployment.Annotations)
+	require.Equal(t, metaLbl, deployment.Labels)
+	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
+	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
+}
+
+func Test_Render_CascadeKubeMetadata(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	// Get expected values
+	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeResultMaps()
+
+	properties := makeProperties(t)
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	options := renderers.RenderOptions{Dependencies: dependencies}
+
+	options.Environment = renderers.EnvironmentOptions{
+		KubernetesMetadata: datamodel.EnvironmentKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseEnvKubeMetadataExt},
+	}
+	options.Application = renderers.ApplicationOptions{
+		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+	}
+	output, err := renderer.Render(context.Background(), resource, options)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	require.Equal(t, metaAnn, deployment.Annotations)
+	require.Equal(t, metaLbl, deployment.Labels)
+	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
+	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
 }
 
 func Test_Render_NoExtension(t *testing.T) {
@@ -79,6 +105,8 @@ func Test_Render_NoExtension(t *testing.T) {
 
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
+	ann := map[string]string{"PriorMetaAnnotation1": "PriorMetaAnnotationVal1", "PriorMetaAnnotation2": "PriorMetaAnnotationVal2"}
+	lbl := map[string]string{"PriorMetaLabel1": "PriorMetaLabelVal1", "PriorMetaLabel2": "PriorMetaLabelVal2"}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -87,8 +115,8 @@ func Test_Render_NoExtension(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
-	require.Nil(t, deployment.Annotations)
-	require.Nil(t, deployment.Labels)
+	require.Equal(t, ann, deployment.Annotations)
+	require.Equal(t, lbl, deployment.Labels)
 	require.Nil(t, deployment.Spec.Template.Annotations)
 	require.Nil(t, deployment.Spec.Template.Labels)
 }
@@ -144,4 +172,98 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 			}},
 	}
 	return properties
+}
+
+func getResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string) {
+	metaAnn := map[string]string{
+		"test.ann1":            "ann1.val",
+		"test.ann2":            "ann1.val",
+		"test.ann3":            "ann1.val",
+		"PriorMetaAnnotation1": "PriorMetaAnnotationVal1",
+		"PriorMetaAnnotation2": "PriorMetaAnnotationVal2",
+	}
+	metaLbl := map[string]string{
+		"test.lbl1":       "lbl1.val",
+		"test.lbl2":       "lbl2.val",
+		"test.lbl3":       "lbl3.val",
+		"PriorMetaLabel1": "PriorMetaLabelVal1",
+		"PriorMetaLabel2": "PriorMetaLabelVal2",
+	}
+	specAnn := map[string]string{
+		"test.ann1": "ann1.val",
+		"test.ann2": "ann1.val",
+		"test.ann3": "ann1.val",
+	}
+	specLbl := map[string]string{
+		"test.lbl1": "lbl1.val",
+		"test.lbl2": "lbl2.val",
+		"test.lbl3": "lbl3.val",
+	}
+
+	return metaAnn, metaLbl, specAnn, specLbl
+}
+
+func getCascadeResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension, datamodel.BaseKubernetesMetadataExtension) {
+	metaAnn := map[string]string{
+		"env.ann1":             "env.annval1",
+		"env.ann2":             "env.annval2",
+		"app.ann1":             "app.annval1",
+		"app.ann2":             "app.annval2",
+		"test.ann1":            "ann1.val",
+		"test.ann2":            "ann1.val",
+		"test.ann3":            "ann1.val",
+		"PriorMetaAnnotation1": "PriorMetaAnnotationVal1",
+		"PriorMetaAnnotation2": "PriorMetaAnnotationVal2",
+	}
+	metaLbl := map[string]string{
+		"env.lbl1":        "env.lblval1",
+		"env.lbl2":        "env.lblval2",
+		"app.lbl1":        "app.lblval1",
+		"app.lbl2":        "app.lblval2",
+		"test.lbl1":       "lbl1.val",
+		"test.lbl2":       "lbl2.val",
+		"test.lbl3":       "lbl3.val",
+		"PriorMetaLabel1": "PriorMetaLabelVal1",
+		"PriorMetaLabel2": "PriorMetaLabelVal2",
+	}
+	specAnn := map[string]string{
+		"env.ann1":  "env.annval1",
+		"env.ann2":  "env.annval2",
+		"app.ann1":  "app.annval1",
+		"app.ann2":  "app.annval2",
+		"test.ann1": "ann1.val",
+		"test.ann2": "ann1.val",
+		"test.ann3": "ann1.val",
+	}
+	specLbl := map[string]string{
+		"env.lbl1":  "env.lblval1",
+		"env.lbl2":  "env.lblval2",
+		"app.lbl1":  "app.lblval1",
+		"app.lbl2":  "app.lblval2",
+		"test.lbl1": "lbl1.val",
+		"test.lbl2": "lbl2.val",
+		"test.lbl3": "lbl3.val",
+	}
+	baseEnvKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+		Annotations: map[string]string{
+			"env.ann1": "env.annval1",
+			"env.ann2": "env.annval2",
+		},
+		Labels: map[string]string{
+			"env.lbl1": "env.lblval1",
+			"env.lbl2": "env.lblval2",
+		},
+	}
+	baseAppKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+		Annotations: map[string]string{
+			"app.ann1": "app.annval1",
+			"app.ann2": "app.annval2",
+		},
+		Labels: map[string]string{
+			"app.lbl1": "app.lblval1",
+			"app.lbl2": "app.lblval2",
+		},
+	}
+
+	return metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt
 }

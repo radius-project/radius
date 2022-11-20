@@ -173,21 +173,21 @@ func setAnnotations(o runtime.Object, metaAnnotations map[string]string, specAnn
 
 // mergeEnvAppKubernetesMetadataMaps merges environment, application annotations/labels
 func mergeEnvAppKubernetesMetadataMaps(options renderers.RenderOptions) (map[string]string, map[string]string) {
-	envOpts := &options.Environment
-	appOpts := &options.Application
+	envOpts := options.Environment
+	appOpts := options.Application
 	mergeAnnotations := map[string]string{}
 	mergeLabels := map[string]string{}
 
-	if envOpts != nil && envOpts.KubernetesMetadata.Annotations != nil {
+	if &envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
 		mergeAnnotations = envOpts.KubernetesMetadata.Annotations
 	}
-	if envOpts != nil && envOpts.KubernetesMetadata.Labels != nil {
+	if &envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
 		mergeLabels = envOpts.KubernetesMetadata.Labels
 	}
-	if appOpts != nil && appOpts.KubernetesMetadata.Annotations != nil {
+	if &appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
 		mergeAnnotations = labels.Merge(mergeAnnotations, appOpts.KubernetesMetadata.Annotations)
 	}
-	if appOpts != nil && appOpts.KubernetesMetadata.Labels != nil {
+	if &appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
 		mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
 	}
 
