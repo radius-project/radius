@@ -32,8 +32,6 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModel
 
 // Render augments the container's kubernetes output resource with value for kubernetesmetadata replica if applicable.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	envOpts := &options.Environment
-	appOpts := &options.Application
 
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
@@ -68,18 +66,9 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
 
-		// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
 		// Cascade cumulative values from Env->App->Container kubernetes metadata. In case of collisions, rightmost entity wins
-		// Merge env & application annotations and maps
-		mergeAnnotations := map[string]string{}
-		mergeLabels := map[string]string{}
-
-		if envOpts != nil && &envOpts.KubernetesMetadata != nil {
-			mergeAnnotations = labels.Merge(mergeAnnotations, envOpts.KubernetesMetadata.Annotations)
-		}
-		if appOpts != nil && &appOpts.KubernetesMetadata != nil {
-			mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
-		}
+		// Merge env & application annotations and label maps
+		mergeAnnotations, mergeLabels := mergeEnvAppKubernetesMetadataMaps(options)
 
 		if kubeMetadataExt.Annotations != nil {
 			metaAnnotations, specAnnotations, err := getAnnotations(o)
@@ -87,9 +76,8 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				return renderers.RendererOutput{}, err
 			}
 
-			mergeAnnotations = labels.Merge(mergeAnnotations, kubeMetadataExt.Annotations)
-			metaAnnotations = labels.Merge(metaAnnotations, mergeAnnotations)
-			specAnnotations = labels.Merge(specAnnotations, mergeAnnotations)
+			// Merge cascaded annotations with current map
+			metaAnnotations, specAnnotations = mergeKubernetesMetadataMaps(mergeAnnotations, kubeMetadataExt.Annotations, metaAnnotations, specAnnotations)
 
 			err = setAnnotations(o, metaAnnotations, specAnnotations)
 			if err != nil {
@@ -103,9 +91,8 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 				return renderers.RendererOutput{}, err
 			}
 
-			mergeLabels = labels.Merge(mergeLabels, kubeMetadataExt.Labels)
-			metaLabels = labels.Merge(metaLabels, mergeLabels)
-			specLabels = labels.Merge(specLabels, mergeLabels)
+			// Merge cascaded labels with current map
+			metaLabels, specLabels = mergeKubernetesMetadataMaps(mergeLabels, kubeMetadataExt.Labels, metaLabels, specLabels)
 
 			err = setLabels(o, metaLabels, specLabels)
 			if err != nil {
@@ -182,4 +169,37 @@ func setAnnotations(o runtime.Object, metaAnnotations map[string]string, specAnn
 	dep.SetAnnotations(metaAnnotations)
 	dep.Spec.Template.Annotations = specAnnotations
 	return nil
+}
+
+// mergeEnvAppKubernetesMetadataMaps merges environment, application annotations/labels
+func mergeEnvAppKubernetesMetadataMaps(options renderers.RenderOptions) (map[string]string, map[string]string) {
+	envOpts := &options.Environment
+	appOpts := &options.Application
+	mergeAnnotations := map[string]string{}
+	mergeLabels := map[string]string{}
+
+	if envOpts != nil && envOpts.KubernetesMetadata.Annotations != nil {
+		mergeAnnotations = envOpts.KubernetesMetadata.Annotations
+	}
+	if envOpts != nil && envOpts.KubernetesMetadata.Labels != nil {
+		mergeLabels = envOpts.KubernetesMetadata.Labels
+	}
+	if appOpts != nil && appOpts.KubernetesMetadata.Annotations != nil {
+		mergeAnnotations = labels.Merge(mergeAnnotations, appOpts.KubernetesMetadata.Annotations)
+	}
+	if appOpts != nil && appOpts.KubernetesMetadata.Labels != nil {
+		mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
+	}
+
+	return mergeAnnotations, mergeLabels
+}
+
+// mergeMaps merges meta, spec annotations/labels
+func mergeKubernetesMetadataMaps(cascadeMap map[string]string, currMap map[string]string, metaMap map[string]string, specMap map[string]string) (map[string]string, map[string]string) {
+
+	currMap = labels.Merge(cascadeMap, currMap)
+	metaMap = labels.Merge(metaMap, currMap)
+	specMap = labels.Merge(specMap, currMap)
+
+	return metaMap, specMap
 }
