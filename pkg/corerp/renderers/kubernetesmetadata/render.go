@@ -43,129 +43,123 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	extensions := resource.Properties.Extensions
-	for _, e := range extensions {
+	var kubeMetadataExt = &datamodel.BaseKubernetesMetadataExtension{}
+	for _, e := range resource.Properties.Extensions {
 		switch e.Kind {
 		case datamodel.KubernetesMetadata:
-			for _, ores := range output.Resources {
-				if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
-					// Not a Kubernetes resource
-					continue
-				}
-				o, ok := ores.Resource.(runtime.Object)
-				if !ok {
-					return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
-				}
+			kubeMetadataExt = e.KubernetesMetadata
+			break
+		}
+	}
 
-				// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
-				if e.KubernetesMetadata != nil && e.KubernetesMetadata.Annotations != nil {
-					annotations, err := getAnnotations(o)
-					if err != nil {
-						return renderers.RendererOutput{}, err
-					}
-					annMap := labels.Merge(annotations, e.KubernetesMetadata.Annotations)
-					err = setAnnotations(o, annMap)
-					if err != nil {
-						return renderers.RendererOutput{}, err
-					}
-				}
+	if kubeMetadataExt == nil {
+		return renderers.RendererOutput{}, nil
+	}
 
-				if e.KubernetesMetadata != nil && e.KubernetesMetadata.Labels != nil {
-					lbls, err := getLabels(o)
-					if err != nil {
-						return renderers.RendererOutput{}, err
-					}
-					lblMap := labels.Merge(lbls, e.KubernetesMetadata.Labels)
-					err = setLabels(o, lblMap)
-					if err != nil {
-						return renderers.RendererOutput{}, err
-					}
-				}
-
-			}
-		default:
+	for _, ores := range output.Resources {
+		if ores.ResourceType.Provider != resourcemodel.ProviderKubernetes {
+			// Not a Kubernetes resource
 			continue
 		}
-		break
+		o, ok := ores.Resource.(runtime.Object)
+		if !ok {
+			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
+		}
+
+		// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
+		if kubeMetadataExt.Annotations != nil {
+			metaAnnotations, specAnnotations, err := getAnnotations(o)
+			if err != nil {
+				return renderers.RendererOutput{}, err
+			}
+			metaAnnotations = labels.Merge(metaAnnotations, kubeMetadataExt.Annotations)
+			specAnnotations = labels.Merge(specAnnotations, kubeMetadataExt.Annotations)
+			err = setAnnotations(o, metaAnnotations, specAnnotations)
+			if err != nil {
+				return renderers.RendererOutput{}, err
+			}
+		}
+
+		if kubeMetadataExt.Labels != nil {
+			metaLabels, specLabels, err := getLabels(o)
+			if err != nil {
+				return renderers.RendererOutput{}, err
+			}
+			metaLabels = labels.Merge(metaLabels, kubeMetadataExt.Labels)
+			specLabels = labels.Merge(specLabels, kubeMetadataExt.Labels)
+			err = setLabels(o, metaLabels, specLabels)
+			if err != nil {
+				return renderers.RendererOutput{}, err
+			}
+		}
+
 	}
 
 	return output, nil
 }
 
-func getAnnotations(o runtime.Object) (map[string]string, error) {
+func getAnnotations(o runtime.Object) (map[string]string, map[string]string, error) {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return nil, errors.New("cannot cast runtime.Object to v1/Deployment")
+		return nil, nil, errors.New("getting annotations-cannot cast runtime.Object to v1/Deployment")
 	}
 
-	var retann map[string]string
+	var (
+		depMetaAnnotations map[string]string
+		depSpecAnnotations map[string]string
+	)
+
+	if dep.Annotations != nil {
+		depMetaAnnotations = dep.Annotations
+	}
 	if dep.Spec.Template.Annotations != nil {
-		retann = dep.Spec.Template.Annotations
+		depSpecAnnotations = dep.Spec.Template.Annotations
 	}
 
-	return retann, nil
+	return depMetaAnnotations, depSpecAnnotations, nil
 }
 
-func getLabels(o runtime.Object) (map[string]string, error) {
+func getLabels(o runtime.Object) (map[string]string, map[string]string, error) {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
-		return nil, errors.New("getcannot cast runtime.Object to v1/Deployment")
+		return nil, nil, errors.New("getting labels-cannot cast runtime.Object to v1/Deployment")
 	}
 
-	var retlbl map[string]string
+	var (
+		depMetaLabels map[string]string
+		depSpecLabels map[string]string
+	)
+
+	if dep.Labels != nil {
+		depMetaLabels = dep.Labels
+	}
 	if dep.Spec.Template.Labels != nil {
-		retlbl = dep.Spec.Template.Labels
+		depSpecLabels = dep.Spec.Template.Labels
 	}
 
-	return retlbl, nil
+	return depMetaLabels, depSpecLabels, nil
 }
-
-/* Discuss with Justin
-func convertToUnstructured(ro runtime.Object) (unstructured.Unstructured, error) {
-	c, err := runtime.DefaultUnstructuredConverter.ToUnstructured(ro)
-	if err != nil {
-		return unstructured.Unstructured{}, fmt.Errorf("could not convert object %v to unstructured: %w", ro.GetObjectKind(), err)
-	}
-
-	return unstructured.Unstructured{Object: c}, nil
-}
-
-// setAnnotations sets the value of annotations/labels
-func (r *Renderer) setLabelsAnnotations(o runtime.Object, keyvalue map[string]string, isLabel bool) (*unstructured.Unstructured, error) {
-	un, err := convertToUnstructured(o)
-	if err != nil {
-		return nil, err
-	}
-
-	if isLabel {
-		un.SetLabels(keyvalue)
-	} else {
-		un.SetAnnotations(keyvalue)
-	}
-
-	// After returning &un, how does one cast it back to the runtime/relevant object
-	return &un, nil
-}
-*/
 
 // setLabels sets the value of labels
-func setLabels(o runtime.Object, lbl map[string]string) error {
+func setLabels(o runtime.Object, metaLabels map[string]string, specLabels map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
 		return errors.New("setting labels-cannot cast runtime.Object to v1/Deployment")
 	}
 
-	dep.Spec.Template.Labels = lbl
+	dep.SetLabels(metaLabels)
+	dep.Spec.Template.Labels = specLabels
 	return nil
 }
 
 // setAnnotations sets the value of annotations/labels
-func setAnnotations(o runtime.Object, ann map[string]string) error {
+func setAnnotations(o runtime.Object, metaAnnotations map[string]string, specAnnotations map[string]string) error {
 	dep, ok := o.(*appsv1.Deployment)
 	if !ok {
 		return errors.New("setting annotations-cannot cast runtime.Object to v1/Deployment")
 	}
 
-	dep.Spec.Template.Annotations = ann
+	dep.SetAnnotations(metaAnnotations)
+	dep.Spec.Template.Annotations = specAnnotations
 	return nil
 }

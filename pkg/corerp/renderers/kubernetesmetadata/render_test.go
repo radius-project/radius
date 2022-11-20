@@ -59,6 +59,8 @@ func Test_Render_Success(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
+	require.Equal(t, ann, deployment.Annotations)
+	require.Equal(t, lbl, deployment.Labels)
 	require.Equal(t, ann, deployment.Spec.Template.Annotations)
 	require.Equal(t, lbl, deployment.Spec.Template.Labels)
 }
@@ -85,6 +87,8 @@ func Test_Render_NoExtension(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
+	require.Nil(t, deployment.Annotations)
+	require.Nil(t, deployment.Labels)
 	require.Nil(t, deployment.Spec.Template.Annotations)
 	require.Nil(t, deployment.Spec.Template.Labels)
 }
@@ -104,6 +108,11 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 }
 
 func makeProperties(t *testing.T) datamodel.ContainerProperties {
+	var (
+		replicas  int32  = 3
+		preplicas *int32 = &replicas
+	)
+
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
@@ -111,21 +120,28 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 		Container: datamodel.Container{
 			Image: "someimage:latest",
 		},
-		Extensions: []datamodel.Extension{{
-			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
-				Annotations: map[string]string{
-					"test.ann1": "ann1.val",
-					"test.ann2": "ann1.val",
-					"test.ann3": "ann1.val",
-				},
-				Labels: map[string]string{
-					"test.lbl1": "lbl1.val",
-					"test.lbl2": "lbl2.val",
-					"test.lbl3": "lbl3.val",
+		Extensions: []datamodel.Extension{
+			{
+				Kind: datamodel.ManualScaling,
+				ManualScaling: &datamodel.ManualScalingExtension{
+					Replicas: preplicas,
 				},
 			},
-		}},
+			{
+				Kind: datamodel.KubernetesMetadata,
+				KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+					Annotations: map[string]string{
+						"test.ann1": "ann1.val",
+						"test.ann2": "ann1.val",
+						"test.ann3": "ann1.val",
+					},
+					Labels: map[string]string{
+						"test.lbl1": "lbl1.val",
+						"test.lbl2": "lbl2.val",
+						"test.lbl3": "lbl3.val",
+					},
+				},
+			}},
 	}
 	return properties
 }
