@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -376,11 +376,11 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-// TODO: Revisit to remove the datamodel.Environment dependency.
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
+// TODO: Revisit to remove the corerp_dm.Environment dependency.
+func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm.Environment) (renderers.EnvironmentOptions, error) {
 	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
-	envmetadataext := datamodel.EnvironmentKubernetesMetadataExtension{}
+	envExt := corerp_dm.EnvironmentKubernetesMetadataExtension{}
 
 	envOpts := renderers.EnvironmentOptions{
 		CloudProviders: &env.Properties.Providers,
@@ -388,7 +388,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 
 	// Extract compute info
 	switch env.Properties.Compute.Kind {
-	case datamodel.KubernetesComputeKind:
+	case corerp_dm.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
 
 		if kubeProp.Namespace == "" {
@@ -407,15 +407,9 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	}
 
 	// Get Environment KubernetesMetadata Info
-	envexts := env.Properties.Extensions
-	for _, ext := range envexts {
-		switch ext.Kind {
-		case datamodel.KubernetesMetadata:
-			if ext.KubernetesMetadata != nil {
-				envmetadataext.BaseKubernetesMetadataExtension = *ext.KubernetesMetadata
-				envOpts.KubernetesMetadata = envmetadataext
-			}
-		}
+	if envBaseExt := getKubernetesMetadataExtension(env.Properties.Extensions); envBaseExt != nil {
+		envExt.BaseKubernetesMetadataExtension = *envBaseExt
+		envOpts.KubernetesMetadata = envExt
 	}
 
 	if publicEndpointOverride != "" {
@@ -468,23 +462,31 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 }
 
 // getAppOptions: Populates and Returns ApplicationOptions.
-func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *datamodel.ApplicationProperties) (renderers.ApplicationOptions, error) {
+func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corerp_dm.ApplicationProperties) (renderers.ApplicationOptions, error) {
 	appOpts := renderers.ApplicationOptions{}
-	appmetadataext := datamodel.ApplicationKubernetesMetadataExtension{}
+	appExt := corerp_dm.ApplicationKubernetesMetadataExtension{}
 
-	// Get Environment KubernetesMetadata Info
-	appexts := appProp.Extensions
-	for _, ext := range appexts {
+	// Get Application KubernetesMetadata Info
+	if appBaseExt := getKubernetesMetadataExtension(appProp.Extensions); appBaseExt != nil {
+		appExt.BaseKubernetesMetadataExtension = *appBaseExt
+		appOpts.KubernetesMetadata = appExt
+	}
+
+	return appOpts, nil
+}
+
+func getKubernetesMetadataExtension(exts []corerp_dm.Extension) *corerp_dm.BaseKubernetesMetadataExtension {
+
+	for _, ext := range exts {
 		switch ext.Kind {
-		case datamodel.KubernetesMetadata:
+		case corerp_dm.KubernetesMetadata:
 			if ext.KubernetesMetadata != nil {
-				appmetadataext.BaseKubernetesMetadataExtension = *ext.KubernetesMetadata
-				appOpts.KubernetesMetadata = appmetadataext
+				return ext.KubernetesMetadata
 			}
 		}
 	}
 
-	return appOpts, nil
+	return nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
@@ -506,25 +508,25 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(container.ResourceType):
-		obj := &datamodel.ContainerResource{}
+		obj := &corerp_dm.ContainerResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
-		obj := &datamodel.Gateway{}
+		obj := &corerp_dm.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(volume.ResourceType):
-		obj := &datamodel.VolumeResource{}
+		obj := &corerp_dm.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
-		obj := &datamodel.HTTPRoute{}
+		obj := &corerp_dm.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
@@ -650,11 +652,11 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 }
 
 // getApplicationProperties returns application properties linked to the application fetched from the db
-func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, appID resources.ID, resourceID string) (*datamodel.ApplicationProperties, error) {
+func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, appID resources.ID, resourceID string) (*corerp_dm.ApplicationProperties, error) {
 	errMsg := "failed to fetch the application %q for the resource %q. Err: %w"
 
 	appIDType := appID.Type()
-	app := &datamodel.Application{}
+	app := &corerp_dm.Application{}
 	if !strings.EqualFold(appIDType, app.ResourceTypeName()) {
 		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
 	}
@@ -680,13 +682,13 @@ func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, app
 }
 
 // fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
+func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*corerp_dm.Environment, error) {
 	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return nil, err
 	}
 
-	env := &datamodel.Environment{}
+	env := &corerp_dm.Environment{}
 
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
 		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))

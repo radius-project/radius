@@ -32,6 +32,9 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModel
 
 // Render augments the container's kubernetes output resource with value for kubernetesmetadata replica if applicable.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	envOpts := &options.Environment
+	appOpts := &options.Application
+
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
 	if err != nil {
@@ -43,17 +46,16 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	var kubeMetadataExt = &datamodel.BaseKubernetesMetadataExtension{}
+	var kubeMetadataExt *datamodel.BaseKubernetesMetadataExtension
 	for _, e := range resource.Properties.Extensions {
 		switch e.Kind {
 		case datamodel.KubernetesMetadata:
 			kubeMetadataExt = e.KubernetesMetadata
-			break
 		}
 	}
 
 	if kubeMetadataExt == nil {
-		return renderers.RendererOutput{}, nil
+		return output, nil
 	}
 
 	for _, ores := range output.Resources {
@@ -67,13 +69,28 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		}
 
 		// Here we will update to reading from Render.Options, potentially retrieving from Env and App Annotations
+		// Cascade cumulative values from Env->App->Container kubernetes metadata. In case of collisions, rightmost entity wins
+		// Merge env & application annotations and maps
+		mergeAnnotations := map[string]string{}
+		mergeLabels := map[string]string{}
+
+		if envOpts != nil && &envOpts.KubernetesMetadata != nil {
+			mergeAnnotations = labels.Merge(mergeAnnotations, envOpts.KubernetesMetadata.Annotations)
+		}
+		if appOpts != nil && &appOpts.KubernetesMetadata != nil {
+			mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
+		}
+
 		if kubeMetadataExt.Annotations != nil {
 			metaAnnotations, specAnnotations, err := getAnnotations(o)
 			if err != nil {
 				return renderers.RendererOutput{}, err
 			}
-			metaAnnotations = labels.Merge(metaAnnotations, kubeMetadataExt.Annotations)
-			specAnnotations = labels.Merge(specAnnotations, kubeMetadataExt.Annotations)
+
+			mergeAnnotations = labels.Merge(mergeAnnotations, kubeMetadataExt.Annotations)
+			metaAnnotations = labels.Merge(metaAnnotations, mergeAnnotations)
+			specAnnotations = labels.Merge(specAnnotations, mergeAnnotations)
+
 			err = setAnnotations(o, metaAnnotations, specAnnotations)
 			if err != nil {
 				return renderers.RendererOutput{}, err
@@ -85,8 +102,11 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 			if err != nil {
 				return renderers.RendererOutput{}, err
 			}
-			metaLabels = labels.Merge(metaLabels, kubeMetadataExt.Labels)
-			specLabels = labels.Merge(specLabels, kubeMetadataExt.Labels)
+
+			mergeLabels = labels.Merge(mergeLabels, kubeMetadataExt.Labels)
+			metaLabels = labels.Merge(metaLabels, mergeLabels)
+			specLabels = labels.Merge(specLabels, mergeLabels)
+
 			err = setLabels(o, metaLabels, specLabels)
 			if err != nil {
 				return renderers.RendererOutput{}, err
