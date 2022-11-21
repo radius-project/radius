@@ -17,7 +17,9 @@ param port int = 3000
 param environment string
 
 resource stream 'AWS.Kinesis/Stream@default' existing = {
-  name: streamName
+  properties: {
+    Name: streamName
+  }
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
