@@ -75,5 +75,5 @@ type ProvidersAzure struct {
 
 // EnvironmentKubernetesMetadataExtension - Specifies user defined labels and annotations
 type EnvironmentKubernetesMetadataExtension struct {
-	BaseKubernetesMetadataExtension
+	KubeMetadataExtension
 }

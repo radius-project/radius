@@ -222,7 +222,7 @@ func getTestContainerExtensions(t *testing.T) []datamodel.Extension {
 		},
 		{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: map[string]string{
 					"prometheus.io/scrape": "true",
 					"prometheus.io/port":   "80",
@@ -260,7 +260,7 @@ func getTestContainerEmptyKuberenetesMetadataExt(t *testing.T) []datamodel.Exten
 		},
 		{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: map[string]string{},
 				Labels:      map[string]string{},
 			},
