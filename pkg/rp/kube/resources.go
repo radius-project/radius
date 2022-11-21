@@ -17,7 +17,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// Radius uses Kuberentes namespace by following rules:
+// Radius uses Kubernetes namespace by following rules:
 // +-----------------+--------------------+------------------------------+------------------------------+
 // | namespace       | namespace override | env-scope resource namespace | app-scope resource namespace |
 // | in Environments | in Applications    |                              |                              |
