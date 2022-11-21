@@ -126,6 +126,8 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		}
 	}
 
+	rendererOutput.RadiusResource = resource
+
 	return rendererOutput, nil
 }
 
@@ -199,6 +201,15 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value
+		}
+	}
+
+	// Transform Radius resource with computedValues
+	for _, cv := range rendererOutput.ComputedValues {
+		if cv.Transformer != nil {
+			if err := cv.Transformer(rendererOutput.RadiusResource, computedValues); err != nil {
+				return DeploymentOutput{}, err
+			}
 		}
 	}
 

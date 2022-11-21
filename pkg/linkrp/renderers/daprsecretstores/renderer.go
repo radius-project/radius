@@ -7,6 +7,7 @@ package daprsecretstores
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 
@@ -63,6 +64,19 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			renderers.ComponentNameKey: {
 				Value: kubernetes.NormalizeResourceName(resource.Name),
+				Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+					componentName, ok := cv[renderers.ComponentNameKey].(string)
+					if !ok {
+						return errors.New("component name must be set on computed values for DaprSecretStore")
+					}
+					res, ok := r.(*datamodel.DaprSecretStore)
+					if !ok {
+						return errors.New("resource must be DaprSecretStore")
+					}
+
+					res.Properties.ComponentName = componentName
+					return nil
+				},
 			},
 		},
 		SecretValues: map[string]rp.SecretValueReference{},

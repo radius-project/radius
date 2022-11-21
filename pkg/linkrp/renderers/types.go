@@ -47,6 +47,9 @@ type RendererOutput struct {
 	SecretValues         map[string]rp.SecretValueReference
 	RecipeData           datamodel.RecipeData
 	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
+
+	// RadiusResource is the original Radius resource model.
+	RadiusResource conv.DataModelInterface
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
@@ -74,4 +77,7 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that can be used to look up the value in the resource's body.
 	JSONPointer string
+
+	// Transformer transforms datamodel resource with the computed values.
+	Transformer func(conv.DataModelInterface, map[string]any) error
 }

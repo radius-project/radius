@@ -6,6 +6,9 @@
 package daprpubsubbrokers
 
 import (
+	"errors"
+
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
@@ -47,9 +50,35 @@ func GetDaprPubSubGeneric(resource datamodel.DaprPubSubBroker, applicationName s
 		},
 		TopicNameKey: {
 			Value: topicName,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				topicName, ok := cv[TopicNameKey].(string)
+				if !ok {
+					return errors.New("topic name must be set on computed values for DaprPubSubBroker")
+				}
+				res, ok := r.(*datamodel.DaprPubSubBroker)
+				if !ok {
+					return errors.New("resource must be DaprPubSubBroker")
+				}
+
+				res.Properties.Topic = topicName
+				return nil
+			},
 		},
 		renderers.ComponentNameKey: {
 			Value: kubernetes.NormalizeResourceName(resource.Name),
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				componentName, ok := cv[renderers.ComponentNameKey].(string)
+				if !ok {
+					return errors.New("component name must be set on computed values for DaprPubSubBroker")
+				}
+				res, ok := r.(*datamodel.DaprPubSubBroker)
+				if !ok {
+					return errors.New("resource must be DaprPubSubBroker")
+				}
+
+				res.Properties.ComponentName = componentName
+				return nil
+			},
 		},
 	}
 

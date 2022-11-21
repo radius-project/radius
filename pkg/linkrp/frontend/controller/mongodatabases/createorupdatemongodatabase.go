@@ -15,7 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/linkrp/renderers"
 
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -84,10 +83,6 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w http.Respon
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	newResource.RecipeData = deploymentOutput.RecipeData
-
-	if database, ok := deploymentOutput.ComputedValues[renderers.DatabaseNameValue].(string); ok {
-		newResource.Properties.Database = database
-	}
 
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)

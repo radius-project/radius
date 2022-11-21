@@ -7,6 +7,8 @@ package rediscaches
 
 import (
 	"context"
+	"errors"
+	"strconv"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -73,6 +75,19 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		computedValues[renderers.Host] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/hostName", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				host, ok := cv[renderers.Host].(string)
+				if !ok {
+					return errors.New("host must be set on computed values for RedisCache")
+				}
+				res, ok := r.(*datamodel.RedisCache)
+				if !ok {
+					return errors.New("resource must be RedisCache")
+				}
+
+				res.Properties.Host = host
+				return nil
+			},
 		}
 	}
 
@@ -80,6 +95,35 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 		computedValues[renderers.Port] = renderers.ComputedValueReference{
 			LocalID:     outputresource.LocalIDAzureRedis,
 			JSONPointer: "/properties/sslPort", // https://learn.microsoft.com/en-us/rest/api/redis/redis/get
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				port, ok := cv[renderers.Port]
+				if !ok {
+					return errors.New("port must be set on computed values for RedisCache")
+				}
+				res, ok := r.(*datamodel.RedisCache)
+				if !ok {
+					return errors.New("resource must be RedisCache")
+				}
+
+				if port != nil {
+					switch p := port.(type) {
+					case float64:
+						res.Properties.Port = int32(p)
+					case int32:
+						res.Properties.Port = p
+					case string:
+						converted, err := strconv.Atoi(p)
+						if err != nil {
+							return err
+						}
+						res.Properties.Port = int32(converted)
+					default:
+						return errors.New("unhandled type for the property port")
+					}
+				}
+
+				return nil
+			},
 		}
 	}
 
@@ -137,10 +181,56 @@ func getProvidedSecretValues(properties datamodel.RedisCacheProperties) map[stri
 func getProvidedComputedValues(properties datamodel.RedisCacheProperties) map[string]renderers.ComputedValueReference {
 	computedValues := map[string]renderers.ComputedValueReference{}
 	if properties.Host != "" {
-		computedValues[renderers.Host] = renderers.ComputedValueReference{Value: properties.Host}
+		computedValues[renderers.Host] = renderers.ComputedValueReference{
+			Value: properties.Host,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				host, ok := cv[renderers.Host].(string)
+				if !ok {
+					return errors.New("host must be set on computed values for RedisCache")
+				}
+				res, ok := r.(*datamodel.RedisCache)
+				if !ok {
+					return errors.New("resource must be RedisCache")
+				}
+
+				res.Properties.Host = host
+				return nil
+			},
+		}
 	}
 	if properties.Port != 0 {
-		computedValues[renderers.Port] = renderers.ComputedValueReference{Value: properties.Port}
+		computedValues[renderers.Port] = renderers.ComputedValueReference{
+			Value: properties.Port,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				port, ok := cv[renderers.Port]
+				if !ok {
+					return errors.New("port must be set on computed values for RedisCache")
+				}
+				res, ok := r.(*datamodel.RedisCache)
+				if !ok {
+					return errors.New("resource must be RedisCache")
+				}
+
+				if port != nil {
+					switch p := port.(type) {
+					case float64:
+						res.Properties.Port = int32(p)
+					case int32:
+						res.Properties.Port = p
+					case string:
+						converted, err := strconv.Atoi(p)
+						if err != nil {
+							return err
+						}
+						res.Properties.Port = int32(converted)
+					default:
+						return errors.New("unhandled type for the property port")
+					}
+				}
+
+				return nil
+			},
+		}
 	}
 
 	return computedValues

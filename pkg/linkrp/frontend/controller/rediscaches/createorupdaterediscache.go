@@ -9,7 +9,6 @@ import (
 	"context"
 	"errors"
 	"net/http"
-	"strconv"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -83,28 +82,6 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseW
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
-
-	if host, ok := deploymentOutput.ComputedValues[renderers.Host].(string); ok {
-		newResource.Properties.Host = host
-	}
-	if port, ok := deploymentOutput.ComputedValues[renderers.Port]; ok {
-		if port != nil {
-			switch p := port.(type) {
-			case float64:
-				newResource.Properties.Port = int32(p)
-			case int32:
-				newResource.Properties.Port = p
-			case string:
-				converted, err := strconv.Atoi(p)
-				if err != nil {
-					return nil, err
-				}
-				newResource.Properties.Port = int32(converted)
-			default:
-				return nil, errors.New("unhandled type for the property port")
-			}
-		}
-	}
 	if username, ok := deploymentOutput.ComputedValues[renderers.UsernameStringValue].(string); ok {
 		newResource.Properties.Username = username
 	}

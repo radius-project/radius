@@ -7,6 +7,7 @@ package rabbitmqmessagequeues
 
 import (
 	"context"
+	"errors"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -44,6 +45,19 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	values := map[string]renderers.ComputedValueReference{
 		QueueNameKey: {
 			Value: queueName,
+			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+				queueName, ok := cv[QueueNameKey].(string)
+				if !ok {
+					return errors.New("queue name must be set on computed values for RabbitMQMessageQueue")
+				}
+				res, ok := r.(*datamodel.RabbitMQMessageQueue)
+				if !ok {
+					return errors.New("resource must be RabbitMQMessageQueue")
+				}
+
+				res.Properties.Queue = queueName
+				return nil
+			},
 		},
 	}
 
