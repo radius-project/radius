@@ -189,7 +189,7 @@ func mergeKubernetesMetadataAnnotations(options renderers.RenderOptions, currAnn
 		mergeAnnotations = labels.Merge(mergeAnnotations, appOpts.KubernetesMetadata.Annotations)
 	}
 
-	// Cumulative Env+App Annotations is now merged with input annotations. metaAnnotations and specAnnotations are subsequently merged with the result map.
+	// Cumulative Env+App Annotations is now merged with input annotations. Existing metaAnnotations and specAnnotations are subsequently merged with the result map.
 	mergeAnnotations = labels.Merge(mergeAnnotations, currAnnotations)
 	metaAnnotations = labels.Merge(metaAnnotations, mergeAnnotations)
 	specAnnotations = labels.Merge(specAnnotations, mergeAnnotations)
@@ -211,7 +211,7 @@ func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels m
 		mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
 	}
 
-	// Cumulative Env+App Labels is now merged with input labels. metaLabels and specLabels are subsequently merged with the result map.
+	// Cumulative Env+App Labels is now merged with input labels. Existing metaLabels and specLabels are subsequently merged with the result map.
 	mergeLabels = labels.Merge(mergeLabels, currLabels)
 	metaLabels = labels.Merge(metaLabels, mergeLabels)
 	specLabels = labels.Merge(specLabels, mergeLabels)
