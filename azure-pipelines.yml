@@ -73,7 +73,7 @@ stages:
     #   submodules: "true"
     - script: |
         git clone https://github.com/project-radius/samples 
-      name: clone-samples
+      name: clonesamples
       displayName: Cloning samples for functional tests
     - task: GoTool@0
       inputs:
