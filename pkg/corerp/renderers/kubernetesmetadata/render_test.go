@@ -21,6 +21,9 @@ import (
 
 var _ renderers.Renderer = (*noop)(nil)
 
+const application = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+const container = "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container"
+
 type noop struct {
 }
 
@@ -31,8 +34,11 @@ func (r *noop) GetDependencyIDs(ctx context.Context, resource conv.DataModelInte
 func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the kubernetes metadata extension renderer can modify it
 	deployment := appsv1.Deployment{}
+
+	// Populate Meta labels with existing values
 	deployment.Annotations = map[string]string{"PriorMetaAnnotation1": "PriorMetaAnnotationVal1", "PriorMetaAnnotation2": "PriorMetaAnnotationVal2"}
 	deployment.Labels = map[string]string{"PriorMetaLabel1": "PriorMetaLabelVal1", "PriorMetaLabel2": "PriorMetaLabelVal2"}
+
 	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 
 	return renderers.RendererOutput{Resources: resources}, nil
@@ -55,8 +61,11 @@ func Test_Render_Success(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
+	// Check Meta Labels
 	require.Equal(t, metaAnn, deployment.Annotations)
 	require.Equal(t, metaLbl, deployment.Labels)
+
+	// Check Spec Labels
 	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
 	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
 }
@@ -85,8 +94,11 @@ func Test_Render_CascadeKubeMetadata(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
+	// Check Meta Labels
 	require.Equal(t, metaAnn, deployment.Annotations)
 	require.Equal(t, metaLbl, deployment.Labels)
+
+	// Check Spec Labels
 	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
 	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
 }
@@ -96,7 +108,7 @@ func Test_Render_NoExtension(t *testing.T) {
 
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+			Application: application,
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
@@ -115,8 +127,11 @@ func Test_Render_NoExtension(t *testing.T) {
 	deployment, _ := kubernetes.FindDeployment(output.Resources)
 	require.NotNil(t, deployment)
 
+	// Check Spec Labels
 	require.Equal(t, ann, deployment.Annotations)
 	require.Equal(t, lbl, deployment.Labels)
+
+	// Check Meta Labels
 	require.Nil(t, deployment.Spec.Template.Annotations)
 	require.Nil(t, deployment.Spec.Template.Labels)
 }
@@ -125,7 +140,7 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 	resource := datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: apiv1.TrackedResource{
-				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
+				ID:   container,
 				Name: "test-container",
 				Type: "Applications.Core/containers",
 			},
@@ -143,7 +158,7 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 
 	properties := datamodel.ContainerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
-			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app",
+			Application: application,
 		},
 		Container: datamodel.Container{
 			Image: "someimage:latest",
