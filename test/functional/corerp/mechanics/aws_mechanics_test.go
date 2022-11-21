@@ -29,8 +29,9 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.KinesisResourceType,
+						Name:       name,
+						Type:       validation.KinesisResourceType,
+						Identifier: name,
 						Properties: map[string]interface{}{
 							"Name":                 name,
 							"RetentionPeriodHours": float64(168),
@@ -47,8 +48,9 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.KinesisResourceType,
+						Name:       name,
+						Type:       validation.KinesisResourceType,
+						Identifier: name,
 						Properties: map[string]interface{}{
 							"Name":                 name,
 							"RetentionPeriodHours": float64(48),
@@ -77,8 +79,9 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.DBInstanceResourceType,
+						Name:       name,
+						Type:       validation.DBInstanceResourceType,
+						Identifier: name,
 						Properties: map[string]interface{}{
 							"Endpoint": map[string]interface{}{
 								"Port": 1444,
@@ -95,8 +98,9 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 			AWSResources: &validation.AWSResourceSet{
 				Resources: []validation.AWSResource{
 					{
-						Name: name,
-						Type: validation.DBInstanceResourceType,
+						Name:       name,
+						Type:       validation.DBInstanceResourceType,
+						Identifier: name,
 						Properties: map[string]interface{}{
 							"Endpoint": map[string]interface{}{
 								"Port": 1444,

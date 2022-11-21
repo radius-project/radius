@@ -21,14 +21,17 @@ import (
 )
 
 const (
-	KinesisResourceType    = "AWS.Kinesis/Stream"
-	MemoryDBResourceType   = "AWS.MemoryDB/Cluster"
-	DBInstanceResourceType = "AWS.RDS/DBInstance"
+	KinesisResourceType      = "AWS.Kinesis/Stream"
+	MemoryDBResourceType     = "AWS.MemoryDB/Cluster"
+	DBInstanceResourceType   = "AWS.RDS/DBInstance"
+	MetricFilterResourceType = "AWS.Logs/MetricFilter"
+	LogGroupResourceType     = "AWS.Logs/LogGroup"
 )
 
 type AWSResource struct {
 	Type       string
 	Name       string
+	Identifier string
 	Properties map[string]interface{}
 }
 
@@ -40,7 +43,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 	for _, resource := range expected.Resources {
 		resourceType := GetResourceTypeName(ctx, t, &resource)
 		resourceResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-			Identifier: to.StringPtr(resource.Name),
+			Identifier: to.StringPtr(resource.Identifier),
 			TypeName:   &resourceType,
 		})
 		require.NoError(t, err)
@@ -60,7 +63,7 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 
 	// Check if the resource exists
 	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		Identifier: to.StringPtr(resource.Name),
+		Identifier: to.StringPtr(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 	notFound := awsclient.IsAWSResourceNotFound(err)
@@ -70,7 +73,7 @@ func DeleteAWSResource(ctx context.Context, t *testing.T, resource *AWSResource,
 	}
 
 	deleteOutput, err := client.DeleteResource(ctx, &cloudcontrol.DeleteResourceInput{
-		Identifier: to.StringPtr(resource.Name),
+		Identifier: to.StringPtr(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 	if err != nil {
@@ -89,7 +92,7 @@ func ValidateNoAWSResource(ctx context.Context, t *testing.T, resource *AWSResou
 	// Verify that the resource is indeed deleted
 	resourceType := GetResourceTypeName(ctx, t, resource)
 	_, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
-		Identifier: to.StringPtr(resource.Name),
+		Identifier: to.StringPtr(resource.Identifier),
 		TypeName:   &resourceType,
 	})
 
