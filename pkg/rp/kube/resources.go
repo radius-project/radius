@@ -35,7 +35,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 	}
 
 	if !strings.EqualFold(id.Type(), ctrl_env.ResourceTypeName) {
-		err = errors.New("invalid Applications.Core/Environments resource id")
+		err = errors.New("invalid Applications.Core/environments resource id")
 		return
 	}
 
@@ -74,7 +74,7 @@ func FindNamespaceByAppID(ctx context.Context, sp dataprovider.DataStorageProvid
 	}
 
 	if !strings.EqualFold(id.Type(), ctrl_app.ResourceTypeName) {
-		err = errors.New("invalid Applications.Core/Applications resource id")
+		err = errors.New("invalid Applications.Core/applications resource id")
 		return
 	}
 

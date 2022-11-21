@@ -76,9 +76,8 @@ func TestFindNamespaceByEnvID(t *testing.T) {
 			mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 			mockSC := store.NewMockStorageClient(mctrl)
 
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
-			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).AnyTimes()
-
+			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
+			mockSC.EXPECT().Get(gomock.Any(), tc.id, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 			ns, err := FindNamespaceByEnvID(context.Background(), mockSP, testEnvID)
 			require.NoError(t, err)
 			require.Equal(t, tc.out, ns)
@@ -127,7 +126,7 @@ func TestFindNamespaceByAppID(t *testing.T) {
 			mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 			mockSC := store.NewMockStorageClient(mctrl)
 
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).AnyTimes()
+			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
 
 			envdm := &datamodel.Environment{
 				Properties: datamodel.EnvironmentProperties{
