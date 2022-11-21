@@ -351,28 +351,28 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
@@ -389,7 +389,7 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
 		envId = obj.Properties.Environment
-		if obj.Properties.Recipe.Name != "" {
+		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
