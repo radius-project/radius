@@ -69,12 +69,12 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
-    # - checkout: self
-    #   submodules: "true"
-    - script: |
-        git clone https://github.com/project-radius/samples 
-      name: clonesamples
-      displayName: Cloning samples for functional tests
+    - checkout: self
+      submodules: "true"
+    # - script: |
+    #     git clone https://github.com/project-radius/samples 
+    #   name: clonesamples
+    #   displayName: Cloning samples for functional tests
     - task: GoTool@0
       inputs:
         version: '1.18'
