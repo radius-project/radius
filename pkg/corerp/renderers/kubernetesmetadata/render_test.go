@@ -116,12 +116,55 @@ func Test_Render_KubeMetadataCollision(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{}
 	options := renderers.RenderOptions{Dependencies: dependencies}
 
+	// Set Environment KubernetesMetadataExtension
 	options.Environment = renderers.EnvironmentOptions{
 		KubernetesMetadata: datamodel.EnvironmentKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseEnvKubeMetadataExt},
 	}
+
+	// Set Application KubernetesMetadataExtension
 	options.Application = renderers.ApplicationOptions{
 		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
 	}
+	output, err := renderer.Render(context.Background(), resource, options)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	// Check Meta Labels
+	require.Equal(t, metaAnn, deployment.Annotations)
+	require.Equal(t, metaLbl, deployment.Labels)
+
+	// Check Spec Labels
+	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
+	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
+}
+
+func Test_Render_OnlyAppExtension(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	// Get expected values
+	metaAnn, metaLbl, specAnn, specLbl, baseAppKubeMetadataExt := getOnlyAppExtTestResultMaps()
+
+	properties := datamodel.ContainerProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: application,
+		},
+		Container: datamodel.Container{
+			Image: "someimage:latest",
+		},
+	}
+
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	options := renderers.RenderOptions{Dependencies: dependencies}
+
+	// Set Application KubernetesMetadataExtension
+	options.Application = renderers.ApplicationOptions{
+		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+	}
+
 	output, err := renderer.Render(context.Background(), resource, options)
 	require.NoError(t, err)
 	require.Len(t, output.Resources, 1)
@@ -200,12 +243,6 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 		},
 		Extensions: []datamodel.Extension{
 			{
-				Kind: datamodel.ManualScaling,
-				ManualScaling: &datamodel.ManualScalingExtension{
-					Replicas: preplicas,
-				},
-			},
-			{
 				Kind: datamodel.KubernetesMetadata,
 				KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
 					Annotations: map[string]string{
@@ -219,7 +256,14 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 						"test.lbl3": "lbl3.val",
 					},
 				},
-			}},
+			},
+			{
+				Kind: datamodel.ManualScaling,
+				ManualScaling: &datamodel.ManualScalingExtension{
+					Replicas: preplicas,
+				},
+			},
+		},
 	}
 	return properties
 }
@@ -325,4 +369,40 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 	}
 
 	return metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt
+}
+
+func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension) {
+	metaAnn := map[string]string{
+		"app.ann1":              "app.annval1",
+		"app.ann2":              "app.annval2",
+		"prior.MetaAnnotation1": "prior.MetaAnnotationVal1",
+		"prior.MetaAnnotation2": "prior.MetaAnnotationVal2",
+	}
+	metaLbl := map[string]string{
+		"app.lbl1":         "app.lblval1",
+		"app.lbl2":         "app.lblval2",
+		"prior.MetaLabel1": "prior.MetaLabelVal1",
+		"prior.MetaLabel2": "prior.MetaLabelVal2",
+	}
+	specAnn := map[string]string{
+		"app.ann1": "app.annval1",
+		"app.ann2": "app.annval2",
+	}
+	specLbl := map[string]string{
+		"app.lbl1": "app.lblval1",
+		"app.lbl2": "app.lblval2",
+	}
+
+	baseAppKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+		Annotations: map[string]string{
+			"app.ann1": "app.annval1",
+			"app.ann2": "app.annval2",
+		},
+		Labels: map[string]string{
+			"app.lbl1": "app.lblval1",
+			"app.lbl2": "app.lblval2",
+		},
+	}
+
+	return metaAnn, metaLbl, specAnn, specLbl, baseAppKubeMetadataExt
 }
