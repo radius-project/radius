@@ -17,7 +17,10 @@ import (
 )
 
 const (
-	DefaultPort       int32 = 80
+	// DefaultPort represents the default port of HTTP endpoint.
+	DefaultPort int32 = 80
+
+	// DefaultSecurePort represents the default port of HTTPS endpoint.
 	DefaultSecurePort int32 = 443
 )
 
