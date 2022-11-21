@@ -1,7 +1,4 @@
-[submodule "docs/themes/docsy"]
-	path = docs/themes/docsy
-	url = https://github.com/google/docsy.git
 [submodule "test/samples/samples"]
 	path = test/samples/samples
-	url = git@github.com:project-radius/samples.git
+	url = https://github.com/project-radius/samples
 	branch = edge

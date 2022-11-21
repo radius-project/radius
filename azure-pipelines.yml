@@ -125,14 +125,6 @@ stages:
             controllerManager:
               extraArgs:
                 service-account-private-key-file: /etc/kubernetes/pki/sa.key
-        - role: worker
-          extraPortMappings:
-          - containerPort: 80
-            hostPort: 80
-            listenAddress: "0.0.0.0"  
-          - containerPort: 443
-            hostPort: 443
-            listenAddress: "0.0.0.0"
         EOF
       env:
         OIDC_ISSUER: $(OIDC_ISSUER)
