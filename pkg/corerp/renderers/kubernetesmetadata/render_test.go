@@ -38,8 +38,8 @@ func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options r
 	deployment := appsv1.Deployment{}
 
 	// Populate Meta labels with existing values
-	deployment.Annotations = map[string]string{"PriorMetaAnnotation1": "PriorMetaAnnotationVal1", "PriorMetaAnnotation2": "PriorMetaAnnotationVal2"}
-	deployment.Labels = map[string]string{"PriorMetaLabel1": "PriorMetaLabelVal1", "PriorMetaLabel2": "PriorMetaLabelVal2"}
+	deployment.Annotations = map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
+	deployment.Labels = map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
 
 	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
 
@@ -152,8 +152,8 @@ func Test_Render_NoExtension(t *testing.T) {
 
 	resource := makeResource(t, properties)
 	dependencies := map[string]renderers.RendererDependency{}
-	ann := map[string]string{"PriorMetaAnnotation1": "PriorMetaAnnotationVal1", "PriorMetaAnnotation2": "PriorMetaAnnotationVal2"}
-	lbl := map[string]string{"PriorMetaLabel1": "PriorMetaLabelVal1", "PriorMetaLabel2": "PriorMetaLabelVal2"}
+	ann := map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
+	lbl := map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
 
 	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.NoError(t, err)
@@ -226,18 +226,18 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 
 func getTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string) {
 	metaAnn := map[string]string{
-		"test.ann1":            "ann1.val",
-		"test.ann2":            "ann1.val",
-		"test.ann3":            "ann1.val",
-		"PriorMetaAnnotation1": "PriorMetaAnnotationVal1",
-		"PriorMetaAnnotation2": "PriorMetaAnnotationVal2",
+		"test.ann1":             "ann1.val",
+		"test.ann2":             "ann1.val",
+		"test.ann3":             "ann1.val",
+		"prior.MetaAnnotation1": "prior.MetaAnnotationVal1",
+		"prior.MetaAnnotation2": "prior.MetaAnnotationVal2",
 	}
 	metaLbl := map[string]string{
-		"test.lbl1":       "lbl1.val",
-		"test.lbl2":       "lbl2.val",
-		"test.lbl3":       "lbl3.val",
-		"PriorMetaLabel1": "PriorMetaLabelVal1",
-		"PriorMetaLabel2": "PriorMetaLabelVal2",
+		"test.lbl1":        "lbl1.val",
+		"test.lbl2":        "lbl2.val",
+		"test.lbl3":        "lbl3.val",
+		"prior.MetaLabel1": "prior.MetaLabelVal1",
+		"prior.MetaLabel2": "prior.MetaLabelVal2",
 	}
 	specAnn := map[string]string{
 		"test.ann1": "ann1.val",
@@ -255,26 +255,26 @@ func getTestResultMaps() (map[string]string, map[string]string, map[string]strin
 
 func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension, datamodel.BaseKubernetesMetadataExtension) {
 	metaAnn := map[string]string{
-		"env.ann1":             "env.annval1",
-		"env.ann2":             "env.annval2",
-		"app.ann1":             "app.annval1",
-		"app.ann2":             "app.annval2",
-		"test.ann1":            "ann1.val",
-		"test.ann2":            "ann1.val",
-		"test.ann3":            "ann1.val",
-		"PriorMetaAnnotation1": "PriorMetaAnnotationVal1",
-		"PriorMetaAnnotation2": "PriorMetaAnnotationVal2",
+		"env.ann1":              "env.annval1",
+		"env.ann2":              "env.annval2",
+		"app.ann1":              "app.annval1",
+		"app.ann2":              "app.annval2",
+		"test.ann1":             "ann1.val",
+		"test.ann2":             "ann1.val",
+		"test.ann3":             "ann1.val",
+		"prior.MetaAnnotation1": "prior.MetaAnnotationVal1",
+		"prior.MetaAnnotation2": "prior.MetaAnnotationVal2",
 	}
 	metaLbl := map[string]string{
-		"env.lbl1":        "env.lblval1",
-		"env.lbl2":        "env.lblval2",
-		"app.lbl1":        "app.lblval1",
-		"app.lbl2":        "app.lblval2",
-		"test.lbl1":       "lbl1.val",
-		"test.lbl2":       "lbl2.val",
-		"test.lbl3":       "lbl3.val",
-		"PriorMetaLabel1": "PriorMetaLabelVal1",
-		"PriorMetaLabel2": "PriorMetaLabelVal2",
+		"env.lbl1":         "env.lblval1",
+		"env.lbl2":         "env.lblval2",
+		"app.lbl1":         "app.lblval1",
+		"app.lbl2":         "app.lblval2",
+		"test.lbl1":        "lbl1.val",
+		"test.lbl2":        "lbl2.val",
+		"test.lbl3":        "lbl3.val",
+		"prior.MetaLabel1": "prior.MetaLabelVal1",
+		"prior.MetaLabel2": "prior.MetaLabelVal2",
 	}
 	specAnn := map[string]string{
 		"env.ann1":  "env.annval1",
