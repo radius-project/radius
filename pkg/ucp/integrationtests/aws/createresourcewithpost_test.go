@@ -53,6 +53,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    to.Ptr(testAWSRequestToken),
+				Identifier:      to.Ptr(testAWSResourceName),
 			},
 		}
 		return &output, nil

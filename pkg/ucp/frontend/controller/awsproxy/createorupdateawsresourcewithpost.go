@@ -7,6 +7,7 @@ package awsproxy
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	http "net/http"
 
@@ -74,7 +75,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	responseProperties := map[string]interface{}{}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
-	if err != nil {
+	if errors.Is(&awserror.AWSMissingPropertyError{}, err) {
 		// assume that if we can't get the AWS resource identifier, we need to create the resource
 		existing = false
 	} else {
@@ -158,15 +159,30 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return awserror.HandleAWSError(err)
 		}
 
-		if response == nil || response.ProgressEvent == nil || response.ProgressEvent.Identifier == nil {
-			return awserror.HandleAWSError(fmt.Errorf("empty response from AWS CloudControl CreateResource API for type %s", resourceType))
-		}
-
 		operation, err = uuid.Parse(*response.ProgressEvent.RequestToken)
 		if err != nil {
 			return awserror.HandleAWSError(err)
 		}
 
+		// Parse the CreateResource response to see if we get an Identifier back
+		// If we don't get the identifier back, then return a relevant error
+		err = nil
+		if response != nil {
+			if response.ProgressEvent != nil {
+				if response.ProgressEvent.Identifier == nil {
+					err = fmt.Errorf("field ProgressEvent.Identifier is missing from AWS CloudControl CreateResource response for type %s", resourceType)
+				}
+			} else {
+				err = fmt.Errorf("field ProgressEvent is missing from AWS CloudControl CreateResource response for type %s", resourceType)
+			}
+		} else {
+			err = fmt.Errorf("empty response from AWS CloudControl CreateResource API for type %s", resourceType)
+		}
+		if err != nil {
+			return awserror.HandleAWSError(err)
+		}
+
+		// Get the resource identifier from the progress event response
 		awsResourceIdentifier = *response.ProgressEvent.Identifier
 
 		computedResourceID = computeResourceID(id, awsResourceIdentifier)
