@@ -11,8 +11,6 @@ import (
 	"strings"
 
 	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
-	ctrl_app "github.com/project-radius/radius/pkg/corerp/frontend/controller/applications"
-	ctrl_env "github.com/project-radius/radius/pkg/corerp/frontend/controller/environments"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -34,7 +32,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 		return
 	}
 
-	if !strings.EqualFold(id.Type(), ctrl_env.ResourceTypeName) {
+	if !strings.EqualFold(id.Type(), "Applications.Core/environments") {
 		err = errors.New("invalid Applications.Core/environments resource id")
 		return
 	}
@@ -73,12 +71,10 @@ func FindNamespaceByAppID(ctx context.Context, sp dataprovider.DataStorageProvid
 		return
 	}
 
-	if !strings.EqualFold(id.Type(), ctrl_app.ResourceTypeName) {
+	if !strings.EqualFold(id.Type(), "Applications.Core/applications") {
 		err = errors.New("invalid Applications.Core/applications resource id")
 		return
 	}
-
-	suffix := ""
 
 	app := &cdm.Application{}
 	client, err := sp.GetStorageClient(ctx, id.Type())
@@ -93,15 +89,8 @@ func FindNamespaceByAppID(ctx context.Context, sp dataprovider.DataStorageProvid
 	if err = res.As(app); err != nil {
 		return
 	}
-	ext := app.Properties.FindExtension(cdm.KubernetesNamespaceOverride)
-	if ext == nil {
-		suffix = id.Name()
-	} else if ext.KubernetesNamespaceOverride != nil {
-		namespace = ext.KubernetesNamespaceOverride.Namespace
-		return
-	}
 
-	namespace, err = FindNamespaceByEnvID(ctx, sp, app.Properties.Environment)
-	namespace += "-" + suffix
+	namespace = app.AppInternal.KubernetesNamespace
+
 	return
 }

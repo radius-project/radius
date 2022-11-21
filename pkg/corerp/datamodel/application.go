@@ -24,7 +24,7 @@ type Application struct {
 	v1.BaseResource
 
 	// AppInternal represents Application internal metadata.
-	AppInternal *ApplicationInternalMetadata `json:"appInternal,omitempty"`
+	AppInternal ApplicationInternalMetadata `json:"appInternal,omitempty"`
 
 	// Properties is the properties of the resource.
 	Properties ApplicationProperties `json:"properties"`
