@@ -16,6 +16,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+const (
+	// DefaultPort represents the default port of HTTP endpoint.
+	DefaultPort int32 = 80
+
+	// DefaultSecurePort represents the default port of HTTPS endpoint.
+	DefaultSecurePort int32 = 443
+)
+
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)

@@ -95,7 +95,7 @@ func Test_Render_WithPort(t *testing.T) {
 func Test_Render_WithDefaultPort(t *testing.T) {
 	r := &Renderer{}
 
-	defaultPort := kubernetes.GetDefaultPort()
+	defaultPort := renderers.DefaultPort
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := makeHTTPRouteProperties(defaultPort)
 	resource := makeResource(t, &properties)
@@ -140,7 +140,7 @@ func Test_Render_WithDefaultPort(t *testing.T) {
 func Test_Render_WithNameSpace(t *testing.T) {
 	r := &Renderer{}
 
-	defaultPort := kubernetes.GetDefaultPort()
+	defaultPort := renderers.DefaultPort
 	dependencies := map[string]renderers.RendererDependency{}
 	properties := makeHTTPRouteProperties(defaultPort)
 	resource := makeResource(t, &properties)
