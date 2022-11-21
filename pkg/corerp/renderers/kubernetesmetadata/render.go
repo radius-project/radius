@@ -78,7 +78,6 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 			// Merge cascaded annotations with current map
 			metaAnnotations, specAnnotations = mergeKubernetesMetadataMaps(mergeAnnotations, kubeMetadataExt.Annotations, metaAnnotations, specAnnotations)
-
 			err = setAnnotations(o, metaAnnotations, specAnnotations)
 			if err != nil {
 				return renderers.RendererOutput{}, err
@@ -93,7 +92,6 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 			// Merge cascaded labels with current map
 			metaLabels, specLabels = mergeKubernetesMetadataMaps(mergeLabels, kubeMetadataExt.Labels, metaLabels, specLabels)
-
 			err = setLabels(o, metaLabels, specLabels)
 			if err != nil {
 				return renderers.RendererOutput{}, err

@@ -50,7 +50,7 @@ func Test_Render_Success(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl := getResultMaps()
+	metaAnn, metaLbl, specAnn, specLbl := getTestResultMaps()
 
 	properties := makeProperties(t)
 	resource := makeResource(t, properties)
@@ -76,7 +76,40 @@ func Test_Render_CascadeKubeMetadata(t *testing.T) {
 	renderer := &Renderer{Inner: &noop{}}
 
 	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeResultMaps()
+	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeTestResultMaps(false)
+
+	properties := makeProperties(t)
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	options := renderers.RenderOptions{Dependencies: dependencies}
+
+	options.Environment = renderers.EnvironmentOptions{
+		KubernetesMetadata: datamodel.EnvironmentKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseEnvKubeMetadataExt},
+	}
+	options.Application = renderers.ApplicationOptions{
+		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+	}
+	output, err := renderer.Render(context.Background(), resource, options)
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 1)
+
+	deployment, _ := kubernetes.FindDeployment(output.Resources)
+	require.NotNil(t, deployment)
+
+	// Check Meta Labels
+	require.Equal(t, metaAnn, deployment.Annotations)
+	require.Equal(t, metaLbl, deployment.Labels)
+
+	// Check Spec Labels
+	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
+	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
+}
+
+func Test_Render_KubeMetadataCollision(t *testing.T) {
+	renderer := &Renderer{Inner: &noop{}}
+
+	// Get expected values
+	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeTestResultMaps(true)
 
 	properties := makeProperties(t)
 	resource := makeResource(t, properties)
@@ -191,7 +224,7 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 	return properties
 }
 
-func getResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string) {
+func getTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string) {
 	metaAnn := map[string]string{
 		"test.ann1":            "ann1.val",
 		"test.ann2":            "ann1.val",
@@ -220,7 +253,7 @@ func getResultMaps() (map[string]string, map[string]string, map[string]string, m
 	return metaAnn, metaLbl, specAnn, specLbl
 }
 
-func getCascadeResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension, datamodel.BaseKubernetesMetadataExtension) {
+func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension, datamodel.BaseKubernetesMetadataExtension) {
 	metaAnn := map[string]string{
 		"env.ann1":             "env.annval1",
 		"env.ann2":             "env.annval2",
@@ -261,6 +294,7 @@ func getCascadeResultMaps() (map[string]string, map[string]string, map[string]st
 		"test.lbl2": "lbl2.val",
 		"test.lbl3": "lbl3.val",
 	}
+
 	baseEnvKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
 		Annotations: map[string]string{
 			"env.ann1": "env.annval1",
@@ -280,6 +314,14 @@ func getCascadeResultMaps() (map[string]string, map[string]string, map[string]st
 			"app.lbl1": "app.lblval1",
 			"app.lbl2": "app.lblval2",
 		},
+	}
+
+	if hasCollision {
+		//set up collsion values
+		baseEnvKubeMetadataExt.Annotations["test.ann1"] = "env-annotation-collsion"
+		baseEnvKubeMetadataExt.Labels["test.lbl1"] = "env-label-collsion"
+		baseAppKubeMetadataExt.Annotations["test.ann1"] = "app-annotation-collsion"
+		baseAppKubeMetadataExt.Labels["test.lbl1"] = "app-label-collsion"
 	}
 
 	return metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt

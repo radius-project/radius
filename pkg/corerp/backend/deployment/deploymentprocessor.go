@@ -98,7 +98,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
 		return renderers.RendererOutput{}, err
 	}
-	// 2. fetch the application resource from the DB to get the environment info
+	// 2. fetch the application properties from the DB
 	appProperties, err := dp.getApplicationProperties(ctx, res.AppID, resourceID.String())
 	if err != nil {
 		return renderers.RendererOutput{}, err
@@ -476,7 +476,6 @@ func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corer
 }
 
 func getKubernetesMetadataExtension(exts []corerp_dm.Extension) *corerp_dm.BaseKubernetesMetadataExtension {
-
 	for _, ext := range exts {
 		switch ext.Kind {
 		case corerp_dm.KubernetesMetadata:
