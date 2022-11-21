@@ -126,8 +126,6 @@ func TestFindNamespaceByAppID(t *testing.T) {
 			mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 			mockSC := store.NewMockStorageClient(mctrl)
 
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
-
 			envdm := &datamodel.Environment{
 				Properties: datamodel.EnvironmentProperties{
 					Compute: datamodel.EnvironmentCompute{
@@ -152,7 +150,9 @@ func TestFindNamespaceByAppID(t *testing.T) {
 						KubernetesNamespaceOverride: tc.appProp,
 					},
 				}
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(1)
 			} else {
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mockSC), nil).Times(2)
 				mockSC.EXPECT().Get(gomock.Any(), tc.envID, gomock.Any()).Return(fakeStoreObject(envdm), nil).Times(1)
 			}
 
