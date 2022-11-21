@@ -192,9 +192,8 @@ func mergeEnvAppKubernetesMetadataMaps(options renderers.RenderOptions) (map[str
 	return mergeAnnotations, mergeLabels
 }
 
-// mergeMaps merges meta, spec annotations/labels
+// mergeMaps merges meta, spec annotations/labels in the sequence env+app map->current map
 func mergeKubernetesMetadataMaps(cascadeMap map[string]string, currMap map[string]string, metaMap map[string]string, specMap map[string]string) (map[string]string, map[string]string) {
-
 	currMap = labels.Merge(cascadeMap, currMap)
 	metaMap = labels.Merge(metaMap, currMap)
 	specMap = labels.Merge(specMap, currMap)
