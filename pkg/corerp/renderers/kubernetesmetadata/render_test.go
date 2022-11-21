@@ -21,8 +21,10 @@ import (
 
 var _ renderers.Renderer = (*noop)(nil)
 
-const application = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
-const container = "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container"
+const (
+	application = "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-app"
+	container   = "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container"
+)
 
 type noop struct {
 }
