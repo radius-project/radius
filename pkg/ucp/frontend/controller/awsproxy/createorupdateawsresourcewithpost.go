@@ -8,7 +8,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	http "net/http"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -164,37 +163,22 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			return awserror.HandleAWSError(err)
 		}
 
-		// Parse the CreateResource response to see if we get an Identifier back
-		// If we don't get the identifier back, then return a relevant error
-		err = nil
-		if response != nil {
-			if response.ProgressEvent != nil {
-				if response.ProgressEvent.Identifier == nil {
-					err = fmt.Errorf("field ProgressEvent.Identifier is missing from AWS CloudControl CreateResource response for type %s", resourceType)
-				}
-			} else {
-				err = fmt.Errorf("field ProgressEvent is missing from AWS CloudControl CreateResource response for type %s", resourceType)
-			}
-		} else {
-			err = fmt.Errorf("empty response from AWS CloudControl CreateResource API for type %s", resourceType)
-		}
-		if err != nil {
-			return awserror.HandleAWSError(err)
-		}
-
 		// Get the resource identifier from the progress event response
-		awsResourceIdentifier = *response.ProgressEvent.Identifier
-
-		computedResourceID = computeResourceID(id, awsResourceIdentifier)
+		if response != nil && response.ProgressEvent != nil && response.ProgressEvent.Identifier != nil {
+			awsResourceIdentifier = *response.ProgressEvent.Identifier
+			computedResourceID = computeResourceID(id, awsResourceIdentifier)
+		}
 	}
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 
 	responseBody := map[string]interface{}{
-		"id":         computedResourceID,
-		"name":       awsResourceIdentifier,
 		"type":       id.Type(),
 		"properties": responseProperties,
+	}
+	if computedResourceID != "" && awsResourceIdentifier != "" {
+		responseBody["id"] = computedResourceID
+		responseBody["name"] = awsResourceIdentifier
 	}
 
 	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options.BasePath)
