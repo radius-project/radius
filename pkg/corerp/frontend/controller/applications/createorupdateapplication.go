@@ -88,7 +88,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		ResourceType: serviceCtx.ResourceID.Type(),
 		Filters: []store.QueryFilter{
 			{
-				Field: "properties.extensions.kubernetesNamespaceOverride.namespace",
+				Field: "appInternal.kubernetesNamespace",
 				Value: namespace,
 			},
 		},
