@@ -24,12 +24,6 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-// What needs to happen
-// Need to add k8s resources from sample from radius
-// need to be able to run locally
-// Remove submodule and ask user to point to repo directory
-//
-
 func Test_TutorialSampleMongoContainer(t *testing.T) {
 	template := "samples/tutorial/app.bicep"
 	appName := "webapp"
