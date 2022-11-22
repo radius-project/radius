@@ -91,7 +91,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
 				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
 
-				// Environmment namespace query
+				// Environmment and application namespace queries
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -99,17 +99,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
 						}, nil
-					})
-
-				// Application namespace query
-				mStorageClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
-						}, nil
-					})
+					}).Times(2)
 			}
 
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
@@ -192,7 +182,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
 				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
 
-				// Environmment namespace query
+				// Environmment and application namespace queries
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -200,17 +190,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
 						}, nil
-					})
-
-				// Application namespace query
-				mStorageClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
-						}, nil
-					})
+					}).Times(2)
 
 				mStorageClient.
 					EXPECT().
@@ -277,7 +257,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
 				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
 
-				// Environmment namespace query
+				// Environmment and application namespace queries
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -285,17 +265,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
 						}, nil
-					})
-
-				// Application namespace query
-				mStorageClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
-						}, nil
-					})
+					}).Times(2)
 			}
 
 			opts := ctrl.Options{
@@ -349,7 +319,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
 				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
 
-				// Environment namespace query
+				// Environmment and application namespace queries
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -357,17 +327,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						return &store.ObjectQueryResult{
 							Items: []store.Object{},
 						}, nil
-					})
-
-				// Application namespace query
-				mStorageClient.
-					EXPECT().
-					Query(gomock.Any(), gomock.Any()).
-					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
-						return &store.ObjectQueryResult{
-							Items: []store.Object{},
-						}, nil
-					})
+					}).Times(2)
 
 				mStorageClient.
 					EXPECT().

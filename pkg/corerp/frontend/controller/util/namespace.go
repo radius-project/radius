@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package query
+package util
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
+// Finds the resources that are scoped within the input namespace
 func FindNamespaceResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
 	namespaceQuery := store.Query{
 		RootScope:    rootScope,

@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
-	"github.com/project-radius/radius/pkg/corerp/frontend/query"
+	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"golang.org/x/exp/maps"
@@ -83,7 +83,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
-	result, err := query.FindNamespaceResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.StorageClient())
+	result, err := util.FindNamespaceResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.StorageClient())
 	if err != nil {
 		return nil, err
 	}
