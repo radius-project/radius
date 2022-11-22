@@ -24,6 +24,11 @@ import (
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
+const (
+	envNamespaceQuery = "properties.compute.kubernetes.namespace"
+	appNamespaceQuery = "appInternal.kubernetesNamespace"
+)
+
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
 type CreateOrUpdateApplication struct {
 	ctrl.Operation[*datamodel.Application, datamodel.Application]
@@ -86,7 +91,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s for application %s could not be found", envID.Name(), serviceCtx.ResourceID.Name())), nil
 	}
 
-	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), "properties.compute.kubernetes.namespace", kubeNamespace, a.StorageClient())
+	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), envNamespaceQuery, kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +100,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Check if another application resource is using namespace
-	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "appInternal.kubernetesNamespace", kubeNamespace, a.StorageClient())
+	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), appNamespaceQuery, kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}

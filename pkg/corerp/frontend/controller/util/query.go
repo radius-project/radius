@@ -13,7 +13,7 @@ import (
 
 // FindResources queries all resources matched with resource type and property value.
 func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
-	namespaceQuery := store.Query{
+	query := store.Query{
 		RootScope:    rootScope,
 		ResourceType: resourceType,
 		Filters: []store.QueryFilter{
@@ -23,5 +23,5 @@ func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filt
 			},
 		},
 	}
-	return storageClient.Query(ctx, namespaceQuery)
+	return storageClient.Query(ctx, query)
 }
