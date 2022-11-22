@@ -1,3 +1,8 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package samples
 
 import (
@@ -24,6 +29,8 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
+// To run, sample directory must be cloned adjacent to this folder
+// Ex: test/functional/samples/samples/
 func Test_TutorialSampleMongoContainer(t *testing.T) {
 	template := "samples/tutorial/app.bicep"
 	appName := "webapp"

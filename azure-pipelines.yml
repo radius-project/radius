@@ -70,7 +70,8 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
-      submodules: "true"
+    - script: |
+        git clone https://github.com/project-radius/samples test/functional/samples/samples -b edge
     - task: GoTool@0
       inputs:
         version: '1.18'
