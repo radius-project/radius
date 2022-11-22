@@ -187,10 +187,10 @@ func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels m
 	return existingMetaLabels, existingSpecLabels
 }
 
-// mergeKubernetesMetadata merges environment, application labels with current values
+// mergeKubernetesMetadata merges four maps
 func mergeKubernetesMetadata(mergeMap map[string]string, newInputMap map[string]string, existingMetaMap map[string]string, existingSpecMap map[string]string) (map[string]string, map[string]string) {
 
-	// Cumulative Env+App Labels is now merged with input labels. Existing metaLabels and specLabels are subsequently merged with the result map.
+	// Cumulative Env+App Labels (mergeMap) is now merged with new input map. Existing metaLabels and specLabels are subsequently merged with the result map.
 	mergeMap = labels.Merge(mergeMap, newInputMap)
 	existingMetaMap = labels.Merge(existingMetaMap, mergeMap)
 	existingSpecMap = labels.Merge(existingSpecMap, mergeMap)
