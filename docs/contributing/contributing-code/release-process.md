@@ -67,6 +67,7 @@ Do not start the release until the following scenarios are validated:
    git pull origin release/0.12 
    git tag v0.12.0
    git push --tags
+   git push origin release/0.12
    ```
 
    Else if on main branch
@@ -76,8 +77,8 @@ Do not start the release until the following scenarios are validated:
    # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
+   git push origin release/0.12
    ```
-
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
@@ -92,6 +93,7 @@ Do not start the release until the following scenarios are validated:
    git pull origin release/0.12 
    git tag v0.12.0
    git push --tags
+   git push origin release/0.12
    ```
 
    Else if on main branch
@@ -101,6 +103,7 @@ Do not start the release until the following scenarios are validated:
    # replace v0.12.0 with the release version
    git tag v0.12.0
    git push --tags
+   git push origin release/0.12
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
