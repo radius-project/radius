@@ -64,53 +64,42 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		if !ok {
 			return renderers.RendererOutput{}, errors.New("found Kubernetes resource with non-Kubernetes payload")
 		}
+		dep, ok := o.(*appsv1.Deployment)
+		if !ok {
+			continue
+		}
 
-		var (
-			inputAnnotations map[string]string
-			inputLabels      map[string]string
-		)
+		inputAnnotations := map[string]string{}
+		inputLabels := map[string]string{}
 
 		if kubeMetadataExt != nil && kubeMetadataExt.Annotations != nil {
 			inputAnnotations = kubeMetadataExt.Annotations
 		}
 
-		metaAnnotations, specAnnotations := getAnnotations(o)
+		existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
 
 		// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		metaAnnotations, specAnnotations = mergeKubernetesMetadataAnnotations(options, inputAnnotations, metaAnnotations, specAnnotations)
-
-		if !(len(metaAnnotations) == 0 && len(specAnnotations) == 0) {
-			setAnnotations(o, metaAnnotations, specAnnotations)
-		}
+		existingMetaAnnotations, existingSpecAnnotations = mergeKubernetesMetadataAnnotations(options, inputAnnotations, existingMetaAnnotations, existingSpecAnnotations)
+		setAnnotations(dep, existingMetaAnnotations, existingSpecAnnotations)
 
 		if kubeMetadataExt != nil && kubeMetadataExt.Labels != nil {
 			inputLabels = kubeMetadataExt.Labels
 		}
 
-		metaLabels, specLabels := getLabels(o)
+		existingMetaLabels, existingSpecLabels := getLabels(dep)
 
 		// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		metaLabels, specLabels = mergeKubernetesMetadataLabels(options, inputLabels, metaLabels, specLabels)
-
-		if !(len(metaLabels) == 0 && len(specLabels) == 0) {
-			setLabels(o, metaLabels, specLabels)
-		}
+		existingMetaLabels, existingSpecLabels = mergeKubernetesMetadataLabels(options, inputLabels, existingMetaLabels, existingSpecLabels)
+		setLabels(dep, existingMetaLabels, existingSpecLabels)
 
 	}
 
 	return output, nil
 }
 
-func getAnnotations(o runtime.Object) (map[string]string, map[string]string) {
-	dep, ok := o.(*appsv1.Deployment)
-	if !ok {
-		return nil, nil
-	}
-
-	var (
-		depMetaAnnotations map[string]string
-		depSpecAnnotations map[string]string
-	)
+func getAnnotations(dep *appsv1.Deployment) (map[string]string, map[string]string) {
+	depMetaAnnotations := map[string]string{}
+	depSpecAnnotations := map[string]string{}
 
 	if dep.Annotations != nil {
 		depMetaAnnotations = dep.Annotations
@@ -122,16 +111,9 @@ func getAnnotations(o runtime.Object) (map[string]string, map[string]string) {
 	return depMetaAnnotations, depSpecAnnotations
 }
 
-func getLabels(o runtime.Object) (map[string]string, map[string]string) {
-	dep, ok := o.(*appsv1.Deployment)
-	if !ok {
-		return nil, nil
-	}
-
-	var (
-		depMetaLabels map[string]string
-		depSpecLabels map[string]string
-	)
+func getLabels(dep *appsv1.Deployment) (map[string]string, map[string]string) {
+	depMetaLabels := map[string]string{}
+	depSpecLabels := map[string]string{}
 
 	if dep.Labels != nil {
 		depMetaLabels = dep.Labels
@@ -144,12 +126,7 @@ func getLabels(o runtime.Object) (map[string]string, map[string]string) {
 }
 
 // setLabels sets the value of labels
-func setLabels(o runtime.Object, metaLabels map[string]string, specLabels map[string]string) {
-	dep, ok := o.(*appsv1.Deployment)
-	if !ok {
-		return
-	}
-
+func setLabels(dep *appsv1.Deployment, metaLabels map[string]string, specLabels map[string]string) {
 	if len(metaLabels) > 0 {
 		dep.SetLabels(metaLabels)
 	}
@@ -160,12 +137,7 @@ func setLabels(o runtime.Object, metaLabels map[string]string, specLabels map[st
 }
 
 // setAnnotations sets the value of annotations/labels
-func setAnnotations(o runtime.Object, metaAnnotations map[string]string, specAnnotations map[string]string) {
-	dep, ok := o.(*appsv1.Deployment)
-	if !ok {
-		return
-	}
-
+func setAnnotations(dep *appsv1.Deployment, metaAnnotations map[string]string, specAnnotations map[string]string) {
 	if len(metaAnnotations) > 0 {
 		dep.SetAnnotations(metaAnnotations)
 	}
@@ -176,7 +148,7 @@ func setAnnotations(o runtime.Object, metaAnnotations map[string]string, specAnn
 }
 
 // mergeKubernetesMetadataAnnotations merges environment, application annotations with current values
-func mergeKubernetesMetadataAnnotations(options renderers.RenderOptions, currAnnotations map[string]string, metaAnnotations map[string]string, specAnnotations map[string]string) (map[string]string, map[string]string) {
+func mergeKubernetesMetadataAnnotations(options renderers.RenderOptions, currAnnotations map[string]string, existingMetaAnnotations map[string]string, existingSpecAnnotations map[string]string) (map[string]string, map[string]string) {
 	envOpts := &options.Environment
 	appOpts := &options.Application
 	mergeAnnotations := map[string]string{}
@@ -190,15 +162,13 @@ func mergeKubernetesMetadataAnnotations(options renderers.RenderOptions, currAnn
 	}
 
 	// Cumulative Env+App Annotations is now merged with input annotations. Existing metaAnnotations and specAnnotations are subsequently merged with the result map.
-	mergeAnnotations = labels.Merge(mergeAnnotations, currAnnotations)
-	metaAnnotations = labels.Merge(metaAnnotations, mergeAnnotations)
-	specAnnotations = labels.Merge(specAnnotations, mergeAnnotations)
+	existingMetaAnnotations, existingSpecAnnotations = mergeKubernetesMetadata(mergeAnnotations, currAnnotations, existingMetaAnnotations, existingSpecAnnotations)
 
-	return metaAnnotations, specAnnotations
+	return existingMetaAnnotations, existingSpecAnnotations
 }
 
 // mergeKubernetesMetadataLabels merges environment, application labels with current values
-func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels map[string]string, metaLabels map[string]string, specLabels map[string]string) (map[string]string, map[string]string) {
+func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels map[string]string, existingMetaLabels map[string]string, existingSpecLabels map[string]string) (map[string]string, map[string]string) {
 	envOpts := &options.Environment
 	appOpts := &options.Application
 	mergeLabels := map[string]string{}
@@ -212,9 +182,18 @@ func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels m
 	}
 
 	// Cumulative Env+App Labels is now merged with input labels. Existing metaLabels and specLabels are subsequently merged with the result map.
-	mergeLabels = labels.Merge(mergeLabels, currLabels)
-	metaLabels = labels.Merge(metaLabels, mergeLabels)
-	specLabels = labels.Merge(specLabels, mergeLabels)
+	existingMetaLabels, existingSpecLabels = mergeKubernetesMetadata(mergeLabels, currLabels, existingMetaLabels, existingSpecLabels)
 
-	return metaLabels, specLabels
+	return existingMetaLabels, existingSpecLabels
+}
+
+// mergeKubernetesMetadata merges environment, application labels with current values
+func mergeKubernetesMetadata(mergeMap map[string]string, newInputMap map[string]string, existingMetaMap map[string]string, existingSpecMap map[string]string) (map[string]string, map[string]string) {
+
+	// Cumulative Env+App Labels is now merged with input labels. Existing metaLabels and specLabels are subsequently merged with the result map.
+	mergeMap = labels.Merge(mergeMap, newInputMap)
+	existingMetaMap = labels.Merge(existingMetaMap, mergeMap)
+	existingSpecMap = labels.Merge(existingSpecMap, mergeMap)
+
+	return existingMetaMap, existingSpecMap
 }
