@@ -63,34 +63,3 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 
 	return
 }
-
-// FindNamespaceByAppID finds the application-scope Kuberentes namespace.
-func FindNamespaceByAppID(ctx context.Context, sp dataprovider.DataStorageProvider, appID string) (namespace string, err error) {
-	id, err := resources.ParseResource(appID)
-	if err != nil {
-		return
-	}
-
-	if !strings.EqualFold(id.Type(), "Applications.Core/applications") {
-		err = errors.New("invalid Applications.Core/applications resource id")
-		return
-	}
-
-	app := &cdm.Application{}
-	client, err := sp.GetStorageClient(ctx, id.Type())
-	if err != nil {
-		return
-	}
-
-	res, err := client.Get(ctx, id.String())
-	if err != nil {
-		return
-	}
-	if err = res.As(app); err != nil {
-		return
-	}
-
-	namespace = app.AppInternal.KubernetesNamespace
-
-	return
-}
