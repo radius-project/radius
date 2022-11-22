@@ -11,8 +11,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
-// Finds the resources that are scoped within the input namespace
-func FindNamespaceResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
+// FindResources queries all resources matched with resource type and property value.
+func FindResources(ctx context.Context, rootScope, resourceType, filterKey, filterValue string, storageClient store.StorageClient) (*store.ObjectQueryResult, error) {
 	namespaceQuery := store.Query{
 		RootScope:    rootScope,
 		ResourceType: resourceType,

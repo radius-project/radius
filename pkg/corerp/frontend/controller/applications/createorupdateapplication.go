@@ -86,7 +86,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s for application %s could not be found", envID.Name(), serviceCtx.ResourceID.Name())), nil
 	}
 
-	result, err := util.FindNamespaceResources(ctx, envID.RootScope(), envID.Type(), "properties.compute.kubernetes.namespace", kubeNamespace, a.StorageClient())
+	result, err := util.FindResources(ctx, envID.RootScope(), envID.Type(), "properties.compute.kubernetes.namespace", kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}
@@ -95,7 +95,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	// Check if another application resource is using namespace
-	result, err = util.FindNamespaceResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "appInternal.kubernetesNamespace", kubeNamespace, a.StorageClient())
+	result, err = util.FindResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "appInternal.kubernetesNamespace", kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}
