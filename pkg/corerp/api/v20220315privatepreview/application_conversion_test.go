@@ -139,7 +139,7 @@ func TestApplicationConvertFromValidation(t *testing.T) {
 func getTestKubernetesMetadataAppExtensions(t *testing.T) []datamodel.Extension {
 	extensions := append(getTestKubernetesMetadataExtensions(t), datamodel.Extension{
 		Kind: datamodel.KubernetesNamespaceOverride,
-		KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
+		KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
 			Namespace: "app0-ns",
 		},
 	})

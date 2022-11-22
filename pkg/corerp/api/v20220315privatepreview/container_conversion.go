@@ -490,7 +490,7 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 	case *ContainerKubernetesMetadataExtension:
 		converted := datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
