@@ -29,9 +29,14 @@ const (
 
 var debugLogsCmd = &cobra.Command{
 	Use:   "debug-logs",
-	Short: "Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.",
-	Long:  `Captures information about the current Radius Workspace for debugging and diagnostics. Creates a ZIP file of logs in the current directory. WARNING Please inspect all logs before sending feedback to confirm no private information is included.`,
-	RunE:  debugLogs,
+	Short: "Capture logs from Radius control plane for debugging and diagnostics.",
+	Long: `Capture logs from Radius control plane for debugging and diagnostics.
+	
+Creates a ZIP file of logs in the current directory.
+
+WARNING Please inspect all logs before sending feedback to confirm no private information is included.
+`,
+	RunE: debugLogs,
 }
 
 func init() {
@@ -40,9 +45,7 @@ func init() {
 }
 
 func debugLogs(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
-
-	w, err := cli.RequireWorkspace(cmd, config)
+	w, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
 	}

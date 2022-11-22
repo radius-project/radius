@@ -18,7 +18,7 @@ output-folder: $(csharp-sdks-folder)/applications/management/src/Generated
 
 batch:
   - package-core: true
-  - package-connector: true
+  - package-link: true
 ```
 
 ### Batch settings: multi-api
@@ -31,7 +31,7 @@ output-folder: $(csharp-sdks-folder)/$(ApiVersionName)/Generated
 batch:
   - core-2022-03-15-privatepreview: true
     ApiVersionName: Api2022_03_15_privatepreview
-  - connector-2022-03-15-privatepreview: true
+  - link-2022-03-15-privatepreview: true
     ApiVersionName: Api2022_03_15_privatepreview
 ```
 
@@ -39,8 +39,8 @@ batch:
 tag: package-core-2022-03-15-privatepreview
 ```
 
-``` yaml $(connector-2022-03-15-privatepreview)
-tag: package-connector-2022-03-15-privatepreview
+``` yaml $(link-2022-03-15-privatepreview)
+tag: package-link-2022-03-15-privatepreview
 ```
 
 ### Tag: package-core-2022-03-15-privatepreview
@@ -52,10 +52,10 @@ input-file:
 - Applications.Core/preview/2022-03-15-privatepreview/applications.json
 ```
 
-### Tag: package-connector-2022-03-15-privatepreview
-``` yaml $(tag) == 'package-connector-2022-03-15-privatepreview'
-output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/connector/src/Generated
+### Tag: package-link-2022-03-15-privatepreview
+``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
+output-folder: $(csharp-sdks-folder)/applications/management/2022-03-15-privatepreview/link/src/Generated
 input-file:
-- Applications.Connector/preview/2022-03-15-privatepreview/global.json
-- Applications.Connector/preview/2022-03-15-privatepreview/mongoDatabases.json
+- Applications.Link/preview/2022-03-15-privatepreview/global.json
+- Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
 ```

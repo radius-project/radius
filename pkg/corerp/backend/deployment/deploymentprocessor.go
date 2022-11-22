@@ -13,26 +13,28 @@ import (
 	"os"
 	"strings"
 
-	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	connector_dm "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprinvokehttproutes"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprpubsubbrokers"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprsecretstores"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/daprstatestores"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/extenders"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rabbitmqmessagequeues"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+
+	link_dm "github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprpubsubbrokers"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprsecretstores"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/daprstatestores"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/extenders"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -40,6 +42,8 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes"
 	controller_runtime "sigs.k8s.io/controller-runtime/pkg/client"
@@ -75,7 +79,8 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	AppID           resources.ID // Application ID for which the resource is created
+	AppID           resources.ID       // Application ID for which the resource is created
+	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
@@ -99,7 +104,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	namespace, err := dp.getEnvironmentNamespace(ctx, environment, resourceID.String())
+	env, err := dp.fetchEnvironment(ctx, environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -115,7 +120,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	envOptions, err := dp.getEnvOptions(ctx, namespace)
+	envOptions, err := dp.getEnvOptions(ctx, env)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -135,6 +140,8 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		}
 	}
 
+	rendererOutput.RadiusResource = resource
+
 	return rendererOutput, nil
 }
 
@@ -148,59 +155,59 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 	return radiusResourceModel.Renderer, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource outputresource.OutputResource, rendererOutput renderers.RendererOutput) (resourceIdentity resourcemodel.ResourceIdentity, computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
 	logger := radlogger.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
+	or := putOptions.Resource
+	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
+
+	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(or.ResourceType)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return err
 	}
 
-	resourceIdentity, err = outputResourceModel.ResourceHandler.GetResourceIdentity(ctx, outputResource)
+	// Transform resource before deploying resource.
+	if outputResourceModel.ResourceTransformer != nil {
+		if err := outputResourceModel.ResourceTransformer(ctx, putOptions); err != nil {
+			return err
+		}
+	}
+	properties, err := outputResourceModel.ResourceHandler.Put(ctx, putOptions)
 	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+		return err
 	}
 
-	err = outputResourceModel.ResourceHandler.Put(ctx, &outputResource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
+	if or.Identity.ResourceType == nil {
+		err = fmt.Errorf("output resource %q does not have an identity. This is a bug in the handler", or.LocalID)
+		return err
 	}
 
-	properties, err := outputResourceModel.ResourceHandler.GetResourceNativeIdentityKeyProperties(ctx, outputResource)
-	if err != nil {
-		return resourcemodel.ResourceIdentity{}, nil, err
-	}
-
-	// Values consumed by other Radius resource types through connections
-	computedValues = map[string]interface{}{}
+	putOptions.DependencyProperties[or.LocalID] = properties
 
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		// A computed value might be a reference to a 'property' returned in preserved properties
-		if outputResource.LocalID == v.LocalID && v.PropertyReference != "" {
+		if or.LocalID == v.LocalID && v.PropertyReference != "" {
 			computedValues[k] = properties[v.PropertyReference]
 			continue
 		}
 
 		// A computed value might be a 'pointer' into the deployed resource
-		if outputResource.LocalID == v.LocalID && v.JSONPointer != "" {
+		if or.LocalID == v.LocalID && v.JSONPointer != "" {
 			pointer, err := jsonpointer.New(v.JSONPointer)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 
-			value, _, err := pointer.Get(outputResource.Resource)
+			value, _, err := pointer.Get(or.Resource)
 			if err != nil {
-				err = fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
-				return resourcemodel.ResourceIdentity{}, nil, err
+				return fmt.Errorf("failed to process JSON Pointer %q for resource: %w", v.JSONPointer, err)
 			}
 			computedValues[k] = value
 		}
 	}
 
-	return resourceIdentity, computedValues, nil
+	return nil
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
@@ -218,18 +225,16 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 	deployedOutputResources := []outputresource.OutputResource{}
 
 	// Values consumed by other Radius resource types through connections
-	computedValues := map[string]interface{}{}
+	computedValues := map[string]any{}
+
+	deployedOutputResourceProperties := map[string]map[string]string{}
 
 	for _, outputResource := range orderedOutputResources {
 		logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
-		resourceIdentity, deployedComputedValues, err := dp.deployOutputResource(ctx, id, outputResource, rendererOutput)
+		err := dp.deployOutputResource(ctx, id, rendererOutput, computedValues, &handlers.PutOptions{Resource: &outputResource, DependencyProperties: deployedOutputResourceProperties})
 		if err != nil {
 			return rp.DeploymentOutput{}, err
-		}
-
-		if (resourceIdentity != resourcemodel.ResourceIdentity{}) {
-			outputResource.Identity = resourceIdentity
 		}
 
 		if outputResource.Identity.ResourceType == nil {
@@ -247,13 +252,21 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 			},
 		}
 		deployedOutputResources = append(deployedOutputResources, outputResource)
-		computedValues = deployedComputedValues
 	}
 
 	// Update static values for connections
 	for k, computedValue := range rendererOutput.ComputedValues {
 		if computedValue.Value != nil {
 			computedValues[k] = computedValue.Value
+		}
+	}
+
+	// Transform Radius resource with computedValues
+	for _, cv := range rendererOutput.ComputedValues {
+		if cv.Transformer != nil {
+			if err := cv.Transformer(rendererOutput.RadiusResource, computedValues); err != nil {
+				return rp.DeploymentOutput{}, err
+			}
 		}
 	}
 
@@ -276,7 +289,7 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, depl
 		}
 
 		logger.Info(fmt.Sprintf("Deleting output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
-		err = outputResourceModel.ResourceHandler.Delete(ctx, outputResource)
+		err = outputResourceModel.ResourceHandler.Delete(ctx, &handlers.DeleteOptions{Resource: &outputResource})
 		if err != nil {
 			return err
 		}
@@ -358,13 +371,40 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace string) (renderers.EnvironmentOptions, error) {
+// TODO: Revisit to remove the datamodel.Environment dependency.
+func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
+	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
+
+	envOpts := renderers.EnvironmentOptions{
+		CloudProviders: &env.Properties.Providers,
+	}
+
+	// Extract compute info
+	switch env.Properties.Compute.Kind {
+	case datamodel.KubernetesComputeKind:
+		kubeProp := &env.Properties.Compute.KubernetesCompute
+
+		if kubeProp.Namespace == "" {
+			return renderers.EnvironmentOptions{}, errors.New("kubernetes' namespace is not specified")
+		}
+		envOpts.Namespace = kubeProp.Namespace
+
+	default:
+		return renderers.EnvironmentOptions{}, fmt.Errorf("%s is unsupported", env.Properties.Compute.Kind)
+	}
+
+	// Extract identity info.
+	envOpts.Identity = env.Properties.Compute.Identity
+	if envOpts.Identity == nil {
+		logger.V(radlogger.Debug).Info("environment identity is not specified.")
+	}
+
 	if publicEndpointOverride != "" {
 		// Check if publicEndpointOverride contains a scheme,
 		// and if so, throw an error to the user
 		if strings.HasPrefix(publicEndpointOverride, "http://") || strings.HasPrefix(publicEndpointOverride, "https://") {
-			return renderers.EnvironmentOptions{}, fmt.Errorf("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
+			return renderers.EnvironmentOptions{}, errors.New("a URL is not accepted here. Please reinstall Radius with a valid public endpoint using rad install kubernetes --reinstall --public-endpoint-override <your-endpoint>")
 		}
 
 		hostname, port, err := net.SplitHostPort(publicEndpointOverride)
@@ -375,14 +415,13 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 			port = ""
 		}
 
-		return renderers.EnvironmentOptions{
-			Gateway: renderers.GatewayOptions{
-				PublicEndpointOverride: true,
-				Hostname:               hostname,
-				Port:                   port,
-			},
-			Namespace: namespace,
-		}, nil
+		envOpts.Gateway = renderers.GatewayOptions{
+			PublicEndpointOverride: true,
+			Hostname:               hostname,
+			Port:                   port,
+		}
+
+		return envOpts, nil
 	}
 
 	if dp.k8sClient != nil {
@@ -396,20 +435,18 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, namespace stri
 		for _, service := range services.Items {
 			if service.Name == "contour-envoy" {
 				for _, in := range service.Status.LoadBalancer.Ingress {
-					return renderers.EnvironmentOptions{
-						Gateway: renderers.GatewayOptions{
-							PublicEndpointOverride: false,
-							Hostname:               in.Hostname,
-							ExternalIP:             in.IP,
-						},
-						Namespace: namespace,
-					}, nil
+					envOpts.Gateway = renderers.GatewayOptions{
+						PublicEndpointOverride: false,
+						Hostname:               in.Hostname,
+						ExternalIP:             in.IP,
+					}
+					return envOpts, nil
 				}
 			}
 		}
 	}
 
-	return renderers.EnvironmentOptions{Namespace: namespace}, nil
+	return envOpts, nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store
@@ -435,88 +472,94 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
 		obj := &datamodel.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
+	case strings.ToLower(volume.ResourceType):
+		obj := &datamodel.VolumeResource{}
+		if err = resource.As(obj); err != nil {
+			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
+		}
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
 		obj := &datamodel.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(mongodatabases.ResourceType):
-		obj := &connector_dm.MongoDatabase{}
+		obj := &link_dm.MongoDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(sqldatabases.ResourceType):
-		obj := &connector_dm.SqlDatabase{}
+		obj := &link_dm.SqlDatabase{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rediscaches.ResourceType):
-		obj := &connector_dm.RedisCache{}
+		obj := &link_dm.RedisCache{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
-		obj := &connector_dm.RabbitMQMessageQueue{}
+		obj := &link_dm.RabbitMQMessageQueue{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(extenders.ResourceType):
-		obj := &connector_dm.Extender{}
+		obj := &link_dm.Extender{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(daprstatestores.ResourceType):
-		obj := &connector_dm.DaprStateStore{}
+		obj := &link_dm.DaprStateStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprsecretstores.ResourceType):
-		obj := &connector_dm.DaprSecretStore{}
+		obj := &link_dm.DaprSecretStore{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
-		obj := &connector_dm.DaprPubSubBroker{}
+		obj := &link_dm.DaprPubSubBroker{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
-		obj := &connector_dm.DaprInvokeHttpRoute{}
+		obj := &link_dm.DaprInvokeHttpRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
-		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues)
+		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, obj.RecipeData)
 	default:
 		return ResourceData{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID resources.ID
 	if applicationID != "" {
-		parsedID, err := resources.Parse(applicationID)
+		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = parsedID
-	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.ConnectorRPNamespace) {
-		// Application id is optional for connector resource types
+	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {
+		// Application id is optional for link resource types
 		appID = resources.ID{}
 	} else {
 		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())
@@ -529,6 +572,7 @@ func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, 
 		ComputedValues:  computedValues,
 		SecretValues:    secretValues,
 		AppID:           appID,
+		RecipeData:      recipeData,
 	}, nil
 }
 
@@ -559,6 +603,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	// Now build the renderer dependecy out of these collected dependencies
 	rendererDependency := renderers.RendererDependency{
 		ResourceID:      dependency.ID,
+		Resource:        dependency.Resource,
 		ComputedValues:  computedValues,
 		OutputResources: outputResourceIdentity,
 	}
@@ -596,38 +641,38 @@ func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context
 	return app.Properties.Environment, nil
 }
 
-// getEnvironmentNamespace fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) getEnvironmentNamespace(ctx context.Context, environmentID, resourceID string) (string, error) {
-	envId, err := resources.Parse(environmentID)
+// fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
+func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
+	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid id. Error: %s", environmentID, resourceID, err.Error()))
+		return nil, err
 	}
 
 	env := &datamodel.Environment{}
+
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %q is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
 	}
 
-	errMsg := "failed to fetch the environment %q for the resource %q. Error: %w"
 	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
 	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return nil, err
 	}
+
+	const errMsg = "failed to fetch the environment %q for the resource %q. Error: %w"
+
 	res, err := sc.Get(ctx, envId.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %q does not exist", environmentID, resourceID))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %s does not exist", environmentID, resourceID))
 		}
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-	err = res.As(env)
-	if err != nil {
-		return "", fmt.Errorf(errMsg, environmentID, resourceID, err)
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
 
-	if env.Properties.Compute != (datamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (datamodel.KubernetesComputeProperties{}) {
-		return env.Properties.Compute.KubernetesCompute.Namespace, nil
-	} else {
-		return "", fmt.Errorf("cannot find namespace in the environment resource")
+	err = res.As(env)
+	if err != nil {
+		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
 	}
+
+	return env, nil
 }

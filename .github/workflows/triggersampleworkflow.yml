@@ -1,0 +1,38 @@
+# ------------------------------------------------------------
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+# ------------------------------------------------------------
+
+name: Test samples
+on:
+  push:
+    branches:
+      - main
+      - release/*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - main
+      - features/*
+      - release/*
+
+jobs:
+  samples:
+    name: Trigger samples workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Parse release version and set enviroment variables
+        run: |
+             python ./.github/scripts/get_release_version.py
+             echo "this build version: ${{ env.REL_CHANNEL }}"
+      - name: Invoke workflow in another repo with inputs
+        uses: aurelien-baudet/workflow-dispatch@v2
+        with:
+          workflow: test.yaml
+          repo: project-radius/samples
+          token: ${{ secrets.GH_RAD_CI_BOT_PAT }}
+          ref: ${{ env.REL_CHANNEL }}

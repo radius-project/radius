@@ -22,7 +22,8 @@ param sqlPort int = 1433
 param username string = 'sa'
 
 @description('Specifies the SQL password.')
-param password string = 'p@ssw0rd'
+@secure()
+param password string = newGuid()
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-sql'
@@ -56,7 +57,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   name: 'sql-db'
   location: location
   properties: {
@@ -64,6 +65,7 @@ resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
     environment: environment
     server: sqlRoute.properties.hostname
     database: 'master'
+    mode: 'values'
   }
 }
 

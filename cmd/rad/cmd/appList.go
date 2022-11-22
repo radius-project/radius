@@ -10,6 +10,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -27,10 +28,14 @@ func init() {
 }
 
 func listApplications(cmd *cobra.Command, args []string) error {
-	config := ConfigFromContext(cmd.Context())
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
+	}
+
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
 	}
 
 	client, err := connections.DefaultFactory.CreateApplicationsManagementClient(cmd.Context(), *workspace)

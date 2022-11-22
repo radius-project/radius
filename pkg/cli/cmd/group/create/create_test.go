@@ -1,7 +1,7 @@
-// // ------------------------------------------------------------
-// // Copyright (c) Microsoft Corporation.
-// // Licensed under the MIT License.
-// // ------------------------------------------------------------
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
 
 package create
 
@@ -25,7 +25,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Create Command with incorrect args",
@@ -37,12 +36,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command with  valid args but no workspace",
+			Name:          "Create Command with valid args and fallback workspace",
 			Input:         []string{"rg"},
-			ExpectedValid: false,
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

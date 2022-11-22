@@ -69,12 +69,15 @@ resource mongoRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource mongo 'Applications.Connector/mongoDatabases@2022-03-15-privatepreview' = {
+resource mongo 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mdb-us-db'
   location: 'global'
   properties: {
     application: app.id
     environment: environment
+    mode: 'values'
+    host: mongoRoute.properties.hostname
+    port: mongoRoute.properties.port
     secrets: {
       connectionString: 'mongodb://${username}:${password}@${mongoRoute.properties.hostname}:${mongoRoute.properties.port}'
       username: username

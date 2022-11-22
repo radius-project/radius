@@ -164,6 +164,7 @@ func (dc *ResourceDeploymentClient) createSummary(deployment resources.Deploymen
 			continue
 		}
 
+		// We might see scopes here as well as resources, so using the general Parse function.
 		id, err := ucpresources.Parse(*resource.ID)
 		if err != nil {
 			return clients.DeploymentResult{}, err
@@ -240,6 +241,8 @@ func (dc *ResourceDeploymentClient) monitorProgress(ctx context.Context, name st
 			}
 
 			provisioningState := v1.ProvisioningState(*operation.Properties.ProvisioningState)
+
+			// We might see scopes here as well as resources, so using the general Parse function.
 			id, err := ucpresources.Parse(*operation.Properties.TargetResource.ID)
 			if err != nil {
 				return err

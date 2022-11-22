@@ -28,11 +28,16 @@ type DeleteApplication struct {
 // NewDeleteApplication creates a new DeleteApplication.
 func NewDeleteApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Application]{
+				RequestConverter:  converter.ApplicationDataModelFromVersioned,
+				ResponseConverter: converter.ApplicationDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
-func (a *DeleteApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (a *DeleteApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)

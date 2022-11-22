@@ -22,7 +22,7 @@ import (
 )
 
 func Test_DeleteAWSResource(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
 	getResponseBody := map[string]interface{}{
 		"RetentionPeriodHours": 178,

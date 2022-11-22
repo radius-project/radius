@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
@@ -39,14 +40,15 @@ const (
 )
 
 type TestStep struct {
-	Executor               step.Executor
-	CoreRPResources        *validation.CoreRPResourceSet
-	K8sOutputResources     []unstructured.Unstructured
-	K8sObjects             *validation.K8sObjectSet
-	PostStepVerify         func(ctx context.Context, t *testing.T, ct CoreRPTest)
-	SkipResourceValidation bool
-	SkipObjectValidation   bool
-	SkipResourceDeletion   bool
+	Executor                               step.Executor
+	CoreRPResources                        *validation.CoreRPResourceSet
+	K8sOutputResources                     []unstructured.Unstructured
+	K8sObjects                             *validation.K8sObjectSet
+	AWSResources                           *validation.AWSResourceSet
+	PostStepVerify                         func(ctx context.Context, t *testing.T, ct CoreRPTest)
+	SkipKubernetesOutputResourceValidation bool
+	SkipObjectValidation                   bool
+	SkipResourceDeletion                   bool
 }
 
 type CoreRPTest struct {
@@ -58,7 +60,8 @@ type CoreRPTest struct {
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
 
 	// Object Name => map of secret keys and values
-	Secrets map[string]map[string]string
+	Secrets            map[string]map[string]string
+	SkipSecretDeletion bool
 }
 
 type TestOptions struct {
@@ -72,12 +75,13 @@ func NewTestOptions(t *testing.T) TestOptions {
 
 func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
-		Options:          NewCoreRPTestOptions(t),
-		Name:             name,
-		Description:      name,
-		Steps:            steps,
-		Secrets:          secrets,
-		InitialResources: initialResources,
+		Options:            NewCoreRPTestOptions(t),
+		Name:               name,
+		Description:        name,
+		Steps:              steps,
+		Secrets:            secrets,
+		InitialResources:   initialResources,
+		SkipSecretDeletion: false,
 	}
 }
 
@@ -129,7 +133,7 @@ func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
 					Data: data,
 				}, v1.CreateOptions{})
 			if err != nil {
-				return fmt.Errorf("failed to create secret %s", err.Error())
+				return err
 			}
 		}
 	}
@@ -206,12 +210,23 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	})
 
+	t.Logf("Creating secrets if provided")
+	err := ct.CreateSecrets(ctx)
+	if err != nil {
+		if errors.IsAlreadyExists(err) {
+			// Do not stop the test if the same secret exists
+			t.Logf("the secret already exists %v", err)
+		} else {
+			t.Errorf("failed to create secrets %v", err)
+		}
+	}
+
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
 	defer ct.CleanUpExtensionResources(ct.InitialResources)
-	err := ct.CreateInitialResources(ctx)
+	err = ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
 	success := true
@@ -227,7 +242,7 @@ func (ct CoreRPTest) Test(t *testing.T) {
 			step.Executor.Execute(ctx, t, ct.Options.TestOptions)
 			t.Logf("finished running step %d of %d: %s", i, len(ct.Steps), step.Executor.GetDescription())
 
-			if step.SkipResourceValidation {
+			if step.SkipKubernetesOutputResourceValidation {
 				t.Logf("skipping validation of resources...")
 			} else if step.CoreRPResources == nil || len(step.CoreRPResources.Resources) == 0 {
 				require.Fail(t, "no resource set was specified and SkipResourceValidation == false, either specify a resource set or set SkipResourceValidation = true ")
@@ -235,6 +250,16 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				// Validate that all expected output resources are created
 				t.Logf("validating output resources for %s", step.Executor.GetDescription())
 				validation.ValidateCoreRPResources(ctx, t, step.CoreRPResources, ct.Options.ManagementClient)
+				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
+			}
+
+			// Validate AWS resources if specified
+			if step.AWSResources == nil || len(step.AWSResources.Resources) == 0 {
+				t.Logf("no AWS resource set was specified, skipping validation")
+			} else {
+				// Validate that all expected output resources are created
+				t.Logf("validating output resources for %s", step.Executor.GetDescription())
+				validation.ValidateAWSResources(ctx, t, step.AWSResources, ct.Options.AWSClient)
 				t.Logf("finished validating output resources for %s", step.Executor.GetDescription())
 			}
 
@@ -263,9 +288,24 @@ func (ct CoreRPTest) Test(t *testing.T) {
 
 	// Cleanup code here will run regardless of pass/fail of subtests
 	for _, step := range ct.Steps {
-		if (step.CoreRPResources == nil && step.SkipResourceValidation) || step.SkipResourceDeletion {
+		// Delete AWS resources if they were created
+		if step.AWSResources != nil && len(step.AWSResources.Resources) > 0 {
+			for _, resource := range step.AWSResources.Resources {
+				t.Logf("deleting %s", resource.Name)
+				err := validation.DeleteAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				require.NoErrorf(t, err, "failed to delete %s", resource.Name)
+				t.Logf("finished deleting %s", ct.Description)
+
+				t.Logf("validating deletion of AWS resource for %s", ct.Description)
+				validation.ValidateNoAWSResource(ctx, t, &resource, ct.Options.AWSClient)
+				t.Logf("finished validation of deletion of AWS resource %s for %s", resource.Name, ct.Description)
+			}
+		}
+
+		if (step.CoreRPResources == nil && step.SkipKubernetesOutputResourceValidation) || step.SkipResourceDeletion {
 			continue
 		}
+
 		for _, resource := range step.CoreRPResources.Resources {
 			t.Logf("deleting %s", resource.Name)
 			err := validation.DeleteCoreRPResource(ctx, t, cli, ct.Options.ManagementClient, resource)
@@ -279,6 +319,14 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
+		}
+	}
+
+	if !ct.SkipSecretDeletion {
+		t.Logf("Deleting secrets")
+		err = ct.DeleteSecrets(ctx)
+		if err != nil {
+			t.Errorf("failed to delete secrets %v", err)
 		}
 	}
 

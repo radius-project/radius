@@ -39,6 +39,9 @@ type ComputedValueReference struct {
 
 	// JSONPointer specifies a JSON Pointer that cn be used to look up the value in the resource's body.
 	JSONPointer string
+
+	// Transformer transforms datamodel resource with the computed values.
+	Transformer func(conv.DataModelInterface, map[string]any) error
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources
@@ -148,7 +151,7 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 }
 
 // RadiusResourceModel represents the interface of radius resource type.
-// TODO: Replace DeploymentDataModel with RadiusResourceModel later when connector rp leverages generic.
+// TODO: Replace DeploymentDataModel with RadiusResourceModel later when link rp leverages generic.
 type RadiusResourceModel interface {
 	conv.ResourceDataModel
 

@@ -20,8 +20,11 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
+	"github.com/project-radius/radius/pkg/ucp/frontend/versions"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/rest"
+	"github.com/project-radius/radius/pkg/ucp/secret"
+	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
@@ -34,11 +37,13 @@ type ServiceOptions struct {
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
 	DBClient                store.StorageClient
+	SecretClient            secret.Client
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
 	BasePath                string
 	StorageProviderOptions  dataprovider.StorageProviderOptions
+	SecretProviderOptions   provider.SecretProviderOptions
 	InitialPlanes           []rest.Plane
 }
 
@@ -70,6 +75,14 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.DBClient = dbClient
 	}
 
+	if s.options.SecretClient == nil {
+		secretClient, err := s.InitializeSecretClient(ctx)
+		if err != nil {
+			return nil, err
+		}
+		s.options.SecretClient = secretClient
+	}
+
 	ctrlOpts := ctrl.Options{
 		BasePath: s.options.BasePath,
 		DB:       s.options.DBClient,
@@ -94,8 +107,12 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	app = middleware.UseLogValues(app, s.options.BasePath)
 
 	server := &http.Server{
-		Addr:    s.options.Address,
-		Handler: app,
+		Addr: s.options.Address,
+		// Need to be able to respond to requests with planes and resourcegroups segments with any casing e.g.: /Planes, /resourceGroups
+		// AWS SDK is case sensitive. Therefore, cannot use lowercase middleware. Therefore, introducing a new middleware that translates
+		// the path for only these segments and preserves the case for the other parts of the path.
+		// TODO: Once https://github.com/project-radius/radius/issues/3582 is fixed, we could use the lowercase middleware
+		Handler: middleware.NormalizePath(app),
 		BaseContext: func(ln net.Listener) context.Context {
 			return ctx
 		},
@@ -120,6 +137,21 @@ func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageCli
 	return storageClient, nil
 }
 
+// InitializeSecretClient initializes secret client on server startup.
+func (s *Service) InitializeSecretClient(ctx context.Context) (secret.Client, error) {
+	var secretClient secret.Client
+	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
+		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource
+	}
+	secretsProvider := provider.NewSecretProvider(s.options.SecretProviderOptions)
+	secretClient, err := secretsProvider.GetClient(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return secretClient, nil
+}
+
 // ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
 func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
 
@@ -136,7 +168,9 @@ func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.Sto
 			return err
 		}
 
-		request, err := http.NewRequest(http.MethodPut, plane.ID, bytes.NewBuffer(body))
+		// Using the latest API version to make a request to configure the default planes
+		url := fmt.Sprintf("%s?api-version=%s", plane.ID, versions.DefaultAPIVersion)
+		request, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 		if err != nil {
 			return err
 		}

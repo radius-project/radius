@@ -25,16 +25,17 @@ const (
 	HttpRoutesResource   = "applications.core/httpRoutes"
 	GatewaysResource     = "applications.core/gateways"
 	ContainersResource   = "applications.core/containers"
+	VolumesResource      = "applications.core/volumes"
 
-	MongoDatabasesResource        = "applications.connector/mongoDatabases"
-	RabbitMQMessageQueuesResource = "applications.connector/rabbitMQMessageQueues"
-	RedisCachesResource           = "applications.connector/redisCaches"
-	SQLDatabasesResource          = "applications.connector/sqlDatabases"
-	DaprPubSubBrokersResource     = "applications.connector/daprPubSubBrokers"
-	DaprSecretStoresResource      = "applications.connector/daprSecretStores"
-	DaprStateStoresResource       = "applications.connector/daprStateStores"
-	DaprInvokeHttpRoutesResource  = "applications.connector/daprInvokeHttpRoutes"
-	ExtendersResource             = "applications.connector/extenders"
+	MongoDatabasesResource        = "applications.link/mongoDatabases"
+	RabbitMQMessageQueuesResource = "applications.link/rabbitMQMessageQueues"
+	RedisCachesResource           = "applications.link/redisCaches"
+	SQLDatabasesResource          = "applications.link/sqlDatabases"
+	DaprPubSubBrokersResource     = "applications.link/daprPubSubBrokers"
+	DaprSecretStoresResource      = "applications.link/daprSecretStores"
+	DaprStateStoresResource       = "applications.link/daprStateStores"
+	DaprInvokeHttpRoutesResource  = "applications.link/daprInvokeHttpRoutes"
+	ExtendersResource             = "applications.link/extenders"
 )
 
 type CoreRPResource struct {
@@ -77,7 +78,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
 	for _, resource := range expected.Resources {
 		if resource.Type == EnvironmentsResource {
-			envs, err := client.ListEnv(ctx)
+			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
 			require.NoError(t, err)
 			require.NotEmpty(t, envs)
 

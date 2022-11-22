@@ -33,12 +33,17 @@ type CreateOrUpdateContainer struct {
 // NewCreateOrUpdateContainer creates a new CreateOrUpdateContainer.
 func NewCreateOrUpdateContainer(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateContainer{
-		ctrl.NewOperation(opts, converter.ContainerDataModelFromVersioned, converter.ContainerDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.ContainerResource]{
+				RequestConverter:  converter.ContainerDataModelFromVersioned,
+				ResponseConverter: converter.ContainerDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
 // Run executes CreateOrUpdateContainer operation.
-func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *CreateOrUpdateContainer) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
 	if err != nil {
@@ -55,6 +60,10 @@ func (e *CreateOrUpdateContainer) Run(ctx context.Context, req *http.Request) (r
 	}
 
 	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := ValidateAndMutateRequest(ctx, newResource, old, e.Options()); r != nil || err != nil {
 		return r, err
 	}
 

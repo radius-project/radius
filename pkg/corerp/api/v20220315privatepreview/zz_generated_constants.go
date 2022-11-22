@@ -86,6 +86,22 @@ func PossibleFormatValues() []Format {
 	}
 }
 
+// IdentitySettingKind - Configuration for supported external identity providers
+type IdentitySettingKind string
+
+const (
+	IdentitySettingKindUndefined IdentitySettingKind = "undefined"
+	IdentitySettingKindAzureComWorkload IdentitySettingKind = "azure.com.workload"
+)
+
+// PossibleIdentitySettingKindValues returns the possible values for the IdentitySettingKind const type.
+func PossibleIdentitySettingKindValues() []IdentitySettingKind {
+	return []IdentitySettingKind{	
+		IdentitySettingKindUndefined,
+		IdentitySettingKindAzureComWorkload,
+	}
+}
+
 // Kind - The kind of IAM provider to configure
 type Kind string
 
@@ -162,19 +178,19 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 	}
 }
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
-// PossibleVolumeRbacValues returns the possible values for the VolumeRbac const type.
-func PossibleVolumeRbacValues() []VolumeRbac {
-	return []VolumeRbac{	
-		VolumeRbacRead,
-		VolumeRbacWrite,
+// PossibleVolumePermissionValues returns the possible values for the VolumePermission const type.
+func PossibleVolumePermissionValues() []VolumePermission {
+	return []VolumePermission{	
+		VolumePermissionRead,
+		VolumePermissionWrite,
 	}
 }
 

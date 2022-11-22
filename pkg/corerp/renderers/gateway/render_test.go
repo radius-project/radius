@@ -95,7 +95,7 @@ func Test_Render_WithIPAndNoHostname(t *testing.T) {
 	expectedURL := "http://" + expectedHostname
 	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 }
 
 func Test_Render_WithIPAndPrefix(t *testing.T) {
@@ -123,7 +123,7 @@ func Test_Render_WithIPAndPrefix(t *testing.T) {
 	expectedURL := "http://" + expectedHostname
 	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 }
 
 func Test_Render_WithIPAndFQHostname(t *testing.T) {
@@ -149,7 +149,7 @@ func Test_Render_WithIPAndFQHostname(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 }
 
 func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
@@ -177,7 +177,7 @@ func Test_Render_WithFQHostname_OverridesPrefix(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 }
 
 func Test_Render_PublicEndpointOverride(t *testing.T) {
@@ -198,7 +198,7 @@ func Test_Render_PublicEndpointOverride(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, "http://"+testHostname+":"+testPort, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, testHostname, expectedIncludes)
+	validateGateway(t, output.Resources, testHostname, expectedIncludes, nil)
 }
 
 func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
@@ -224,7 +224,7 @@ func Test_Render_PublicEndpointOverride_OverridesAll(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, "http://"+expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedPublicEndpoint, expectedIncludes)
+	validateGateway(t, output.Resources, expectedPublicEndpoint, expectedIncludes, nil)
 }
 
 func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
@@ -247,7 +247,7 @@ func Test_Render_PublicEndpointOverride_WithEmptyIP(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, "http://"+expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes, nil)
 }
 
 func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
@@ -270,7 +270,7 @@ func Test_Render_LocalhostPublicEndpointOverride(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes, nil)
 }
 
 func Test_Render_Hostname(t *testing.T) {
@@ -292,7 +292,7 @@ func Test_Render_Hostname(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, testHostname, expectedIncludes)
+	validateGateway(t, output.Resources, testHostname, expectedIncludes, nil)
 }
 
 func Test_Render_Hostname_WithPort(t *testing.T) {
@@ -315,7 +315,7 @@ func Test_Render_Hostname_WithPort(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes, nil)
 }
 
 func Test_Render_Hostname_WithPrefix(t *testing.T) {
@@ -342,7 +342,7 @@ func Test_Render_Hostname_WithPrefix(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes, nil)
 }
 
 func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
@@ -369,7 +369,7 @@ func Test_Render_Hostname_WithPrefixAndPort(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes)
+	validateGateway(t, output.Resources, expectedFQDN, expectedIncludes, nil)
 }
 
 func Test_Render_WithMissingPublicIP(t *testing.T) {
@@ -381,7 +381,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 		},
 	})
 	resource := makeResource(t, properties)
-	appId, err := resources.Parse(resource.Properties.Application)
+	appId, err := resources.ParseResource(resource.Properties.Application)
 	require.NoError(t, err)
 	appName := appId.Name()
 	dependencies := map[string]renderers.RendererDependency{}
@@ -393,7 +393,112 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, "unknown", output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, appName, expectedIncludes)
+	validateGateway(t, output.Resources, appName, expectedIncludes, nil)
+}
+
+func Test_Render_Fails_SSLPassThroughWithRoutePath(t *testing.T) {
+	var routes []datamodel.GatewayRoute
+	routeName := "routename"
+	destination := makeRouteResourceID(routeName)
+	path := "/"
+	route := datamodel.GatewayRoute{
+		Destination: destination,
+		Path:        path,
+	}
+	routes = append(routes, route)
+	r := &Renderer{}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		TLS: &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true,
+		},
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
+}
+
+func Test_Render_Fails_SSLPassThroughWithMultipleRoutes(t *testing.T) {
+	var routes []datamodel.GatewayRoute
+	routeName1 := "routename1"
+	destination1 := makeRouteResourceID(routeName1)
+	path := "/"
+	route1 := datamodel.GatewayRoute{
+		Destination: destination1,
+		Path:        path,
+	}
+	routeName2 := "routename2"
+	destination2 := makeRouteResourceID(routeName2)
+	route2 := datamodel.GatewayRoute{
+		Destination: destination2,
+		Path:        path,
+	}
+	routes = append(routes, route1)
+	routes = append(routes, route2)
+
+	r := &Renderer{}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		TLS: &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: true,
+		},
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support multiple routes with SSLPassThrough set to true")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
+}
+
+func Test_Render_Fails_SSLPassThroughFalse(t *testing.T) {
+	var routes []datamodel.GatewayRoute
+	routeName := "routename1"
+	destination := makeRouteResourceID(routeName)
+	route1 := datamodel.GatewayRoute{
+		Destination: destination,
+	}
+	routes = append(routes, route1)
+	r := &Renderer{}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		TLS: &datamodel.GatewayPropertiesTLS{
+			SSLPassThrough: false,
+		},
+		Routes: routes,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.Error(t, err)
+	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "only passthrough is supported for TLS currently")
+	require.Len(t, output.Resources, 0)
+	require.Empty(t, output.SecretValues)
+	require.Empty(t, output.ComputedValues)
 }
 
 func Test_Render_Fails_WithNoRoute(t *testing.T) {
@@ -439,7 +544,7 @@ func Test_Render_FQDNOverride(t *testing.T) {
 	require.Empty(t, output.SecretValues)
 	require.Equal(t, expectedPublicEndpoint, output.ComputedValues["url"].Value)
 
-	validateGateway(t, output.Resources, testHostname, expectedIncludes)
+	validateGateway(t, output.Resources, testHostname, expectedIncludes, nil)
 }
 
 func Test_Render_Fails_WithoutFQHostnameOrPrefix(t *testing.T) {
@@ -495,7 +600,7 @@ func Test_Render_Single_Route(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -504,7 +609,69 @@ func Test_Render_Single_Route(t *testing.T) {
 		},
 	}
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
+	validateHttpRoute(t, output.Resources, routeName, 80, nil)
+}
+
+func Test_Render_SSLPassThrough(t *testing.T) {
+	r := &Renderer{}
+
+	var routes []datamodel.GatewayRoute
+	routeName := "routename"
+	destination := makeRouteResourceID(routeName)
+	route := datamodel.GatewayRoute{
+		Destination: destination,
+	}
+	routes = append(routes, route)
+	tls := &datamodel.GatewayPropertiesTLS{
+		SSLPassThrough: true,
+	}
+	properties := datamodel.GatewayProperties{
+		BasicResourceProperties: rp.BasicResourceProperties{
+			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
+		},
+		Routes: routes,
+		TLS:    tls,
+	}
+	resource := makeResource(t, properties)
+	dependencies := map[string]renderers.RendererDependency{}
+	environmentOptions := GetEnvironmentOptions("", testExternalIP, "", false)
+	expectedHostname := fmt.Sprintf("%s.%s.%s.nip.io", resourceName, applicationName, testExternalIP)
+	expectedURL := "http://" + expectedHostname
+
+	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
+	require.NoError(t, err)
+	require.Len(t, output.Resources, 2)
+	require.Empty(t, output.SecretValues)
+	require.Equal(t, expectedURL, output.ComputedValues["url"].Value)
+
+	expectedIncludes := []contourv1.Include{
+		{
+			Name: kubernetes.NormalizeResourceName(routeName),
+			Conditions: []contourv1.MatchCondition{
+				{
+					Prefix: "/",
+				},
+			},
+		},
+	}
+
+	routeName, err = getRouteName(&route)
+	require.NoError(t, err)
+
+	// Create unique localID for dependency graph
+	routeResourceName := kubernetes.NormalizeResourceName(routeName)
+
+	expectedTCPProxy := &contourv1.TCPProxy{
+		Services: []contourv1.Service{
+			{
+				Name: routeResourceName,
+				Port: 443,
+			},
+		},
+	}
+
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, expectedTCPProxy)
 	validateHttpRoute(t, output.Resources, routeName, 80, nil)
 }
 
@@ -548,7 +715,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeAName),
+			Name: kubernetes.NormalizeResourceName(routeAName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -556,7 +723,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -565,7 +732,7 @@ func Test_Render_Multiple_Routes(t *testing.T) {
 		},
 	}
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 	validateHttpRoute(t, output.Resources, routeAName, 80, nil)
 	validateHttpRoute(t, output.Resources, routeBName, 80, nil)
 }
@@ -604,7 +771,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: path,
@@ -612,7 +779,7 @@ func Test_Render_Route_WithPrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 
 	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
@@ -681,7 +848,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeAName),
+			Name: kubernetes.NormalizeResourceName(routeAName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeAPath,
@@ -689,7 +856,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeBPath,
@@ -697,7 +864,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeCPath,
@@ -705,7 +872,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeBName),
+			Name: kubernetes.NormalizeResourceName(routeBName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routeDPath,
@@ -713,7 +880,7 @@ func Test_Render_Route_WithMultiplePrefixRewrite(t *testing.T) {
 			},
 		},
 	}
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 
 	expectedPathRewritePolicy := &contourv1.PathRewritePolicy{
 		ReplacePrefix: []contourv1.ReplacePrefix{
@@ -777,7 +944,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 
 	expectedIncludes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,
@@ -786,7 +953,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 		},
 	}
 
-	validateGateway(t, output.Resources, expectedHostname, expectedIncludes)
+	validateGateway(t, output.Resources, expectedHostname, expectedIncludes, nil)
 	validateHttpRoute(t, output.Resources, routeName, httpRoutePort, nil)
 }
 
@@ -808,14 +975,14 @@ func renderHttpRoute(t *testing.T, port int32) renderers.RendererOutput {
 	return output
 }
 
-func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include) {
+func validateGateway(t *testing.T, outputResources []outputresource.OutputResource, expectedHostname string, expectedIncludes []contourv1.Include, expectedTCPProxy *contourv1.TCPProxy) {
 	gateway, gatewayOutputResource := kubernetes.FindGateway(outputResources)
 
 	expectedGatewayOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, gateway, gateway.ObjectMeta)
 	require.Equal(t, expectedGatewayOutputResource, gatewayOutputResource)
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, resourceName), gateway.Name)
+	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), gateway.Name)
 	require.Equal(t, applicationName, gateway.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName), gateway.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType), gateway.Labels)
 
 	var expectedVirtualHost *contourv1.VirtualHost = nil
 	var expectedGatewaySpec contourv1.HTTPProxySpec
@@ -832,7 +999,16 @@ func validateGateway(t *testing.T, outputResources []outputresource.OutputResour
 			Includes: expectedIncludes,
 		}
 	}
+
+	if expectedTCPProxy != nil && expectedHostname != "" {
+		expectedGatewaySpec.VirtualHost.TLS = &contourv1.TLS{
+			Passthrough: true,
+		}
+		expectedGatewaySpec.TCPProxy = expectedTCPProxy
+	}
+
 	require.Equal(t, expectedVirtualHost, gateway.Spec.VirtualHost)
+	require.Equal(t, expectedTCPProxy, gateway.Spec.TCPProxy)
 	require.Equal(t, expectedGatewaySpec, gateway.Spec)
 }
 
@@ -842,13 +1018,13 @@ func validateHttpRoute(t *testing.T, outputResources []outputresource.OutputReso
 	expectedHttpRouteOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.KubernetesHTTPRoute, expectedLocalID, httpRoute, httpRoute.ObjectMeta)
 	require.Equal(t, expectedHttpRouteOutputResource, httpRouteOutputResource)
 
-	require.Equal(t, kubernetes.MakeResourceName(applicationName, expectedRouteName), httpRoute.Name)
+	require.Equal(t, kubernetes.NormalizeResourceName(expectedRouteName), httpRoute.Name)
 	require.Equal(t, applicationName, httpRoute.Namespace)
-	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName), httpRoute.Labels)
+	require.Equal(t, kubernetes.MakeDescriptiveLabels(applicationName, expectedRouteName, ResourceType), httpRoute.Labels)
 
 	require.Nil(t, httpRoute.Spec.VirtualHost)
 
-	expectedServiceName := kubernetes.MakeResourceName(applicationName, expectedRouteName)
+	expectedServiceName := kubernetes.NormalizeResourceName(expectedRouteName)
 
 	expectedHttpRouteSpec := contourv1.HTTPProxySpec{
 		Routes: []contourv1.Route{
@@ -903,7 +1079,7 @@ func makeDependentResource(t *testing.T, properties datamodel.HTTPRoutePropertie
 	return &dm
 }
 func makeResourceID(t *testing.T, resourceID string) resources.ID {
-	id, err := resources.Parse(resourceID)
+	id, err := resources.ParseResource(resourceID)
 	require.NoError(t, err)
 
 	return id
@@ -920,7 +1096,7 @@ func makeTestGateway(config datamodel.GatewayProperties) (datamodel.GatewayPrope
 
 	includes := []contourv1.Include{
 		{
-			Name: kubernetes.MakeResourceName(applicationName, routeName),
+			Name: kubernetes.NormalizeResourceName(routeName),
 			Conditions: []contourv1.MatchCondition{
 				{
 					Prefix: routePath,

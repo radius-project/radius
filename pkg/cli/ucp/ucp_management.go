@@ -16,11 +16,13 @@ import (
 
 	azclient "github.com/project-radius/radius/pkg/azure/clients"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerp "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	ucpv20220315 "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -33,15 +35,15 @@ var _ clients.ApplicationsManagementClient = (*ARMApplicationsManagementClient)(
 
 var (
 	ResourceTypesList = []string{
-		"Applications.Connector/mongoDatabases",
-		"Applications.Connector/rabbitMQMessageQueues",
-		"Applications.Connector/redisCaches",
-		"Applications.Connector/sqlDatabases",
-		"Applications.Connector/daprStateStores",
-		"Applications.Connector/daprSecretStores",
-		"Applications.Connector/daprPubSubBrokers",
-		"Applications.Connector/daprInvokeHttpRoutes",
-		"Applications.Connector/extenders",
+		"Applications.Link/mongoDatabases",
+		"Applications.Link/rabbitMQMessageQueues",
+		"Applications.Link/redisCaches",
+		"Applications.Link/sqlDatabases",
+		"Applications.Link/daprStateStores",
+		"Applications.Link/daprSecretStores",
+		"Applications.Link/daprPubSubBrokers",
+		"Applications.Link/daprInvokeHttpRoutes",
+		"Applications.Link/extenders",
 		"Applications.Core/gateways",
 		"Applications.Core/httpRoutes",
 		"Applications.Core/containers",
@@ -256,15 +258,55 @@ func (amc *ARMApplicationsManagementClient) DeleteApplication(ctx context.Contex
 	return respFromCtx.StatusCode != 204, nil
 }
 
+// CreateOrUpdateApplication creates or updates an application.
+func (amc *ARMApplicationsManagementClient) CreateOrUpdateApplication(ctx context.Context, applicationName string, resource v20220315privatepreview.ApplicationResource) error {
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// CreateApplicationIfNotFound creates an application if it does not exist.
+func (amc *ARMApplicationsManagementClient) CreateApplicationIfNotFound(ctx context.Context, applicationName string, resource v20220315privatepreview.ApplicationResource) error {
+	client, err := v20220315privatepreview.NewApplicationsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return err
+	}
+
+	_, err = client.Get(ctx, applicationName, nil)
+	if clients.Is404Error(err) {
+		// continue
+	} else if err != nil {
+		return err
+	} else {
+		// Application already exists, nothing to do.
+		return nil
+	}
+
+	_, err = client.CreateOrUpdate(ctx, applicationName, resource, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 // Creates a radius environment resource
-func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string) (bool, error) {
+func (amc *ARMApplicationsManagementClient) CreateEnvironment(ctx context.Context, envName string, location string, namespace string, envKind string, resourceId string, recipeProperties map[string]*corerp.EnvironmentRecipeProperties, providers *corerp.Providers, useDevRecipes bool) (bool, error) {
 	client, err := corerp.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
 	if err != nil {
 		return false, err
 	}
 
 	envCompute := corerp.KubernetesCompute{Kind: &envKind, Namespace: &namespace, ResourceID: &resourceId}
-	properties := corerp.EnvironmentProperties{Compute: &envCompute}
+	properties := corerp.EnvironmentProperties{Compute: &envCompute, Recipes: recipeProperties, Providers: providers, UseDevRecipes: &useDevRecipes}
 	_, err = client.CreateOrUpdate(ctx, envName, corerp.EnvironmentResource{Location: &location, Properties: &properties}, &corerp.EnvironmentsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return false, err
@@ -286,7 +328,7 @@ func isResourceInApplication(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	idParsed, err := resources.Parse(associatedAppId)
+	idParsed, err := resources.ParseResource(associatedAppId)
 	if err != nil {
 		return false
 	}
@@ -310,7 +352,7 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 		return false
 	}
 
-	idParsed, err := resources.Parse(associatedEnvId)
+	idParsed, err := resources.ParseResource(associatedEnvId)
 	if err != nil {
 		return false
 	}
@@ -322,7 +364,7 @@ func isResourceInEnvironment(ctx context.Context, resource generated.GenericReso
 	return false
 }
 
-func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+func (amc *ARMApplicationsManagementClient) ListEnvironmentsInResourceGroup(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
 	envResourceList := []v20220315privatepreview.EnvironmentResource{}
 
 	envClient, err := v20220315privatepreview.NewEnvironmentsClient(amc.RootScope, &aztoken.AnonymousCredential{}, amc.ClientOptions)
@@ -343,7 +385,49 @@ func (amc *ARMApplicationsManagementClient) ListEnv(ctx context.Context) ([]v202
 	}
 
 	return envResourceList, nil
+}
 
+func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Context) ([]v20220315privatepreview.EnvironmentResource, error) {
+	// This is inefficient, but we haven't yet implemented plane-scoped list APIs for our resources yet.
+
+	groupClient, err := v20220901privatepreview.NewResourceGroupsClient(&aztoken.AnonymousCredential{}, amc.ClientOptions)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	scope, err := resources.ParseScope("/" + amc.RootScope)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	response, err := groupClient.List(ctx, "radius", scope.FindScope("radius"), nil)
+	if err != nil {
+		return []v20220315privatepreview.EnvironmentResource{}, err
+	}
+
+	envResourceList := []v20220315privatepreview.EnvironmentResource{}
+	for _, group := range response.Value {
+		// Now query environments inside each group.
+		envClient, err := v20220315privatepreview.NewEnvironmentsClient(*group.ID, &aztoken.AnonymousCredential{}, amc.ClientOptions)
+		if err != nil {
+			return []v20220315privatepreview.EnvironmentResource{}, err
+		}
+
+		pager := envClient.NewListByScopePager(&v20220315privatepreview.EnvironmentsClientListByScopeOptions{})
+		for pager.More() {
+			nextPage, err := pager.NextPage(ctx)
+			if err != nil {
+				return []v20220315privatepreview.EnvironmentResource{}, err
+			}
+
+			applicationList := nextPage.EnvironmentResourceList.Value
+			for _, application := range applicationList {
+				envResourceList = append(envResourceList, *application)
+			}
+		}
+	}
+
+	return envResourceList, nil
 }
 
 func (amc *ARMApplicationsManagementClient) GetEnvDetails(ctx context.Context, envName string) (v20220315privatepreview.EnvironmentResource, error) {

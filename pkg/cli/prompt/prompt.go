@@ -11,7 +11,10 @@ import (
 	"regexp"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/manifoldco/promptui"
+	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
+	"github.com/project-radius/radius/pkg/cli/prompt/text"
 )
 
 type BinaryAnswer int
@@ -157,6 +160,9 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 type Interface interface {
 	RunPrompt(prompter promptui.Prompt) (string, error)
 	RunSelect(selector promptui.Select) (int, string, error)
+
+	// Confirm prompts the user to confirm the answer to a yes/no question.
+	ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error)
 }
 
 type Impl struct{}
@@ -169,6 +175,10 @@ func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
 // Prompts user to select from a list of values
 func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
 	return selector.Run()
+}
+
+func (i *Impl) ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error) {
+	return ConfirmWithDefault(prompt, defaultAns)
 }
 
 // Creates a Yes or No prompts where user has to enter either a Y or N as input
@@ -222,4 +232,51 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 			return strings.HasPrefix(items[index], input)
 		},
 	}
+}
+
+//go:generate mockgen -destination=./mock_bubleteaprompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt BubbleTeaPrompter
+
+// BubbleTeaPrompter contains operation to get user inputs for cli
+type BubbleTeaPrompter interface {
+	// GetTextInput prompts user for a text input
+	GetTextInput(promptMsg string) (string, error)
+
+	// GetListInput prompts user to select from a list
+	GetListInput(items []string, promptMsg string) (string, error)
+}
+
+// BubbleTeaPrompterImpl implements BubbleTeaPrompter
+type BubbleTeaPrompterImpl struct{}
+
+// GetTextInput prompts user for a text input
+func (i *BubbleTeaPrompterImpl) GetTextInput(promptMsg string) (string, error) {
+	// TODO: implement text model
+	tm := text.NewTextModel(promptMsg)
+	model, err := tea.NewProgram(tm).Run()
+	if err != nil {
+		return "", err
+	}
+	tm, ok := model.(text.Model)
+	if !ok {
+		return "", &ErrUnsupportedModel{}
+	}
+	fmt.Println("Entered value:", tm.GetValue())
+
+	return tm.GetValue(), nil
+}
+
+// GetListInput prompts user to select from a list
+func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (string, error) {
+	lm := cli_list.NewListModel(items, promptMsg)
+	model, err := tea.NewProgram(lm).Run()
+	if err != nil {
+		return "", err
+	}
+
+	lm, ok := model.(cli_list.ListModel)
+	if !ok {
+		return "", &ErrUnsupportedModel{}
+	}
+
+	return lm.Choice, nil
 }

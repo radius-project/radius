@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -20,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad provider show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -41,6 +43,7 @@ rad provider show azure
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad provider show` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -50,6 +53,7 @@ type Runner struct {
 	Kind              string
 }
 
+// NewRunner creates a new instance of the `rad provider show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -58,12 +62,18 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad provider show` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
 	r.Workspace = workspace
+
+	// TODO: support fallback workspace
+	if !r.Workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
 
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
@@ -80,6 +90,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad provider show` command.
 func (r *Runner) Run(ctx context.Context) error {
 	r.Output.LogInfo("Showing cloud provider %q for Radius installation %q...", r.Kind, r.Workspace.FmtConnection())
 	client, err := r.ConnectionFactory.CreateCloudProviderManagementClient(ctx, *r.Workspace)
@@ -88,7 +99,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	providers, err := client.Get(ctx, r.Kind)
-	if cli.Is404ErrorForAzureError(err) {
+	if clients.Is404Error(err) {
 		return &cli.FriendlyError{Message: fmt.Sprintf("Cloud provider %q could not be found.", r.Kind)}
 	} else if err != nil {
 		return err

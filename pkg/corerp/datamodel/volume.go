@@ -20,6 +20,9 @@ const (
 type VolumeResource struct {
 	v1.BaseResource
 
+	// TODO: remove this from CoreRP
+	LinkMetadata
+
 	// Properties is the properties of the resource.
 	Properties VolumeResourceProperties `json:"properties"`
 }
@@ -32,6 +35,8 @@ func (h *VolumeResource) ResourceTypeName() string {
 // ApplyDeploymentOutput applies the properties changes based on the deployment output.
 func (h *VolumeResource) ApplyDeploymentOutput(do rp.DeploymentOutput) {
 	h.Properties.Status.OutputResources = do.DeployedOutputResources
+	h.ComputedValues = do.ComputedValues
+	h.SecretValues = do.SecretValues
 }
 
 // OutputResources returns the output resources array.

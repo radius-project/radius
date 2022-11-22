@@ -6,5 +6,10 @@
 package environments
 
 const (
-	ResourceTypeName = "Applications.Core/environments"
+	ResourceTypeName  = "Applications.Core/environments"
+	DevRecipesACRPath = "radiusdev.azurecr.io"
 )
+
+func supportedProviders() []string {
+	return []string{"azure"}
+}

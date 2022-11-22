@@ -75,7 +75,7 @@ func TestARMRequestCtx(t *testing.T) {
 					_, _ = w.Write([]byte(rpcCtx.ResourceID.ScopeSegments()[0].Name))
 				})
 
-			handler := ARMRequestCtx(testPathBase, "global")(r)
+			handler := ARMRequestCtx(testPathBase, v1.LocationGlobal)(r)
 
 			testUrl := testPathBase + tt.url
 

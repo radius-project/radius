@@ -24,7 +24,6 @@ var (
 	ResourceID   = "/planes/radius/local/resourcegroups/kind-kind/providers/applications.core/containers/containera-app-with-resources"
 	ResourceName = "containera-app-with-resources"
 	ResourceType = "applications.core/containers"
-	Location     = "global"
 )
 
 func Test_CommandValidation(t *testing.T) {
@@ -33,7 +32,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithoutWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
 			Name:          "Valid Show Command",
@@ -45,12 +43,12 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Show Command without workspace",
+			Name:          "Show Command with fallback workspace",
 			Input:         []string{"containers", "foo"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 		{

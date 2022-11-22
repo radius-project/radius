@@ -32,11 +32,16 @@ type DeleteGateway struct {
 // NewDeleteGateway creates a new DeleteGateway.
 func NewDeleteGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteGateway{
-		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Gateway]{
+				RequestConverter:  converter.GatewayDataModelFromVersioned,
+				ResponseConverter: converter.GatewayDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
-func (dc *DeleteGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (dc *DeleteGateway) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := dc.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {

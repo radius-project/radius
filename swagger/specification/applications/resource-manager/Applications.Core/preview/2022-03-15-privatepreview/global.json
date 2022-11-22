@@ -51,6 +51,13 @@
         "modelAsString": true
       }
     },
+    "Application": {
+      "description": "Specifies the resource id of the application",
+      "type": "string",
+      "example": [
+        "app.id"
+      ]
+    },
     "BasicResourceProperties": {
       "description": "Basic properties of a Radius resource.",
       "type": "object",
@@ -59,8 +66,18 @@
           "$ref": "#/definitions/ResourceStatus",
           "description": "Status of the resource",
           "readOnly": true
+        },
+        "environment": {
+          "description": "The resource id of the environment linked to the resource",
+          "type": "string"
+        },
+        "application": {
+          "$ref": "#/definitions/Application"
         }
-      }
+      },
+      "required": [
+        "application"
+      ]
     },
     "ResourceStatus": {
       "description": "Status of a resource.",
@@ -78,6 +95,49 @@
       "description": "Properties of an output resource.",
       "type": "object",
       "properties": {}
+    },
+    "IdentitySettings": {
+      "properties": {
+        "kind": {
+          "description": "Configuration for supported external identity providers",
+          "type": "string",
+          "enum": [
+            "undefined",
+            "azure.com.workload"
+          ],
+          "default": "azure.com.workload",
+          "x-ms-enum": {
+            "name": "IdentitySettingKind",
+            "modelAsString": false
+          }
+        },
+        "oidcIssuer": {
+          "description": "The URI for your compute platform's OIDC issuer",
+          "type": "string"
+        },
+        "resource": {
+          "description": "The resource ID of the provisioned identity",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
+    "Extension": {
+      "description": "Extension of a resource.",
+      "discriminator": "kind",
+      "properties": {
+        "kind": {
+          "description": "Specifies the extensions of a resource.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
     }
   },
   "parameters": {
@@ -86,7 +146,7 @@
       "in": "path",
       "required": true,
       "type": "string",
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
+      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroups/{resourcegroupID}",
       "minLength": 1,
       "x-ms-skip-url-encoding": true
     }
@@ -111,7 +171,6 @@
           {
             "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
           }
-         
         ],
         "responses": {
           "200": {

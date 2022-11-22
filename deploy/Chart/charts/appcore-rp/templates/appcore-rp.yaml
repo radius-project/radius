@@ -16,16 +16,13 @@ spec:
       labels:
         control-plane: appcore-rp
         app.kubernetes.io/part-of: radius-control-plane
-{{ if .Values.global.rp.provider.azure.podidentity }}
-        aadpodidbinding: {{ .Values.global.rp.provider.azure.podidentity }}
-{{ end }}
     spec:
       serviceAccountName: appcore-rp
       containers:
       - args:
         - --config-file=/etc/config/radius-self-host.yaml
-        - --run-connector
-        - --connector-config=/etc/config/connector-self-host.yaml
+        - --run-link
+        - --link-config=/etc/config/link-self-host.yaml
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         envFrom:
         - secretRef: 
@@ -47,7 +44,7 @@ spec:
           name: appcore-rp
           protocol: TCP
         - containerPort: 5444
-          name: appconnector-rp
+          name: applink-rp
           protocol: TCP
         securityContext:
           allowPrivilegeEscalation: false
@@ -73,7 +70,7 @@ spec:
       protocol: TCP
       targetPort: 5443
     - port: 5444
-      name: connector-http
+      name: link-http
       protocol: TCP
       targetPort: 5444
   selector:
@@ -91,8 +88,8 @@ metadata:
 data:
   radius-self-host.yaml: |-
 {{ .Files.Get "radius-self-host.yaml" | indent 4}}
-  connector-self-host.yaml: |-
-{{ .Files.Get "connector-self-host.yaml" | indent 4}}
+  link-self-host.yaml: |-
+{{ .Files.Get "link-self-host.yaml" | indent 4}}
 ---
 apiVersion: v1
 kind: Secret
@@ -103,11 +100,7 @@ metadata:
     app: appcore-rp
 stringData:
 # Configuration for 'Azure' provider functionality
-{{ if .Values.global.rp.provider.azure.podidentity }}
-  # Enable ARM without explicit credentials
-  SKIP_ARM: 'false'
-  ARM_AUTH_METHOD: 'ManagedIdentity'
-{{ else if .Values.global.rp.provider.azure.servicePrincipal }}
+{{ if .Values.global.rp.provider.azure.servicePrincipal }}
   # Enable ARM with explicit credentials
   SKIP_ARM: 'false' 
   ARM_AUTH_METHOD: 'ServicePrincipal'
@@ -117,10 +110,4 @@ stringData:
 {{ else }}
   # Skip ARM by default. Overwriting this secret will let you set this to false as well as configure credentials
   SKIP_ARM: 'true' 
-{{ end }}
-# Configuration for AKS integration
-{{ if .Values.global.rp.aks }}
-  K8S_SUBSCRIPTION_ID: {{ .Values.global.rp.aks.subscriptionId }}
-  K8S_RESOURCE_GROUP: {{ .Values.global.rp.aks.resourceGroup }}
-  K8S_CLUSTER_NAME: {{ .Values.global.rp.aks.clusterName }}
 {{ end }}

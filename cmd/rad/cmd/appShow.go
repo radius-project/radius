@@ -27,9 +27,14 @@ func init() {
 
 func showApplication(cmd *cobra.Command, args []string) error {
 	config := ConfigFromContext(cmd.Context())
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, config, DirectoryConfigFromContext(cmd.Context()))
 	if err != nil {
 		return err
+	}
+
+	// TODO: support fallback workspace
+	if !workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
 	}
 
 	applicationName, err := cli.RequireApplicationArgs(cmd, args, *workspace)

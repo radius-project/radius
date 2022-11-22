@@ -106,3 +106,4 @@ resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
     }
   }
 }
+

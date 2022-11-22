@@ -9,10 +9,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var recipeCmd = &cobra.Command{
-	Use:   "recipe",
-	Short: "Manage connector recipes",
-	Long:  `Manage connector recipes`,
+func NewRecipeCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "recipe",
+		Short: "Manage link recipes",
+		Long: `Manage link recipes
+		Link recipes automate the deployment of infrastructure and configuration of links.`,
+	}
 }
 
 func init() {

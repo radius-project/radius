@@ -15,8 +15,8 @@
 //
 // Keys are structured like the following example:
 //
-// 		scope|/planes/radius/local/|/resourceGroups/cool-group/
-// 		resource|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
+//	scope|/planes/radius/local/|/resourceGroups/cool-group/
+//	resource|/planes/radius/local/resourceGroups/cool-group/|/Applications.Core/applications/cool-app/
 //
 // As a special case for scopes (like resource groups) we treat the last segment as the routing scope.
 //
@@ -27,7 +27,7 @@
 // For example, the following query will be commonly executed and we don't want it to list all resources in the
 // database:
 //
-//		scope|/planes/
+//	scope|/planes/
 //
 // This scheme allows a variety of flexibility for querying/filtering with different scopes. We prefer
 // query approaches that that involved client-side filtering to avoid the need for N+1 query strategies.
@@ -118,7 +118,7 @@ func (c *ETCDClient) Get(ctx context.Context, id string, options ...store.GetOpt
 	if parsed.IsEmpty() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if parsed.IsCollection() {
+	if parsed.IsResourceCollection() || parsed.IsScopeCollection() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
@@ -154,7 +154,7 @@ func (c *ETCDClient) Delete(ctx context.Context, id string, options ...store.Del
 	if parsed.IsEmpty() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if parsed.IsCollection() {
+	if parsed.IsResourceCollection() || parsed.IsScopeCollection() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
@@ -258,6 +258,10 @@ func (c *ETCDClient) Save(ctx context.Context, obj *store.Object, options ...sto
 	obj.ETag = etag.NewFromRevision(response.Header.Revision)
 
 	return nil
+}
+
+func (c *ETCDClient) Client() *etcdclient.Client {
+	return c.client
 }
 
 func idFromKey(key []byte) (resources.ID, error) {

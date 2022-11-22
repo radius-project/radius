@@ -16,17 +16,38 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli"
 
+	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
+	env_delete "github.com/project-radius/radius/pkg/cli/cmd/env/delete"
+	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
+	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
+	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
+	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/setup"
+
+	"github.com/project-radius/radius/pkg/cli/bicep"
+	appSwitch "github.com/project-radius/radius/pkg/cli/cmd/app/appswitch"
+	cmddeploy "github.com/project-radius/radius/pkg/cli/cmd/deploy"
+	envSwitch "github.com/project-radius/radius/pkg/cli/cmd/env/envswitch"
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
+	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
+	recipe_delete "github.com/project-radius/radius/pkg/cli/cmd/recipe/delete"
+	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
-	"github.com/project-radius/radius/pkg/cli/configFile"
+	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
+	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
+	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
+	workspace_show "github.com/project-radius/radius/pkg/cli/cmd/workspace/show"
+	workspace_switch "github.com/project-radius/radius/pkg/cli/cmd/workspace/switch"
+	"github.com/project-radius/radius/pkg/cli/config"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/spf13/cobra"
@@ -42,8 +63,13 @@ var RootCmd = &cobra.Command{
 	SilenceUsage:  true,
 }
 
+var applicationCmd = NewAppCommand()
 var resourceCmd = NewResourceCommand()
-var ConfigHolderKey = NewContextKey("config")
+var recipeCmd = NewRecipeCommand()
+var envCmd = NewEnvironmentCommand()
+var workspaceCmd = NewWorkspaceCommand()
+
+var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
@@ -96,16 +122,25 @@ func init() {
 
 func initSubCommands() {
 	framework := &framework.Impl{
+		Bicep:             &bicep.Impl{},
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
+		Deploy:            &deploy.Impl{},
+		Logstream:         &logstream.Impl{},
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
 		Prompter:            &prompt.Impl{},
-		ConfigFileInterface: &configFile.Impl{},
+		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},
+		NamespaceInterface:  &namespace.Impl{},
+		SetupInterface:      &setup.Impl{},
 	}
+
+	deployCmd, _ := cmddeploy.NewCommand(framework)
+	RootCmd.AddCommand(deployCmd)
+
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
 
@@ -115,6 +150,15 @@ func initSubCommands() {
 	deleteCmd, _ := resource_delete.NewCommand(framework)
 	resourceCmd.AddCommand(deleteCmd)
 
+	listRecipeCmd, _ := recipe_list.NewCommand(framework)
+	recipeCmd.AddCommand(listRecipeCmd)
+
+	createRecipeCmd, _ := recipe_create.NewCommand(framework)
+	recipeCmd.AddCommand(createRecipeCmd)
+
+	deleteRecipeCmd, _ := recipe_delete.NewCommand(framework)
+	recipeCmd.AddCommand(deleteRecipeCmd)
+
 	providerCmd := provider.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)
 
@@ -123,6 +167,39 @@ func initSubCommands() {
 
 	initCmd, _ := radInit.NewCommand(framework)
 	RootCmd.AddCommand(initCmd)
+
+	envCreateCmd, _ := env_create.NewCommand(framework)
+	envCmd.AddCommand(envCreateCmd)
+
+	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	envCmd.AddCommand(envDeleteCmd)
+
+	envListCmd, _ := env_list.NewCommand(framework)
+	envCmd.AddCommand(envListCmd)
+
+	envShowCmd, _ := env_show.NewCommand(framework)
+	envCmd.AddCommand(envShowCmd)
+
+	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceCreateCmd)
+
+	workspaceDeleteCmd, _ := workspace_delete.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceDeleteCmd)
+
+	workspaceListCmd, _ := workspace_list.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceListCmd)
+
+	workspaceShowCmd, _ := workspace_show.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceShowCmd)
+
+	workspaceSwitchCmd, _ := workspace_switch.NewCommand(framework)
+	workspaceCmd.AddCommand(workspaceSwitchCmd)
+
+	appSwitchCmd, _ := appSwitch.NewCommand(framework)
+	applicationCmd.AddCommand(appSwitchCmd)
+
+	envSwitchCmd, _ := envSwitch.NewCommand(framework)
+	envCmd.AddCommand(envSwitchCmd)
 }
 
 // The dance we do with config is kinda complex. We want commands to be able to retrieve a config (*viper.Viper)
@@ -139,19 +216,38 @@ func initConfig() {
 	}
 
 	ConfigHolder.Config = v
+
+	wd, err := os.Getwd()
+	if err != nil {
+		fmt.Printf("Error: failed to find current working directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	dc, err := config.LoadDirectoryConfig(wd)
+	if err != nil {
+		fmt.Printf("Error: failed to load config: %v\n", err)
+		os.Exit(1)
+	}
+
+	ConfigHolder.DirectoryConfig = dc
 }
 
-type contextKey string
-
-func NewContextKey(purpose string) contextKey {
-	return contextKey("radius context " + purpose)
-}
-
+// TODO: Deprecate once all the commands are moved to new framework
 func ConfigFromContext(ctx context.Context) *viper.Viper {
-	holder := ctx.Value(NewContextKey("config")).(*framework.ConfigHolder)
+	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
 	if holder == nil {
 		return nil
 	}
 
 	return holder.Config
+}
+
+// TODO: Deprecate once all the commands are moved to new framework
+func DirectoryConfigFromContext(ctx context.Context) *config.DirectoryConfig {
+	holder := ctx.Value(framework.NewContextKey("config")).(*framework.ConfigHolder)
+	if holder == nil {
+		return nil
+	}
+
+	return holder.DirectoryConfig
 }

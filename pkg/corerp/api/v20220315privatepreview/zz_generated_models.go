@@ -11,10 +11,89 @@ package v20220315privatepreview
 
 import "time"
 
+// ApplicationExtensionClassification provides polymorphic access to related types.
+// Call the interface's GetApplicationExtension() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *ApplicationExtension, *ApplicationKubernetesMetadataExtension, *ApplicationKubernetesNamespaceExtension
+type ApplicationExtensionClassification interface {
+	ExtensionClassification
+	// GetApplicationExtension returns the ApplicationExtension content of the underlying type.
+	GetApplicationExtension() *ApplicationExtension
+}
+
+type ApplicationExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationExtension.
+func (a *ApplicationExtension) GetApplicationExtension() *ApplicationExtension { return a }
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationExtension.
+func (a *ApplicationExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
+// ApplicationKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
+// by all Containers in this Application.
+type ApplicationKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
+func (a *ApplicationKubernetesMetadataExtension) GetApplicationExtension() *ApplicationExtension {
+	return &ApplicationExtension{
+		Kind: a.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
+func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
+// ApplicationKubernetesNamespaceExtension - Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments
+// resource.
+type ApplicationKubernetesNamespaceExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the application.
+	Namespace *string `json:"namespace,omitempty"`
+}
+
+// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetApplicationExtension() *ApplicationExtension {
+	return &ApplicationExtension{
+		Kind: a.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
 	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
+
+	// Extensions spec of the resource
+	Extensions []ApplicationExtensionClassification `json:"extensions,omitempty"`
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -79,20 +158,23 @@ type ApplicationsClientUpdateOptions struct {
 }
 
 type AzureKeyVaultVolumeProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
 
-	// Fully qualified resource ID for the application that the volume is connected to.
-	Application *string `json:"application,omitempty"`
+	// REQUIRED; The ID of the keyvault to use for this volume resource
+	Resource *string `json:"resource,omitempty"`
 
 	// The KeyVault certificates that this volume exposes
 	Certificates map[string]*CertificateObjectProperties `json:"certificates,omitempty"`
 
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
 	// The KeyVault keys that this volume exposes
 	Keys map[string]*KeyObjectProperties `json:"keys,omitempty"`
-
-	// The ID of the keyvault to use for this volume resource
-	Resource *string `json:"resource,omitempty"`
 
 	// The KeyVault secrets that this volume exposes
 	Secrets map[string]*SecretObjectProperties `json:"secrets,omitempty"`
@@ -109,13 +191,20 @@ func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties 
 	return &VolumeProperties{
 		Kind: a.Kind,
 		ProvisioningState: a.ProvisioningState,
-		Application: a.Application,
 		Status: a.Status,
+		Environment: a.Environment,
+		Application: a.Application,
 	}
 }
 
 // BasicResourceProperties - Basic properties of a Radius resource.
 type BasicResourceProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
 	// READ-ONLY; Status of the resource
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
@@ -144,6 +233,8 @@ type ConnectionProperties struct {
 	// REQUIRED; The source of the connection
 	Source *string `json:"source,omitempty"`
 	DisableDefaultEnvVars *bool `json:"disableDefaultEnvVars,omitempty"`
+
+	// The properties of IAM
 	Iam *IamProperties `json:"iam,omitempty"`
 }
 
@@ -151,6 +242,12 @@ type ConnectionProperties struct {
 type Container struct {
 	// REQUIRED; The registry and image to download and run in your container
 	Image *string `json:"image,omitempty"`
+
+	// Arguments to the entrypoint. Overrides the container image's CMD
+	Args []*string `json:"args,omitempty"`
+
+	// Entrypoint array. Overrides the container image's ENTRYPOINT
+	Command []*string `json:"command,omitempty"`
 
 	// Dictionary of
 	Env map[string]*string `json:"env,omitempty"`
@@ -166,6 +263,61 @@ type Container struct {
 
 	// Dictionary of
 	Volumes map[string]VolumeClassification `json:"volumes,omitempty"`
+
+	// Working directory for the container
+	WorkingDir *string `json:"workingDir,omitempty"`
+}
+
+// ContainerExtensionClassification provides polymorphic access to related types.
+// Call the interface's GetContainerExtension() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *ContainerExtension, *ContainerKubernetesMetadataExtension, *DaprSidecarExtension, *ManualScalingExtension
+type ContainerExtensionClassification interface {
+	ExtensionClassification
+	// GetContainerExtension returns the ContainerExtension content of the underlying type.
+	GetContainerExtension() *ContainerExtension
+}
+
+type ContainerExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetContainerExtension implements the ContainerExtensionClassification interface for type ContainerExtension.
+func (c *ContainerExtension) GetContainerExtension() *ContainerExtension { return c }
+
+// GetExtension implements the ExtensionClassification interface for type ContainerExtension.
+func (c *ContainerExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: c.Kind,
+	}
+}
+
+// ContainerKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created for
+// the Container resource
+type ContainerKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetContainerExtension implements the ContainerExtensionClassification interface for type ContainerKubernetesMetadataExtension.
+func (c *ContainerKubernetesMetadataExtension) GetContainerExtension() *ContainerExtension {
+	return &ContainerExtension{
+		Kind: c.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type ContainerKubernetesMetadataExtension.
+func (c *ContainerKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: c.Kind,
+	}
 }
 
 // ContainerPort - Specifies a listening port for the container
@@ -182,7 +334,7 @@ type ContainerPort struct {
 
 // ContainerProperties - Container properties
 type ContainerProperties struct {
-	// REQUIRED; Specifies resource id of the application
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Definition of a container.
@@ -191,8 +343,14 @@ type ContainerProperties struct {
 	// Dictionary of
 	Connections map[string]*ConnectionProperties `json:"connections,omitempty"`
 
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
+
 	// Extensions spec of the resource
-	Extensions []ExtensionClassification `json:"extensions,omitempty"`
+	Extensions []ContainerExtensionClassification `json:"extensions,omitempty"`
+
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
 
 	// READ-ONLY; Gets the status of the container at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -280,6 +438,13 @@ type DaprSidecarExtension struct {
 	Provides *string `json:"provides,omitempty"`
 }
 
+// GetContainerExtension implements the ContainerExtensionClassification interface for type DaprSidecarExtension.
+func (d *DaprSidecarExtension) GetContainerExtension() *ContainerExtension {
+	return &ContainerExtension{
+		Kind: d.Kind,
+	}
+}
+
 // GetExtension implements the ExtensionClassification interface for type DaprSidecarExtension.
 func (d *DaprSidecarExtension) GetExtension() *Extension {
 	return &Extension{
@@ -301,6 +466,9 @@ type EnvironmentCompute struct {
 	// REQUIRED; Type of compute resource.
 	Kind *string `json:"kind,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -308,13 +476,74 @@ type EnvironmentCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type EnvironmentCompute.
 func (e *EnvironmentCompute) GetEnvironmentCompute() *EnvironmentCompute { return e }
 
+// EnvironmentExtensionClassification provides polymorphic access to related types.
+// Call the interface's GetEnvironmentExtension() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *EnvironmentExtension, *EnvironmentKubernetesMetadataExtension
+type EnvironmentExtensionClassification interface {
+	ExtensionClassification
+	// GetEnvironmentExtension returns the EnvironmentExtension content of the underlying type.
+	GetEnvironmentExtension() *EnvironmentExtension
+}
+
+type EnvironmentExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+}
+
+// GetEnvironmentExtension implements the EnvironmentExtensionClassification interface for type EnvironmentExtension.
+func (e *EnvironmentExtension) GetEnvironmentExtension() *EnvironmentExtension { return e }
+
+// GetExtension implements the ExtensionClassification interface for type EnvironmentExtension.
+func (e *EnvironmentExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: e.Kind,
+	}
+}
+
+// EnvironmentKubernetesMetadataExtension - Specifies the metadata that should be applied to Kubernetes resources created
+// by all Containers in this Environment.
+type EnvironmentKubernetesMetadataExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// Annotations to be applied to the Kubernetes resources output by the resource
+	Annotations map[string]*string `json:"annotations,omitempty"`
+
+	// Labels to be applied to the Kubernetes resources output by the resource
+	Labels map[string]*string `json:"labels,omitempty"`
+}
+
+// GetEnvironmentExtension implements the EnvironmentExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
+func (e *EnvironmentKubernetesMetadataExtension) GetEnvironmentExtension() *EnvironmentExtension {
+	return &EnvironmentExtension{
+		Kind: e.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type EnvironmentKubernetesMetadataExtension.
+func (e *EnvironmentKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: e.Kind,
+	}
+}
+
 // EnvironmentProperties - Application environment properties
 type EnvironmentProperties struct {
 	// REQUIRED; Compute resource used by application environment resource.
 	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 
+	// Extensions spec of the resource
+	Extensions []EnvironmentExtensionClassification `json:"extensions,omitempty"`
+
+	// Cloud providers configuration for the environment.
+	Providers *Providers `json:"providers,omitempty"`
+
 	// Dictionary of
 	Recipes map[string]*EnvironmentRecipeProperties `json:"recipes,omitempty"`
+
+	// Flag to use radius owned recipes.
+	UseDevRecipes *bool `json:"useDevRecipes,omitempty"`
 
 	// READ-ONLY; Provisioning state of the environment at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -322,8 +551,8 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties - Properties of a Recipe linked to an Environment.
 type EnvironmentRecipeProperties struct {
-	// REQUIRED; Type of the connector this recipe can be consumed by. For example: 'Applications.Connector/mongoDatabases'
-	ConnectorType *string `json:"connectorType,omitempty"`
+	// REQUIRED; Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+	LinkType *string `json:"linkType,omitempty"`
 
 	// REQUIRED; Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 	TemplatePath *string `json:"templatePath,omitempty"`
@@ -457,6 +686,9 @@ type ExecHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type ExecHealthProbeProperties.
@@ -466,13 +698,15 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 		InitialDelaySeconds: e.InitialDelaySeconds,
 		FailureThreshold: e.FailureThreshold,
 		PeriodSeconds: e.PeriodSeconds,
+		TimeoutSeconds: e.TimeoutSeconds,
 	}
 }
 
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprSidecarExtension, *Extension, *ManualScalingExtension
+// - *ApplicationExtension, *ApplicationKubernetesNamespaceExtension, *ContainerExtension, *ContainerKubernetesMetadataExtension,
+// - *DaprSidecarExtension, *EnvironmentExtension, *Extension, *ManualScalingExtension
 type ExtensionClassification interface {
 	// GetExtension returns the Extension content of the underlying type.
 	GetExtension() *Extension
@@ -489,17 +723,23 @@ func (e *Extension) GetExtension() *Extension { return e }
 
 // GatewayProperties - Gateway properties
 type GatewayProperties struct {
-	// REQUIRED; The resource id of the application linked to Gateway resource.
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
 
 	// REQUIRED; Routes attached to this Gateway
 	Routes []*GatewayRoute `json:"routes,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// Declare hostname information for the Gateway. Leaving the hostname empty auto-assigns one: mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 	Hostname *GatewayPropertiesHostname `json:"hostname,omitempty"`
 
 	// Sets Gateway to not be exposed externally (no public IP address associated). Defaults to false (exposed to internet).
 	Internal *bool `json:"internal,omitempty"`
+
+	// TLS configuration for the Gateway.
+	TLS *GatewayPropertiesTLS `json:"tls,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Gateway at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
@@ -521,6 +761,12 @@ type GatewayPropertiesHostname struct {
 	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname'
 // and will be overridden if both are defined.
 	Prefix *string `json:"prefix,omitempty"`
+}
+
+// GatewayPropertiesTLS - TLS configuration for the Gateway.
+type GatewayPropertiesTLS struct {
+	// If true, gateway lets the https traffic passthrough to the backend servers for decryption.
+	SSLPassThrough *bool `json:"sslPassThrough,omitempty"`
 }
 
 // GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
@@ -615,6 +861,9 @@ type HTTPGetHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HTTPGetHealthProbeProperties.
@@ -624,13 +873,17 @@ func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbePr
 		InitialDelaySeconds: h.InitialDelaySeconds,
 		FailureThreshold: h.FailureThreshold,
 		PeriodSeconds: h.PeriodSeconds,
+		TimeoutSeconds: h.TimeoutSeconds,
 	}
 }
 
 // HTTPRouteProperties - HTTP Route properties
 type HTTPRouteProperties struct {
-	// REQUIRED; The resource id of the application linked to HTTP Route resource.
+	// REQUIRED; Specifies the resource id of the application
 	Application *string `json:"application,omitempty"`
+
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// The internal hostname accepting traffic for the HTTP Route. Readonly.
 	Hostname *string `json:"hostname,omitempty"`
@@ -731,17 +984,32 @@ type HealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HealthProbeProperties.
 func (h *HealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties { return h }
 
+// IamProperties - The properties of IAM
 type IamProperties struct {
 	// REQUIRED; The kind of IAM provider to configure
 	Kind *Kind `json:"kind,omitempty"`
 
 	// RBAC permissions to be assigned on the source resource
 	Roles []*string `json:"roles,omitempty"`
+}
+
+type IdentitySettings struct {
+	// REQUIRED; Configuration for supported external identity providers
+	Kind *IdentitySettingKind `json:"kind,omitempty"`
+
+	// The URI for your compute platform's OIDC issuer
+	OidcIssuer *string `json:"oidcIssuer,omitempty"`
+
+	// The resource ID of the provisioned identity
+	Resource *string `json:"resource,omitempty"`
 }
 
 type KeyObjectProperties struct {
@@ -763,6 +1031,9 @@ type KubernetesCompute struct {
 	// REQUIRED; The namespace to use for the environment.
 	Namespace *string `json:"namespace,omitempty"`
 
+	// Configuration for supported external identity providers
+	Identity *IdentitySettings `json:"identity,omitempty"`
+
 	// The resource id of the compute resource for application environment.
 	ResourceID *string `json:"resourceId,omitempty"`
 }
@@ -772,6 +1043,7 @@ func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
 		Kind: k.Kind,
 		ResourceID: k.ResourceID,
+		Identity: k.Identity,
 	}
 }
 
@@ -782,6 +1054,13 @@ type ManualScalingExtension struct {
 
 	// Replica count.
 	Replicas *int32 `json:"replicas,omitempty"`
+}
+
+// GetContainerExtension implements the ContainerExtensionClassification interface for type ManualScalingExtension.
+func (m *ManualScalingExtension) GetContainerExtension() *ContainerExtension {
+	return &ContainerExtension{
+		Kind: m.Kind,
+	}
 }
 
 // GetExtension implements the ExtensionClassification interface for type ManualScalingExtension.
@@ -803,7 +1082,7 @@ type PersistentVolume struct {
 	MountPath *string `json:"mountPath,omitempty"`
 
 	// Container read/write access to the volume
-	Rbac *VolumeRbac `json:"rbac,omitempty"`
+	Permission *VolumePermission `json:"permission,omitempty"`
 }
 
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.
@@ -812,6 +1091,18 @@ func (p *PersistentVolume) GetVolume() *Volume {
 		Kind: p.Kind,
 		MountPath: p.MountPath,
 	}
+}
+
+// Providers - Cloud providers configuration
+type Providers struct {
+	// Azure cloud provider configuration
+	Azure *ProvidersAzure `json:"azure,omitempty"`
+}
+
+// ProvidersAzure - Azure cloud provider configuration
+type ProvidersAzure struct {
+	// Target scope for Azure resources to be deployed into. For example: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup'
+	Scope *string `json:"scope,omitempty"`
 }
 
 // Resource - Common fields that are returned in the response for all Azure Resource Manager resources
@@ -882,6 +1173,9 @@ type TCPHealthProbeProperties struct {
 
 	// Interval for the readiness/liveness probe in seconds
 	PeriodSeconds *float32 `json:"periodSeconds,omitempty"`
+
+	// Number of seconds after which the readiness/liveness probe times out. Defaults to 5 seconds
+	TimeoutSeconds *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type TCPHealthProbeProperties.
@@ -891,6 +1185,7 @@ func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProper
 		InitialDelaySeconds: t.InitialDelaySeconds,
 		FailureThreshold: t.FailureThreshold,
 		PeriodSeconds: t.PeriodSeconds,
+		TimeoutSeconds: t.TimeoutSeconds,
 	}
 }
 
@@ -944,11 +1239,14 @@ type VolumePropertiesClassification interface {
 }
 
 type VolumeProperties struct {
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
 	// REQUIRED; The volume kind
 	Kind *string `json:"kind,omitempty"`
 
-	// Fully qualified resource ID for the application that the volume is connected to.
-	Application *string `json:"application,omitempty"`
+	// The resource id of the environment linked to the resource
+	Environment *string `json:"environment,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Volume at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`

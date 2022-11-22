@@ -94,12 +94,48 @@ stages:
         which rad || { echo "cannot find rad"; exit 1; }
         rad bicep download
       displayName: rad bicep download
-    - script: |
+    - script: | 
+        echo $OIDC_ISSUER_PUBLIC_KEY | base64 -d > sa.pub
+        echo $OIDC_ISSUER_PRIVATE_KEY | base64 -d > sa.key
         mkdir -p kind/
         curl -sSLo "kind/kind" "https://github.com/kubernetes-sigs/kind/releases/download/v0.11.0/kind-linux-amd64"
         chmod +x "kind/kind"
-        kind create cluster --name radius --wait 60s
-      displayName: create kind cluster
+        # Create KinD cluster with OIDC Issuer keys
+        cat <<EOF | kind create cluster --name radius --config=-
+        kind: Cluster
+        apiVersion: kind.x-k8s.io/v1alpha4
+        nodes:
+        - role: control-plane
+          extraMounts:
+            - hostPath: ./sa.pub
+              containerPath: /etc/kubernetes/pki/sa.pub
+            - hostPath: ./sa.key
+              containerPath: /etc/kubernetes/pki/sa.key
+          kubeadmConfigPatches:
+          - |
+            kind: ClusterConfiguration
+            apiServer:
+              extraArgs:
+                service-account-issuer: $OIDC_ISSUER
+                service-account-key-file: /etc/kubernetes/pki/sa.pub
+                service-account-signing-key-file: /etc/kubernetes/pki/sa.key
+            controllerManager:
+              extraArgs:
+                service-account-private-key-file: /etc/kubernetes/pki/sa.key
+        EOF
+      env:
+        OIDC_ISSUER: $(OIDC_ISSUER)
+        OIDC_ISSUER_PUBLIC_KEY: $(OIDC_ISSUER_PUBLIC_KEY)
+        OIDC_ISSUER_PRIVATE_KEY: $(OIDC_ISSUER_PRIVATE_KEY)
+      displayName: Create KinD Cluster
+    - script: |
+        helm repo add csi-secrets-store-provider-azure https://azure.github.io/secrets-store-csi-driver-provider-azure/charts
+        helm install csi csi-secrets-store-provider-azure/csi-secrets-store-provider-azure
+        helm repo add azure-workload-identity https://azure.github.io/azure-workload-identity/charts
+        helm install workload-identity-webhook azure-workload-identity/workload-identity-webhook --namespace radius-default --create-namespace --set azureTenantID=$INTEGRATION_TEST_TENANT_ID
+      env:
+        INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
+      displayName: Install Secret Store CSI and Workload Identity Webhook
     - script: |
         az login --service-principal \
           --username $(INTEGRATION_TEST_SP_APP_ID) \
@@ -113,7 +149,7 @@ stages:
       displayName: az account set
     - script: |
         export RANID=$(date +%s%N)
-        arr=("eastasia")
+        arr=("westus3")
         index=$(expr $RANID % 1)
         export LOCATION=${arr[$index]}
         az group create \
@@ -136,11 +172,21 @@ stages:
           --provider-azure-client-secret $INTEGRATION_TEST_SP_PASSWORD \
           --provider-azure-tenant-id $INTEGRATION_TEST_TENANT_ID \
           --provider-azure-subscription ${{ variables.INTEGRATION_TEST_SUBSCRIPTION_ID }} \
+          --provider-aws \
+          --provider-aws-access-key-id $(AWS_ACCESS_KEY_ID) \
+          --provider-aws-secret-access-key $(AWS_SECRET_ACCESS_KEY) \
+          --provider-aws-region $AWS_REGION
       env:
         INTEGRATION_TEST_SP_APP_ID: $(INTEGRATION_TEST_SP_APP_ID)
         INTEGRATION_TEST_TENANT_ID: $(INTEGRATION_TEST_TENANT_ID)
         INTEGRATION_TEST_SP_PASSWORD: $(INTEGRATION_TEST_SP_PASSWORD)
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_REGION: $(AWS_REGION)
       displayName: rad env init kubernetes
+    - script: |
+        kubectl set image deployment/bicep-de -n radius-system de=$(DE_IMAGE):$(DE_TAG)
+      condition: and(ne(variables['DE_IMAGE'], ''), ne(variables['DE_TAG'], ''))
     - script: |
         kubectl get pods -n radius-system
         kubectl describe pods -n radius-system
@@ -154,19 +200,26 @@ stages:
         make test-functional-corerp
       env:
         MONGODB_RESOURCE_ID: $(MONGODB_RESOURCE_ID)
+        DOCUMENTDB_RESOURCE_ID: $(DOCUMENTDB_RESOURCE_ID)
         TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
         MSSQL_RESOURCE_ID: $(MSSQL_RESOURCE_ID)
         SERVICEBUS_RESOURCE_ID: $(SERVICEBUS_RESOURCE_ID)
         REDIS_RESOURCE_ID: $(REDIS_RESOURCE_ID)
         MSSQL_USERNAME: $(MSSQL_USERNAME)
         MSSQL_PASSWORD: $(MSSQL_PASSWORD)
-        TABLESTORAGE_RESOURCE_ID: $(TABLESTORAGE_RESOURCE_ID)
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_REGION: $(AWS_REGION)
       displayName: run functional corerp tests
     - script: |
         export PATH=$(Build.SourcesDirectory)/dist:$PATH
         export TEST_TIMEOUT=${{ variables.K8S_FUNCTIONALTEST_TIMEOUT }}
         export RADIUS_CONTAINER_LOG_PATH=$(Build.SourcesDirectory)/${{ variables.RADIUS_CONTAINER_LOG_BASE }}/ucptest
         make test-functional-ucp
+      env:
+        AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
+        AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
+        AWS_REGION: $(AWS_REGION)
       displayName: run functional ucp tests
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs

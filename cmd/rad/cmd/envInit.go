@@ -7,23 +7,20 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/spf13/cobra"
 	client_go "k8s.io/client-go/kubernetes"
-	runtime_client "sigs.k8s.io/controller-runtime/pkg/client"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/cmd/provider/common"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/environments"
 	"github.com/project-radius/radius/pkg/cli/helm"
-	"github.com/project-radius/radius/pkg/cli/k3d"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -54,11 +51,10 @@ type EnvKind int
 
 const (
 	Kubernetes EnvKind = iota
-	Dev
 )
 
 func (k EnvKind) String() string {
-	return [...]string{"Kubernetes", "Dev"}[k]
+	return [...]string{"Kubernetes"}[k]
 }
 
 func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
@@ -99,8 +95,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var defaultEnvName string
 
 	switch kind {
-	case Dev:
-		defaultEnvName = "dev"
 	case Kubernetes:
 		k8sConfig, err := kubernetes.ReadKubeConfig()
 		if err != nil {
@@ -115,13 +109,6 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
-	}
-
-	params := &EnvironmentParams{
-		Name: environmentName,
-		Providers: &environments.Providers{
-			AzureProvider: azProvider,
-			AWSProvider:   awsProvider},
 	}
 
 	cliOptions := helm.CLIClusterOptions{
@@ -144,28 +131,8 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	var contextName string
 	var registry *workspaces.Registry
 	switch kind {
-	case Dev:
-		// Create environment
-		step := output.BeginStep("Creating Cluster...")
-		cluster, err := k3d.CreateCluster(cmd.Context(), params.Name)
-		if err != nil {
-			return err
-		}
-		output.CompleteStep(step)
-		k8sGoClient, _, _, err = createKubernetesClients(cluster.ContextName)
-		if err != nil {
-			return err
-		}
-		clusterOptions.Contour.HostNetwork = true
-		clusterOptions.Radius.PublicEndpointOverride = cluster.HTTPEndpoint
-		contextName = cluster.ContextName
-		registry = &workspaces.Registry{
-			PushEndpoint: cluster.RegistryPushEndpoint,
-			PullEndpoint: cluster.RegistryPullEndpoint,
-		}
-
 	case Kubernetes:
-		k8sGoClient, _, contextName, err = createKubernetesClients("")
+		k8sGoClient, _, contextName, err = kubernetes.CreateKubernetesClients("")
 		if err != nil {
 			return err
 		}
@@ -201,7 +168,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	matched, msg, _ := prompt.ResourceName(workspaceName)
 	if !matched {
-		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name.", workspaceName, msg)
+		return fmt.Errorf("%s %s. Use --workspace option to specify the valid name", workspaceName, msg)
 	}
 
 	// We're going to update the workspace in place if it's compatible. We only need to
@@ -277,7 +244,17 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	// TODO: we TEMPORARILY create a resource group as part of creating the workspace.
 	//
 	// We'll flesh this out more when we add explicit commands for managing resource groups.
-	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), &workspaces.KubernetesConnection{Context: contextName}, workspaceName)
+	var connection workspaces.Connection
+	if workspace != nil {
+		connection, err = workspace.Connect()
+		if err != nil {
+			return err
+		}
+	} else {
+		connection = &workspaces.KubernetesConnection{Context: contextName}
+	}
+
+	id, err := setup.CreateWorkspaceResourceGroup(cmd.Context(), connection, workspaceName)
 	if err != nil {
 		return err
 	}
@@ -338,12 +315,12 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 
 	step = output.BeginStep("Creating Environment...")
 
-	scopeId, err := resources.Parse(workspace.Scope)
+	scopeId, err := resources.ParseScope(workspace.Scope)
 	if err != nil {
 		return err
 	}
 
-	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace)
+	environmentID, err := createEnvironmentResource(cmd.Context(), contextName, scopeId.FindScope(resources.ResourceGroupsSegment), environmentName, namespace, azProviderConfig.SubscriptionID, azProviderConfig.ResourceGroup)
 	if err != nil {
 		return err
 	}
@@ -364,17 +341,17 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	return nil
 }
 
-func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName string, namespace string) (string, error) {
+func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupName, environmentName, namespace, subscriptionID, resourceGroup string) (string, error) {
 	baseURL, transporter, err := kubernetes.CreateAPIServerTransporter(kubeCtxName, "")
 	if err != nil {
 		return "", fmt.Errorf("failed to create environment client: %w", err)
 	}
 
-	loc := "global"
 	id := "self"
+	location := v1.LocationGlobal
 
 	toCreate := coreRpApps.EnvironmentResource{
-		Location: &loc,
+		Location: &location,
 		Properties: &coreRpApps.EnvironmentProperties{
 			Compute: &coreRpApps.KubernetesCompute{
 				Kind:       to.Ptr(coreRpApps.EnvironmentComputeKindKubernetes),
@@ -382,6 +359,14 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 				Namespace:  to.Ptr(namespace),
 			},
 		},
+	}
+
+	if subscriptionID != "" && resourceGroup != "" {
+		toCreate.Properties.Providers = &coreRpApps.Providers{
+			Azure: &coreRpApps.ProvidersAzure{
+				Scope: to.Ptr("/subscriptions/" + subscriptionID + "/resourceGroups/" + resourceGroup),
+			},
+		}
 	}
 
 	rootScope := fmt.Sprintf("planes/radius/local/resourceGroups/%s", resourceGroupName)
@@ -397,36 +382,6 @@ func createEnvironmentResource(ctx context.Context, kubeCtxName, resourceGroupNa
 	}
 
 	return *resp.ID, nil
-}
-
-func createKubernetesClients(contextName string) (client_go.Interface, runtime_client.Client, string, error) {
-	k8sConfig, err := kubernetes.ReadKubeConfig()
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	if contextName == "" && k8sConfig.CurrentContext == "" {
-		return nil, nil, "", errors.New("no kubernetes context is set")
-	} else if contextName == "" {
-		contextName = k8sConfig.CurrentContext
-	}
-
-	context := k8sConfig.Contexts[contextName]
-	if context == nil {
-		return nil, nil, "", fmt.Errorf("kubernetes context '%s' could not be found", contextName)
-	}
-
-	client, _, err := kubernetes.CreateTypedClient(contextName)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	runtimeClient, err := kubernetes.CreateRuntimeClient(contextName, kubernetes.Scheme)
-	if err != nil {
-		return nil, nil, "", err
-	}
-
-	return client, runtimeClient, contextName, nil
 }
 
 func isEmpty(chartArgs *setup.ChartArgs) bool {

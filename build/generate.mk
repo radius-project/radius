@@ -6,7 +6,7 @@
 ##@ Generate (Code and Schema Generation)
 
 .PHONY: generate
-generate: generate-genericcliclient generate-rad-corerp-client generate-rad-connectorrp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -40,17 +40,17 @@ generate-genericcliclient: generate-node-installed generate-autorest-installed
 .PHONY: generate-rad-corerp-client
 generate-rad-corerp-client: generate-node-installed generate-autorest-installed ## Generates the corerp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/corerp/api/README.md --tag=2022-03-15-privatepreview
+	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
 
-.PHONY: generate-rad-connectorrp-client
-generate-rad-connectorrp-client: generate-node-installed generate-autorest-installed ## Generates the connectorrp client SDK (Autorest).
+.PHONY: generate-rad-linkrp-client
+generate-rad-linkrp-client: generate-node-installed generate-autorest-installed ## Generates the linkrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/connectorrp/api/README.md --tag=connector-2022-03-15-privatepreview
+	autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
 
 .PHONY: generate-rad-ucp-client
-generate-rad-ucp-client: generate-node-installed generate-autorest-installed ## Generates the UCP client SDK (Autorest).
+generate-rad-ucp-client: generate-node-installed generate-autorest-installed test-ucp-spec-examples ## Generates the UCP client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
-	autorest pkg/ucp/api/README.md --tag=ucp-2022-03-15-privatepreview
+	autorest pkg/ucp/api/README.md --tag=ucp-2022-09-01-privatepreview
 
 .PHONY: generate-mockgen-installed
 generate-mockgen-installed:

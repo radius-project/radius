@@ -9,10 +9,19 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+)
+
+const (
+	// DefaultPort represents the default port of HTTP endpoint.
+	DefaultPort int32 = 80
+
+	// DefaultSecurePort represents the default port of HTTPS endpoint.
+	DefaultSecurePort int32 = 443
 )
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer
@@ -34,6 +43,9 @@ type RendererDependency struct {
 	// Definition is the definition (`properties` node) of the dependency.
 	Definition map[string]interface{}
 
+	// Resource is the datamodel of depedency resource.
+	Resource conv.DataModelInterface
+
 	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]interface{}
 
@@ -41,9 +53,16 @@ type RendererDependency struct {
 	OutputResources map[string]resourcemodel.ResourceIdentity
 }
 
+// EnvironmentOptions represents the options for the linked environment resource.
 type EnvironmentOptions struct {
-	Gateway   GatewayOptions
+	// Namespace represents the Kubernetes namespace.
 	Namespace string
+	// Providers represents the cloud provider's configurations.
+	CloudProviders *datamodel.Providers
+	// Gateway represents the gateway options.
+	Gateway GatewayOptions
+	// Identity represents identity of the environment.
+	Identity *rp.IdentitySettings
 }
 
 type GatewayOptions struct {
@@ -57,4 +76,7 @@ type RendererOutput struct {
 	Resources      []outputresource.OutputResource
 	ComputedValues map[string]rp.ComputedValueReference
 	SecretValues   map[string]rp.SecretValueReference
+
+	// RadiusResource is the original Radius resource model.
+	RadiusResource conv.DataModelInterface
 }

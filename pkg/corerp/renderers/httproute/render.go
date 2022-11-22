@@ -32,32 +32,25 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelI
 }
 
 func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-
 	route, ok := dm.(*datamodel.HTTPRoute)
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
-	appId, err := resources.Parse(route.Properties.Application)
-	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
-	}
-	applicationName := appId.Name()
 
 	if route.Properties.Port == 0 {
-		defaultPort := kubernetes.GetDefaultPort()
-		route.Properties.Port = defaultPort
+		route.Properties.Port = renderers.DefaultPort
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{
 		"hostname": {
-			Value: kubernetes.MakeResourceName(applicationName, route.Name),
+			Value: kubernetes.NormalizeResourceName(route.Name),
 		},
 		"port": {
 			Value: route.Properties.Port,
 		},
 		"url": {
-			Value: fmt.Sprintf("http://%s:%d", kubernetes.MakeResourceName(applicationName, route.Name), route.Properties.Port),
+			Value: fmt.Sprintf("http://%s:%d", kubernetes.NormalizeResourceName(route.Name), route.Properties.Port),
 		},
 		"scheme": {
 			Value: "http",
@@ -77,12 +70,10 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 }
 
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
-	appId, err := resources.Parse(route.Properties.Application)
-
+	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
-	applicationName := appId.Name()
 
 	typeParts := strings.Split(ResourceType, "/")
 	resourceTypeSuffix := typeParts[len(typeParts)-1]
@@ -93,18 +84,18 @@ func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.Ren
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, route.Name),
+			Name:      kubernetes.NormalizeResourceName(route.Name),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, route.Name),
+			Labels:    kubernetes.MakeDescriptiveLabels(appId.Name(), route.Name, route.ResourceTypeName()),
 		},
 		Spec: corev1.ServiceSpec{
-			Selector: kubernetes.MakeRouteSelectorLabels(applicationName, resourceTypeSuffix, route.Name),
+			Selector: kubernetes.MakeRouteSelectorLabels(appId.Name(), resourceTypeSuffix, route.Name),
 			Type:     corev1.ServiceTypeClusterIP,
 			Ports: []corev1.ServicePort{
 				{
 					Name:       route.Name,
 					Port:       route.Properties.Port,
-					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(applicationName + resourceTypeSuffix + route.Name)),
+					TargetPort: intstr.FromString(kubernetes.GetShortenedTargetPortName(resourceTypeSuffix + route.Name)),
 					Protocol:   corev1.ProtocolTCP,
 				},
 			},

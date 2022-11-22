@@ -106,10 +106,14 @@ func TestGetResourceRun(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetResource(opts, resourceToVersioned)
+		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+			ResponseConverter: resourceToVersioned,
+		}
+
+		ctl, err := NewGetResource(opts, ctrlOpts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 404, w.Result().StatusCode)
@@ -134,10 +138,14 @@ func TestGetResourceRun(t *testing.T) {
 			StorageClient: mStorageClient,
 		}
 
-		ctl, err := NewGetResource(opts, resourceToVersioned)
+		ctrlOpts := ctrl.ResourceOptions[testDataModel]{
+			ResponseConverter: resourceToVersioned,
+		}
+
+		ctl, err := NewGetResource(opts, ctrlOpts)
 
 		require.NoError(t, err)
-		resp, err := ctl.Run(ctx, req)
+		resp, err := ctl.Run(ctx, w, req)
 		require.NoError(t, err)
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)

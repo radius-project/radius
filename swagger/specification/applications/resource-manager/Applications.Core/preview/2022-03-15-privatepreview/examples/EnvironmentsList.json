@@ -16,18 +16,40 @@
               "compute": {
                 "kind": "Kubernetes",
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
-                "namespace": "default"
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
               },
               "recipes": {
                 "cosmos-recipe": {
-                  "connectorType": "Applications.Connector/mongoDatabases",
+                  "linkType": "Applications.Link/mongoDatabases",
                   "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
                 },
                 "redis-recipe": {
-                  "connectorType": "Applications.Connector/redisCaches",
+                  "linkType": "Applications.Link/redisCaches",
                   "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/rediscache"
                 }
-              }
+              },
+              "extensions": [
+                {
+                  "kind": "kubernetesMetadata",
+                  "annotations": {
+                    "prometheus.io/scrape": "true",
+                    "prometheus.io/port": "80"
+                  },
+                  "labels": {
+                    "foo/bar/team": "credit",
+                    "foo/bar/contact": "radiususer"
+                  }
+                }
+              ]
             }
           },
           {
@@ -39,11 +61,20 @@
               "compute": {
                 "kind": "Kubernetes",
                 "resourceId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster1",
-                "namespace": "default"
+                "namespace": "default",
+                "identity": {
+                  "kind": "azure.com.workload",
+                  "oidcIssuer": "https://oidcissuer/oidc"
+                }
+              },
+              "providers" : {
+                "azure" : {
+                    "scope":"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup" 
+                }
               },
               "recipes": {
                 "cosmos-recipe": {
-                  "connectorType": "Applications.Connector/mongoDatabases",
+                  "linkType": "Applications.Link/mongoDatabases",
                   "templatePath": "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb"
                 }
               }

@@ -148,7 +148,7 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	id, err := resources.Parse(application)
+	id, err := resources.ParseResource(application)
 	if err != nil {
 		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
 	}
@@ -168,7 +168,7 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	id, err = resources.Parse(environment)
+	id, err = resources.ParseResource(environment)
 	if err != nil {
 		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
 	}

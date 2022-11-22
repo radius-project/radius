@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/connections"
+	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -42,10 +43,14 @@ rad resource logs containers orders --application icecream-store --follow
 # read logs from the 'daprd' sidecar container of the 'orders' resource of the 'icecream-store' application
 rad resource logs containers orders --application icecream-store --container daprd`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		config := ConfigFromContext(cmd.Context())
-		workspace, err := cli.RequireWorkspace(cmd, config)
+		workspace, err := cli.RequireWorkspace(cmd, ConfigFromContext(cmd.Context()), DirectoryConfigFromContext(cmd.Context()))
 		if err != nil {
 			return err
+		}
+
+		// TODO: support fallback workspace
+		if !workspace.IsNamedWorkspace() {
+			return workspaces.ErrNamedWorkspaceRequired
 		}
 
 		application, err := cli.RequireApplication(cmd, *workspace)

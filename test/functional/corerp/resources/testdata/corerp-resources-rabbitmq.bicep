@@ -22,7 +22,8 @@ param rabbitmqPort int = 5672
 param username string = 'guest'
 
 @description('Specifies the RabbitMQ password.')
-param password string = 'guest'
+@secure()
+param password string 
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-resources-rabbitmq'
@@ -79,12 +80,13 @@ resource rabbitmqRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   }
 }
 
-resource rabbitmq 'Applications.Connector/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
+resource rabbitmq 'Applications.Link/rabbitMQMessageQueues@2022-03-15-privatepreview' = {
   name: 'rmq-rmq'
   location: location
   properties: {
     application: app.id
     environment: environment
+    mode: 'values'
     queue: 'queue'
     secrets: {
       connectionString: 'amqp://${username}:${password}@${rabbitmqRoute.properties.hostname}:${rabbitmqRoute.properties.port}'

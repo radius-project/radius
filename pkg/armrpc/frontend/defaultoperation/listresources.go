@@ -28,14 +28,14 @@ type ListResources[P interface {
 func NewListResources[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, ctrlOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
-		ctrl.NewOperation[P](opts, nil, modelConverter),
+		ctrl.NewOperation[P](opts, ctrlOpts),
 	}, nil
 }
 
 // Run fetches the list of all resources in resourcegroups.
-func (e *ListResources[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	query := store.Query{
@@ -63,7 +63,7 @@ func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req 
 			return nil, err
 		}
 
-		versioned, err := e.ConvertToAPIModel(resource, serviceCtx.APIVersion)
+		versioned, err := e.ResponseConverter()(resource, serviceCtx.APIVersion)
 		if err != nil {
 			return nil, err
 		}

@@ -11,15 +11,18 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
+	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
 	"github.com/google/uuid"
-	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
+	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	awserror "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/wI2L/jsondiff"
 )
 
-var _ ctrl.Controller = (*CreateOrUpdateAWSResource)(nil)
+var _ armrpc_controller.Controller = (*CreateOrUpdateAWSResource)(nil)
 
 // CreateOrUpdateAWSResource is the controller implementation to create/update an AWS resource.
 type CreateOrUpdateAWSResource struct {
@@ -27,12 +30,12 @@ type CreateOrUpdateAWSResource struct {
 }
 
 // NewCreateOrUpdateAWSResource creates a new CreateOrUpdateAWSResource.
-func NewCreateOrUpdateAWSResource(opts ctrl.Options) (ctrl.Controller, error) {
+func NewCreateOrUpdateAWSResource(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &CreateOrUpdateAWSResource{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	cloudControlClient, cloudFormationClient, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
@@ -43,14 +46,14 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	body := map[string]interface{}{}
 	err = decoder.Decode(&body)
 	if err != nil {
-		e := rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.Invalid,
+		e := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInvalid,
 				Message: "failed to read request body",
 			},
 		}
 
-		response := rest.NewBadRequestARMResponse(e)
+		response := armrpc_rest.NewBadRequestARMResponse(e)
 		err = response.Apply(ctx, w, req)
 		if err != nil {
 			return nil, err
@@ -70,13 +73,19 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	// we're working on exists already.
 
 	existing := true
-	getResponse, err := client.GetResource(ctx, &cloudcontrol.GetResourceInput{
+	getResponse, err := cloudControlClient.GetResource(ctx, &cloudcontrol.GetResourceInput{
 		TypeName:   &resourceType,
 		Identifier: aws.String(id.Name()),
 	})
 	if awserror.IsAWSResourceNotFound(err) {
 		existing = false
 	} else if err != nil {
+		return awserror.HandleAWSError(err)
+	}
+
+	var operation uuid.UUID
+	desiredState, err := json.Marshal(properties)
+	if err != nil {
 		return awserror.HandleAWSError(err)
 	}
 
@@ -95,33 +104,22 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		responseProperties[k] = v
 	}
 
-	responseBody := map[string]interface{}{
-		"id":         id.String(),
-		"name":       id.Name(),
-		"type":       id.Type(),
-		"properties": responseProperties,
-	}
-	var operation uuid.UUID
-	desiredState, err := json.Marshal(properties)
-	if err != nil {
-		return awserror.HandleAWSError(err)
-	}
-
 	if existing {
-		// For an existing resource we need to convert the desired state into a JSON-patch document
-		patch, err := jsondiff.CompareJSON([]byte(*getResponse.ResourceDescription.Properties), desiredState)
+		// Get resource type schema
+		describeTypeOutput, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
+			Type:     types.RegistryTypeResource,
+			TypeName: aws.String(resourceType),
+		})
 		if err != nil {
-			return awserror.HandleAWSError(err)
+			return nil, err
 		}
 
-		// We need to take out readonly properties. Those are usually not specified by the client, and so
-		// our library will generate "remove" operations.
-		//
-		// Iterate backwards because we're removing items from the array
-		for i := len(patch) - 1; i >= 0; i-- {
-			if patch[i].Type == "remove" {
-				patch = append(patch[:i], patch[i+1:]...)
-			}
+		// Generate patch
+		currentState := []byte(*getResponse.ResourceDescription.Properties)
+		resourceTypeSchema := []byte(*describeTypeOutput.Schema)
+		patch, err := awsoperations.GeneratePatch(currentState, desiredState, resourceTypeSchema)
+		if err != nil {
+			return awserror.HandleAWSError(err)
 		}
 
 		// Call update only if the patch is not empty
@@ -131,7 +129,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 				return awserror.HandleAWSError(err)
 			}
 
-			response, err := client.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
+			response, err := cloudControlClient.UpdateResource(ctx, &cloudcontrol.UpdateResourceInput{
 				TypeName:      &resourceType,
 				Identifier:    aws.String(id.Name()),
 				PatchDocument: aws.String(string(marshaled)),
@@ -144,10 +142,22 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			if err != nil {
 				return awserror.HandleAWSError(err)
 			}
+		} else {
+			// mark provisioning state as succeeded here
+			// and return 200, telling the deployment engine that the resource has already been created
+			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
+			responseBody := map[string]interface{}{
+				"id":         id.String(),
+				"name":       id.Name(),
+				"type":       id.Type(),
+				"properties": responseProperties,
+			}
+
+			resp := armrpc_rest.NewOKResponse(responseBody)
+			return resp, nil
 		}
 	} else {
-
-		response, err := client.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
+		response, err := cloudControlClient.CreateResource(ctx, &cloudcontrol.CreateResourceInput{
 			TypeName:     &resourceType,
 			DesiredState: aws.String(string(desiredState)),
 		})
@@ -161,6 +171,15 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	resp := radrprest.NewAsyncOperationResponse(responseBody, "global", 201, id, operation, "", id.RootScope(), p.Options.BasePath)
+	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
+
+	responseBody := map[string]interface{}{
+		"id":         id.String(),
+		"name":       id.Name(),
+		"type":       id.Type(),
+		"properties": responseProperties,
+	}
+
+	resp := armrpc_rest.NewAsyncOperationResponse(responseBody, v1.LocationGlobal, 201, id, operation, "", id.RootScope(), p.Options.BasePath)
 	return resp, nil
 }

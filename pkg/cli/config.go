@@ -47,10 +47,8 @@ func (ws WorkspaceSection) HasWorkspace(name string) bool {
 // GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
 func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, error) {
 	if name == "" && ws.Default == "" {
-		return nil, errors.New("the default workspace is not configured. use `rad workspace switch` to change the selected workspace")
-	}
-
-	if name == "" {
+		return nil, nil
+	} else if name == "" {
 		name = ws.Default
 	}
 
@@ -62,19 +60,8 @@ func (ws WorkspaceSection) GetWorkspace(name string) (*workspaces.Workspace, err
 	return &result, nil
 }
 
-// EnvironmentSection is the representation of the environment section of radius config.
-type EnvironmentSection struct {
-	Default string                            `json:"default" mapstructure:"default" yaml:"default"`
-	Items   map[string]map[string]interface{} `json:"items" mapstructure:"items" yaml:"items"`
-}
-
-type ApplicationSection struct {
-	Default string `mapstructure:"default" yaml:"default"`
-}
-
 // ReadWorkspaceSection reads the WorkspaceSection from radius config.
 func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
-
 	section := WorkspaceSection{}
 	s := v.Sub(WorkspacesKey)
 	if s == nil {
@@ -104,10 +91,17 @@ func ReadWorkspaceSection(v *viper.Viper) (WorkspaceSection, error) {
 		section.Items = map[string]workspaces.Workspace{}
 	}
 
-	// Fixup names for easier access.
 	for name, ws := range section.Items {
 		copy := ws
+
+		// The names of the workspace aren't serialized to the configuration in the same
+		// way, so set the field here.
 		copy.Name = name
+
+		// We also want to make it clear these workspaces came from the per-user (config.yaml)
+		// file.
+		copy.Source = workspaces.SourceUserConfig
+
 		section.Items[name] = copy
 	}
 
@@ -133,7 +127,7 @@ func HasWorkspace(v *viper.Viper, name string) (bool, error) {
 	return section.HasWorkspace(name), nil
 }
 
-// GetWorkspace returns the specified workspace or the default workspace if 'name' is empty.
+// GetWorkspace returns the specified workspace or the default workspace in configuration if 'name' is empty.
 func GetWorkspace(v *viper.Viper, name string) (*workspaces.Workspace, error) {
 	section, err := ReadWorkspaceSection(v)
 	if err != nil {

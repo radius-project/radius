@@ -37,7 +37,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	gtwyProperties := gateway.Properties
 	// Get all httproutes that are used by this gateway
 	for _, httpRoute := range gtwyProperties.Routes {
-		resourceID, err := resources.Parse(httpRoute.Destination)
+		resourceID, err := resources.ParseResource(httpRoute.Destination)
 		if err != nil {
 			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 		}
@@ -55,12 +55,12 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-	appId, err := resources.Parse(gateway.Properties.Application)
+	appId, err := resources.ParseResource(gateway.Properties.Application)
 	if err != nil {
 		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
 	applicationName := appId.Name()
-	gatewayName := kubernetes.MakeResourceName(applicationName, gateway.Name)
+	gatewayName := kubernetes.NormalizeResourceName(gateway.Name)
 	hostname, err := getHostname(*gateway, &gateway.Properties, applicationName, options.Environment.Gateway)
 
 	var publicEndpoint string
@@ -100,24 +100,44 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
 	includes := []contourv1.Include{}
+	sslPassThrough := false
 
 	if len(gateway.Properties.Routes) < 1 {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
-	for _, route := range gateway.Properties.Routes {
+	if gateway.Properties.TLS != nil {
+		if !gateway.Properties.TLS.SSLPassThrough {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only passthrough is supported for TLS currently")
+		} else {
+			sslPassThrough = true
+		}
+	}
+
+	if sslPassThrough && len(gateway.Properties.Routes) > 1 {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with SSLPassThrough set to true")
+	}
+
+	var route datamodel.GatewayRoute //route will hold the one sslpassthrough route, if sslpassthrough is true
+	for _, route = range gateway.Properties.Routes {
+		if sslPassThrough && (route.Path != "" || route.ReplacePrefix != "") {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+		}
 		routeName, err := getRouteName(&route)
 		if err != nil {
 			return outputresource.OutputResource{}, err
 		}
 
-		routeResourceName := kubernetes.MakeResourceName(applicationName, routeName)
-
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
+		prefix := route.Path
+		if sslPassThrough {
+			prefix = "/"
+		}
 		includes = append(includes, contourv1.Include{
 			Name: routeResourceName,
 			Conditions: []contourv1.MatchCondition{
 				{
-					Prefix: route.Path,
+					Prefix: prefix,
 				},
 			},
 		})
@@ -134,6 +154,34 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 		Fqdn: virtualHostname,
 	}
 
+	var tcpProxy *contourv1.TCPProxy
+	if sslPassThrough {
+		virtualHost.TLS = &contourv1.TLS{
+			Passthrough: true,
+		}
+
+		routeProperties := options.Dependencies[route.Destination]
+		port := renderers.DefaultSecurePort
+		routePort, ok := routeProperties.ComputedValues["port"].(float64)
+		if ok {
+			port = int32(routePort)
+		}
+
+		routeName, err := getRouteName(&route)
+		if err != nil {
+			return outputresource.OutputResource{}, err
+		}
+
+		tcpProxy = &contourv1.TCPProxy{
+			Services: []contourv1.Service{
+				{
+					Name: kubernetes.NormalizeResourceName(routeName),
+					Port: int(port),
+				},
+			},
+		}
+	}
+
 	// The root HTTPProxy object acts as the Gateway
 	rootHTTPProxy := &contourv1.HTTPProxy{
 		TypeMeta: metav1.TypeMeta{
@@ -141,14 +189,17 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			APIVersion: contourv1.SchemeGroupVersion.String(),
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      kubernetes.MakeResourceName(applicationName, resourceName),
+			Name:      kubernetes.NormalizeResourceName(resourceName),
 			Namespace: options.Environment.Namespace,
-			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName),
+			Labels:    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, gateway.ResourceTypeName()),
 		},
 		Spec: contourv1.HTTPProxySpec{
 			VirtualHost: virtualHost,
 			Includes:    includes,
 		},
+	}
+	if sslPassThrough {
+		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 
 	return outputresource.NewKubernetesOutputResource(resourcekinds.Gateway, outputresource.LocalIDGateway, rootHTTPProxy, rootHTTPProxy.ObjectMeta), nil
@@ -161,9 +212,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 
 	for _, route := range gateway.Routes {
 		routeProperties := dependencies[route.Destination]
-		port := kubernetes.GetDefaultPort()
-
-		// HACK, IDK why this returns a float64 instead of int32 when coming from the corerp
+		port := renderers.DefaultPort
 		routePort, ok := routeProperties.ComputedValues["port"].(float64)
 		if ok {
 			port = int32(routePort)
@@ -176,7 +225,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 
 		// Create unique localID for dependency graph
 		localID := fmt.Sprintf("%s-%s", outputresource.LocalIDHttpRoute, routeName)
-		routeResourceName := kubernetes.MakeResourceName(applicationName, routeName)
+		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 
 		var pathRewritePolicy *contourv1.PathRewritePolicy
 		if route.ReplacePrefix != "" {
@@ -220,7 +269,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      routeResourceName,
 				Namespace: options.Environment.Namespace,
-				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName),
+				Labels:    kubernetes.MakeDescriptiveLabels(applicationName, routeName, resource.ResourceTypeName()),
 			},
 			Spec: contourv1.HTTPProxySpec{
 				Routes: []contourv1.Route{
@@ -249,7 +298,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 }
 
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
-	resourceID, err := resources.Parse(route.Destination)
+	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
 		return "", conv.NewClientErrInvalidRequest(err.Error())
 	}

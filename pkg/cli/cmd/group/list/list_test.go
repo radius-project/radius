@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	"github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
 )
@@ -26,7 +26,6 @@ func Test_CommandValidation(t *testing.T) {
 
 func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
-	configWithoutWorkspace := radcli.LoadConfigWithWorkspace(t)
 
 	testcases := []radcli.ValidateInput{
 		{
@@ -44,16 +43,25 @@ func Test_Validate(t *testing.T) {
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
-				Config:         configWithoutWorkspace,
+				Config:         configWithWorkspace,
 			},
 		},
 		{
 			Name:          "List Command with valid workspace specified",
-			Input:         []string{},
+			Input:         []string{"-w", radcli.TestWorkspaceName},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "List Command with fallback workspace",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 	}
@@ -67,7 +75,7 @@ func Test_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		resourceGroups := []v20220315privatepreview.ResourceGroupResource{
+		resourceGroups := []v20220901privatepreview.ResourceGroupResource{
 			radcli.CreateResourceGroup("rg1"),
 			radcli.CreateResourceGroup("rg2"),
 		}

@@ -12,13 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	armrpcv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	radrprest "github.com/project-radius/radius/pkg/armrpc/rest"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
-var _ ctrl.Controller = (*GetAWSOperationResults)(nil)
+var _ armrpc_controller.Controller = (*GetAWSOperationResults)(nil)
 
 // GetAWSOperationResults is the controller implementation to get AWS resource operation results.
 type GetAWSOperationResults struct {
@@ -26,21 +26,21 @@ type GetAWSOperationResults struct {
 }
 
 // NewGetAWSOperationResults creates a new GetAWSOperationResults.
-func NewGetAWSOperationResults(opts ctrl.Options) (ctrl.Controller, error) {
+func NewGetAWSOperationResults(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &GetAWSOperationResults{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client, _, id, err := ParseAWSRequest(ctx, p.Options, req)
+func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	cloudControlClient, _, _, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
 
-	response, err := client.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
+	response, err := cloudControlClient.GetResourceRequestStatus(ctx, &cloudcontrol.GetResourceRequestStatusInput{
 		RequestToken: aws.String(id.Name()),
 	})
 	if awsclient.IsAWSResourceNotFound(err) {
-		return rest.NewNotFoundResponse(id.String()), nil
+		return armrpc_rest.NewNotFoundResponse(id), nil
 	} else if err != nil {
 		return awsclient.HandleAWSError(err)
 	}
@@ -52,10 +52,10 @@ func (p *GetAWSOperationResults) Run(ctx context.Context, w http.ResponseWriter,
 			"Location":    req.URL.String(),
 			"Retry-After": armrpcv1.DefaultRetryAfter,
 		}
-		return radrprest.NewAsyncOperationResultResponse(headers), nil
+		return armrpc_rest.NewAsyncOperationResultResponse(headers), nil
 	}
 
-	return rest.NewNoContentResponse(), nil
+	return armrpc_rest.NewNoContentResponse(), nil
 }
 
 func isStatusTerminal(response *cloudcontrol.GetResourceRequestStatusOutput) bool {

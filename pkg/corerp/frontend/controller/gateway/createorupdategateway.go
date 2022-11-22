@@ -31,12 +31,17 @@ type CreateOrUpdateGateway struct {
 // NewCreateOrUpdateGateway creates a new CreateOrUpdateGateway.
 func NewCreateOrUpdateGateway(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateGateway{
-		ctrl.NewOperation(opts, converter.GatewayDataModelFromVersioned, converter.GatewayDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Gateway]{
+				RequestConverter:  converter.GatewayDataModelFromVersioned,
+				ResponseConverter: converter.GatewayDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
 // Run executes CreateOrUpdateGateway operation.
-func (e *CreateOrUpdateGateway) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *CreateOrUpdateGateway) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := e.GetResourceFromRequest(ctx, req)
 	if err != nil {

@@ -23,7 +23,7 @@ import (
 )
 
 func Test_GetOperationStatuses(t *testing.T) {
-	ucp, ucpClient, cloudcontrolClient := initializeTest(t)
+	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
 	cloudcontrolClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, params *cloudcontrol.GetResourceRequestStatusInput, optFns ...func(*cloudcontrol.Options)) (*cloudcontrol.GetResourceRequestStatusOutput, error) {
 		output := cloudcontrol.GetResourceRequestStatusOutput{

@@ -17,17 +17,21 @@ const (
 	LabelRadiusDeployment   = "radius.dev/deployment"
 	LabelRadiusRouteFmt     = "radius.dev/route-%s-%s"
 	LabelRadiusResourceType = "radius.dev/resource-type"
-	AnnotationSecretHash    = "radius.dev/secret-hash"
 	LabelPartOf             = "app.kubernetes.io/part-of"
 	LabelName               = "app.kubernetes.io/name"
 	LabelManagedBy          = "app.kubernetes.io/managed-by"
+
 	// TODO: Are we removing this too?
 	LabelManagedByRadiusRP = "radius-rp"
-	LabelAADPodIdentity    = "aadpodidbinding"
 
 	// TODO: Are we removing this too?
 	FieldManager = "radius-rp"
 	ControlPlane = "radius-control-plane"
+
+	AnnotationSecretHash = "radius.dev/secret-hash"
+
+	// AnnotationIdentityType is the annotation for supported identity.
+	AnnotationIdentityType = "radius.dev/identity-type"
 )
 
 // NOTE: the difference between descriptive labels and selector labels
@@ -48,17 +52,18 @@ const (
 
 // MakeDescriptiveLabels returns a map of the descriptive labels for a Kubernetes resource associated with a Radius resource.
 // The descriptive labels are a superset of the selector labels.
-func MakeDescriptiveLabels(application string, resource string) map[string]string {
+func MakeDescriptiveLabels(application string, resource string, resourceType string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication: application,
-		LabelRadiusResource:    resource,
-		LabelName:              resource,
-		LabelPartOf:            application,
-		LabelManagedBy:         LabelManagedByRadiusRP,
+		LabelRadiusApplication:  application,
+		LabelRadiusResource:     resource,
+		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelName:               resource,
+		LabelPartOf:             application,
+		LabelManagedBy:          LabelManagedByRadiusRP,
 	}
 }
 
-// MakeSelectorLablels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
+// MakeSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
 // This function is used to generate the labels used by a Deployment to select its Pods. eg: the Deployment and Pods
@@ -90,13 +95,6 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
-// MakeAADPodIdentityBindingLabels returns a map binding the Pod Identity name to the pod
-func MakeAADPodIdentityBindingLabels(podIdentityName string) map[string]string {
-	return map[string]string{
-		LabelAADPodIdentity: podIdentityName,
-	}
-}
-
 // MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
 // Kubernetes object.
 //
@@ -121,19 +119,29 @@ func MakeResourceCRDLabels(application string, resourceType string, resource str
 	}
 }
 
-func MakeResourceName(application string, resource string) string {
-	if application != "" && resource != "" {
-		return strings.ToLower(application + "-" + resource)
+// NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
+// All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
+// Therefore, this function will lowercase the name without allowed character validation.
+// If name is empty, it will panic.
+// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
+func NormalizeResourceName(name string) string {
+	if name == "" {
+		// This should not happen.
+		panic("resource name is empty")
 	}
+	return strings.ToLower(name)
+}
 
-	if application != "" && resource == "" {
-		return strings.ToLower(application)
-	}
+// ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it
+// to a value that Kubernetes allows.
+// Example: Applications.Core/containers becomes Applications.Core.Containers
+func ConvertResourceTypeToLabelValue(resourceType string) string {
+	return strings.Replace(resourceType, "/", "-", 1)
+}
 
-	if application == "" && resource != "" {
-		return strings.ToLower(resource)
-	}
-
-	// We should never have this case
-	return "resource-name"
+// ConvertLabelToResourceType function gets a label and converts it
+// to a Radius Resource type.
+// Example: Applications.Core-containers becomes Applications.Core/Containers
+func ConvertLabelToResourceType(labelValue string) string {
+	return strings.Replace(labelValue, "-", "/", 1)
 }

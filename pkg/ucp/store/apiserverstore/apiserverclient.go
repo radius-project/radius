@@ -23,7 +23,7 @@
 //
 // The kubernetes resource names we use are built according to the following format:
 //
-// 		<resource name>.<id hash>
+//	<resource name>.<id hash>
 //
 // We also use a labeling scheme to attach each root scope segment and the resource type as a label to the
 // Kubernetes objects. This allows us to filter the number of objects we transact with using the labels as hints.
@@ -154,7 +154,7 @@ func (c *APIServerClient) Get(ctx context.Context, id string, options ...store.G
 	if parsed.IsEmpty() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if parsed.IsCollection() {
+	if parsed.IsResourceCollection() || parsed.IsScopeCollection() {
 		return nil, &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 
@@ -189,7 +189,7 @@ func (c *APIServerClient) Delete(ctx context.Context, id string, options ...stor
 	if parsed.IsEmpty() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must not be empty"}
 	}
-	if parsed.IsCollection() {
+	if parsed.IsResourceCollection() || parsed.IsScopeCollection() {
 		return &store.ErrInvalid{Message: "invalid argument. 'id' must refer to a named resource, not a collection"}
 	}
 

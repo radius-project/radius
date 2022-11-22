@@ -20,10 +20,10 @@
             "outputResources": [{
                 "LocalID": "Deployment",
                 "ResourceType": {
-                  "Type": "Volume",
-                  "Provider": "kubernetes"
+                    "Type": "Volume",
+                    "Provider": "kubernetes"
                 }
-              }]
+            }]
         },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
         "kind": "azure.com.keyvault",

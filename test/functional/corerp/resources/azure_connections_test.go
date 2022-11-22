@@ -6,6 +6,7 @@
 package resource_test
 
 import (
+	"os"
 	"testing"
 
 	"github.com/project-radius/radius/test/functional"
@@ -18,12 +19,13 @@ func Test_AzureConnections(t *testing.T) {
 	name := "corerp-azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
+	documentdbresourceid := "namespaceresourceid=" + os.Getenv("DOCUMENTDB_RESOURCE_ID")
 
 	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), documentdbresourceid),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{

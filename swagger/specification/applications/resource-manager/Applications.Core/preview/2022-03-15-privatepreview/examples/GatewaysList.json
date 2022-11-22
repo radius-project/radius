@@ -13,16 +13,15 @@
             "type": "Applications.Core/gateways",
             "properties": {
               "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
-            }
-          },
-          {
-            "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/gateways/gateway1",
-            "name": "gateway1",
-            "type": "Applications.Core/gateways",
-            "properties": {
-              "provisioningState": "Succeeded",
-              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0"
+              "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/app0",
+              "routes":[
+                {
+                  "destination": "/planes/radius/local/resourcegroups/myawsenv/providers/applications.core/httproutes/gtwy-front-rte"
+                }
+              ],    
+              "tls":{
+                "sslPassThrough": true
+              }
             }
           }
         ],

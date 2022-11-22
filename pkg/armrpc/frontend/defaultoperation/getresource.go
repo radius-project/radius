@@ -27,14 +27,14 @@ type GetResource[P interface {
 func NewGetResource[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](opts ctrl.Options, modelConverter conv.ConvertToAPIModel[T]) (ctrl.Controller, error) {
+}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &GetResource[P, T]{
-		ctrl.NewOperation[P](opts, nil, modelConverter),
+		ctrl.NewOperation[P](opts, resourceOpts),
 	}, nil
 }
 
 // Run fetches the resource from the datastore.
-func (e *GetResource[P, T]) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *GetResource[P, T]) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	resource, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)

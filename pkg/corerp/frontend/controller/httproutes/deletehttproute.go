@@ -31,12 +31,17 @@ type DeleteHTTPRoute struct {
 // NewDeleteHTTPRoute creates a new DeleteHTTPRoute.
 func NewDeleteHTTPRoute(opts ctrl.Options) (ctrl.Controller, error) {
 	return &DeleteHTTPRoute{
-		ctrl.NewOperation(opts, converter.HTTPRouteDataModelFromVersioned, converter.HTTPRouteDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.HTTPRoute]{
+				RequestConverter:  converter.HTTPRouteDataModelFromVersioned,
+				ResponseConverter: converter.HTTPRouteDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
 // Run executes DeleteHTTPRoute operation
-func (e *DeleteHTTPRoute) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (e *DeleteHTTPRoute) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	old, etag, err := e.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {

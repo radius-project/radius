@@ -16,7 +16,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -32,18 +32,20 @@ type Operation[P interface {
 }, T any] struct {
 	options Options
 
-	// ConvertToDataModel is the converter to convert from the versioned API resource to datamodel resource.
-	ConvertToDataModel conv.ConvertToDataModel[T]
-	// ConvertToAPIModel is the converter to convert from datamodel resource to the versioned API model.
-	ConvertToAPIModel conv.ConvertToAPIModel[T]
+	resourceOptions ResourceOptions[T]
 }
 
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
 	conv.ResourceDataModel
-}, T any](options Options, reqconv conv.ConvertToDataModel[T], respconv conv.ConvertToAPIModel[T]) Operation[P, T] {
-	return Operation[P, T]{options, reqconv, respconv}
+}, T any](options Options, resourceOptions ResourceOptions[T]) Operation[P, T] {
+	return Operation[P, T]{options, resourceOptions}
+}
+
+// Options gets the options for this controller.
+func (b *Operation[P, T]) Options() *Options {
+	return &b.options
 }
 
 // StorageClient gets storage client for this controller.
@@ -90,7 +92,7 @@ func (c *Operation[P, T]) GetResourceFromRequest(ctx context.Context, req *http.
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	dm, err := c.ConvertToDataModel(content, serviceCtx.APIVersion)
+	dm, err := c.resourceOptions.RequestConverter(content, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -191,7 +193,7 @@ func (c *Operation[P, T]) PrepareAsyncOperation(ctx context.Context, newResource
 func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	versioned, err := c.ConvertToAPIModel(resource, serviceCtx.APIVersion)
+	versioned, err := c.resourceOptions.ResponseConverter(resource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -203,7 +205,7 @@ func (c *Operation[P, T]) ConstructSyncResponse(ctx context.Context, method, eta
 func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, etag string, resource *T) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	versioned, err := c.ConvertToAPIModel(resource, serviceCtx.APIVersion)
+	versioned, err := c.resourceOptions.ResponseConverter(resource, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
@@ -214,4 +216,19 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 	}
 
 	return rest.NewAsyncOperationResponse(versioned, serviceCtx.Location, respCode, serviceCtx.ResourceID, serviceCtx.OperationID, serviceCtx.APIVersion, "", ""), nil
+}
+
+// RequestConverter returns the request converter function for this controller.
+func (b *Operation[P, T]) RequestConverter() conv.ConvertToDataModel[T] {
+	return b.resourceOptions.RequestConverter
+}
+
+// ResponseConverter returns the response converter function for this controller.
+func (b *Operation[P, T]) ResponseConverter() conv.ConvertToAPIModel[T] {
+	return b.resourceOptions.ResponseConverter
+}
+
+// RequestValidator returns the request validator function for this controller.
+func (b *Operation[P, T]) RequestValidator() ValidateRequest[T] {
+	return b.resourceOptions.RequestValidator
 }

@@ -9,8 +9,6 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/mongodatabases"
-	"github.com/project-radius/radius/pkg/connectorrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers/container"
@@ -18,11 +16,16 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
+	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
+	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	"k8s.io/client-go/kubernetes"
+
+	azcontainer "github.com/project-radius/radius/pkg/corerp/renderers/container/azure"
 
 	"github.com/project-radius/radius/pkg/resourcekinds"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -59,7 +62,6 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	}
 	if arm != nil {
 		supportedProviders[resourcemodel.ProviderAzure] = true
-		supportedProviders[resourcemodel.ProviderAzureKubernetesService] = true
 	}
 
 	radiusResourceModel := []RadiusResourceModel{
@@ -80,6 +82,10 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		{
 			ResourceType: gateway.ResourceType,
 			Renderer:     &gateway.Renderer{},
+		},
+		{
+			ResourceType: volume.ResourceType,
+			Renderer:     volume.NewRenderer(arm),
 		},
 	}
 
@@ -121,6 +127,13 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.Volume,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.KubernetesHTTPRoute,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
@@ -131,13 +144,22 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 				Type:     resourcekinds.SecretProviderClass,
 				Provider: resourcemodel.ProviderKubernetes,
 			},
-			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+			ResourceTransformer: azcontainer.TransformSecretProviderClass,
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.ServiceAccount,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceTransformer: azcontainer.TransformFederatedIdentitySA,
+			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
 		// Azure CosmosDB and Azure Redis models are consumed by deployment processor to fetch secrets for container dependencies.
-		// Any new SecretValueTransformer for a connector should be added here to support connections from container.
+		// Any new SecretValueTransformer for a link should be added here to support connections from container.
 		{
 			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureCosmosDBMongo,
@@ -161,17 +183,17 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureFederatedIdentity,
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler: handlers.NewAzureFederatedIdentity(arm),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
 				Type:     resourcekinds.AzureRoleAssignment,
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler: handlers.NewAzureRoleAssignmentHandler(arm),
-		},
-		{
-			ResourceType: resourcemodel.ResourceType{
-				Type:     resourcekinds.AzureUserAssignedManagedIdentity,
-				Provider: resourcemodel.ProviderAzure,
-			},
-			ResourceHandler: handlers.NewAzureUserAssignedManagedIdentityHandler(arm),
 		},
 		{
 			ResourceType: resourcemodel.ResourceType{

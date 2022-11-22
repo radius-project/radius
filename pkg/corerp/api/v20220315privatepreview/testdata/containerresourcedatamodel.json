@@ -38,6 +38,11 @@
         }
       }
     },
+    "identity": {
+      "kind": "azure.com.workload",
+      "oidcIssuer": "https://oidcuri/id",
+      "resource": "resourceid"
+    },
     "container": {
       "image": "radius.azurecr.io/webapptutorial-todoapp",
       "livenessProbe": {
@@ -50,7 +55,15 @@
           },
           "containerPort": 8080
         }
-      }
+      },
+      "command": [
+        "/bin/sh"
+      ],
+      "args": [
+        "-c",
+        "while true; do echo hello; sleep 10;done"
+      ],
+      "workingDir": "/app"
     },
     "extensions": [
       {
@@ -67,6 +80,19 @@
           "config": "config",
           "protocol": "http",
           "provides": "provides"
+        }
+      },
+      {
+        "kind": "kubernetesMetadata",
+        "kubernetesmetadata": {
+          "annotations": {
+            "prometheus.io/scrape": "true",
+            "prometheus.io/port": "80"
+          },
+          "labels": {
+            "foo/bar/team": "credit",
+            "foo/bar/contact": "radiususer"
+          }
         }
       }
     ]

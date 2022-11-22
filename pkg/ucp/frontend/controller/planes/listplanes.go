@@ -9,14 +9,17 @@ import (
 	"fmt"
 	http "net/http"
 
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListPlanes)(nil)
+var _ armrpc_controller.Controller = (*ListPlanes)(nil)
 
 // ListPlanes is the controller implementation to get the list of UCP planes.
 type ListPlanes struct {
@@ -24,11 +27,11 @@ type ListPlanes struct {
 }
 
 // NewListPlanes creates a new ListPlanes.
-func NewListPlanes(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListPlanes{ctrl.NewBaseController(opts)}, nil
 }
 
-func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 
@@ -45,20 +48,27 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	var ok = rest.NewOKResponse(listOfPlanes)
+	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
 	return ok, nil
 }
 
-func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (rest.PlaneList, error) {
-	listOfPlanes := rest.PlaneList{}
+func (p *ListPlanes) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) ([]interface{}, error) {
+	apiVersion := ctrl.GetAPIVersion(req)
+	listOfPlanes := []interface{}{}
 	if len(result.Items) > 0 {
 		for _, item := range result.Items {
-			var plane rest.Plane
+			var plane datamodel.Plane
 			err := item.As(&plane)
 			if err != nil {
-				return rest.PlaneList{}, err
+				return nil, err
 			}
-			listOfPlanes.Value = append(listOfPlanes.Value, plane)
+
+			versioned, err := converter.PlaneDataModelToVersioned(&plane, apiVersion)
+			if err != nil {
+				return nil, err
+			}
+
+			listOfPlanes = append(listOfPlanes, versioned)
 		}
 	}
 	return listOfPlanes, nil

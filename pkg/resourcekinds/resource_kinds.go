@@ -12,8 +12,10 @@ const (
 	Kubernetes                       = "kubernetes"
 	Deployment                       = "Deployment"
 	Service                          = "Service"
+	ServiceAccount                   = "ServiceAccount"
 	Secret                           = "Secret"
 	Gateway                          = "Gateway"
+	Volume                           = "Volume"
 	KubernetesHTTPRoute              = "HTTPRoute" // For httproutes.networking.x-k8s.io
 	RadiusHttpRoute                  = "HttpRoute" // For httproutes.radius.dev
 	StatefulSet                      = "StatefulSet"
@@ -28,8 +30,8 @@ const (
 	AzureCosmosDBSQL                 = "azure.cosmosdb.sql"
 	AzureSqlServer                   = "azure.sql"
 	AzureSqlServerDatabase           = "azure.sql.database"
-	AzurePodIdentity                 = "azure.aadpodidentity"
 	AzureUserAssignedManagedIdentity = "azure.userassignedmanagedidentity"
+	AzureFederatedIdentity           = "azure.federatedidentity"
 	AzureRoleAssignment              = "azure.roleassignment"
 	AzureRedis                       = "azure.redis"
 	AzureFileShare                   = "azure.fileshare"

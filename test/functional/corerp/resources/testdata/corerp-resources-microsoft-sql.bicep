@@ -52,12 +52,13 @@ resource sqlapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource db 'Applications.Connector/sqlDatabases@2022-03-15-privatepreview' = {
+resource db 'Applications.Link/sqlDatabases@2022-03-15-privatepreview' = {
   name: 'mssql-db'
   location: location
   properties: {
     application: app.id
     environment: environment
+    mode: 'resource'
     resource: mssqlresourceid
   }
 }

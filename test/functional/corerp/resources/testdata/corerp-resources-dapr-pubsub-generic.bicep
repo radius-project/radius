@@ -68,12 +68,13 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   name: 'gnrc-redis-rds'
   location: 'global'
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {
@@ -83,7 +84,7 @@ resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = 
   }
 }
 
-resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
   name: 'gnrc-pubsub'
   location: location
   properties: {
@@ -91,6 +92,7 @@ resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privateprev
     application: app.id
     kind: 'generic'
     type: 'pubsub.redis'
+    mode: 'values'
     metadata: {
       redisHost: '${redisRoute.properties.hostname}:${redisRoute.properties.port}'
       redisPassword: ''

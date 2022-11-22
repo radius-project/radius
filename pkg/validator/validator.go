@@ -27,8 +27,6 @@ import (
 
 const (
 	APIVersionQueryKey = "api-version"
-
-	rootScopeParam = "rootScope"
 )
 
 var (
@@ -55,6 +53,7 @@ type validator struct {
 	APIVersion string
 
 	rootScopePrefix string
+	rootScopeParam  string
 	specDoc         *loads.Document
 	paramCache      map[string]map[string]spec.Parameter
 	paramCacheMu    *sync.RWMutex
@@ -92,7 +91,13 @@ func (v *validator) findParam(req *http.Request) (map[string]spec.Parameter, err
 	}
 
 	// Gorilla mux route path should start with {rootScope:.*} to handle UCP and Azure root scope.
-	scopePath := strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+rootScopeParam+"}", 1)
+	var scopePath string
+	// The UCP schema does not have a "/{rootScope}/" in the path. Need to handle this difference in the CoreRP vs UCP schema.
+	if v.rootScopeParam == "" {
+		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, v.rootScopeParam, 1)
+	} else {
+		scopePath = strings.Replace(pathTemplate, v.rootScopePrefix, "/{"+v.rootScopeParam+"}", 1)
+	}
 
 	// Iterate loaded paths to find the matched route.
 	for k := range v.specDoc.Analyzer.AllPaths() {
@@ -109,7 +114,7 @@ func (v *validator) toRouteParams(req *http.Request) middleware.RouteParams {
 	routeParams := middleware.RouteParams{}
 
 	if rID, err := resources.Parse(req.URL.Path); err == nil {
-		routeParams = append(routeParams, middleware.RouteParam{Name: rootScopeParam, Value: rID.RootScope()})
+		routeParams = append(routeParams, middleware.RouteParam{Name: v.rootScopeParam, Value: rID.RootScope()})
 	}
 	for k := range req.URL.Query() {
 		routeParams = append(routeParams, middleware.RouteParam{Name: k, Value: req.URL.Query().Get(k)})
@@ -130,10 +135,12 @@ func (v *validator) ValidateRequest(req *http.Request) []ValidationError {
 	routeParams := v.toRouteParams(req)
 	params, err := v.findParam(req)
 	if err != nil {
-		return []ValidationError{{
-			Code:    v1.CodeInvalidRequestContent,
-			Message: "failed to parse route: " + err.Error(),
-		}}
+		if errors.Is(err, ErrUndefinedRoute) {
+			return []ValidationError{{
+				Code:    v1.CodeInvalidRequestContent,
+				Message: "failed to parse route: " + err.Error(),
+			}}
+		}
 	}
 
 	binder := middleware.NewUntypedRequestBinder(params, v.specDoc.Spec(), strfmt.Default)

@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
 )
@@ -36,7 +37,9 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
-		Properties: datamodel.EnvironmentProperties{},
+		Properties: datamodel.EnvironmentProperties{
+			UseDevRecipes: to.Bool(src.Properties.UseDevRecipes),
+		},
 	}
 
 	envCompute, err := toEnvironmentComputeDataModel(src.Properties.Compute)
@@ -50,13 +53,29 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 		for key, val := range src.Properties.Recipes {
 			if val != nil {
 				recipes[key] = datamodel.EnvironmentRecipeProperties{
-					ConnectorType: to.String(val.ConnectorType),
-					TemplatePath:  to.String(val.TemplatePath),
+					LinkType:     to.String(val.LinkType),
+					TemplatePath: to.String(val.TemplatePath),
 				}
 			}
 		}
 
 		converted.Properties.Recipes = recipes
+	}
+
+	if src.Properties.Providers != nil {
+		if src.Properties.Providers.Azure != nil {
+			converted.Properties.Providers.Azure = datamodel.ProvidersAzure{
+				Scope: to.String(src.Properties.Providers.Azure.Scope),
+			}
+		}
+	}
+
+	var extensions []datamodel.Extension
+	if src.Properties.Extensions != nil {
+		for _, e := range src.Properties.Extensions {
+			extensions = append(extensions, toEnvExtensionDataModel(e))
+		}
+		converted.Properties.Extensions = extensions
 	}
 
 	return converted, nil
@@ -77,6 +96,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(env.Tags)
 	dst.Properties = &EnvironmentProperties{
 		ProvisioningState: fromProvisioningStateDataModel(env.InternalMetadata.AsyncProvisioningState),
+		UseDevRecipes:     to.BoolPtr(env.Properties.UseDevRecipes),
 	}
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
@@ -88,11 +108,29 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 		recipes := make(map[string]*EnvironmentRecipeProperties)
 		for key, val := range env.Properties.Recipes {
 			recipes[key] = &EnvironmentRecipeProperties{
-				ConnectorType: to.StringPtr(val.ConnectorType),
-				TemplatePath:  to.StringPtr(val.TemplatePath),
+				LinkType:     to.StringPtr(val.LinkType),
+				TemplatePath: to.StringPtr(val.TemplatePath),
 			}
 		}
 		dst.Properties.Recipes = recipes
+	}
+
+	if env.Properties.Providers != (datamodel.Providers{}) {
+		if env.Properties.Providers.Azure != (datamodel.ProvidersAzure{}) {
+			dst.Properties.Providers = &Providers{
+				Azure: &ProvidersAzure{
+					Scope: to.StringPtr(env.Properties.Providers.Azure.Scope),
+				},
+			}
+		}
+	}
+
+	var extensions []EnvironmentExtensionClassification
+	if env.Properties.Extensions != nil {
+		for _, e := range env.Properties.Extensions {
+			extensions = append(extensions, fromEnvExtensionClassificationDataModel(e))
+		}
+		dst.Properties.Extensions = extensions
 	}
 
 	return nil
@@ -110,12 +148,22 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
+		var identity *rp.IdentitySettings
+		if v.Identity != nil {
+			identity = &rp.IdentitySettings{
+				Kind:       toIdentityKind(v.Identity.Kind),
+				Resource:   to.String(v.Identity.Resource),
+				OIDCIssuer: to.String(v.Identity.OidcIssuer),
+			}
+		}
+
 		return &datamodel.EnvironmentCompute{
 			Kind: k,
 			KubernetesCompute: datamodel.KubernetesComputeProperties{
 				ResourceID: to.String(v.ResourceID),
 				Namespace:  to.String(v.Namespace),
 			},
+			Identity: identity,
 		}, nil
 	default:
 		return nil, conv.ErrInvalidModelConversion
@@ -125,10 +173,20 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
 	switch envCompute.Kind {
 	case datamodel.KubernetesComputeKind:
+		var identity *IdentitySettings
+		if envCompute.Identity != nil {
+			identity = &IdentitySettings{
+				Kind:       fromIdentityKind(envCompute.Identity.Kind),
+				Resource:   toStringPtr(envCompute.Identity.Resource),
+				OidcIssuer: toStringPtr(envCompute.Identity.OIDCIssuer),
+			}
+		}
+
 		return &KubernetesCompute{
 			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
 			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
 			Namespace:  &envCompute.KubernetesCompute.Namespace,
+			Identity:   identity,
 		}
 	default:
 		return nil
@@ -154,4 +212,40 @@ func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
 	}
 
 	return &k
+}
+
+// fromExtensionClassificationEnvDataModel: Converts from base datamodel to versioned datamodel
+func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentExtensionClassification {
+
+	switch e.Kind {
+	case datamodel.KubernetesMetadata:
+		var ann, lbl = getFromExtensionClassificationFields(e)
+		converted := EnvironmentKubernetesMetadataExtension{
+			Kind:        to.StringPtr(string(e.Kind)),
+			Annotations: *to.StringMapPtr(ann),
+			Labels:      *to.StringMapPtr(lbl),
+		}
+
+		return converted.GetEnvironmentExtension()
+	}
+
+	return nil
+}
+
+// toEnvExtensionDataModel: Converts from versioned datamodel to base datamodel
+func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Extension {
+	switch c := e.(type) {
+	case *EnvironmentKubernetesMetadataExtension:
+
+		converted := datamodel.Extension{
+			Kind: datamodel.KubernetesMetadata,
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
+				Annotations: to.StringMap(c.Annotations),
+				Labels:      to.StringMap(c.Labels),
+			},
+		}
+		return converted
+	}
+
+	return datamodel.Extension{}
 }

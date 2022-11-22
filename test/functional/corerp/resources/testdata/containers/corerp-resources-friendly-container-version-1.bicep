@@ -61,12 +61,13 @@ resource redisRoute 'Applications.Core/httproutes@2022-03-15-privatepreview' = {
   }
 }
 
-resource redis 'Applications.Connector/redisCaches@2022-03-15-privatepreview' = {
+resource redis 'Applications.Link/redisCaches@2022-03-15-privatepreview' = {
   name: 'friendly-rds-rds'
   location: 'global'
   properties: {
     environment: environment
     application: app.id
+    mode: 'values'
     host: redisRoute.properties.hostname
     port: redisRoute.properties.port
     secrets: {

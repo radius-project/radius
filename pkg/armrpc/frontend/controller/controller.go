@@ -9,11 +9,12 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/connectorrp/frontend/deployment"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -45,11 +46,23 @@ type Options struct {
 	StatusManager sm.StatusManager
 }
 
+// ResourceOptions represents the options and filters for resource.
+type ResourceOptions[T any] struct {
+	// RequestConverter is the request converter.
+	RequestConverter conv.ConvertToDataModel[T]
+
+	// ResponseConverter is the response converter.
+	ResponseConverter conv.ConvertToAPIModel[T]
+
+	// RequestValidator is the request validator.
+	RequestValidator ValidateRequest[T]
+}
+
 // TODO: Remove Controller when all controller uses Operation
 // Controller is an interface of each operation controller.
 type Controller interface {
 	// Run executes the operation.
-	Run(ctx context.Context, req *http.Request) (rest.Response, error)
+	Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error)
 }
 
 // BaseController is the base operation controller.
@@ -167,3 +180,6 @@ func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 
 	return trackedResource
 }
+
+// ValidateRequest function is used to validate the request.
+type ValidateRequest[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)

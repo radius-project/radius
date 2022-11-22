@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/stretchr/testify/require"
@@ -42,6 +43,15 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         configWithWorkspace,
+			},
+		},
+		{
+			Name:          "Delete Command with fallback workspace",
+			Input:         []string{"groupname"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
 	}
@@ -120,11 +130,19 @@ func Test_Run(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			outputSink := &output.MockOutput{}
+
+			prompter := prompt.NewMockInterface(ctrl)
+			prompter.EXPECT().
+				ConfirmWithDefault("Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty", prompt.No).
+				Return(false, nil).
+				Times(1)
+
 			runner := &Runner{
 				ConnectionFactory:    &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
 				Workspace:            &workspaces.Workspace{},
 				UCPResourceGroupName: "testrg",
 				Confirmation:         false,
+				Prompter:             prompter,
 				Output:               outputSink,
 			}
 

@@ -16,6 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
 type ErrUCPResourceGroupCreationFailed struct {
@@ -36,6 +37,7 @@ func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
 	return ok
 }
 
+// TODO remove this when envInit is removed. DO NOT add new uses of this function. Use the generated client.
 func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {
@@ -58,15 +60,18 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 		return "", errors.New("only kubernetes connections are supported right now")
 	}
 
-	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper("", kubernetes.UCPType, kc.Context)
+	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper(kc.Overrides.UCP, kubernetes.UCPType, kc.Context)
 	if err != nil {
 		return "", &cli.ClusterUnreachableError{Err: err}
 	}
 
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s", baseUrl, plane, resourceGroupName),
-		strings.NewReader(`{}`))
+		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, v20220901privatepreview.Version),
+		strings.NewReader(`{
+			"location": "global"
+		}`))
+
 	if err != nil {
 		return "", &ErrUCPResourceGroupCreationFailed{nil, err}
 	}

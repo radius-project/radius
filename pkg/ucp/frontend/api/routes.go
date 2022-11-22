@@ -25,16 +25,16 @@ import (
 const (
 	planeCollectionPath       = "/planes"
 	awsPlaneType              = "/planes/aws"
-	planeItemPath             = "/planes/{PlaneType}/{PlaneID}"
-	planeCollectionByType     = "/planes/{PlaneType}"
+	planeItemPath             = "/planes/{planeType}/{planeName}"
+	planeCollectionByType     = "/planes/{planeType}"
 	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
 	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
 	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
 	awsResourcePath           = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
+	putPath                   = "put"
+	getPath                   = "get"
+	deletePath                = "delete"
 )
-
-var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resource{[gG]}roups")
-var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{ResourceGroup}")
 
 // Register registers the routes for UCP
 func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) error {
@@ -60,32 +60,39 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		}...)
 
 	}
-	logger := ucplog.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
-	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL+planeCollectionPath)
-	if err != nil {
-		return err
-	}
-
-	rootScopeRouter := router.PathPrefix(baseURL + planeCollectionPath).Subrouter()
-	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
 	ctrl.ConfigureDefaultHandlers(router, ctrl.Options{
 		BasePath: baseURL,
 	})
 
-	planeCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeCollectionPath)).Subrouter()
-	planeCollectionByTypeSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeCollectionByType)).Subrouter()
-	planeSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, planeItemPath)).Subrouter()
+	logger := ucplog.GetLogger(ctx)
+	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
 
-	resourceGroupCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupCollectionPath)).Subrouter()
-	resourceGroupSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, resourceGroupItemPath)).Subrouter()
+	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
+	if err != nil {
+		return err
+	}
+
+	rootScopeRouter := router.PathPrefix(baseURL).Subrouter()
+	rootScopeRouter.Use(validator.APIValidatorUCP(specLoader))
+
+	planeCollectionSubRouter := rootScopeRouter.Path(planeCollectionPath).Subrouter()
+	planeCollectionByTypeSubRouter := rootScopeRouter.Path(planeCollectionByType).Subrouter()
+	planeSubRouter := rootScopeRouter.Path(planeItemPath).Subrouter()
+
+	var resourceGroupCollectionPath = fmt.Sprintf("%s/%s", planeItemPath, "resourcegroups")
+	var resourceGroupItemPath = fmt.Sprintf("%s/%s", resourceGroupCollectionPath, "{resourceGroupName}")
+	resourceGroupCollectionSubRouter := rootScopeRouter.Path(resourceGroupCollectionPath).Subrouter()
+	resourceGroupSubRouter := rootScopeRouter.Path(resourceGroupItemPath).Subrouter()
 
 	awsResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsPlaneType)).Subrouter()
 	awsResourceCollectionSubRouter := awsResourcesSubRouter.Path(awsResourceCollectionPath).Subrouter()
 	awsSingleResourceSubRouter := awsResourcesSubRouter.Path(awsResourcePath).Subrouter()
 	awsOperationStatusesSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationStatusesPath).Subrouter()
 	awsOperationResultsSubRouter := awsResourcesSubRouter.PathPrefix(awsOperationResultsPath).Subrouter()
+	awsPutResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, putPath)).Subrouter()
+	awsGetResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, getPath)).Subrouter()
+	awsDeleteResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, deletePath)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -167,9 +174,25 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:         v1.OperationGet,
 			HandlerFactory: awsproxy_ctrl.NewGetAWSResource,
 		},
+		{
+			ParentRouter:   awsPutResourceSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewCreateOrUpdateAWSResourceWithPost,
+		},
+		{
+			ParentRouter:   awsGetResourceSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewGetAWSResourceWithPost,
+		},
+		{
+			ParentRouter:   awsDeleteResourceSubRouter,
+			Method:         v1.OperationPost,
+			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
+		},
 
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
+			// Note that the API validation is not applied to the router used for proxying
 			ParentRouter:   router,
 			Path:           fmt.Sprintf("%s%s", baseURL, planeItemPath),
 			HandlerFactory: planes_ctrl.NewProxyPlane,

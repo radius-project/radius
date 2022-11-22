@@ -19,6 +19,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad group delete` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -40,27 +41,30 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad group delete` command.
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
 	Output               output.Interface
+	Prompter             prompt.Interface
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 	Confirmation         bool
 }
 
+// NewRunner creates a new instance of the `rad group delete` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
+		Prompter:          factory.GetPrompter(),
 	}
 }
 
+// Validate runs validation for the `rad group delete` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	config := r.ConfigHolder.Config
-
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
@@ -82,11 +86,12 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad group delete` command.
 func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
 	if !r.Confirmation {
-		confirmed, err := prompt.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName), prompt.No)
+		confirmed, err := r.Prompter.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName), prompt.No)
 		if err != nil {
 			return err
 		}

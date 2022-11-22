@@ -16,7 +16,7 @@ type ContainerResource struct {
 	v1.BaseResource
 
 	// TODO: remove this from CoreRP
-	ConnectorMetadata
+	LinkMetadata
 
 	// Properties is the properties of the resource.
 	Properties ContainerProperties `json:"properties"`
@@ -58,6 +58,7 @@ type ContainerProperties struct {
 	Connections map[string]ConnectionProperties `json:"connections,omitempty"`
 	Container   Container                       `json:"container,omitempty"`
 	Extensions  []Extension                     `json:"extensions,omitempty"`
+	Identity    *rp.IdentitySettings            `json:"identity,omitempty"`
 }
 
 // ConnectionProperties represents the properties of Connection.
@@ -75,6 +76,9 @@ type Container struct {
 	Ports          map[string]ContainerPort    `json:"ports,omitempty"`
 	ReadinessProbe HealthProbeProperties       `json:"readinessProbe,omitempty"`
 	Volumes        map[string]VolumeProperties `json:"volumes,omitempty"`
+	Command        []string                    `json:"command,omitempty"`
+	Args           []string                    `json:"args,omitempty"`
+	WorkingDir     string                      `json:"workingDir,omitempty"`
 }
 
 // ContainerPort - Specifies a listening port for the container
@@ -122,8 +126,8 @@ type EphemeralVolume struct {
 // PersistentVolume - Specifies a persistent volume for a container
 type PersistentVolume struct {
 	VolumeBase
-	Source string     `json:"source,omitempty"`
-	Rbac   VolumeRbac `json:"rbac,omitempty"`
+	Source     string           `json:"source,omitempty"`
+	Permission VolumePermission `json:"permission,omitempty"`
 }
 
 // ManagedStore - Backing store for the ephemeral volume
@@ -134,12 +138,12 @@ const (
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
-// VolumeRbac - Container read/write access to the volume
-type VolumeRbac string
+// VolumePermission - Container read/write access to the volume
+type VolumePermission string
 
 const (
-	VolumeRbacRead  VolumeRbac = "read"
-	VolumeRbacWrite VolumeRbac = "write"
+	VolumePermissionRead  VolumePermission = "read"
+	VolumePermissionWrite VolumePermission = "write"
 )
 
 type HealthProbeKind string
@@ -168,6 +172,7 @@ type HealthProbeBase struct {
 	FailureThreshold    *float32 `json:"failureThreshold,omitempty"`
 	InitialDelaySeconds *float32 `json:"initialDelaySeconds,omitempty"`
 	PeriodSeconds       *float32 `json:"periodSeconds,omitempty"`
+	TimeoutSeconds      *float32 `json:"timeoutSeconds,omitempty"`
 }
 
 // ExecHealthProbeProperties - Specifies the properties for readiness/liveness probe using an executable
@@ -188,21 +193,6 @@ type HTTPGetHealthProbeProperties struct {
 type TCPHealthProbeProperties struct {
 	HealthProbeBase
 	ContainerPort int32 `json:"containerPort,omitempty"`
-}
-
-// ExtensionKind
-type ExtensionKind string
-
-const (
-	ManualScaling ExtensionKind = "manualScaling"
-	DaprSidecar   ExtensionKind = "daprSidecar"
-)
-
-// Extension of a resource.
-type Extension struct {
-	Kind          ExtensionKind           `json:"kind,omitempty"`
-	ManualScaling *ManualScalingExtension `json:"manualScaling,omitempty"`
-	DaprSidecar   *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
 }
 
 // ManualScalingExtension - ManualScaling Extension

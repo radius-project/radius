@@ -9,6 +9,7 @@ import (
 	"context"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/objectformats"
@@ -17,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad group show` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -36,13 +38,14 @@ Note that these resource groups are separate from the Azure cloud provider and A
 		RunE:    framework.RunCommand(runner),
 	}
 
-	cmd.Flags().StringP("group", "g", "", "The resource group name")
-	cmd.Flags().StringP("workspace", "w", "", "The workspace name")
-	cmd.Flags().StringP("output", "o", "", "The output format")
+	commonflags.AddResourceGroupFlag(cmd)
+	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddOutputFlag(cmd)
 
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad group show` command.
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
@@ -54,6 +57,7 @@ type Runner struct {
 	Format               string
 }
 
+// NewRunner creates a new instance of the `rad group show` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -62,9 +66,9 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad group show` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	config := r.ConfigHolder.Config
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
@@ -88,6 +92,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad group show` command.
 func (r *Runner) Run(ctx context.Context) error {
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)

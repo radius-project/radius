@@ -8,14 +8,16 @@ import (
 	"context"
 	"encoding/json"
 	http "net/http"
+	"path"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 )
 
-var _ ctrl.Controller = (*ListAWSResources)(nil)
+var _ armrpc_controller.Controller = (*ListAWSResources)(nil)
 
 // ListAWSResources is the controller implementation to get/list AWS resources.
 type ListAWSResources struct {
@@ -23,18 +25,18 @@ type ListAWSResources struct {
 }
 
 // NewListAWSResources creates a new ListAWSResources.
-func NewListAWSResources(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListAWSResources(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListAWSResources{ctrl.NewBaseController(opts)}, nil
 }
 
-func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	client, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
+func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
+	cloudControlClient, _, resourceType, id, err := ParseAWSRequest(ctx, p.Options, req)
 	if err != nil {
 		return nil, err
 	}
 
 	// TODO pagination
-	response, err := client.ListResources(ctx, &cloudcontrol.ListResourcesInput{
+	response, err := cloudControlClient.ListResources(ctx, &cloudcontrol.ListResourcesInput{
 		TypeName: &resourceType,
 	})
 	if err != nil {
@@ -55,8 +57,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 			}
 		}
 
+		resourceName := *result.Identifier
 		item := map[string]interface{}{
-			"id":         id.String(),
+			"id":         path.Join(id.String(), resourceName),
 			"name":       result.Identifier,
 			"type":       id.Type(),
 			"properties": properties,
@@ -67,5 +70,5 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	body := map[string]interface{}{
 		"value": items,
 	}
-	return rest.NewOKResponse(body), nil
+	return armrpc_rest.NewOKResponse(body), nil
 }

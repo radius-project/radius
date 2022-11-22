@@ -8,6 +8,8 @@ package create
 import (
 	"context"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/cmd/group/common"
@@ -15,10 +17,11 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220315privatepreview"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad group create` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -44,6 +47,7 @@ Note that these resource groups are separate from the Azure cloud provider and A
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad group create` command.
 type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
@@ -52,6 +56,7 @@ type Runner struct {
 	UCPResourceGroupName string
 }
 
+// NewRunner creates a new instance of the `rad group create` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConnectionFactory: factory.GetConnectionFactory(),
@@ -60,10 +65,9 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad group create` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
-	config := r.ConfigHolder.Config
-
-	workspace, err := cli.RequireWorkspace(cmd, config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
@@ -84,6 +88,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad group create` command.
 func (r *Runner) Run(ctx context.Context) error {
 
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
@@ -93,14 +98,18 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	r.Output.LogInfo("creating resource group %q in workspace %q...\n", r.UCPResourceGroupName, r.Workspace.Name)
 
-	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "radius", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return err
 	}
 
 	// TODO: we TEMPORARILY create a resource group in the deployments plane because the deployments RP requires it.
 	// We'll remove this in the future.
-	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{})
+	_, err = client.CreateUCPGroup(ctx, "deployments", "local", r.UCPResourceGroupName, v20220315privatepreview.ResourceGroupResource{
+		Location: to.Ptr(v1.LocationGlobal),
+	})
 	if err != nil {
 		return err
 	}

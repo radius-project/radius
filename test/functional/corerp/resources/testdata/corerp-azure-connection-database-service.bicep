@@ -6,7 +6,7 @@ param environment string
 
 param location string = resourceGroup().location
 
-param resourceIdentifier string = newGuid()
+param documentdbresourceid string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   name: 'corerp-azure-connection-database-service'
@@ -26,27 +26,8 @@ resource store 'Applications.Core/containers@2022-03-15-privatepreview' = {
     }
     connections: {
       databaseresource: {
-        source: databaseAccount.id
+        source: documentdbresourceid
       }
     }
-  }
-}
-
-resource databaseAccount 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
-  name: 'dbacc-${resourceIdentifier}'
-  location: location
-  kind: 'MongoDB'
-  properties: {
-    consistencyPolicy: {
-      defaultConsistencyLevel: 'Session'
-    }
-    locations: [
-      {
-        locationName: location
-        failoverPriority: 0
-        isZoneRedundant: false
-      }
-    ]
-    databaseAccountOfferType: 'Standard'
   }
 }

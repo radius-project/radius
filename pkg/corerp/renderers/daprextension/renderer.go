@@ -12,9 +12,9 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	connector "github.com/project-radius/radius/pkg/connectorrp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,7 +47,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		return radiusDependencyIDs, azureDependencyIDs, nil
 	}
 
-	parsed, err := resources.Parse(extension.Provides)
+	parsed, err := resources.ParseResource(extension.Provides)
 	if err != nil {
 		return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
 	}
@@ -151,7 +151,7 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to find depenendency with id %q", extension.Provides))
 		}
 
-		route := connector.DaprInvokeHttpRouteProperties{}
+		route := link.DaprInvokeHttpRouteProperties{}
 		err := convertDefinition(&route, routeDependency)
 		if err != nil {
 			return "", err

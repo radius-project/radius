@@ -26,12 +26,17 @@ type CreateOrUpdateApplication struct {
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
 func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateApplication{
-		ctrl.NewOperation(opts, converter.ApplicationDataModelFromVersioned, converter.ApplicationDataModelToVersioned),
+		ctrl.NewOperation(opts,
+			ctrl.ResourceOptions[datamodel.Application]{
+				RequestConverter:  converter.ApplicationDataModelFromVersioned,
+				ResponseConverter: converter.ApplicationDataModelToVersioned,
+			},
+		),
 	}, nil
 }
 
 // Run executes CreateOrUpdateApplication operation.
-func (a *CreateOrUpdateApplication) Run(ctx context.Context, req *http.Request) (rest.Response, error) {
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := a.GetResourceFromRequest(ctx, req)
 	if err != nil {

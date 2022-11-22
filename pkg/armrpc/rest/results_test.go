@@ -69,7 +69,7 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 		},
 	}
 
-	resource, err := resources.Parse("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
+	resource, err := resources.ParseResource("/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/containers/test-container-0")
 	require.NoError(t, err)
 
 	for _, tt := range errTests {
@@ -96,7 +96,29 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 			require.Equal(t, expctedResp, resp)
 		})
 	}
+}
 
+func Test_NewNoResourceMatchResponse(t *testing.T) {
+	response := NewNoResourceMatchResponse("/some/url")
+	payload := map[string]interface{}{
+		"error": map[string]interface{}{
+			"code":    v1.CodeNotFound,
+			"message": "the specified path \"/some/url\" did not match any resource",
+			"target":  "/some/url",
+		},
+	}
+	expected, err := json.MarshalIndent(payload, "", "  ")
+	require.NoError(t, err)
+
+	req := httptest.NewRequest("GET", "http://example.com", nil)
+	w := httptest.NewRecorder()
+
+	err = response.Apply(context.TODO(), w, req)
+	require.NoError(t, err)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+	require.Equal(t, []string{"application/json"}, w.Header()["Content-Type"])
+	require.Equal(t, string(expected), w.Body.String())
 }
 
 func Test_OKResponse_Empty(t *testing.T) {
@@ -151,7 +173,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"ucp-test-headers",
 			"https://ucp.dev",
 			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"global",
+			v1.LocationGlobal,
 			operationID,
 			"2022-03-15-privatepreview",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
@@ -161,7 +183,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"arm-test-headers",
 			"https://azure.dev",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"global",
+			v1.LocationGlobal,
 			operationID,
 			"2022-03-15-privatepreview",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
@@ -171,7 +193,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"ucp-test-headers",
 			"https://ucp.dev",
 			"/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
-			"global",
+			v1.LocationGlobal,
 			operationID,
 			"",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
@@ -181,7 +203,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			resourceID, err := resources.Parse(tt.rID)
+			resourceID, err := resources.ParseResource(tt.rID)
 			require.NoError(t, err)
 
 			body := &datamodel.ContainerResource{}

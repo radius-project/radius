@@ -12,7 +12,7 @@ typescript:
   generate-metadata: true
 batch:
   - package-core: true
-  - package-connector: true
+  - package-link: true
 ```
 
 ```yaml $(typescript) && $(package-core)
@@ -22,9 +22,9 @@ typescript:
   clear-output-folder: true
 ```
 
-```yaml $(typescript) && $(package-connector)
+```yaml $(typescript) && $(package-link)
 typescript:
-  package-name: "@azure/arm-applications-connector"
-  output-folder: "$(typescript-sdks-folder)/sdk/applications/arm-applications-connector"
+  package-name: "@azure/arm-applications-link"
+  output-folder: "$(typescript-sdks-folder)/sdk/applications/arm-applications-link"
   clear-output-folder: true
 ```

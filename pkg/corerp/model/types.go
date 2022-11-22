@@ -6,6 +6,7 @@
 package model
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
@@ -61,8 +62,13 @@ type RadiusResourceModel struct {
 }
 
 type OutputResourceModel struct {
-	ResourceType           resourcemodel.ResourceType
-	ResourceHandler        handlers.ResourceHandler
+	ResourceType    resourcemodel.ResourceType
+	ResourceHandler handlers.ResourceHandler
+
+	// ResourceTransformer transforms output resource before deploying resource.
+	ResourceTransformer func(context.Context, *handlers.PutOptions) error
+
+	// SecretValueTransformer transforms the secretvalue.
 	SecretValueTransformer rp.SecretValueTransformer
 }
 

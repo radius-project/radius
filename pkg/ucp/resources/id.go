@@ -19,12 +19,12 @@ const (
 	SubscriptionsSegment  = "subscriptions"
 	LocationsSegment      = "locations"
 
-	CoreRPNamespace      = "Applications.Core"
-	ConnectorRPNamespace = "Applications.Connector"
+	CoreRPNamespace = "Applications.Core"
+	LinkRPNamespace = "Applications.Link"
 )
 
-// ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() to create IDs and use
-// String() to convert back to strings.
+// ID represents an ARM or UCP resource id. ID is immutable once created. Use Parse() or ParseXyz()
+// to create IDs and use String() to convert back to strings.
 type ID struct {
 	id            string
 	scopeSegments []ScopeSegment
@@ -40,6 +40,8 @@ type ScopeSegment struct {
 	//	subscription
 	//
 	Type string
+
+	// Name is the name of the scope.
 	Name string
 }
 
@@ -53,6 +55,8 @@ type TypeSegment struct {
 	//  database
 	//
 	Type string
+
+	// Name is the name of the resource.
 	Name string
 }
 
@@ -65,18 +69,46 @@ func (ri ID) IsEmpty() bool {
 	return ri.id == ""
 }
 
-// IsCollection returns true if the ID represents a collection (final segment has no name).
-func (ri ID) IsCollection() bool {
-	if ri.IsScope() {
-		return ri.scopeSegments[len(ri.scopeSegments)-1].Name == ""
-	}
-
-	return ri.typeSegments[len(ri.typeSegments)-1].Name == ""
+// IsScope returns true if the ID represents a named scope (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local
+func (ri ID) IsScope() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) == 0 && // Not a type
+		(len(ri.scopeSegments) == 0 || len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) > 0) // No scope segments or last one is named
 }
 
-// IsScope returns true if the ID represents a scope.
-func (ri ID) IsScope() bool {
-	return !ri.IsEmpty() && len(ri.typeSegments) == 0
+// IsResource returns true if the ID represents a named resource (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
+func (ri ID) IsResource() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) > 0 // Has type segments and last one is named
+}
+
+// IsScopeCollection returns true if the ID represents a collection or custom action on a scope.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/resources
+func (ri ID) IsScopeCollection() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) == 0 && // No type segments
+		len(ri.scopeSegments) > 0 && len(ri.scopeSegments[len(ri.scopeSegments)-1].Name) == 0 // Has scope segments and last one is un-named
+}
+
+// IsResourceCollection returns true if the ID represents a collection or custom action on a resource.
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications
+func (ri ID) IsResourceCollection() bool {
+	return !ri.IsEmpty() && // Not empty
+		len(ri.typeSegments) > 0 && len(ri.typeSegments[len(ri.typeSegments)-1].Name) == 0 // Has type segments and last one is un-named
 }
 
 // IsUCPQualfied returns true if the ID is a UCP id.
@@ -111,6 +143,7 @@ func (ri ID) FindScope(scopeType string) string {
 // RootScope returns the root-scope (the part before 'providers').
 //
 // Examples:
+//
 //	/subscriptions/{guid}/resourceGroups/cool-group
 //	/planes/radius/local/resourceGroups/cool-group
 func (ri ID) RootScope() string {
@@ -133,6 +166,7 @@ func (ri ID) RootScope() string {
 // PlaneScope returns plane or subscription scope without resourceGroup
 //
 // Examples:
+//
 //	/subscriptions/{guid}
 //	/planes/radius/local
 func (ri ID) PlaneScope() string {
@@ -158,6 +192,7 @@ func (ri ID) PlaneScope() string {
 // ProviderNamespace returns the providers part of the ID
 //
 // Examples:
+//
 //	Applications.Core
 func (ri ID) ProviderNamespace() string {
 	if len(ri.typeSegments) == 0 {
@@ -169,7 +204,7 @@ func (ri ID) ProviderNamespace() string {
 
 func (ri ID) IsRadiusRPResource() bool {
 	return strings.EqualFold(ri.ProviderNamespace(), CoreRPNamespace) ||
-		strings.EqualFold(ri.ProviderNamespace(), ConnectorRPNamespace)
+		strings.EqualFold(ri.ProviderNamespace(), LinkRPNamespace)
 }
 
 // PlaneNamespace returns the plane part of the UCP ID
@@ -179,6 +214,7 @@ func (ri ID) IsRadiusRPResource() bool {
 // a chance that it is going to trigger a panic.
 //
 // Examples:
+//
 //	radius
 func (ri ID) PlaneNamespace() string {
 	if !ri.IsUCPQualfied() {
@@ -196,6 +232,7 @@ func (ri ID) PlaneNamespace() string {
 // RoutingScope returns the routing-scope (the part after 'providers').
 //
 // Examples:
+//
 //	/Applications.Core/applications/my-app
 func (ri ID) RoutingScope() string {
 	segments := []string{}
@@ -355,7 +392,45 @@ func ParseByMethod(id string, method string) (ID, error) {
 	return parsedID, nil
 }
 
-// Parse parses a resource ID.
+// ParseScope returns a parsed resource ID if the ID represents a named scope (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1
+func ParseScope(id string) (ID, error) {
+	parsed, err := Parse(id)
+	if err != nil {
+		return ID{}, err
+	}
+
+	if !parsed.IsScope() {
+		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a scope", id)
+	}
+
+	return parsed, err
+}
+
+// ParseResource returns a parsed resource ID if the ID represents a named resource (not a collection or custom action).
+//
+// Example:
+//
+//	/planes/radius/local/resourceGroups/rg1/providers/Applications.Core/applications/my-app
+func ParseResource(id string) (ID, error) {
+	parsed, err := Parse(id)
+	if err != nil {
+		return ID{}, err
+	}
+
+	if !parsed.IsResource() {
+		return ID{}, fmt.Errorf("%q is a valid resource id but does not refer to a resource", id)
+	}
+
+	return parsed, err
+}
+
+// Parse parses a resource ID. Parse will parse ALL valid resource IDs in the most permissive way.
+// Most code should use a more specific function like ParseResource to parse the specific kind of ID
+// they want to handle.
 func Parse(id string) (ID, error) {
 	isUCPQualified := false
 	if strings.HasPrefix(id, SegmentSeparator+PlanesSegment) {
@@ -410,23 +485,33 @@ func Parse(id string) (ID, error) {
 	}
 
 	// Parse scopes - iterate until we get to "providers"
+	//
+	// Each id has a 'scope' portion and an optional 'resource'. The 'providers' segment is the
+	// delimiter between these.
 	scopes := []ScopeSegment{}
 
 	i := 0
 	for i < len(segments) {
-		if len(segments)-i < 2 {
-			// odd number of non-providers segments remaining, this is invalid.
-			return ID{}, invalid(id)
-		}
-
 		// We're done parsing scopes
 		if strings.ToLower(segments[i]) == ProvidersSegment {
 			i++ // advance past "providers"
 			break
 		}
 
+		if len(segments)-i < 2 {
+			// One non-providers segments remaining, this is a collection.
+			//
+			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|
+			//
+			scopes = append(scopes, ScopeSegment{Type: segments[i], Name: ""})
+			i += 1
+			break
+		}
+
 		if strings.ToLower(segments[i+1]) == ProvidersSegment {
-			// odd number of non-providers segments inside the root scope, this is invalid.
+			// odd number of non-providers segments inside the root scope followed by 'providers', this is invalid.
+			//
+			// eg: /planes/radius/local/resourceGroups/test-rg/|resources|/providers/....
 			return ID{}, invalid(id)
 		}
 
@@ -513,7 +598,10 @@ func MakeUCPID(scopes []ScopeSegment, resourceTypes ...TypeSegment) string {
 		PlanesSegment,
 	}
 	for _, scope := range scopes {
-		segments = append(segments, scope.Type, scope.Name)
+		segments = append(segments, scope.Type)
+		if scope.Name != "" {
+			segments = append(segments, scope.Name)
+		}
 	}
 
 	if len(resourceTypes) != 0 {

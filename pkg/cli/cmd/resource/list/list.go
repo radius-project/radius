@@ -10,6 +10,7 @@ import (
 	"fmt"
 
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/framework"
@@ -19,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// NewCommand creates an instance of the command and runner for the `rad resource list` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
@@ -52,6 +54,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
+// Runner is the runner implementation for the `rad resource list` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -62,6 +65,7 @@ type Runner struct {
 	ResourceType      string
 }
 
+// NewRunner creates a new instance of the `rad resource list` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -70,13 +74,19 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
+// Validate runs validation for the `rad resource list` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args and
-	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config)
+	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
 	if err != nil {
 		return err
 	}
 	r.Workspace = workspace
+
+	// TODO: support fallback workspace
+	if !r.Workspace.IsNamedWorkspace() {
+		return workspaces.ErrNamedWorkspaceRequired
+	}
 
 	applicationName, err := cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
@@ -99,6 +109,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+// Run runs the `rad resource list` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
@@ -118,7 +129,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		return nil
 	} else {
 		_, err = client.ShowApplication(ctx, r.ApplicationName)
-		if cli.Is404ErrorForAzureError(err) {
+		if clients.Is404Error(err) {
 			return &cli.FriendlyError{Message: fmt.Sprintf("Application %q could not be found in workspace %q.", r.ApplicationName, r.Workspace.Name)}
 		} else if err != nil {
 			return err

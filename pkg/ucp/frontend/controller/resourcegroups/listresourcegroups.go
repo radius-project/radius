@@ -9,15 +9,19 @@ import (
 	"fmt"
 	http "net/http"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
-var _ ctrl.Controller = (*ListResourceGroups)(nil)
+var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
 
 // ListResourceGroups is the controller implementation to get the list of UCP resource groups.
 type ListResourceGroups struct {
@@ -25,11 +29,11 @@ type ListResourceGroups struct {
 }
 
 // NewListResourceGroups creates a new ListResourceGroups.
-func NewListResourceGroups(opts ctrl.Options) (ctrl.Controller, error) {
+func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, error) {
 	return &ListResourceGroups{ctrl.NewBaseController(opts)}, nil
 }
 
-func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 	var query store.Query
@@ -51,21 +55,28 @@ func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req
 		return nil, err
 	}
 
-	var ok = rest.NewOKResponse(listOfResourceGroups)
+	var ok = armrpc_rest.NewOKResponse(listOfResourceGroups)
 	return ok, nil
 }
 
-func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (rest.ResourceGroupList, error) {
-	listOfResourceGroups := rest.ResourceGroupList{}
-	if result != nil && len(result.Items) > 0 {
-		for _, item := range result.Items {
-			var rg rest.ResourceGroup
-			err := item.As(&rg)
-			if err != nil {
-				return listOfResourceGroups, err
-			}
-			listOfResourceGroups.Value = append(listOfResourceGroups.Value, rg)
+func (e *ListResourceGroups) createResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
+	items := v1.PaginatedList{}
+	apiVersion := ctrl.GetAPIVersion(req)
+
+	for _, item := range result.Items {
+		var rg datamodel.ResourceGroup
+		err := item.As(&rg)
+		if err != nil {
+			return nil, err
 		}
+
+		versioned, err := converter.ResourceGroupDataModelToVersioned(&rg, apiVersion)
+		if err != nil {
+			return nil, err
+		}
+
+		items.Value = append(items.Value, versioned)
 	}
-	return listOfResourceGroups, nil
+
+	return &items, nil
 }

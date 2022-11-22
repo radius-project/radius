@@ -48,13 +48,14 @@ resource publisher 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource pubsub 'Applications.Connector/daprPubSubBrokers@2022-03-15-privatepreview' = {
+resource pubsub 'Applications.Link/daprPubSubBrokers@2022-03-15-privatepreview' = {
   name: 'sb-pubsub'
   location: location
   properties: {
     environment: environment
     application: app.id
     kind: 'pubsub.azure.servicebus'
+    mode: 'resource'
     resource: namespaceresourceid
   }
 }

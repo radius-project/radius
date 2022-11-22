@@ -34,7 +34,6 @@ import (
 
 // Represents local IDs used for output resources
 const (
-	LocalIDAADPodIdentity               = "AADPodIdentity"
 	LocalIDAzureCosmosAccount           = "AzureCosmosAccount"
 	LocalIDAzureCosmosDBMongo           = "AzureCosmosDBMongo"
 	LocalIDAzureCosmosDBSQL             = "AzureCosmosDBSQL"
@@ -63,9 +62,11 @@ const (
 	LocalIDScrapedSecret                = "KubernetesScrapedSecret"
 	LocalIDSecret                       = "Secret"
 	LocalIDSecretProviderClass          = "SecretProviderClass"
+	LocalIDServiceAccount               = "ServiceAccount"
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
+	LocalIDFederatedIdentity            = "FederatedIdentity"
 
 	// Obsolete when we remove AppModelV1
 	LocalIDRoleAssignmentKVKeys         = "RoleAssignment-KVKeys"

@@ -2,129 +2,58 @@
 
 There are many times where it's important to be able to debug the Radius RP locally:
 - Fast inner loop debugging on a component in Radius.
-- Can run a subset of processes required for a specific scenario (ex just running Applications.Core and async processor)
+- Can run a subset of processes required for a specific scenario (for example, just running Applications.Core and async processor)
 
 Radius consists of a few processes that get deployed inside a Kubernetes cluster.
 
  This includes:
 
-- UCP - Universal Control Plane, we need to run this and register planes with the RP.
-- Application.Core - The new RP that we're building.
-- Bicep Deployment Engine
+- Applications.Core RP (appcore-rp) - The RP, handles creation and management of Radius resources
+- Universal Control Plane (ucp) - Acts as a proxy between the other services, also manages deployments of AWS resources
+- Deployment Engine (bicep-de) - Handles deployment status for all resources and manages deployments of Azure resources
 
 ### Step 1: Running Applications.Core RP
 
-Running the Applications.Core RP requires the following configuration before running:
-
-```sh
-export RADIUS_ENV="self-hosted"
-cd cmd/appcore-rp
-go run cmd/appcore-rp/main.go
-```
-
-Or in VSCode by adding this to the launch.json file in the Radius repository:
+Add the following to `configurations` in `.vscode/launch.json` in your Radius source directory.
 
 ```json
+// .vscode/launch.json
 {
-    "name": "Run appcore controller",
+    "name": "Applications.Core RP",
     "type": "go",
     "request": "launch",
     "mode": "debug",
     "program": "${workspaceFolder}/cmd/appcore-rp/main.go",
     "env": {
-        "RADIUS_ENV": "self-hosted"
+        "RADIUS_ENV": "self-hosted", // uses config from cmd/appcore-rp/radius-self-hosted.yaml
+        "SKIP_AUTH": "true",
+        "SKIP_ARM": "false",
+        "ARM_AUTH_METHOD": "ServicePrincipal",
+        "ARM_SUBSCRIPTION_ID": "<your-subscription-id>",
+        "ARM_RESOURCE_GROUP": "<your-resource-group>",
+        "AZURE_CLIENT_ID": "<your-sp-client-id>",
+        "AZURE_CLIENT_SECRET": "<your-sp-client-secret>",
+        "AZURE_TENANT_ID": "<your-sp-tenant-id>"
     }
-},
+}
 ```
+
+Then, you can run and debug `Applications.Core RP` from VSCode.
 
 With this configuration:
-- Port used will be `8080`
-- etcd will be used for storage
+- Applications.Core RP will be running on port `8080`
+- Applications.Link RP will be running on port `8081`
+- `etcd` will be used for storage
 
-### Step 2: Running the Deployment Engine
+## Step 2: Running UCP
 
-Next, run the Deployment Engine from a different terminal than the RP.
+Add the following to `configurations` in `.vscode/launch.json` in your Radius source directory.
 
-1. Install .NET 6: https://dotnet.microsoft.com/en-us/download/dotnet/6.0
-1. Clone the Deployment Engine Repo: `git clone https://github.com/project-radius/deployment-engine`
-1. Either run or Debug the Deployment Engine via:
-```sh
-# Set the backend URL to **UCP** URL that it will be running on by default this will be what is below
-# TODO RADIUSBACKENDURL should be renamed to something UCP like.
-export RADIUSBACKENDURL="http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local"
-dotnet run --project src/DeploymentEngine/DeploymentEngine.csproj
-```
-
-OR opening VSCode inside of the DeploymentEngine repo and adding the following configuration to launch.json file:
-
+### launch.json
 ```json
-    "configurations": [
-        {
-            "name": ".NET Core Launch (web)",
-            "type": "coreclr",
-            "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/DeploymentEngine/bin/Debug/net6.0/arm-de.dll",
-            "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
-            "console":"integratedTerminal",
-            "serverReadyAction": {
-                "action": "openExternally",
-                "uriFormat": "http://localhost:%s/swagger/index.html",
-                "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
-            },
-            "env": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "RADIUSBACKENDURL": "http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local" // Make sure this is the right URL for your RP
-            },
-            "sourceFileMap": {
-                "/Views": "${workspaceFolder}/Views"
-            }
-        }
-    ]
-```
-
-### Step 3: Running UCP
-
-UCP is a part of the Radius repo. To run it, first make sure `cmd/ucpd/ucp-self-hosted-dev.yaml` is updated with the right URLs for each plane:
-
-```yaml
-# This is an example of configuration file.
-storageProvider:
-  #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
-  provider: "etcd"
-  etcd:
-   inmemory: true
-
-#Default planes configuration with which ucp starts
-planes:
-  - id: "/planes/radius/local"
-    properties:
-      resourceProviders:
-        Applications.Core: "http://localhost:8080" # Make sure these URLs point to the right URLs
-        Applications.Connector: "http://localhost:8080"
-      kind: "UCPNative"
-  - id: "/planes/deployments/local"
-    properties:
-      resourceProviders:
-        Microsoft.Resources: "http://localhost:5017" # URL for the Deployment Engine
-      kind: "UCPNative"
-```
-
-Then execute the following:
-
-```sh
-export BASE_PATH="/apis/api.ucp.dev/v1alpha3"
-export PORT="9000"
-export UCP_CONFIG="cmd/ucpd/ucp-self-hosted-dev.yaml"
-cd cmd/ucpd
-go run cmd/ucpd/main.go
-```
-
-Or having the following VSCode configuration in the radius repository launch.json file:
-```json
+// .vscode/launch.json
 {
-    "name": "Run ucp controller",
+    "name": "UCP",
     "type": "go",
     "request": "launch",
     "mode": "debug",
@@ -138,8 +67,41 @@ Or having the following VSCode configuration in the radius repository launch.jso
 ```
 
 With this configuration:
-- Port used will be `9000`
-- etcd will be used for storage
+- UCP will be running on port `9000`
+- `etcd` will be used for storage
+
+## Step 3: Running Deployment Engine
+
+Add the following to `configurations` in `.vscode/launch.json` in your Deployment Engine source directory.
+
+```json
+{
+    "name": ".NET Core Launch (web)",
+    "type": "coreclr",
+    "request": "launch",
+    "preLaunchTask": "build",
+    "program": "${workspaceFolder}/src/DeploymentEngine/bin/Debug/net6.0/arm-de.dll",
+    "cwd": "${workspaceFolder}",
+    "stopAtEntry": false,
+    "console":"integratedTerminal",
+    "serverReadyAction": {
+        "action": "openExternally",
+        "uriFormat": "http://localhost:%s/swagger/index.html",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)"
+    },
+    "env": {
+        "ASPNETCORE_URLS": "http://localhost:5017",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "RADIUSBACKENDURL": "http://localhost:9000/apis/api.ucp.dev/v1alpha3"
+    },
+    "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
+    }
+}
+```
+
+With this configuration:
+- Deployment Engine will be running on port `5017`
 
 ### Step 4: Modifying the config.yaml to point to your local RP
 
@@ -150,64 +112,79 @@ To do this, open your Radius config file (`$HOME/.rad/config.yaml`) and edit it 
 You'll need to:
 
 - Duplicate the contents of a workspace
-- Give the new workspace a memorable name like `test` or `local`
-- Add overrides for the URLs of all of these services
+- Give the new workspace a memorable name (like `localrp`)
+- Add overrides for the UCP URL
+  - Note: The UCP URL is the only one that needs to be overridden because all calls from the CLI will be proxied through UCP. See [ucp-self-hosted-dev.yaml](https://github.com/project-radius/radius/blob/main/cmd/ucpd/ucp-self-hosted-dev.yaml) - notice that the UCP config includes the same URLs for the running processes of Applications.Core, Applications.Link, and Deployment Engine as were set up in steps 1 and 3.
 
 **Example**
 
 ```yaml
 workspaces:
-  default: local
+  default: localrp
   items:
     existing:
       connection:
-         kind: kubernetes
-         context: justin-d
-      scope: /planes/radius/local/resourceGroups/justin-d
-      environment: /planes/radius/local/resourceGroups/justin-d/providers/Applications.Core/environments/cool-test
+        context: your-context
+        kind: kubernetes
+      environment: /planes/radius/local/resourcegroups/your-resource-group/providers/applications.core/environments/your-environment
+      scope: /planes/radius/local/resourceGroups/your-resource-group
+      providerConfig:
+        azure:
+          subscriptionId: your-subscription-id
+          resourceGroup: your-resource-group
 
     # This is mostly a copy of `existing`
-    local:
+    localrp:
       connection:
+        context: your-context
         kind: kubernetes
-        context: justin-d
-        # This is the part you add!
-        override:
+        # Add the UCP URL override here
+        overrides:
           ucp: http://localhost:9000
-      scope: /planes/radius/local/resourceGroups/justin-d
-      environment: /planes/radius/local/resourceGroups/justin-d/providers/Applications.Core/environments/cool-test
-        
+      # Make sure to update /resourcegroups/your-resource-group to /resourcegroups/localrp here
+      environment: /planes/radius/local/resourcegroups/localrp/providers/applications.core/environments/your-environment
+      # Here as well
+      scope: /planes/radius/local/resourceGroups/localrp
+      providerConfig:
+        azure:
+          subscriptionId: your-subscription-id
+          resourceGroup: your-resource-group
 ```
 
-### Step 4.5: Have the right verison of bicep installed and right type of Bicep file
+## Step 5: Register planes and create an environment
 
-To be able to deploy to the appcore RP, we need to have the right version of bicep installed.
+We need to initialize the `localrp` resource group in each of the `deployments/local` and `radius/local` planes. We also need to initialize an environment so that we can deploy Radius resources.
 
-```bash
-make build
-./dist/.../rad bicep download # path to rad that is built as part of the repo
-```
+``` bash
+# 1: Create localrp resource group in UCP deployments/local plane
+curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/deployments/local/resourceGroups/localrp' \
+--header 'Content-Type: application/json' \
+--data-raw '{}'
 
-```bicep
-import radius as radius {
-  foo: 'foo'
-}
+# 2: Create localrp resource group in UCP radius/local plane
+curl --location --request PUT 'http://localhost:9000/apis/api.ucp.dev/v1alpha3/planes/radius/local/resourceGroups/localrp' \
+--header 'Content-Type: application/json' \
+--data-raw '{}'
 
-resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'myenv'
-  location: 'westus2'
-  properties: {
-    compute:{
-      kind: 'kubernetes'
-      namespace: 'myenv'
+# 3: Create your-environment environment (make sure this matches the name of your environment in the config)
+curl --location --request PUT 'http://localhost:8080/planes/radius/local/resourceGroups/localrp/providers/Applications.Core/environments/your-environment?api-version=2022-03-15-privatepreview' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "location": "global",
+    "properties": {
+        "compute": {
+            "kind": "kubernetes",
+            "resourceId": "",
+            "namespace": "default"
+        }
     }
-  }
 }
+'
 ```
 
 ### Step 5: Run rad deploy
 
-You can now run `rad deploy <bicep>` to deploy your BICEP to the local RP. You can also configure a launch.json file to debug the execution of `rad deploy`. FYI the args portion can be replaced with other rad commands (like `rad application list`) to test different CLI commands.
+You can now run `rad deploy <bicep>` to deploy your Bicep to the local RP. You can also configure a launch.json file to debug the execution of `rad deploy`. FYI the args portion can be replaced with other rad commands (like `rad application list`) to test different CLI commands.
 
 ```json
 {

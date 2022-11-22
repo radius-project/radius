@@ -1,0 +1,38 @@
+{
+    "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.link/sqldatabases/sql0",
+    "name": "sql0",
+    "type": "applications.link/sqldatabases",
+    "location": "West US",
+    "systemData": {
+        "createdAt": "2022-03-22T18:54:52.6857175Z",
+        "createdBy": "fake@hotmail.com",
+        "createdByType": "User",
+        "lastModifiedAt": "2022-03-22T18:57:52.6857175Z",
+        "lastModifiedBy": "fake@hotmail.com",
+        "lastModifiedByType": "User"
+    },
+    "properties": {
+        "status": {
+          "outputResources": [{
+              "LocalID": "AzureSqlServer",
+              "Dependencies": null,
+              "ResourceType": {
+                "type": "azure.sql",
+                "provider": "azure"
+              }
+          }]
+        },
+        "mode": "resource",
+        "provisioningState": "Succeeded",
+        "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
+        "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
+        "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Microsoft.Sql/servers/testServer/databases/testDatabase",
+        "database": "testDatabase",
+        "server": "testAccount1.sql.cosmos.azure.com"
+    },
+    "tenantId": "00000000-0000-0000-0000-000000000000",
+    "subscriptionId": "00000000-0000-0000-0000-000000000000",
+    "resourceGroup": "radius-test-rg",
+    "createdApiVersion": "2022-03-15-privatepreview",
+    "updatedApiVersion": "2022-03-15-privatepreview"
+}

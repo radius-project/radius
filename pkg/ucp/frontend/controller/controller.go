@@ -15,22 +15,25 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Options represents controller options.
 type Options struct {
-	BasePath  string
-	DB        store.StorageClient
-	Address   string
-	AWSClient aws.AWSClient
+	BasePath                string
+	DB                      store.StorageClient
+	Address                 string
+	AWSCloudControlClient   aws.AWSCloudControlClient
+	AWSCloudFormationClient aws.AWSCloudFormationClient
 }
 
-type ControllerFunc func(Options) (Controller, error)
+type ControllerFunc func(Options) (armrpc_controller.Controller, error)
 
 type HandlerOptions struct {
 	ParentRouter   *mux.Router
@@ -38,12 +41,6 @@ type HandlerOptions struct {
 	Path           string
 	Method         v1.OperationMethod
 	HandlerFactory ControllerFunc
-}
-
-// Controller is an interface of each operation controller.
-type Controller interface {
-	// Run executes the operation.
-	Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error)
 }
 
 // BaseController is the base operation controller.
@@ -135,39 +132,39 @@ func (c *BaseController) DeleteResource(ctx context.Context, id string, etag str
 
 // Responds with an HTTP 500
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
-	var response rest.Response
+	var response armrpc_rest.Response
 	// Try to use the ARM format to send back the error info
 	// if the error is due to api conversion failure return bad request
 	switch v := err.(type) {
 	case *conv.ErrModelConversion:
-		response = rest.NewBadRequestARMResponse(rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.HTTPRequestPayloadAPISpecValidationFailed,
+		response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
 			},
 		})
 	case *conv.ErrClientRP:
-		response = rest.NewBadRequestARMResponse(rest.ErrorResponse{
-			Error: rest.ErrorDetails{
+		response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
+			Error: v1.ErrorDetails{
 				Code:    v.Code,
 				Message: v.Message,
 			},
 		})
 	default:
 		if err.Error() == conv.ErrInvalidModelConversion.Error() {
-			response = rest.NewBadRequestARMResponse(rest.ErrorResponse{
-				Error: rest.ErrorDetails{
-					Code:    rest.HTTPRequestPayloadAPISpecValidationFailed,
+			response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 					Message: err.Error(),
 				},
 			})
 		} else {
 			logger.V(radlogger.Debug).Error(err, "unhandled error")
-			response = rest.NewInternalServerErrorARMResponse(rest.ErrorResponse{
-				Error: rest.ErrorDetails{
-					Code:    rest.Internal,
+			response = armrpc_rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
+				Error: v1.ErrorDetails{
+					Code:    v1.CodeInternal,
 					Message: err.Error(),
 				},
 			})
@@ -175,9 +172,9 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	}
 	err = response.Apply(ctx, w, req)
 	if err != nil {
-		body := rest.ErrorResponse{
-			Error: rest.ErrorDetails{
-				Code:    rest.Internal,
+		body := v1.ErrorResponse{
+			Error: v1.ErrorDetails{
+				Code:    v1.CodeInternal,
 				Message: err.Error(),
 			},
 		}
@@ -194,7 +191,7 @@ func (b *BaseController) GetRelativePath(path string) string {
 
 func (b *BaseController) NotFoundHandler(w http.ResponseWriter, r *http.Request) {
 	path := b.GetRelativePath(r.URL.Path)
-	restResponse := rest.NewNoResourceMatchResponse(path)
+	restResponse := armrpc_rest.NewNoResourceMatchResponse(path)
 	err := restResponse.Apply(r.Context(), w, r)
 	if err != nil {
 		HandleError(r.Context(), w, r, err)
@@ -208,7 +205,7 @@ func (b *BaseController) MethodNotAllowedHandler(w http.ResponseWriter, r *http.
 	if rID, err := resources.Parse(path); err == nil {
 		target = rID.Type() + "/" + rID.Name()
 	}
-	restResponse := rest.NewMethodNotAllowedResponse(target, fmt.Sprintf("The request method '%s' is invalid.", r.Method))
+	restResponse := armrpc_rest.NewMethodNotAllowedResponse(target, fmt.Sprintf("The request method '%s' is invalid.", r.Method))
 	if err := restResponse.Apply(r.Context(), w, r); err != nil {
 		HandleError(r.Context(), w, r, err)
 	}
@@ -227,4 +224,9 @@ func ConfigureDefaultHandlers(router *mux.Router, opts Options) {
 	b := NewBaseController(opts)
 	router.NotFoundHandler = http.HandlerFunc(b.NotFoundHandler)
 	router.MethodNotAllowedHandler = http.HandlerFunc(b.MethodNotAllowedHandler)
+}
+
+// GetAPIVersion extracts the API version from the request
+func GetAPIVersion(req *http.Request) string {
+	return req.URL.Query().Get("api-version")
 }
