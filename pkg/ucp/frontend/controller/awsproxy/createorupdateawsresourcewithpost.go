@@ -77,6 +77,8 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	if errors.Is(&awserror.AWSMissingPropertyError{}, err) {
 		// assume that if we can't get the AWS resource identifier, we need to create the resource
 		existing = false
+	} else if err != nil {
+		return awserror.HandleAWSError(err)
 	} else {
 		computedResourceID = computeResourceID(id, awsResourceIdentifier)
 
