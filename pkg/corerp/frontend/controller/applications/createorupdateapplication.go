@@ -15,9 +15,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/frontend/query"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 )
@@ -39,20 +39,6 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 			},
 		),
 	}, nil
-}
-
-func (a *CreateOrUpdateApplication) findResource(ctx context.Context, rootScope, resourceType, filterKey, filterValue string) (*store.ObjectQueryResult, error) {
-	namespaceQuery := store.Query{
-		RootScope:    rootScope,
-		ResourceType: resourceType,
-		Filters: []store.QueryFilter{
-			{
-				Field: filterKey,
-				Value: filterValue,
-			},
-		},
-	}
-	return a.StorageClient().Query(ctx, namespaceQuery)
 }
 
 // Run executes CreateOrUpdateApplication operation.
@@ -83,32 +69,33 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	kubeNamespace := ""
 	ext := newResource.Properties.FindExtension(datamodel.KubernetesNamespaceOverride)
 	if ext != nil {
-		// Override namespace.
+		// Override environment namespace.
 		kubeNamespace = ext.KubernetesNamespaceOverride.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
 		if err != nil {
-			return rest.NewBadRequestResponse(""), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("Environment could not be constructed: %s", err.Error())), nil
 		}
 		kubeNamespace = kubernetes.NormalizeResourceName(fmt.Sprintf("%s-%s", envNamespace, serviceCtx.ResourceID.Name()))
 	}
 
+	// Check if another environment resource is using namespace
 	envID, err := resources.ParseResource(newResource.Properties.Environment)
 	if err != nil {
-		return rest.NewBadRequestResponse(""), nil
+		return rest.NewBadRequestResponse(fmt.Sprintf("Environment %s for application %s could not be found", envID.Name(), serviceCtx.ResourceID.Name())), nil
 	}
 
-	result, err := a.findResource(ctx, envID.RootScope(), envID.Type(), "properties.compute.kubernetes.namespace", kubeNamespace)
+	result, err := query.FindNamespaceResources(ctx, envID.RootScope(), envID.Type(), "properties.compute.kubernetes.namespace", kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}
 	if len(result.Items) > 0 {
-		// TODO: improve the messages
-		return rest.NewConflictResponse("conflicted"), nil
+		return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", envID.Name(), kubeNamespace)), nil
 	}
 
-	result, err = a.findResource(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "appInternal.kubernetesNamespace", kubeNamespace)
+	// Check if another application resource is using namespace
+	result, err = query.FindNamespaceResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "appInternal.kubernetesNamespace", kubeNamespace, a.StorageClient())
 	if err != nil {
 		return nil, err
 	}

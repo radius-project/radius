@@ -15,19 +15,47 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
 )
+
+func fakeStoreObject(dm conv.DataModelInterface) *store.Object {
+	b, err := json.Marshal(dm)
+	if err != nil {
+		return nil
+	}
+	var r any
+	err = json.Unmarshal(b, &r)
+	if err != nil {
+		return nil
+	}
+	return &store.Object{Data: r}
+}
 
 func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
 
 	mStorageClient := store.NewMockStorageClient(mctrl)
+	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
 	ctx := context.Background()
+
+	envdm := &datamodel.Environment{
+		Properties: datamodel.EnvironmentProperties{
+			Compute: datamodel.EnvironmentCompute{
+				Kind: datamodel.KubernetesComputeKind,
+				KubernetesCompute: datamodel.KubernetesComputeProperties{
+					Namespace: "default",
+				},
+			},
+		},
+	}
 
 	createNewResourceCases := []struct {
 		desc               string
@@ -56,9 +84,24 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 					return nil, &store.ErrNotFound{}
-				})
+				}).Times(1)
 
 			if !tt.shouldFail {
+				// Mocks for FindNamespaceByEnvID
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
+				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
+
+				// Environmment namespace query
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+
+				// Application namespace query
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -86,6 +129,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				DataProvider:  mockSP,
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -144,6 +188,11 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
+				// Mocks for FindNamespaceByEnvID
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
+				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
+
+				// Environmment namespace query
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -152,9 +201,17 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 							Items: []store.Object{},
 						}, nil
 					})
-			}
 
-			if !tt.shouldFail {
+				// Application namespace query
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+
 				mStorageClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -167,6 +224,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				DataProvider:  mockSP,
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -215,6 +273,21 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
+				// Mocks for FindNamespaceByEnvID
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
+				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
+
+				// Environmment namespace query
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+
+				// Application namespace query
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -227,6 +300,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				DataProvider:  mockSP,
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -271,6 +345,11 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
+				// Mocks for FindNamespaceByEnvID
+				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
+				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
+
+				// Environment namespace query
 				mStorageClient.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
@@ -279,9 +358,17 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 							Items: []store.Object{},
 						}, nil
 					})
-			}
 
-			if !tt.shouldFail {
+				// Application namespace query
+				mStorageClient.
+					EXPECT().
+					Query(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+						return &store.ObjectQueryResult{
+							Items: []store.Object{},
+						}, nil
+					})
+
 				mStorageClient.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
@@ -295,6 +382,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				DataProvider:  mockSP,
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -358,6 +446,21 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				},
 			}
 
+			// Mocks for FindNamespaceByEnvID
+			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
+			mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
+
+			// Environment namespace query
+			mStorageClient.
+				EXPECT().
+				Query(gomock.Any(), gomock.Any()).
+				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+					return &store.ObjectQueryResult{
+						Items: []store.Object{},
+					}, nil
+				})
+
+			// Application namespace query
 			mStorageClient.
 				EXPECT().
 				Query(gomock.Any(), gomock.Any()).
@@ -382,6 +485,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				DataProvider:  mockSP,
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)

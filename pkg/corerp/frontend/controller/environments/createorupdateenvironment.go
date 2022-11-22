@@ -16,9 +16,9 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
+	"github.com/project-radius/radius/pkg/corerp/frontend/query"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -83,19 +83,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 	// Create Query filter to query kubernetes namespace used by the other environment resources.
 	namespace := newResource.Properties.Compute.KubernetesCompute.Namespace
-	namespaceQuery := store.Query{
-		RootScope:    serviceCtx.ResourceID.RootScope(),
-		ResourceType: serviceCtx.ResourceID.Type(),
-		Filters: []store.QueryFilter{
-			{
-				Field: "properties.compute.kubernetes.namespace",
-				Value: namespace,
-			},
-		},
-	}
-
-	// Check if environment with this namespace already exists
-	result, err := e.StorageClient().Query(ctx, namespaceQuery)
+	result, err := query.FindNamespaceResources(ctx, serviceCtx.ResourceID.RootScope(), serviceCtx.ResourceID.Type(), "properties.compute.kubernetes.namespace", namespace, e.StorageClient())
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +96,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 		// If a different resource has the same namespace, return a conflict
 		// Otherwise, continue and update the resource
-		if env.ID != old.ID {
+		if old == nil || env.ID != old.ID {
 			return rest.NewConflictResponse(fmt.Sprintf("Environment %s with the same namespace (%s) already exists", env.ID, namespace)), nil
 		}
 	}
