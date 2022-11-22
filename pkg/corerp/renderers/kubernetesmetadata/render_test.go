@@ -84,10 +84,10 @@ func Test_Render_CascadeKubeMetadata(t *testing.T) {
 	options := renderers.RenderOptions{Dependencies: dependencies}
 
 	options.Environment = renderers.EnvironmentOptions{
-		KubernetesMetadata: datamodel.EnvironmentKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseEnvKubeMetadataExt},
+		KubernetesMetadata: &baseEnvKubeMetadataExt,
 	}
 	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+		KubernetesMetadata: &baseAppKubeMetadataExt,
 	}
 	output, err := renderer.Render(context.Background(), resource, options)
 	require.NoError(t, err)
@@ -118,12 +118,12 @@ func Test_Render_KubeMetadataCollision(t *testing.T) {
 
 	// Set Environment KubernetesMetadataExtension
 	options.Environment = renderers.EnvironmentOptions{
-		KubernetesMetadata: datamodel.EnvironmentKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseEnvKubeMetadataExt},
+		KubernetesMetadata: &baseEnvKubeMetadataExt,
 	}
 
 	// Set Application KubernetesMetadataExtension
 	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+		KubernetesMetadata: &baseAppKubeMetadataExt,
 	}
 	output, err := renderer.Render(context.Background(), resource, options)
 	require.NoError(t, err)
@@ -162,7 +162,7 @@ func Test_Render_OnlyAppExtension(t *testing.T) {
 
 	// Set Application KubernetesMetadataExtension
 	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: datamodel.ApplicationKubernetesMetadataExtension{BaseKubernetesMetadataExtension: baseAppKubeMetadataExt},
+		KubernetesMetadata: &baseAppKubeMetadataExt,
 	}
 
 	output, err := renderer.Render(context.Background(), resource, options)
@@ -244,7 +244,7 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 		Extensions: []datamodel.Extension{
 			{
 				Kind: datamodel.KubernetesMetadata,
-				KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+				KubernetesMetadata: &datamodel.KubeMetadataExtension{
 					Annotations: map[string]string{
 						"test.ann1": "ann1.val",
 						"test.ann2": "ann1.val",
@@ -297,7 +297,7 @@ func getTestResultMaps() (map[string]string, map[string]string, map[string]strin
 	return metaAnn, metaLbl, specAnn, specLbl
 }
 
-func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension, datamodel.BaseKubernetesMetadataExtension) {
+func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.KubeMetadataExtension, datamodel.KubeMetadataExtension) {
 	metaAnn := map[string]string{
 		"env.ann1":              "env.annval1",
 		"env.ann2":              "env.annval2",
@@ -339,7 +339,7 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 		"test.lbl3": "lbl3.val",
 	}
 
-	baseEnvKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+	baseEnvKubeMetadataExt := datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
 			"env.ann1": "env.annval1",
 			"env.ann2": "env.annval2",
@@ -349,7 +349,7 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 			"env.lbl2": "env.lblval2",
 		},
 	}
-	baseAppKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+	baseAppKubeMetadataExt := datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
 			"app.ann1": "app.annval1",
 			"app.ann2": "app.annval2",
@@ -371,7 +371,7 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 	return metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt
 }
 
-func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.BaseKubernetesMetadataExtension) {
+func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.KubeMetadataExtension) {
 	metaAnn := map[string]string{
 		"app.ann1":              "app.annval1",
 		"app.ann2":              "app.annval2",
@@ -393,7 +393,7 @@ func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[st
 		"app.lbl2": "app.lblval2",
 	}
 
-	baseAppKubeMetadataExt := datamodel.BaseKubernetesMetadataExtension{
+	baseAppKubeMetadataExt := datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
 			"app.ann1": "app.annval1",
 			"app.ann2": "app.annval2",

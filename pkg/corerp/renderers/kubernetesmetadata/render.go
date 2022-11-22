@@ -44,7 +44,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	var kubeMetadataExt *datamodel.BaseKubernetesMetadataExtension
+	var kubeMetadataExt *datamodel.KubeMetadataExtension
 	for _, e := range resource.Properties.Extensions {
 		switch e.Kind {
 		case datamodel.KubernetesMetadata:
@@ -181,10 +181,10 @@ func mergeKubernetesMetadataAnnotations(options renderers.RenderOptions, currAnn
 	appOpts := &options.Application
 	mergeAnnotations := map[string]string{}
 
-	if envOpts != nil && envOpts.KubernetesMetadata.Annotations != nil {
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Annotations != nil {
 		mergeAnnotations = envOpts.KubernetesMetadata.Annotations
 	}
-	if appOpts != nil && appOpts.KubernetesMetadata.Annotations != nil {
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Annotations != nil {
 		// mergeAnnotations is now updated with merged map.
 		mergeAnnotations = labels.Merge(mergeAnnotations, appOpts.KubernetesMetadata.Annotations)
 	}
@@ -203,10 +203,10 @@ func mergeKubernetesMetadataLabels(options renderers.RenderOptions, currLabels m
 	appOpts := &options.Application
 	mergeLabels := map[string]string{}
 
-	if envOpts != nil && envOpts.KubernetesMetadata.Labels != nil {
+	if envOpts != nil && envOpts.KubernetesMetadata != nil && envOpts.KubernetesMetadata.Labels != nil {
 		mergeLabels = envOpts.KubernetesMetadata.Labels
 	}
-	if appOpts != nil && appOpts.KubernetesMetadata.Labels != nil {
+	if appOpts != nil && appOpts.KubernetesMetadata != nil && appOpts.KubernetesMetadata.Labels != nil {
 		// mergeLabels is now updated with merged map.
 		mergeLabels = labels.Merge(mergeLabels, appOpts.KubernetesMetadata.Labels)
 	}

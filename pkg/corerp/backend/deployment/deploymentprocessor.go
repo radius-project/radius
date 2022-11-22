@@ -380,7 +380,6 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm.Environment) (renderers.EnvironmentOptions, error) {
 	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
-	envExt := corerp_dm.EnvironmentKubernetesMetadataExtension{}
 
 	envOpts := renderers.EnvironmentOptions{
 		CloudProviders: &env.Properties.Providers,
@@ -407,9 +406,8 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	}
 
 	// Get Environment KubernetesMetadata Info
-	if envBaseExt := getKubernetesMetadataExtension(env.Properties.Extensions); envBaseExt != nil {
-		envExt.BaseKubernetesMetadataExtension = *envBaseExt
-		envOpts.KubernetesMetadata = envExt
+	if envExt := env.Properties.FindExtension(corerp_dm.KubernetesMetadata); envExt != nil && envExt.KubernetesMetadata != nil {
+		envOpts.KubernetesMetadata = envExt.KubernetesMetadata
 	}
 
 	if publicEndpointOverride != "" {
@@ -464,28 +462,13 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 // getAppOptions: Populates and Returns ApplicationOptions.
 func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corerp_dm.ApplicationProperties) (renderers.ApplicationOptions, error) {
 	appOpts := renderers.ApplicationOptions{}
-	appExt := corerp_dm.ApplicationKubernetesMetadataExtension{}
 
 	// Get Application KubernetesMetadata Info
-	if appBaseExt := getKubernetesMetadataExtension(appProp.Extensions); appBaseExt != nil {
-		appExt.BaseKubernetesMetadataExtension = *appBaseExt
-		appOpts.KubernetesMetadata = appExt
+	if ext := appProp.FindExtension(corerp_dm.KubernetesMetadata); ext != nil && ext.KubernetesMetadata != nil {
+		appOpts.KubernetesMetadata = ext.KubernetesMetadata
 	}
 
 	return appOpts, nil
-}
-
-func getKubernetesMetadataExtension(exts []corerp_dm.Extension) *corerp_dm.BaseKubernetesMetadataExtension {
-	for _, ext := range exts {
-		switch ext.Kind {
-		case corerp_dm.KubernetesMetadata:
-			if ext.KubernetesMetadata != nil {
-				return ext.KubernetesMetadata
-			}
-		}
-	}
-
-	return nil
 }
 
 // getResourceDataByID fetches resource for the provided id from the data store

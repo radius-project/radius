@@ -65,13 +65,13 @@ type EnvironmentOptions struct {
 	// Identity represents identity of the environment.
 	Identity *rp.IdentitySettings
 	// KubernetesMetadata represents the Environment KubernetesMetadata extension.
-	KubernetesMetadata datamodel.EnvironmentKubernetesMetadataExtension
+	KubernetesMetadata *datamodel.KubeMetadataExtension
 }
 
 // ApplicationOptions represents the options for the linked application resource.
 type ApplicationOptions struct {
 	// KubernetesMetadata represents the Application KubernetesMetadata extension.
-	KubernetesMetadata datamodel.ApplicationKubernetesMetadataExtension
+	KubernetesMetadata *datamodel.KubeMetadataExtension
 }
 
 type GatewayOptions struct {
