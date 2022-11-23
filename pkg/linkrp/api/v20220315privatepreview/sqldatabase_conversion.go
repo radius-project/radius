@@ -112,9 +112,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	case datamodel.LinkModeRecipe:
 		mode := SQLDatabasePropertiesModeRecipe
 		var recipe *Recipe
-		if sql.Properties.Recipe.Name != "" {
-			recipe = fromRecipeDataModel(sql.Properties.Recipe)
-		}
+		recipe = fromRecipeDataModel(sql.Properties.Recipe)
 		dst.Properties = &RecipeSQLDatabaseProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
