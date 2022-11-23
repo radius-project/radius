@@ -19,7 +19,7 @@ concurrency:
 jobs:
   linter_check:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 12
     env:
       GOVER: '^1.18'

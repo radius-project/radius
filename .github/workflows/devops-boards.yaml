@@ -7,7 +7,7 @@ on:
 
 jobs:
   alert:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: danhellem/github-actions-issue-to-work-item@v2.0
         env:

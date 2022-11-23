@@ -20,7 +20,7 @@ on:
 jobs:
   samples:
     name: Trigger samples workflow
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - name: Checkout
