@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
