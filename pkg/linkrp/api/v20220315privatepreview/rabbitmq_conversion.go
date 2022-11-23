@@ -91,9 +91,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	case datamodel.LinkModeRecipe:
 		mode := RabbitMQMessageQueuePropertiesModeRecipe
 		var recipe *Recipe
-		if rabbitmq.Properties.Recipe.Name != "" {
-			recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
-		}
+		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 		dst.Properties = &RecipeRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
