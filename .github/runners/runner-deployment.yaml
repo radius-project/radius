@@ -3,7 +3,7 @@ kind: RunnerDeployment
 metadata:
   name: aks-runnerdeploy
 spec:
-  replicas: 24
+  replicas: 12
   template:
     spec:
       organization: project-radius
