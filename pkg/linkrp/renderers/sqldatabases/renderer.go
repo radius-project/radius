@@ -7,7 +7,6 @@ package sqldatabases
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/sql/mgmt/sql"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -51,35 +50,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				"database": {
 					Value: properties.Database,
-					Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-						databaseName, ok := cv[renderers.DatabaseNameValue].(string)
-						if !ok {
-							return errors.New("database name must be set on computed values for SqlDatabase")
-						}
-						res, ok := r.(*datamodel.SqlDatabase)
-						if !ok {
-							return errors.New("resource must be SqlDatabase")
-						}
-
-						res.Properties.Database = databaseName
-						return nil
-					},
 				},
 				"server": {
 					Value: properties.Server,
-					Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-						serverName, ok := cv[renderers.ServerNameValue].(string)
-						if !ok {
-							return errors.New("server name must be set on computed values for SqlDatabase")
-						}
-						res, ok := r.(*datamodel.SqlDatabase)
-						if !ok {
-							return errors.New("resource must be SqlDatabase")
-						}
-
-						res.Properties.Server = serverName
-						return nil
-					},
 				},
 			},
 			// We don't provide any secret values here because SQL requires the USER to manage
@@ -138,36 +111,10 @@ func renderAzureResource(properties datamodel.SqlDatabaseProperties) (renderers.
 	computedValues := map[string]renderers.ComputedValueReference{
 		"database": {
 			Value: databaseID.Name(),
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-				database, ok := cv[renderers.DatabaseNameValue].(string)
-				if !ok {
-					return errors.New("database name must be set on computed values for SqlDatabase")
-				}
-				res, ok := r.(*datamodel.SqlDatabase)
-				if !ok {
-					return errors.New("resource must be SqlDatabase")
-				}
-
-				res.Properties.Database = database
-				return nil
-			},
 		},
 		"server": {
 			LocalID:     outputresource.LocalIDAzureSqlServer,
 			JSONPointer: "/properties/fullyQualifiedDomainName",
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-				server, ok := cv[renderers.ServerNameValue].(string)
-				if !ok {
-					return errors.New("server name must be set on computed values for SqlDatabase")
-				}
-				res, ok := r.(*datamodel.SqlDatabase)
-				if !ok {
-					return errors.New("resource must be SqlDatabase")
-				}
-
-				res.Properties.Server = server
-				return nil
-			},
 		},
 	}
 

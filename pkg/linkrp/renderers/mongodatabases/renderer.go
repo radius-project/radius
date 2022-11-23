@@ -7,7 +7,6 @@ package mongodatabases
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
@@ -61,19 +60,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			ComputedValues: map[string]renderers.ComputedValueReference{
 				renderers.DatabaseNameValue: {
 					Value: resource.Name,
-					Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-						databaseName, ok := cv[renderers.DatabaseNameValue].(string)
-						if !ok {
-							return errors.New("database name must be set on computed values for MongoDatabase")
-						}
-						res, ok := r.(*datamodel.MongoDatabase)
-						if !ok {
-							return errors.New("resource must be MongoDatabase")
-						}
-
-						res.Properties.Database = databaseName
-						return nil
-					},
 				},
 			},
 			SecretValues: getProvidedSecretValues(resource.Properties),
@@ -101,19 +87,6 @@ func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.Rend
 		renderers.DatabaseNameValue: {
 			LocalID:     outputresource.LocalIDAzureCosmosDBMongo,
 			JSONPointer: "/properties/resource/id", // response of "az resource show" for cosmos mongodb resource contains database name in this property
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-				databaseName, ok := cv[renderers.DatabaseNameValue].(string)
-				if !ok {
-					return errors.New("database name must be set on computed values for MongoDatabase")
-				}
-				res, ok := r.(*datamodel.MongoDatabase)
-				if !ok {
-					return errors.New("resource must be MongoDatabase")
-				}
-
-				res.Properties.Database = databaseName
-				return nil
-			},
 		},
 	}
 
@@ -163,19 +136,6 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 	computedValues := map[string]renderers.ComputedValueReference{
 		renderers.DatabaseNameValue: {
 			Value: cosmosMongoDBID.Name(),
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-				databaseName, ok := cv[renderers.DatabaseNameValue].(string)
-				if !ok {
-					return errors.New("database name must be set on computed values for MongoDatabase")
-				}
-				res, ok := r.(*datamodel.MongoDatabase)
-				if !ok {
-					return errors.New("resource must be MongoDatabase")
-				}
-
-				res.Properties.Database = databaseName
-				return nil
-			},
 		},
 	}
 

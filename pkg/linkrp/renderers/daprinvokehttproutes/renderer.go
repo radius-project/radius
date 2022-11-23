@@ -7,7 +7,6 @@ package daprinvokehttproutes
 
 import (
 	"context"
-	"errors"
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -35,19 +34,6 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
 				Value: to.String(&properties.AppId),
-				Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
-					appId, ok := cv[AppIDKey].(string)
-					if !ok {
-						return errors.New("app id must be set on computed values for DaprInvokeHttpRoute")
-					}
-					res, ok := r.(*datamodel.DaprInvokeHttpRoute)
-					if !ok {
-						return errors.New("resource must be DaprInvokeHttpRoute")
-					}
-
-					res.Properties.AppId = appId
-					return nil
-				},
 			},
 		},
 		SecretValues: map[string]rp.SecretValueReference{},
