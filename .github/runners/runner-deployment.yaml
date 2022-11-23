@@ -3,11 +3,11 @@ kind: RunnerDeployment
 metadata:
   name: aks-runnerdeploy
 spec:
-  replicas: 30
+  replicas: 24
   template:
     spec:
       organization: project-radius
       dockerdWithinRunnerContainer: true
       image: summerwind/actions-runner-dind
       nodeSelector:
-        agentpool: runnerpool
+        agentpool: dsrunnerpool
