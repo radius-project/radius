@@ -40,7 +40,7 @@ workerServer:
   port: 2222
 metricsProvider:
   prometheus:
-    enabled: true,
+    enabled: true
     path: "/metrics"
     port: 9090
 featureFlags:

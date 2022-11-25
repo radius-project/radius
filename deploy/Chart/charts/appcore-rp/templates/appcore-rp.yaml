@@ -30,13 +30,13 @@ spec:
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
         {{ if eq .Values.global.prometheus.enabled true }}
-        - "--enable-metrics"
-        - "--metrics-path"
+        - --enable-metrics
+        - --metrics-path
         - "{{ .Values.global.prometheus.path }}"
-        - "--metrics-port"
+        - --metrics-port
         - "{{ .Values.global.prometheus.port }}"
         {{ else }}
-        - "--enable-metrics=false"
+        - --enable-metrics=false"
         {{ end }}
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         envFrom:
@@ -63,7 +63,7 @@ spec:
           protocol: TCP
         {{ if eq .Values.global.prometheus.enabled true }}
         - containerPort: {{ .Values.global.prometheus.port }}
-          name: appcore-rp-metrics
+          name: metrics
           protocol: TCP
         {{ end }}
         securityContext:
@@ -95,7 +95,7 @@ spec:
       targetPort: 5444
     {{ if eq .Values.global.prometheus.enabled true }}
     - port: {{ .Values.global.prometheus.port }}
-      name: metrics-appcore-rp
+      name: metrics-http
       protocol: TCP
       targetPort: {{ .Values.global.prometheus.port }}
     {{ end }}

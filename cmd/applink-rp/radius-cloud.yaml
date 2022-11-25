@@ -27,7 +27,7 @@ server:
   armMetadataEndpoint: "https://admin.api-dogfood.resources.windows-int.net/metadata/authentication?api-version=2015-01-01"
 metricsProvider:
   prometheus:
-    enabled: true,
+    enabled: true
     path: "/metrics"
     port: 9090
 featureFlags:

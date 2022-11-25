@@ -34,6 +34,13 @@ func main() {
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
+	var enableMetrics bool
+	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Flag to enable Radius metrics.")
+	var metricsPath string
+	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "The path to Radius metrics.")
+	var metricsPort int
+	flag.IntVar(&metricsPort, "metrics-port", 9090, "The port to expose Radius metrics.")
+
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
 	}

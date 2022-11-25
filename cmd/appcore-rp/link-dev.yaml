@@ -10,7 +10,7 @@ queueProvider:
   provider: inmemory
 metricsProvider:
   prometheus:
-    enabled: true,
+    enabled: true
     path: "/metrics"
     port: 9090
 featureFlags:

@@ -59,6 +59,13 @@ func main() {
 	defaultLinkConfig := fmt.Sprintf("link-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for Applications.Link.")
 
+	var enableMetrics bool
+	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Flag to enable Radius metrics.")
+	var metricsPath string
+	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "The path to expose Radius metrics.")
+	var metricsPort int
+	flag.IntVar(&metricsPort, "metrics-port", 9090, "The port to expose Radius metrics.")
+
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
 	}
