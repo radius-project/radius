@@ -16,25 +16,9 @@ spec:
       labels:
         control-plane: ucp
         app.kubernetes.io/part-of: radius-control-plane
-      {{ if eq .Values.global.prometheus.enabled true }}
-      annotations:
-        prometheus.io/path: "{{ .Values.global.prometheus.path }}"
-        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
-        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
-      {{ end }}
     spec:
       serviceAccountName: ucp
       containers:
-      - args:
-        {{ if eq .Values.global.prometheus.enabled true }}
-        - "--enable-metrics"
-        - "--metrics-path"
-        - "{{ .Values.global.prometheus.path }}"
-        - "--metrics-port"
-        - "{{ .Values.global.prometheus.port }}"
-        {{ else }}
-        - "--enable-metrics=false"
-        {{ end }}
       - image: "{{ .Values.global.ucp.image }}:{{ .Values.global.ucp.tag }}"
         envFrom:
         - secretRef: 
@@ -53,11 +37,6 @@ spec:
         - containerPort: 9443
           name: ucp
           protocol: TCP
-        {{ if eq .Values.global.prometheus.enabled true }}
-        - containerPort: {{ .Values.global.prometheus.port }}
-          name: ucp-metrics
-          protocol: TCP
-        {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
@@ -89,12 +68,6 @@ spec:
       name: https
       protocol: TCP
       targetPort: 9443
-    {{ if eq .Values.global.prometheus.enabled true }}
-    - port: {{ .Values.global.prometheus.port }}
-      name: metrics-ucp
-      protocol: TCP
-      targetPort: {{ .Values.global.prometheus.port }}
-    {{ end }}
   selector:
     control-plane: ucp
 ---
