@@ -100,6 +100,44 @@ func (cli *CLI) Deploy(ctx context.Context, templateFilePath string, parameters 
 	return cliErr
 }
 
+// Run runs the rad run command. This returns the command output on success or an error.
+func (cli *CLI) Run(ctx context.Context, templateFilePath string, applicationName string, parameters ...string) (string, error) {
+	// Check if the template file path exists
+	if _, err := os.Stat(templateFilePath); err != nil {
+		return "", fmt.Errorf("could not find template file: %s - %w", templateFilePath, err)
+	}
+
+	args := []string{
+		"run",
+		templateFilePath,
+	}
+
+	if applicationName != "" {
+		args = append(args, "--application", applicationName)
+	}
+
+	for _, parameter := range parameters {
+		args = append(args, "--parameters", parameter)
+	}
+
+	out, cliErr := cli.RunCommand(ctx, args)
+	if cliErr != nil && strings.Contains(out, "Error: {") {
+		var errResponse v1.ErrorResponse
+		idx := strings.Index(out, "Error: {")
+		actualErr := "{\"error\": " + out[idx+7:] + "}"
+
+		if err := json.Unmarshal([]byte(string(actualErr)), &errResponse); err != nil {
+			return "", err
+		}
+
+		return "", &CLIError{ErrorResponse: errResponse}
+	} else if cliErr != nil {
+		return "", cliErr
+	}
+
+	return out, nil
+}
+
 func (cli *CLI) ApplicationShow(ctx context.Context, applicationName string) (string, error) {
 	command := "application"
 
@@ -250,7 +288,14 @@ func (cli *CLI) CliVersion(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
+// CreateCommand creates an exec.Cmd that can be used to execute a `rad` CLI command. Most tests should use
+// RunCommand, only use CreateCommand if the test you are writing needs more control over the execution of the
+// command.
+//
+// The second return value is the 'heartbeat' func. Tests using this function should start the heartbeat in a
+// goroutine to produce logs while the command is running. The third return value is the command description
+// which can be used in error messages.
+func (cli *CLI) CreateCommand(ctx context.Context, args []string) (*exec.Cmd, func(<-chan struct{}), string) {
 	description := "rad " + strings.Join(args, " ")
 	args = cli.appendStandardArgs(args)
 
@@ -264,38 +309,57 @@ func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
 		cmd.Dir = cli.WorkingDirectory
 	}
 
-	// we run a background goroutine to report a heartbeat in the logs while the command
-	// is still running. This makes it easy to see what's still in progress if we hit a timeout.
-	done := make(chan struct{})
-	go func() {
+	heartbeat := func(done <-chan struct{}) {
 		cli.heartbeat(description, done)
-	}()
-	defer func() {
-		done <- struct{}{}
-	}()
+	}
 
-	out, err := cmd.CombinedOutput()
+	return cmd, heartbeat, description
+}
 
+// ReportCommandResult can be used in tests to report the result of a command to the test infrastructure. Most
+// test should use RunCommand. Only use ReportCommandResult if the test is using CreateCommand to control command
+// execution.
+func (cli *CLI) ReportCommandResult(ctx context.Context, out string, description string, err error) error {
 	// If there's no context error, we know the command completed (or errored).
-	for _, line := range strings.Split(string(out), "\n") {
+	for _, line := range strings.Split(out, "\n") {
 		cli.T.Logf("[rad] %s", line)
 	}
 
 	if ctx.Err() == context.DeadlineExceeded {
-		return string(out), fmt.Errorf("command '%s' timed out: %w", description, err)
+		return fmt.Errorf("command '%s' timed out: %w", description, err)
 	}
 
 	if ctx.Err() == context.Canceled {
 		// bubble up errors due to cancellation with their output, and let the caller
 		// decide how to handle it.
-		return string(out), ctx.Err()
+		return ctx.Err()
 	}
 
 	if err != nil {
-		return string(out), fmt.Errorf("command '%s' had non-zero exit code: %w", description, err)
+		return fmt.Errorf("command '%s' had non-zero exit code: %w", description, err)
 	}
 
-	return string(out), nil
+	return nil
+}
+
+// RunCommand executes a command and returns the output (stdout + stderr) as well as an error if the command
+// fails. The output is *ALWAYS* returned even if the command fails.
+func (cli *CLI) RunCommand(ctx context.Context, args []string) (string, error) {
+	cmd, heartbeat, description := cli.CreateCommand(ctx, args)
+
+	// we run a background goroutine to report a heartbeat in the logs while the command
+	// is still running. This makes it easy to see what's still in progress if we hit a timeout.
+	done := make(chan struct{})
+	go heartbeat(done)
+	defer func() {
+		done <- struct{}{}
+		close(done)
+	}()
+
+	// Execute the command and get the output.
+	out, err := cmd.CombinedOutput()
+
+	return string(out), cli.ReportCommandResult(ctx, string(out), description, err)
 }
 
 func (cli *CLI) appendStandardArgs(args []string) []string {
