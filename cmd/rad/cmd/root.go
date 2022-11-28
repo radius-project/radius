@@ -38,6 +38,7 @@ import (
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
+	"github.com/project-radius/radius/pkg/cli/cmd/run"
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
@@ -50,6 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -140,6 +142,9 @@ func initSubCommands() {
 
 	deployCmd, _ := cmddeploy.NewCommand(framework)
 	RootCmd.AddCommand(deployCmd)
+
+	runCmd, _ := run.NewCommand(framework)
+	RootCmd.AddCommand(runCmd)
 
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
