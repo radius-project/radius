@@ -38,15 +38,15 @@ func (s *Service) Name() string {
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	provider, promHandler, err := provider.NewPrometheusMetricsExporter()
+	pme, err := provider.NewPrometheusExporter()
 	if err != nil {
 		logger.Error(err, "Failed to configure prometheus metrics client")
 		panic(err)
 	}
-	global.SetMeterProvider(provider)
+	global.SetMeterProvider(pme.MeterProvider)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Config.Prometheus.Path, promHandler.ServeHTTP)
+	mux.HandleFunc(s.Options.Config.Prometheus.Path, pme.Handler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
