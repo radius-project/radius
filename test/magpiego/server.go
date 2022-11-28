@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -37,6 +38,37 @@ func startMagpieServer() error {
 		Handler: mux,
 	}
 	err := server.ListenAndServe()
+	if err != nil {
+		log.Println("Error starting magpie server")
+		return err
+	}
+	return nil
+}
+
+func startSecureMagpieServer(crt []byte, key []byte) error {
+	mux := setupServeMux()
+
+	cert, err := tls.X509KeyPair(crt, key)
+	if err != nil {
+		log.Println("Error parsing the certificate")
+		return err
+	}
+
+	// Construct a tls.config
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+	}
+
+	// Build a server:
+	server := &http.Server{
+		// Other options
+		TLSConfig: tlsConfig,
+		Addr:      ":" + port,
+		Handler:   mux,
+	}
+
+	// Finally: serve.
+	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		log.Println("Error starting magpie server")
 		return err
