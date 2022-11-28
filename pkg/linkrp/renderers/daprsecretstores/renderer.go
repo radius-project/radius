@@ -7,7 +7,7 @@ package daprsecretstores
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -40,9 +40,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	properties := resource.Properties
-	secretStoreFunc := r.SecretStores[string(properties.Kind)]
+	var supportedKind string
+	if properties.Mode == datamodel.LinkModeValues {
+		supportedKind = resourcekinds.DaprGeneric
+	}
+	secretStoreFunc := r.SecretStores[supportedKind]
 	if secretStoreFunc == nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.SecretStores)))
+		return renderers.RendererOutput{}, errors.New("invalid secret store kind")
 	}
 	var applicationName string
 	if properties.Application != "" {

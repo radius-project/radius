@@ -18,30 +18,39 @@ import (
 )
 
 func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string, namespace string) (outputResources []outputresource.OutputResource, err error) {
+	properties := resource.Properties
+	if properties.Resource == "" {
+		return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
+	}
 	var azuretableStorageID resources.ID
-	if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
-		properties := resource.Properties
-		if properties.Resource == "" {
-			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
-		}
-		//Validate fully qualified resource identifier of the source resource is supplied for this link
-		azuretableStorageID, err = resources.ParseResource(properties.Resource)
-		if err != nil {
-			return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
-		}
+	azuretableStorageID, err = resources.ParseResource(properties.Resource)
+	if err != nil {
+		return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+	}
+	// var azuretableStorageID resources.ID
+	// if resource.Properties.Kind == datamodel.DaprStateStoreKindAzureTableStorage {
+	// 	// properties := resource.Properties
+	// 	// if properties.Resource == "" {
+	// 	// 	return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
+	// 	// }
+	// 	//Validate fully qualified resource identifier of the source resource is supplied for this link
+	// 	azuretableStorageID, err = resources.ParseResource(properties.Resource)
+	// 	if err != nil {
+	// 		return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+	// 	}
 
-	}
-	if resource.Properties.Kind == datamodel.DaprStateStoreKindStateSqlServer {
-		properties := resource.Properties
-		if properties.Resource == "" {
-			return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
-		}
-		//Validate fully qualified resource identifier of the source resource is supplied for this link
-		azuretableStorageID, err = resources.ParseResource(properties.Resource)
-		if err != nil {
-			return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
-		}
-	}
+	// }
+	// if resource.Properties.Kind == datamodel.DaprStateStoreKindStateSqlServer {
+	// 	// properties := resource.Properties
+	// 	// if properties.Resource == "" {
+	// 	// 	return nil, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
+	// 	// }
+	// 	//Validate fully qualified resource identifier of the source resource is supplied for this link
+	// 	azuretableStorageID, err = resources.ParseResource(properties.Resource)
+	// 	if err != nil {
+	// 		return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+	// 	}
+	// }
 	err = azuretableStorageID.ValidateResourceType(StorageAccountResourceType)
 	if err != nil {
 		return []outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")

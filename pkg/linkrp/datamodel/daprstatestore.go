@@ -10,15 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-type DaprStateStoreKind string
-
-const (
-	DaprStateStoreKindStateSqlServer    DaprStateStoreKind = "state.sqlserver"
-	DaprStateStoreKindAzureTableStorage DaprStateStoreKind = "state.azure.tablestorage"
-	DaprStateStoreKindGeneric           DaprStateStoreKind = "generic"
-	DaprStateStoreKindUnknown           DaprStateStoreKind = "unknown"
-)
-
 // DaprStateStore represents DaprStateStore link resource.
 type DaprStateStore struct {
 	v1.TrackedResource
@@ -44,7 +35,6 @@ type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Kind              DaprStateStoreKind     `json:"kind,omitempty"`
 	Mode              LinkMode               `json:"mode,omitempty"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`
 	Recipe            LinkRecipe             `json:"recipe,omitempty"`

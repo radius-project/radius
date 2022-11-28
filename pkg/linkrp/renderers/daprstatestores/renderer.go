@@ -8,7 +8,6 @@ package daprstatestores
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -44,10 +43,16 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	if r.StateStores == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
-
-	stateStoreFunc := r.StateStores[string(properties.Kind)]
+	var supportedKind string
+	if properties.Mode == datamodel.LinkModeValues {
+		supportedKind = resourcekinds.DaprGeneric
+	}
+	if properties.Mode == datamodel.LinkModeResource {
+		supportedKind = resourcekinds.DaprStateStoreAzureTableStorage
+	}
+	stateStoreFunc := r.StateStores[supportedKind]
 	if stateStoreFunc == nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores)))
+		return renderers.RendererOutput{}, errors.New("invalid state store kind")
 	}
 
 	var applicationName string

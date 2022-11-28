@@ -866,9 +866,6 @@ type RecipeDaprStateStoreProperties struct {
 	// Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
-	Resource *string `json:"resource,omitempty"`
-
 	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
@@ -1235,9 +1232,6 @@ type ResourceDaprStateStoreResourceProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The Dapr StateStore kind
-	Kind *ResourceDaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
@@ -1594,9 +1588,6 @@ type ValuesDaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; Radius kind for Dapr Secret Store
-	Kind *ValuesDaprSecretStorePropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
@@ -1640,9 +1631,6 @@ type ValuesDaprStateStoreResourceProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The Dapr StateStore kind
-	Kind *ValuesDaprStateStoreResourcePropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
@@ -1658,9 +1646,6 @@ type ValuesDaprStateStoreResourceProperties struct {
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
-	Resource *string `json:"resource,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.

@@ -3,25 +3,14 @@
     "name": "daprStateStore0",
     "type": "Applications.Link/daprStateStores",
     "properties": {
-        "status": {
-            "outputResources": [{
-              "LocalID": "Deployment",
-              "ResourceType": {
-                "Type": "DaprStateStoreProvider",
-                "Provider": "kubernetes"
-              }
-            }]
-        },
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0",
-        "mode": "recipe",
+        "mode" : "recipe",
         "recipe": {
-            "name": "recipe-test"
-        },
-        "type": "state.zookeeper",
-        "version": "v1",
-        "metadata": {
-            "foo": "bar"
+          "name": "recipe-test",
+          "parameters": {
+              "port": 6081
+          }
         }
     }
 }
