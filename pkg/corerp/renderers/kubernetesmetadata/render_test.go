@@ -46,172 +46,97 @@ func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options r
 	return renderers.RendererOutput{Resources: resources}, nil
 }
 
-func Test_Render_Success(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl := getTestResultMaps()
-
-	properties := makeProperties(t)
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	// Check Meta Labels
-	require.Equal(t, metaAnn, deployment.Annotations)
-	require.Equal(t, metaLbl, deployment.Labels)
-
-	// Check Spec Labels
-	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
-	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
+type expectedMaps struct {
+	metaAnn map[string]string
+	metaLbl map[string]string
+	specAnn map[string]string
+	specLbl map[string]string
 }
 
-func Test_Render_CascadeKubeMetadata(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeTestResultMaps(false)
-
-	properties := makeProperties(t)
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-	options := renderers.RenderOptions{Dependencies: dependencies}
-
-	options.Environment = renderers.EnvironmentOptions{
-		KubernetesMetadata: &baseEnvKubeMetadataExt,
-	}
-	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: &baseAppKubeMetadataExt,
-	}
-	output, err := renderer.Render(context.Background(), resource, options)
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	// Check Meta Labels
-	require.Equal(t, metaAnn, deployment.Annotations)
-	require.Equal(t, metaLbl, deployment.Labels)
-
-	// Check Spec Labels
-	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
-	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
+type setupMaps struct {
+	baseEnvKubeMetadataExt *datamodel.KubeMetadataExtension
+	baseAppKubeMetadataExt *datamodel.KubeMetadataExtension
 }
 
-func Test_Render_KubeMetadataCollision(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt := getCascadeTestResultMaps(true)
-
-	properties := makeProperties(t)
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-	options := renderers.RenderOptions{Dependencies: dependencies}
-
-	// Set Environment KubernetesMetadataExtension
-	options.Environment = renderers.EnvironmentOptions{
-		KubernetesMetadata: &baseEnvKubeMetadataExt,
-	}
-
-	// Set Application KubernetesMetadataExtension
-	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: &baseAppKubeMetadataExt,
-	}
-	output, err := renderer.Render(context.Background(), resource, options)
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	// Check Meta Labels
-	require.Equal(t, metaAnn, deployment.Annotations)
-	require.Equal(t, metaLbl, deployment.Labels)
-
-	// Check Spec Labels
-	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
-	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
-}
-
-func Test_Render_OnlyAppExtension(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	// Get expected values
-	metaAnn, metaLbl, specAnn, specLbl, baseAppKubeMetadataExt := getOnlyAppExtTestResultMaps()
-
-	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
-			Application: application,
+func TestApplicationDataModelToVersioned(t *testing.T) {
+	testset := []struct {
+		testName     string
+		expectedMaps *expectedMaps
+		setupMaps    *setupMaps
+		properties   datamodel.ContainerProperties
+	}{
+		{
+			testName:     "Test_Render_Success",
+			expectedMaps: getTestResultMaps(),
+			setupMaps:    nil,
+			properties:   makeProperties(t, false),
 		},
-		Container: datamodel.Container{
-			Image: "someimage:latest",
+		{
+			testName:     "Test_Render_CascadeKubeMetadata",
+			expectedMaps: getCascadeTestResultMaps(),
+			setupMaps:    getSetUpMaps(false, false),
+			properties:   makeProperties(t, false),
+		},
+		{
+			testName:     "Test_Render_KubeMetadataCollision",
+			expectedMaps: getCascadeTestResultMaps(),
+			setupMaps:    getSetUpMaps(true, false),
+			properties:   makeProperties(t, false),
+		},
+		{
+			testName:     "Test_Render_OnlyAppExtension",
+			expectedMaps: getOnlyAppTestResultMaps(),
+			setupMaps:    getSetUpMaps(false, true),
+			properties:   makeProperties(t, true),
+		},
+		{
+			testName:     "Test_Render_NoExtension",
+			expectedMaps: getEmptyTestResultMaps(),
+			setupMaps:    nil,
+			properties:   makeProperties(t, true),
 		},
 	}
 
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-	options := renderers.RenderOptions{Dependencies: dependencies}
+	for _, tc := range testset {
+		t.Run(tc.testName, func(t *testing.T) {
+			renderer := &Renderer{Inner: &noop{}}
+			resource := makeResource(t, tc.properties)
+			dependencies := map[string]renderers.RendererDependency{}
+			options := renderers.RenderOptions{Dependencies: dependencies}
 
-	// Set Application KubernetesMetadataExtension
-	options.Application = renderers.ApplicationOptions{
-		KubernetesMetadata: &baseAppKubeMetadataExt,
+			if tc.setupMaps != nil && tc.setupMaps.baseEnvKubeMetadataExt != nil {
+				options.Environment = renderers.EnvironmentOptions{
+					KubernetesMetadata: tc.setupMaps.baseEnvKubeMetadataExt,
+				}
+			}
+
+			if tc.setupMaps != nil && tc.setupMaps.baseAppKubeMetadataExt != nil {
+				options.Application = renderers.ApplicationOptions{
+					KubernetesMetadata: tc.setupMaps.baseAppKubeMetadataExt,
+				}
+			}
+
+			output, err := renderer.Render(context.Background(), resource, options)
+			require.NoError(t, err)
+			require.Len(t, output.Resources, 1)
+
+			deployment, _ := kubernetes.FindDeployment(output.Resources)
+			require.NotNil(t, deployment)
+
+			// Check Meta Labels
+			require.Equal(t, tc.expectedMaps.metaAnn, deployment.Annotations)
+			require.Equal(t, tc.expectedMaps.metaLbl, deployment.Labels)
+
+			// Check Spec Labels
+			if tc.expectedMaps.specAnn != nil {
+				require.Equal(t, tc.expectedMaps.specAnn, deployment.Spec.Template.Annotations)
+				require.Equal(t, tc.expectedMaps.specLbl, deployment.Spec.Template.Labels)
+			} else {
+				require.Nil(t, deployment.Spec.Template.Annotations)
+				require.Nil(t, deployment.Spec.Template.Labels)
+			}
+		})
 	}
-
-	output, err := renderer.Render(context.Background(), resource, options)
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	// Check Meta Labels
-	require.Equal(t, metaAnn, deployment.Annotations)
-	require.Equal(t, metaLbl, deployment.Labels)
-
-	// Check Spec Labels
-	require.Equal(t, specAnn, deployment.Spec.Template.Annotations)
-	require.Equal(t, specLbl, deployment.Spec.Template.Labels)
-}
-
-func Test_Render_NoExtension(t *testing.T) {
-	renderer := &Renderer{Inner: &noop{}}
-
-	properties := datamodel.ContainerProperties{
-		BasicResourceProperties: rp.BasicResourceProperties{
-			Application: application,
-		},
-		Container: datamodel.Container{
-			Image: "someimage:latest",
-		},
-	}
-
-	resource := makeResource(t, properties)
-	dependencies := map[string]renderers.RendererDependency{}
-	ann := map[string]string{"prior.MetaAnnotation1": "prior.MetaAnnotationVal1", "prior.MetaAnnotation2": "prior.MetaAnnotationVal2"}
-	lbl := map[string]string{"prior.MetaLabel1": "prior.MetaLabelVal1", "prior.MetaLabel2": "prior.MetaLabelVal2"}
-
-	output, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
-	require.NoError(t, err)
-	require.Len(t, output.Resources, 1)
-
-	deployment, _ := kubernetes.FindDeployment(output.Resources)
-	require.NotNil(t, deployment)
-
-	// Check Spec Labels
-	require.Equal(t, ann, deployment.Annotations)
-	require.Equal(t, lbl, deployment.Labels)
-
-	// Check Meta Labels
-	require.Nil(t, deployment.Spec.Template.Annotations)
-	require.Nil(t, deployment.Spec.Template.Labels)
 }
 
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
@@ -228,7 +153,18 @@ func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datam
 	return &resource
 }
 
-func makeProperties(t *testing.T) datamodel.ContainerProperties {
+func makeProperties(t *testing.T, isEmpty bool) datamodel.ContainerProperties {
+	if isEmpty {
+		return datamodel.ContainerProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: application,
+			},
+			Container: datamodel.Container{
+				Image: "someimage:latest",
+			},
+		}
+	}
+
 	var (
 		replicas  int32  = 3
 		preplicas *int32 = &replicas
@@ -268,7 +204,7 @@ func makeProperties(t *testing.T) datamodel.ContainerProperties {
 	return properties
 }
 
-func getTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string) {
+func getTestResultMaps() *expectedMaps {
 	metaAnn := map[string]string{
 		"test.ann1":             "ann1.val",
 		"test.ann2":             "ann1.val",
@@ -294,10 +230,33 @@ func getTestResultMaps() (map[string]string, map[string]string, map[string]strin
 		"test.lbl3": "lbl3.val",
 	}
 
-	return metaAnn, metaLbl, specAnn, specLbl
+	return &expectedMaps{
+		metaAnn,
+		metaLbl,
+		specAnn,
+		specLbl,
+	}
 }
 
-func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.KubeMetadataExtension, datamodel.KubeMetadataExtension) {
+func getEmptyTestResultMaps() *expectedMaps {
+	metaAnn := map[string]string{
+		"prior.MetaAnnotation1": "prior.MetaAnnotationVal1",
+		"prior.MetaAnnotation2": "prior.MetaAnnotationVal2",
+	}
+	metaLbl := map[string]string{
+		"prior.MetaLabel1": "prior.MetaLabelVal1",
+		"prior.MetaLabel2": "prior.MetaLabelVal2",
+	}
+
+	return &expectedMaps{
+		metaAnn,
+		metaLbl,
+		nil,
+		nil,
+	}
+}
+
+func getCascadeTestResultMaps() *expectedMaps {
 	metaAnn := map[string]string{
 		"env.ann1":              "env.annval1",
 		"env.ann2":              "env.annval2",
@@ -339,7 +298,19 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 		"test.lbl3": "lbl3.val",
 	}
 
-	baseEnvKubeMetadataExt := datamodel.KubeMetadataExtension{
+	return &expectedMaps{
+		metaAnn: metaAnn,
+		metaLbl: metaLbl,
+		specAnn: specAnn,
+		specLbl: specLbl,
+	}
+
+}
+
+func getSetUpMaps(hasCollision bool, appOnly bool) *setupMaps {
+	setupMap := setupMaps{}
+
+	baseEnvKubeMetadataExt := &datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
 			"env.ann1": "env.annval1",
 			"env.ann2": "env.annval2",
@@ -349,7 +320,7 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 			"env.lbl2": "env.lblval2",
 		},
 	}
-	baseAppKubeMetadataExt := datamodel.KubeMetadataExtension{
+	baseAppKubeMetadataExt := &datamodel.KubeMetadataExtension{
 		Annotations: map[string]string{
 			"app.ann1": "app.annval1",
 			"app.ann2": "app.annval2",
@@ -368,10 +339,16 @@ func getCascadeTestResultMaps(hasCollision bool) (map[string]string, map[string]
 		baseAppKubeMetadataExt.Labels["test.lbl1"] = "app-label-collsion"
 	}
 
-	return metaAnn, metaLbl, specAnn, specLbl, baseEnvKubeMetadataExt, baseAppKubeMetadataExt
+	setupMap.baseAppKubeMetadataExt = baseAppKubeMetadataExt
+
+	if !appOnly {
+		setupMap.baseEnvKubeMetadataExt = baseEnvKubeMetadataExt
+	}
+
+	return &setupMap
 }
 
-func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[string]string, map[string]string, datamodel.KubeMetadataExtension) {
+func getOnlyAppTestResultMaps() *expectedMaps {
 	metaAnn := map[string]string{
 		"app.ann1":              "app.annval1",
 		"app.ann2":              "app.annval2",
@@ -393,16 +370,10 @@ func getOnlyAppExtTestResultMaps() (map[string]string, map[string]string, map[st
 		"app.lbl2": "app.lblval2",
 	}
 
-	baseAppKubeMetadataExt := datamodel.KubeMetadataExtension{
-		Annotations: map[string]string{
-			"app.ann1": "app.annval1",
-			"app.ann2": "app.annval2",
-		},
-		Labels: map[string]string{
-			"app.lbl1": "app.lblval1",
-			"app.lbl2": "app.lblval2",
-		},
+	return &expectedMaps{
+		metaAnn,
+		metaLbl,
+		specAnn,
+		specLbl,
 	}
-
-	return metaAnn, metaLbl, specAnn, specLbl, baseAppKubeMetadataExt
 }

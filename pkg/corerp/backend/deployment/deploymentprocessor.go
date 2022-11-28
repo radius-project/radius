@@ -406,7 +406,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	}
 
 	// Get Environment KubernetesMetadata Info
-	if envExt := env.Properties.FindExtension(corerp_dm.KubernetesMetadata); envExt != nil && envExt.KubernetesMetadata != nil {
+	if envExt := corerp_dm.FindExtension(env.Properties.Extensions, corerp_dm.KubernetesMetadata); envExt != nil && envExt.KubernetesMetadata != nil {
 		envOpts.KubernetesMetadata = envExt.KubernetesMetadata
 	}
 
@@ -464,7 +464,7 @@ func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corer
 	appOpts := renderers.ApplicationOptions{}
 
 	// Get Application KubernetesMetadata Info
-	if ext := appProp.FindExtension(corerp_dm.KubernetesMetadata); ext != nil && ext.KubernetesMetadata != nil {
+	if ext := corerp_dm.FindExtension(appProp.Extensions, corerp_dm.KubernetesMetadata); ext != nil && ext.KubernetesMetadata != nil {
 		appOpts.KubernetesMetadata = ext.KubernetesMetadata
 	}
 

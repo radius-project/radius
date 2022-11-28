@@ -72,13 +72,3 @@ type Providers struct {
 type ProvidersAzure struct {
 	Scope string `json:"scope,omitempty"`
 }
-
-// FindExtension finds the right extension.
-func (a *EnvironmentProperties) FindExtension(kind ExtensionKind) *Extension {
-	for _, ext := range a.Extensions {
-		if ext.Kind == kind {
-			return &ext
-		}
-	}
-	return nil
-}

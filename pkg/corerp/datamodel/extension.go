@@ -34,3 +34,13 @@ type KubeMetadataExtension struct {
 type KubeNamespaceOverrideExtension struct {
 	Namespace string `json:"namespace,omitempty"`
 }
+
+// FindExtension finds the extension.
+func FindExtension(exts []Extension, kind ExtensionKind) *Extension {
+	for _, ext := range exts {
+		if ext.Kind == kind {
+			return &ext
+		}
+	}
+	return nil
+}

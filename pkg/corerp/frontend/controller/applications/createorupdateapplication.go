@@ -72,7 +72,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	kubeNamespace := ""
-	ext := newResource.Properties.FindExtension(datamodel.KubernetesNamespaceOverride)
+	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceOverride)
 	if ext != nil {
 		// Override environment namespace.
 		kubeNamespace = ext.KubernetesNamespaceOverride.Namespace
