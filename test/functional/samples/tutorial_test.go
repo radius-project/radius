@@ -1,8 +1,14 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
 package samples
 
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -13,6 +19,7 @@ import (
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -22,7 +29,9 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-func Test_TutorialSample(t *testing.T) {
+// To run, sample directory must be cloned adjacent to this folder
+// Ex: test/functional/samples/samples/
+func Test_TutorialSampleMongoContainer(t *testing.T) {
 	template := "samples/tutorial/app.bicep"
 	appName := "webapp"
 
@@ -61,24 +70,68 @@ func Test_TutorialSample(t *testing.T) {
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
+				// Set up pod port-forwarding for contour-envoy
 				t.Run("check gwy", func(t *testing.T) {
-					err = testGatewayAvailability(t, hostname, "localhost", "/", http.StatusOK)
-					if err != nil {
-						t.Logf("Failed to test Gateway via portforward with error: %s", err)
-					} else {
-						// Successfully ran tests
-						return
+					for i := 1; i <= retries; i++ {
+						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
+						if err != nil {
+							t.Logf("Failed to test Gateway via portforward with error: %s", err)
+						} else {
+							// Successfully ran tests
+							return
+						}
 					}
 				})
 			},
+			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
+			// TODO: https://github.com/project-radius/radius/issues/4689, validation doesn't work correctly today
+			K8sOutputResources: []unstructured.Unstructured{},
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{
-				// TODO: validation of k8s resources created in the module is blocked by https://github.com/Azure/bicep-extensibility/issues/88
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(appName, "frontend"),
+						validation.NewK8sHTTPProxyForResource(appName, "public"),
+						validation.NewK8sHTTPProxyForResource(appName, "http-route"),
+						validation.NewK8sServiceForResource(appName, "http-route"),
+					},
+				},
 			},
 		},
 	}, requiredSecrets)
 
 	test.Test(t)
+}
+
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+	// stopChan will close the port-forward connection on close
+	stopChan := make(chan struct{})
+
+	// portChan will be populated with the assigned port once the port-forward connection is opened on it
+	portChan := make(chan int)
+
+	// errorChan will contain any errors created from initializing the port-forwarding session
+	errorChan := make(chan error)
+
+	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+
+	select {
+	case err := <-errorChan:
+		return fmt.Errorf("portforward failed with error: %s", err)
+	case localPort := <-portChan:
+		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
+		t.Logf("Portforward session active at %s", baseURL)
+
+		if err := testGatewayAvailability(t, hostname, baseURL, "", 200); err != nil {
+			close(stopChan)
+			return err
+		}
+
+		// All of the requests were successful
+		t.Logf("All requests encountered the correct status code")
+		return nil
+	}
 }
 
 func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
