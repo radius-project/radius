@@ -70,7 +70,7 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
-      submodules: "true"
+      persistCredentials: 'true'
     - task: GoTool@0
       inputs:
         version: '1.18'
