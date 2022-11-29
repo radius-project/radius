@@ -3,7 +3,7 @@ import radius as radius
 param magpieimage string
 
 param environment string
-param location = resourceGroup().location
+param location string = resourceGroup().location
 
 param tablestorageresourceid string
 
@@ -43,7 +43,7 @@ resource myapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource statestore 'Applications.Connector/daprStateStores@2022-03-15-privatepreview' = {
+resource statestore 'Applications.link/daprStateStores@2022-03-15-privatepreview' = {
   name: 'ts-sts'
   location: location
   properties: {
