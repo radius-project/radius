@@ -1305,7 +1305,6 @@ func (r RecipeDaprPubSubProperties) MarshalJSON() ([]byte, error) {
 	objectMap["mode"] = DaprPubSubBrokerPropertiesModeRecipe
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
-	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "status", r.Status)
 	populate(objectMap, "topic", r.Topic)
 	populate(objectMap, "type", r.Type)
@@ -1342,9 +1341,6 @@ func (r *RecipeDaprPubSubProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "recipe":
 				err = unpopulate(val, "Recipe", &r.Recipe)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, "Resource", &r.Resource)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &r.Status)
@@ -1929,7 +1925,6 @@ func (r ResourceDaprPubSubProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "componentName", r.ComponentName)
 	populate(objectMap, "environment", r.Environment)
-	populate(objectMap, "kind", r.Kind)
 	populate(objectMap, "metadata", r.Metadata)
 	objectMap["mode"] = DaprPubSubBrokerPropertiesModeResource
 	populate(objectMap, "provisioningState", r.ProvisioningState)
@@ -1958,9 +1953,6 @@ func (r *ResourceDaprPubSubProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &r.Environment)
-				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &r.Kind)
 				delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &r.Metadata)
@@ -2486,11 +2478,9 @@ func (v ValuesDaprPubSubProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "componentName", v.ComponentName)
 	populate(objectMap, "environment", v.Environment)
-	populate(objectMap, "kind", v.Kind)
 	populate(objectMap, "metadata", v.Metadata)
 	objectMap["mode"] = DaprPubSubBrokerPropertiesModeValues
 	populate(objectMap, "provisioningState", v.ProvisioningState)
-	populate(objectMap, "resource", v.Resource)
 	populate(objectMap, "status", v.Status)
 	populate(objectMap, "topic", v.Topic)
 	populate(objectMap, "type", v.Type)
@@ -2516,9 +2506,6 @@ func (v *ValuesDaprPubSubProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &v.Environment)
 				delete(rawMsg, key)
-		case "kind":
-				err = unpopulate(val, "Kind", &v.Kind)
-				delete(rawMsg, key)
 		case "metadata":
 				err = unpopulate(val, "Metadata", &v.Metadata)
 				delete(rawMsg, key)
@@ -2527,9 +2514,6 @@ func (v *ValuesDaprPubSubProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &v.ProvisioningState)
-				delete(rawMsg, key)
-		case "resource":
-				err = unpopulate(val, "Resource", &v.Resource)
 				delete(rawMsg, key)
 		case "status":
 				err = unpopulate(val, "Status", &v.Status)

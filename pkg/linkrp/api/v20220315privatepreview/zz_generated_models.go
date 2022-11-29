@@ -767,9 +767,6 @@ type RecipeDaprPubSubProperties struct {
 	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// PubSub resource
-	Resource *string `json:"resource,omitempty"`
-
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
@@ -1179,9 +1176,6 @@ type ResourceDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The DaprPubSubProperties kind
-	Kind *ResourceDaprPubSubPropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
 // via 'values'. Selection determines which set of fields to additionally require.
 	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
@@ -1535,9 +1529,6 @@ type ValuesDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The DaprPubSubProperties kind
-	Kind *ValuesDaprPubSubPropertiesKind `json:"kind,omitempty"`
-
 	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
@@ -1553,9 +1544,6 @@ type ValuesDaprPubSubProperties struct {
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
-
-	// PubSub resource
-	Resource *string `json:"resource,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`

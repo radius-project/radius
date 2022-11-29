@@ -175,13 +175,11 @@
 * **metadata**: any: Any object
 * **mode**: 'recipe' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **recipe**: [Recipe](#recipe) (Required): The recipe used to automatically deploy underlying infrastructure for a link
-* **resource**: string: PubSub resource
 * **type**: string: Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string: Dapr component version
 
 ### ResourceDaprPubSubProperties
 #### Properties
-* **kind**: 'pubsub.azure.servicebus' (Required): The DaprPubSubProperties kind
 * **metadata**: any: Any object
 * **mode**: 'resource' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
 * **resource**: string (Required): PubSub resource
@@ -190,10 +188,8 @@
 
 ### ValuesDaprPubSubProperties
 #### Properties
-* **kind**: 'generic' (Required): The DaprPubSubProperties kind
 * **metadata**: any (Required): Any object
 * **mode**: 'values' (Required): How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually via 'values'. Selection determines which set of fields to additionally require.
-* **resource**: string: PubSub resource
 * **type**: string (Required): Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 * **version**: string (Required): Dapr component version
 

@@ -43,7 +43,6 @@ type DaprPubSubBrokerProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Kind              DaprPubSubBrokerKind   `json:"kind"`
 	Topic             string                 `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	Mode              LinkMode               `json:"mode"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`

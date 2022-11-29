@@ -8,7 +8,6 @@ package daprpubsubbrokers
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -42,18 +41,20 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
 
-	if resource.Properties.Kind == "" {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Resource kind not specified for Dapr Pub/Sub component")
+	var supportedKind string
+	if resource.Properties.Mode == datamodel.LinkModeValues {
+		supportedKind = resourcekinds.DaprGeneric
 	}
-
+	if resource.Properties.Mode == datamodel.LinkModeResource {
+		supportedKind = resourcekinds.DaprPubSubTopicAzureServiceBus
+	}
 	if r.PubSubs == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
 
-	kind := string(resource.Properties.Kind)
-	pubSubFunc, ok := r.PubSubs[kind]
+	pubSubFunc, ok := r.PubSubs[supportedKind]
 	if !ok {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", kind, getAlphabeticallySortedKeys(r.PubSubs)))
+		return renderers.RendererOutput{}, errors.New("invalid state store kind")
 	}
 
 	var applicationName string
