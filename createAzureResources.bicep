@@ -3,7 +3,7 @@ param location string = resourceGroup().location
 @description('Specifies the SQL username.')
 param adminUsername string
 
-@description('Specifies the SQL password.')
+@secure()
 param adminPassword string
 
 resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
