@@ -72,8 +72,3 @@ type Providers struct {
 type ProvidersAzure struct {
 	Scope string `json:"scope,omitempty"`
 }
-
-// EnvironmentKubernetesMetadataExtension - Specifies user defined labels and annotations
-type EnvironmentKubernetesMetadataExtension struct {
-	KubeMetadataExtension
-}

@@ -39,13 +39,3 @@ type ApplicationProperties struct {
 	rp.BasicResourceProperties
 	Extensions []Extension `json:"extensions,omitempty"`
 }
-
-// FindExtension finds the right extension.
-func (a *ApplicationProperties) FindExtension(kind ExtensionKind) *Extension {
-	for _, ext := range a.Extensions {
-		if ext.Kind == kind {
-			return &ext
-		}
-	}
-	return nil
-}
