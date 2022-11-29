@@ -78,7 +78,7 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: ProjectRadiusSamples
-      path: test/functional/samples/samples
+      path: radius/test/functional/samples/samples
     - checkout: self
     - task: GoTool@0
       inputs:
