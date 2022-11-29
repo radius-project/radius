@@ -6,7 +6,6 @@
 package resource_test
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -20,11 +19,14 @@ func Test_MicrosoftSQL(t *testing.T) {
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "corerp-resources-microsoft-sql"
 
+	var adminUsername, adminPassword string
 	requiredSecrets := map[string]map[string]string{}
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("MSSQL_RESOURCE_ID")
-	adminUsername := "adminUsername=" + os.Getenv("MSSQL_USERNAME")
-	adminPassword := "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
-	fmt.Printf("The parameters are %s, %s, %s", mssqlresourceid, adminUsername, adminPassword)
+	if os.Getenv("MSSQL_USERNAME") != "" {
+		adminUsername = "adminUsername=" + os.Getenv("MSSQL_USERNAME")
+		adminPassword = "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
+	}
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), mssqlresourceid, adminUsername, adminPassword),

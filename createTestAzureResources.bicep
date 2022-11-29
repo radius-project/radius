@@ -31,7 +31,7 @@ resource account 'Microsoft.DocumentDB/databaseAccounts@2020-04-01' = {
     name: 'mongodb-radiustestdev'
     properties: {
       resource: {
-        id: 'mongodb-radiustest'
+        id: 'mongodb-radiustestdev'
       }
       options: { 
         throughput: 400
@@ -107,3 +107,10 @@ resource redisCache 'Microsoft.Cache/redis@2020-12-01' = {
   }
 }
 
+output redisCacheId string = redisCache.id
+output sqlServerId string = server::db.id
+output tableStorageAccId string = storageAccount::tableServices::table.id
+output namespace string = namespace.id
+output mongoDatabaseId string = account::dbinner.id
+output msqlUserName string = adminUsername
+output msqlPassword string = adminPassword
