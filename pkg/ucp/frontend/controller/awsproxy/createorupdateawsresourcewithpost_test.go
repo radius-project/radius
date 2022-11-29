@@ -24,6 +24,85 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func Test_CreateAWSResourceWithPost(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	testOptions := setupTest(t)
+	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
+
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(
+		&cloudformation.DescribeTypeOutput{
+			TypeName: aws.String(testResource.AWSResourceType),
+			Schema:   aws.String(testResource.Schema),
+		}, nil)
+
+	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		nil, &types.ResourceNotFoundException{
+			Message: aws.String("Resource not found"),
+		})
+
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.CreateResourceOutput{
+			ProgressEvent: &types.ProgressEvent{
+				OperationStatus: types.OperationStatusSuccess,
+				RequestToken:    aws.String(testAWSRequestToken),
+				Identifier:      aws.String(testResource.ResourceName),
+			},
+		}, nil)
+
+	requestBody := map[string]interface{}{
+		"properties": map[string]interface{}{
+			"ClusterName":         testResource.ResourceName,
+			"Port":                6379,
+			"NumReplicasPerShard": 1,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath, bytes.NewBuffer(requestBodyBytes))
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	err = actualResponse.Apply(ctx, w, request)
+	require.NoError(t, err)
+
+	res := w.Result()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	expectedResponseObject := map[string]interface{}{
+		"id":   testResource.SingleResourcePath,
+		"name": testResource.ResourceName,
+		"type": testResource.ResourceType,
+		"properties": map[string]interface{}{
+			"ClusterName":         testResource.ResourceName,
+			"Port":                float64(6379),
+			"NumReplicasPerShard": float64(1),
+			"provisioningState":   "Provisioning",
+		},
+	}
+
+	actualResponseObject := map[string]interface{}{}
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
@@ -63,6 +142,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
+				Identifier:      aws.String(testResource.ResourceName),
 			},
 		}, nil)
 
@@ -214,6 +294,83 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	require.Equal(t, expectedResponseObject, actualResponseObject)
 }
 
+func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
+	ctx, cancel := testcontext.New(t)
+	defer cancel()
+
+	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
+	clusterIdentifierValue := "abc"
+	accountValue := "xyz"
+	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
+
+	output := cloudformation.DescribeTypeOutput{
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
+	}
+
+	testOptions := setupTest(t)
+	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
+
+	testOptions.AWSCloudControlClient.EXPECT().CreateResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
+		&cloudcontrol.CreateResourceOutput{
+			ProgressEvent: &types.ProgressEvent{
+				OperationStatus: types.OperationStatusSuccess,
+				RequestToken:    aws.String(testAWSRequestToken),
+				Identifier:      aws.String(multiIdentifierResourceID),
+			},
+		}, nil)
+
+	requestBody := map[string]interface{}{
+		"properties": map[string]interface{}{
+			"ClusterIdentifier": clusterIdentifierValue,
+		},
+	}
+	requestBodyBytes, err := json.Marshal(requestBody)
+	require.NoError(t, err)
+
+	awsController, err := NewCreateOrUpdateAWSResourceWithPost(ctrl.Options{
+		AWSCloudControlClient:   testOptions.AWSCloudControlClient,
+		AWSCloudFormationClient: testOptions.AWSCloudFormationClient,
+		DB:                      testOptions.StorageClient,
+	})
+	require.NoError(t, err)
+
+	request, err := http.NewRequest(http.MethodPost, testResource.CollectionPath+"/:put", bytes.NewBuffer(requestBodyBytes))
+	require.NoError(t, err)
+
+	actualResponse, err := awsController.Run(ctx, nil, request)
+	require.NoError(t, err)
+
+	w := httptest.NewRecorder()
+	err = actualResponse.Apply(ctx, w, request)
+	require.NoError(t, err)
+
+	res := w.Result()
+	require.Equal(t, http.StatusCreated, res.StatusCode)
+	body, err := io.ReadAll(res.Body)
+	require.NoError(t, err)
+	defer res.Body.Close()
+
+	id, err := resources.Parse(testResource.CollectionPath)
+	require.NoError(t, err)
+	rID := computeResourceID(id, multiIdentifierResourceID)
+	expectedResponseObject := map[string]interface{}{
+		"id":   rID,
+		"name": multiIdentifierResourceID,
+		"type": testResource.ResourceType,
+		"properties": map[string]interface{}{
+			"ClusterIdentifier": clusterIdentifierValue,
+			"provisioningState": "Provisioning",
+		},
+	}
+
+	actualResponseObject := map[string]interface{}{}
+	err = json.Unmarshal(body, &actualResponseObject)
+	require.NoError(t, err)
+
+	require.Equal(t, expectedResponseObject, actualResponseObject)
+}
+
 func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
@@ -221,6 +378,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
+	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -240,6 +398,7 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
+				Identifier:      aws.String(multiIdentifierResourceID),
 			},
 		}, nil)
 
@@ -277,7 +436,6 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
-	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
 	rID := computeResourceID(id, multiIdentifierResourceID)
 	expectedResponseObject := map[string]interface{}{
 		"id":   rID,
@@ -304,6 +462,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testResource := CreateRedshiftEndpointAuthorizationTestResource(uuid.NewString())
 	clusterIdentifierValue := "abc"
 	accountValue := "xyz"
+	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
 
 	output := cloudformation.DescribeTypeOutput{
 		TypeName: aws.String(testResource.AWSResourceType),
@@ -332,6 +491,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			ProgressEvent: &types.ProgressEvent{
 				OperationStatus: types.OperationStatusSuccess,
 				RequestToken:    aws.String(testAWSRequestToken),
+				Identifier:      aws.String(multiIdentifierResourceID),
 			},
 		}, nil)
 
@@ -370,7 +530,6 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
-	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
 	rID := computeResourceID(id, multiIdentifierResourceID)
 	expectedResponseObject := map[string]interface{}{
 		"id":   rID,

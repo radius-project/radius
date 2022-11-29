@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers/daprextension"
 	"github.com/project-radius/radius/pkg/corerp/renderers/gateway"
 	"github.com/project-radius/radius/pkg/corerp/renderers/httproute"
+	"github.com/project-radius/radius/pkg/corerp/renderers/kubernetesmetadata"
 	"github.com/project-radius/radius/pkg/corerp/renderers/manualscale"
 	"github.com/project-radius/radius/pkg/corerp/renderers/volume"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/mongodatabases"
@@ -67,10 +68,12 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 	radiusResourceModel := []RadiusResourceModel{
 		{
 			ResourceType: container.ResourceType,
-			Renderer: &manualscale.Renderer{
-				Inner: &daprextension.Renderer{
-					Inner: &container.Renderer{
-						RoleAssignmentMap: roleAssignmentMap,
+			Renderer: &kubernetesmetadata.Renderer{
+				Inner: &manualscale.Renderer{
+					Inner: &daprextension.Renderer{
+						Inner: &container.Renderer{
+							RoleAssignmentMap: roleAssignmentMap,
+						},
 					},
 				},
 			},

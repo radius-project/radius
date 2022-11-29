@@ -33,6 +33,7 @@ type Renderer interface {
 type RenderOptions struct {
 	Dependencies map[string]RendererDependency
 	Environment  EnvironmentOptions
+	Application  ApplicationOptions
 }
 
 // Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
@@ -63,6 +64,14 @@ type EnvironmentOptions struct {
 	Gateway GatewayOptions
 	// Identity represents identity of the environment.
 	Identity *rp.IdentitySettings
+	// KubernetesMetadata represents the Environment KubernetesMetadata extension.
+	KubernetesMetadata *datamodel.KubeMetadataExtension
+}
+
+// ApplicationOptions represents the options for the linked application resource.
+type ApplicationOptions struct {
+	// KubernetesMetadata represents the Application KubernetesMetadata extension.
+	KubernetesMetadata *datamodel.KubeMetadataExtension
 }
 
 type GatewayOptions struct {

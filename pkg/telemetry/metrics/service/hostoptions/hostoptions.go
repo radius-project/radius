@@ -3,8 +3,6 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-// hostoptions defines and reads options for the metrics's execution environment.
-
 package hostoptions
 
 import (

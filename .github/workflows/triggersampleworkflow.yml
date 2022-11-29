@@ -19,8 +19,9 @@ on:
 
 jobs:
   samples:
+    if: false # TODO Re-enable sample validation workflow
     name: Trigger samples workflow
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     timeout-minutes: 15
     steps:
       - name: Checkout

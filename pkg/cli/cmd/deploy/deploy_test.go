@@ -147,15 +147,6 @@ func Test_Validate(t *testing.T) {
 				Config:         radcli.LoadEmptyConfig(t),
 			},
 		},
-		{
-			Name:          "Create Command with too many args",
-			Input:         []string{"a", "b"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-		},
 	}
 
 	radcli.SharedValidateValidation(t, NewCommand, testcases)

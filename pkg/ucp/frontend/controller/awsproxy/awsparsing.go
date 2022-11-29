@@ -53,6 +53,8 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
+// getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
+// provided AWS CloudFormation type schema
 func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]string, error) {
 	schemaObject := map[string]interface{}{}
 	err := json.Unmarshal([]byte(schema), &schemaObject)
@@ -78,6 +80,8 @@ func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]stri
 	return primaryIdentifiersString, nil
 }
 
+// getPrimaryIdentifierFromMultiIdentifiers returns the primary identifier for the resource
+// when provided desired primary identifier values and the resource type schema
 func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]interface{}, schema string) (string, error) {
 	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
 	if err != nil {
@@ -94,7 +98,9 @@ func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties ma
 
 		if _, ok := properties[propertyName]; !ok {
 			// Mandatory property is missing
-			err := fmt.Errorf("mandatory property %s is missing", propertyName)
+			err := &awsclient.AWSMissingPropertyError{
+				PropertyName: propertyName,
+			}
 			return "", err
 		}
 		resourceID += properties[propertyName].(string) + "|"
