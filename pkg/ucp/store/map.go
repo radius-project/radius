@@ -37,7 +37,8 @@ func DecodeAndMergeMap(in interface{}, out interface{}) error {
 		Squash:  true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			toTimeHookFunc()),
-		ZeroFields: false,
+		WeaklyTypedInput: true,
+		ZeroFields:       false,
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {

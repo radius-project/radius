@@ -215,6 +215,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 		SecretValues:   secretValues,
 		ComputedValues: computedValues,
 		RecipeData:     recipeData,
+		RadiusResource: &datamodel.MongoDatabase{},
 	}
 
 	return
@@ -727,6 +728,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 				JSONPointer: "/some-data",
 			},
 		},
+		RadiusResource: &datamodel.MongoDatabase{},
 	}
 
 	expectedCosmosAccountIdentity := resourcemodel.ResourceIdentity{
