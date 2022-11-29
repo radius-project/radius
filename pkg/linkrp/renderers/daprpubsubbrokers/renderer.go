@@ -8,6 +8,7 @@ package daprpubsubbrokers
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -54,7 +55,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	pubSubFunc, ok := r.PubSubs[supportedKind]
 	if !ok {
-		return renderers.RendererOutput{}, errors.New("invalid state store kind")
+		return renderers.RendererOutput{}, fmt.Errorf("invalid pub sub broker kind, Supported kind values: %s", getAlphabeticallySortedKeys(r.PubSubs))
 	}
 
 	var applicationName string

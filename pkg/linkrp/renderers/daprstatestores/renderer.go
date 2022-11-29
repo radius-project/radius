@@ -8,6 +8,7 @@ package daprstatestores
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -52,7 +53,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 	stateStoreFunc := r.StateStores[supportedKind]
 	if stateStoreFunc == nil {
-		return renderers.RendererOutput{}, errors.New("invalid state store kind")
+		return renderers.RendererOutput{}, fmt.Errorf("invalid state store kind, Supported kind values: %s", getAlphabeticallySortedKeys(r.StateStores))
 	}
 
 	var applicationName string
