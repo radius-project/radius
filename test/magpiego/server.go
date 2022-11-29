@@ -47,27 +47,19 @@ func startMagpieServer() error {
 
 func startSecureMagpieServer(crt []byte, key []byte) error {
 	mux := setupServeMux()
-
 	cert, err := tls.X509KeyPair(crt, key)
 	if err != nil {
-		log.Println("Error parsing the certificate")
+		log.Println("Error parsing the key pair")
 		return err
 	}
-
-	// Construct a tls.config
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{cert},
 	}
-
-	// Build a server:
 	server := &http.Server{
-		// Other options
 		TLSConfig: tlsConfig,
 		Addr:      ":" + port,
 		Handler:   mux,
 	}
-
-	// Finally: serve.
 	err = server.ListenAndServeTLS("", "")
 	if err != nil {
 		log.Println("Error starting magpie server")
