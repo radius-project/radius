@@ -15,7 +15,7 @@ fi
 
 resourcegroup=$1
 # create test resources for local testing using the az group deploy
-resp=`az group deployment create --resource-group $resourcegroup --template-file createTestAzureResources.bicep`
+resp=`az group deployment create --resource-group $resourcegroup --template-file createAzureResources.bicep`
 export SERVICEBUS_RESOURCE_ID=$( jq -r '.properties.outputs.namespace.value' <<< "${resp}" ) 
 export MSSQL_RESOURCE_ID=$( jq -r '.properties.outputs.sqlServerId.value' <<< "${resp}" )
 export MSSQL_USERNAME=$( jq -r '.properties.outputs.msqlUserName.value' <<< "${resp}" )
