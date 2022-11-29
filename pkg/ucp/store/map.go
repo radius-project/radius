@@ -29,6 +29,24 @@ func DecodeMap(in interface{}, out interface{}) error {
 	return decoder.Decode(in)
 }
 
+// DecodeAndMergeMap decodes map[string]interface{} structure to the type of out and maintains the values in out.
+func DecodeAndMergeMap(in interface{}, out interface{}) error {
+	cfg := &mapstructure.DecoderConfig{
+		TagName: "json", // Use the JSON config for conversions.
+		Result:  out,
+		Squash:  true,
+		DecodeHook: mapstructure.ComposeDecodeHookFunc(
+			toTimeHookFunc()),
+		ZeroFields: false,
+	}
+	decoder, err := mapstructure.NewDecoder(cfg)
+	if err != nil {
+		return err
+	}
+
+	return decoder.Decode(in)
+}
+
 // https://github.com/mitchellh/mapstructure/issues/159
 func toTimeHookFunc() mapstructure.DecodeHookFunc {
 	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {

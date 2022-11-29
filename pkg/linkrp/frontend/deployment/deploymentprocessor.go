@@ -12,7 +12,6 @@ import (
 	"strings"
 
 	"github.com/go-openapi/jsonpointer"
-	"github.com/mitchellh/mapstructure"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -64,6 +63,9 @@ type DeploymentOutput struct {
 	ComputedValues map[string]interface{}
 	SecretValues   map[string]rp.SecretValueReference
 	RecipeData     datamodel.RecipeData
+
+	// RadiusResource is the original Radius resource model.
+	RadiusResource conv.DataModelInterface
 }
 
 type ResourceData struct {
@@ -210,55 +212,55 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.MongoDatabase)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.SqlDatabase)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.RedisCache)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.RabbitMQMessageQueue)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.Extender)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprStateStore)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprSecretStore)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprPubSubBroker)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute)
-		err = mapstructure.Decode(computedValues, &obj.Properties)
+		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
 		if err != nil {
 			panic(err)
 		}
@@ -272,6 +274,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		ComputedValues: computedValues,
 		SecretValues:   rendererOutput.SecretValues,
 		RecipeData:     rendererOutput.RecipeData,
+		RadiusResource: rendererOutput.RadiusResource,
 	}, nil
 }
 

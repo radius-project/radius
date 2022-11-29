@@ -78,6 +78,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		return nil, err
 	}
 
+	newResource.Properties = deploymentOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute).Properties
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues

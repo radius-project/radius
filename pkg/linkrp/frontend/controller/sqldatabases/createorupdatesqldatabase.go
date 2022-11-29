@@ -78,16 +78,10 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.ResponseWr
 		return nil, err
 	}
 
+	newResource.Properties = deploymentOutput.RadiusResource.(*datamodel.SqlDatabase).Properties
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
-
-	if server, ok := deploymentOutput.ComputedValues["server"].(string); ok {
-		newResource.Properties.Server = server
-	}
-	if database, ok := deploymentOutput.ComputedValues["database"].(string); ok {
-		newResource.Properties.Database = database
-	}
 
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)

@@ -78,6 +78,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 		return nil, err
 	}
 
+	newResource.Properties = deploymentOutput.RadiusResource.(*datamodel.DaprSecretStore).Properties
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues

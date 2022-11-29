@@ -78,10 +78,10 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w htt
 		return nil, err
 	}
 
+	newResource.Properties = deploymentOutput.RadiusResource.(*datamodel.DaprPubSubBroker).Properties
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
-
 	if !isNewResource {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
 		err = daprPubSub.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})

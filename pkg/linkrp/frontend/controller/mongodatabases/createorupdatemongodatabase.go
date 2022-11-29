@@ -79,6 +79,7 @@ func (mongo *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w http.Respon
 		return nil, err
 	}
 
+	newResource.Properties = deploymentOutput.RadiusResource.(*datamodel.MongoDatabase).Properties
 	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
