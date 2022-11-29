@@ -7,6 +7,7 @@ package resource_test
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -92,7 +93,7 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries, false)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {
@@ -109,7 +110,75 @@ func Test_Gateway(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+func Test_HTTPSGateway(t *testing.T) {
+	template := "testdata/corerp-resources-https-gateway.bicep"
+	name := "corerp-resources-gateway"
+
+	requiredSecrets := map[string]map[string]string{}
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: name,
+						Type: validation.ApplicationsResource,
+					},
+					{
+						Name: "gtwy-gtwy",
+						Type: validation.GatewaysResource,
+						App:  name,
+					},
+					{
+						Name: "gtwy-front-rte",
+						Type: validation.HttpRoutesResource,
+						App:  name,
+					},
+					{
+						Name: "gtwy-front-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
+					},
+				},
+			},
+			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
+				// Get hostname from root HTTPProxy in 'default' namespace
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", name)
+				require.NoError(t, err)
+				t.Logf("found root proxy with hostname: {%s}", hostname)
+
+				// Set up pod port-forwarding for contour-envoy
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries, true)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
+					}
+				}
+
+				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
+			},
+		},
+	}, requiredSecrets)
+
+	test.Test(t)
+}
+
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int, https bool) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -127,6 +196,14 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	case localPort := <-portChan:
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
+
+		if https {
+			if err := testHTTPSGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
+				close(stopChan)
+				return err
+			}
+			return nil
+		}
 
 		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
 			close(stopChan)
@@ -165,7 +242,9 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 	response, err := autorest.Send(req,
 		autorest.WithLogging(functional.NewTestLogger(t)),
 		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
-		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
+		autorest.DoRetryForDuration(retryTimeout, retryBackoff),
+	)
+
 	if err != nil {
 		return err
 	}
@@ -180,4 +259,31 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 
 	// Encountered the correct status code
 	return nil
+}
+
+func testHTTPSGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+	transCfg := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // ignore expired SSL certificates
+	}
+	client := &http.Client{Transport: transCfg}
+	url := "https://" + hostname + "/" + path
+
+	response, err := client.Get(url)
+
+	if err != nil {
+		return err
+
+	}
+
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
+
+	if response.StatusCode != expectedStatusCode {
+		return errors.New("did not encounter correct status code")
+	}
+
+	// Encountered the correct status code
+	return nil
+
 }
