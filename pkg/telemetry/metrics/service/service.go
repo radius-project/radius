@@ -13,8 +13,8 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	"github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"go.opentelemetry.io/otel/metric/global"
 )
 
@@ -46,7 +46,7 @@ func (s *Service) Run(ctx context.Context) error {
 	global.SetMeterProvider(provider)
 
 	mux := http.NewServeMux()
-	mux.HandleFunc(s.Options.Config.Prometheus.Endpoint, promHandler.ServeHTTP)
+	mux.HandleFunc(s.Options.Config.Prometheus.Path, promHandler.ServeHTTP)
 	metricsPort := strconv.Itoa(s.Options.Config.Prometheus.Port)
 	server := &http.Server{
 		Addr:    ":" + metricsPort,
