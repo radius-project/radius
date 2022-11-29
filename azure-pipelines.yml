@@ -8,7 +8,7 @@ resources:
   - repository: project-radius_samples
     ref: edge
     type: github
-    endpoint: project-radius
+    endpoint: 'project-radius'
     name: project-radius/samples
 
 trigger: none
