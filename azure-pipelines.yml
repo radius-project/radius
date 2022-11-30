@@ -79,6 +79,7 @@ stages:
     pool:
       vmImage: 'ubuntu-latest'
     steps:
+    ## Force the checkout directory of the radius repo to remain as if we had checked out only one Git repository, this work around the ADO behavior to checkout to a different directory breaking the assumptions of the test steps (for more info https://learn.microsoft.com/en-us/azure/devops/pipelines/repos/multi-repo-checkout?view=azure-devops#checkout-path)
     - checkout: self
       path: s
     - checkout: ProjectRadiusSamples
