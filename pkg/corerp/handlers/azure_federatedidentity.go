@@ -170,7 +170,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 // Delete deletes the federated identity credential.
 func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	fi := &resourcemodel.AzureFederatedIdentity{}
-	if err := store.DecodeMap(options.Resource.Identity.Data, fi); err != nil {
+	if err := store.DecodeMap(options.Resource.Identity.Data, fi, false, false); err != nil {
 		return err
 	}
 

@@ -207,62 +207,63 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	// Transform Radius resource with computedValues
+	// Transform Radius resource with computedValues. DecodeMap applies all the computed values to the associated properties on the data model.
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.MongoDatabase)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.SqlDatabase)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.RedisCache)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		// weaklyTypedInput is true here as the Host value needs to get converted to int32 correctly.
+		err = store.DecodeMap(computedValues, &obj.Properties, true, true)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.RabbitMQMessageQueue)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.Extender)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprStateStore)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprSecretStore)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprPubSubBroker)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := rendererOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute)
-		err = store.DecodeAndMergeMap(computedValues, &obj.Properties)
+		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
 		if err != nil {
-			panic(err)
+			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
 		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here

@@ -7,6 +7,7 @@ package deployment
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -21,6 +22,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -782,6 +784,85 @@ func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	_, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.Error(t, err)
 	require.Equal(t, expectedErr, err.Error())
+}
+
+func Test_DeployRenderedResources_SetComputedValuesOnProperties(t *testing.T) {
+	testcases := []struct {
+		desc              string
+		computedValueName string
+		validateDBName    bool
+	}{
+		{"correctComputedValues", renderers.DatabaseNameValue, true},
+		{"invalidProperty", renderers.ServerNameValue, false},
+	}
+	for _, testcase := range testcases {
+		t.Run(testcase.desc, func(t *testing.T) {
+			ctx := createContext(t)
+			mocks := setup(t)
+			dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
+			rawDataModel := radiustesting.ReadFixture("20220315privatepreview_datamodel.json")
+			dataModel := &datamodel.MongoDatabase{}
+			_ = json.Unmarshal(rawDataModel, dataModel)
+			testResourceType := resourcemodel.ResourceType{
+				Type:     resourcekinds.AzureCosmosAccount,
+				Provider: resourcemodel.ProviderAzure,
+			}
+			testOutputResource := outputresource.OutputResource{
+				LocalID:      outputresource.LocalIDAzureCosmosAccount,
+				ResourceType: testResourceType,
+				Resource: map[string]interface{}{
+					"some-data": "jsonpointer-value",
+				},
+			}
+			portValue := float64(10255)
+			rendererOutput := renderers.RendererOutput{
+				Resources: []outputresource.OutputResource{testOutputResource},
+				ComputedValues: map[string]renderers.ComputedValueReference{
+					renderers.Host: {
+						Value: "testAccount1.mongo.cosmos.azure.com",
+					},
+					renderers.Port: {
+						Value: portValue,
+					},
+					testcase.computedValueName: {
+						Value: "db",
+					},
+				},
+				RadiusResource: dataModel,
+			}
+
+			expectedCosmosAccountIdentity := resourcemodel.ResourceIdentity{
+				ResourceType: &testResourceType,
+				Data:         resourcemodel.ARMIdentity{},
+			}
+			properties := map[string]string{"property-key": "property-value"}
+			mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(expectedCosmosAccountIdentity, properties, nil)
+
+			deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
+			require.NoError(t, err)
+			expected := dataModel
+			expected.Properties.Host = rendererOutput.ComputedValues[renderers.Host].Value.(string)
+			port := rendererOutput.ComputedValues[renderers.Port].Value
+			if port != nil {
+				switch p := port.(type) {
+				case float64:
+					expected.Properties.Port = int32(p)
+				case int32:
+					expected.Properties.Port = p
+				case string:
+					converted, _ := strconv.Atoi(p)
+					expected.Properties.Port = int32(converted)
+				default:
+					panic("unhandled type for the property port")
+				}
+			}
+			if testcase.validateDBName {
+				expected.Properties.Database = rendererOutput.ComputedValues[renderers.DatabaseNameValue].Value.(string)
+			}
+
+			require.Equal(t, expected, deploymentOutput.RadiusResource)
+		})
+	}
 }
 
 func Test_Deploy_MissingJsonPointer(t *testing.T) {

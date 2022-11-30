@@ -111,7 +111,7 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 		data, ok := r.Data.(ARMIdentity)
 		if !ok {
 			data = ARMIdentity{}
-			if err := store.DecodeMap(r.Data, &data); err != nil {
+			if err := store.DecodeMap(r.Data, &data, false, false); err != nil {
 				return "", "", err
 			}
 		}
@@ -126,7 +126,7 @@ func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, 
 		data, ok := r.Data.(KubernetesIdentity)
 		if !ok {
 			data = KubernetesIdentity{}
-			if err := store.DecodeMap(r.Data, &data); err != nil {
+			if err := store.DecodeMap(r.Data, &data, false, false); err != nil {
 				return schema.GroupVersionKind{}, "", "", err
 			}
 		}

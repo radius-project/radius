@@ -154,7 +154,7 @@ func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace 
 
 func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOptions) error {
 	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(options.Resource.Identity.Data, identity); err != nil {
+	if err := store.DecodeMap(options.Resource.Identity.Data, identity, false, false); err != nil {
 		return err
 	}
 

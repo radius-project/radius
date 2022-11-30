@@ -30,5 +30,5 @@ type ObjectQueryResult struct {
 }
 
 func (o *Object) As(out interface{}) error {
-	return DecodeMap(o.Data, out)
+	return DecodeMap(o.Data, out, false, false)
 }

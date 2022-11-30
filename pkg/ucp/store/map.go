@@ -12,33 +12,16 @@ import (
 	"github.com/mitchellh/mapstructure"
 )
 
-// DecodeMap decodes map[string]interface{} structure to the type of out.
-func DecodeMap(in interface{}, out interface{}) error {
+// DecodeMap decodes map[string]interface{} structure to the type of out. If specified, it maintains the values in out and handles weakly typed input.
+func DecodeMap(in interface{}, out interface{}, zeroFields bool, weaklyTypedInput bool) error {
 	cfg := &mapstructure.DecoderConfig{
 		TagName: "json", // Use the JSON config for conversions.
 		Result:  out,
 		Squash:  true,
 		DecodeHook: mapstructure.ComposeDecodeHookFunc(
 			toTimeHookFunc()),
-	}
-	decoder, err := mapstructure.NewDecoder(cfg)
-	if err != nil {
-		return err
-	}
-
-	return decoder.Decode(in)
-}
-
-// DecodeAndMergeMap decodes map[string]interface{} structure to the type of out and maintains the values in out.
-func DecodeAndMergeMap(in interface{}, out interface{}) error {
-	cfg := &mapstructure.DecoderConfig{
-		TagName: "json", // Use the JSON config for conversions.
-		Result:  out,
-		Squash:  true,
-		DecodeHook: mapstructure.ComposeDecodeHookFunc(
-			toTimeHookFunc()),
-		WeaklyTypedInput: true,
-		ZeroFields:       false,
+		WeaklyTypedInput: weaklyTypedInput,
+		ZeroFields:       zeroFields,
 	}
 	decoder, err := mapstructure.NewDecoder(cfg)
 	if err != nil {

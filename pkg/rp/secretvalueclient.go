@@ -29,7 +29,7 @@ type client struct {
 
 func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error) {
 	arm := &resourcemodel.ARMIdentity{}
-	if err := store.DecodeMap(identity.Data, arm); err != nil {
+	if err := store.DecodeMap(identity.Data, arm, false, false); err != nil {
 		return nil, fmt.Errorf("unsupported resource type: %+v. Currently only ARM resources are supported", identity)
 	}
 

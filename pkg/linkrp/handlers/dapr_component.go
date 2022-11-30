@@ -101,7 +101,7 @@ func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespa
 
 func (handler *daprComponentHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
 	identity := &resourcemodel.KubernetesIdentity{}
-	if err := store.DecodeMap(resource.Identity.Data, identity); err != nil {
+	if err := store.DecodeMap(resource.Identity.Data, identity, false, false); err != nil {
 		return err
 	}
 
