@@ -159,13 +159,15 @@ func Test_HTTPSGateway(t *testing.T) {
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				// Set up pod port-forwarding for contour-envoy
-				t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries, true)
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries, true)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
+					}
 				}
 
 				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
