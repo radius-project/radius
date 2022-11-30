@@ -126,17 +126,17 @@ func Test_HTTPSGateway(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gtwys-gtwy",
+						Name: "gtwy-gtwy",
 						Type: validation.GatewaysResource,
 						App:  name,
 					},
 					{
-						Name: "gtwys-front-rte",
+						Name: "gtwy-front-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "gtwys-front-ctnr",
+						Name: "gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -145,10 +145,10 @@ func Test_HTTPSGateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "gtwys-front-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwys-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwys-front-rte"),
-						validation.NewK8sServiceForResource(name, "gtwys-front-rte"),
+						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
 					},
 				},
 			},
