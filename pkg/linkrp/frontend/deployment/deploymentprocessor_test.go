@@ -51,7 +51,6 @@ const (
 
 	daprLinkName        = "test-state-store"
 	daprLinkID          = "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store"
-	daprLinkType        = "applications.link/daprstatestores"
 	azureTableStorageID = "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable"
 
 	recipeName = "testRecipe"

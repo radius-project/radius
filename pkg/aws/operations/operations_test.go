@@ -7,6 +7,7 @@ package operations
 
 import (
 	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -282,6 +283,41 @@ func Test_GeneratePatch(t *testing.T) {
 
 			require.Equal(t, testCase.expectedPatch, patch)
 		})
+	}
+}
 
+func Test_ParsePropertyName(t *testing.T) {
+	testCases := []struct {
+		name   string
+		input  string
+		output string
+		err    error
+	}{
+		{
+			"ParsePropertyName successfully parses single property",
+			"/properties/propertyName",
+			"propertyName",
+			nil,
+		},
+		{
+			"ParsePropertyName successfully parses sub-properties",
+			"/properties/propertyName/subProperty/subSubProperty",
+			"propertyName/subProperty/subSubProperty",
+			nil,
+		},
+		{
+			"ParsePropertyName returns an error if input is invalid",
+			"propertyName",
+			"",
+			fmt.Errorf("property identifier propertyName is not in the format /properties/<propertyName>"),
+		},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			actual, err := ParsePropertyName(testCase.input)
+			require.Equal(t, testCase.output, actual)
+			require.Equal(t, err, testCase.err)
+		})
 	}
 }

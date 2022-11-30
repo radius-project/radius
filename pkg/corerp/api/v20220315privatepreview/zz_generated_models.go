@@ -14,7 +14,7 @@ import "time"
 // ApplicationExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetApplicationExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *ApplicationExtension, *ApplicationKubernetesMetadataExtension
+// - *ApplicationExtension, *ApplicationKubernetesMetadataExtension, *ApplicationKubernetesNamespaceExtension
 type ApplicationExtensionClassification interface {
 	ExtensionClassification
 	// GetApplicationExtension returns the ApplicationExtension content of the underlying type.
@@ -58,6 +58,30 @@ func (a *ApplicationKubernetesMetadataExtension) GetApplicationExtension() *Appl
 
 // GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesMetadataExtension.
 func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
+	return &Extension{
+		Kind: a.Kind,
+	}
+}
+
+// ApplicationKubernetesNamespaceExtension - Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments
+// resource.
+type ApplicationKubernetesNamespaceExtension struct {
+	// REQUIRED; Specifies the extensions of a resource.
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The namespace to use for the application.
+	Namespace *string `json:"namespace,omitempty"`
+}
+
+// GetApplicationExtension implements the ApplicationExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetApplicationExtension() *ApplicationExtension {
+	return &ApplicationExtension{
+		Kind: a.Kind,
+	}
+}
+
+// GetExtension implements the ExtensionClassification interface for type ApplicationKubernetesNamespaceExtension.
+func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
 	return &Extension{
 		Kind: a.Kind,
 	}
@@ -681,8 +705,8 @@ func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbePrope
 // ExtensionClassification provides polymorphic access to related types.
 // Call the interface's GetExtension() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *ApplicationExtension, *ContainerExtension, *ContainerKubernetesMetadataExtension, *DaprSidecarExtension, *EnvironmentExtension,
-// - *Extension, *ManualScalingExtension
+// - *ApplicationExtension, *ApplicationKubernetesNamespaceExtension, *ContainerExtension, *ContainerKubernetesMetadataExtension,
+// - *DaprSidecarExtension, *EnvironmentExtension, *Extension, *ManualScalingExtension
 type ExtensionClassification interface {
 	// GetExtension returns the Extension content of the underlying type.
 	GetExtension() *Extension

@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -98,13 +98,13 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added in `getResourceDataByID`
 		return renderers.RendererOutput{}, err
 	}
-	// 2. fetch the application resource from the DB to get the environment info
-	environment, err := dp.getEnvironmentFromApplication(ctx, res.AppID, resourceID.String())
+	// 2. fetch the application properties from the DB
+	appProperties, err := dp.getApplicationProperties(ctx, res.AppID, resourceID.String())
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	env, err := dp.fetchEnvironment(ctx, environment, resourceID)
+	env, err := dp.fetchEnvironment(ctx, appProperties.BasicResourceProperties.Environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -125,7 +125,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: rendererDependencies, Environment: envOptions})
+	appOptions, err := dp.getAppOptions(ctx, appProperties)
+	if err != nil {
+		return renderers.RendererOutput{}, err
+	}
+
+	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{Dependencies: rendererDependencies, Environment: envOptions, Application: appOptions})
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -371,8 +376,8 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 	return dp.secretClient.FetchSecret(ctx, match.Identity, reference.Action, reference.ValueSelector)
 }
 
-// TODO: Revisit to remove the datamodel.Environment dependency.
-func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel.Environment) (renderers.EnvironmentOptions, error) {
+// TODO: Revisit to remove the corerp_dm.Environment dependency.
+func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm.Environment) (renderers.EnvironmentOptions, error) {
 	logger := radlogger.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
@@ -382,7 +387,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 
 	// Extract compute info
 	switch env.Properties.Compute.Kind {
-	case datamodel.KubernetesComputeKind:
+	case corerp_dm.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
 
 		if kubeProp.Namespace == "" {
@@ -398,6 +403,11 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
 		logger.V(radlogger.Debug).Info("environment identity is not specified.")
+	}
+
+	// Get Environment KubernetesMetadata Info
+	if envExt := corerp_dm.FindExtension(env.Properties.Extensions, corerp_dm.KubernetesMetadata); envExt != nil && envExt.KubernetesMetadata != nil {
+		envOpts.KubernetesMetadata = envExt.KubernetesMetadata
 	}
 
 	if publicEndpointOverride != "" {
@@ -449,6 +459,18 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *datamodel
 	return envOpts, nil
 }
 
+// getAppOptions: Populates and Returns ApplicationOptions.
+func (dp *deploymentProcessor) getAppOptions(ctx context.Context, appProp *corerp_dm.ApplicationProperties) (renderers.ApplicationOptions, error) {
+	appOpts := renderers.ApplicationOptions{}
+
+	// Get Application KubernetesMetadata Info
+	if ext := corerp_dm.FindExtension(appProp.Extensions, corerp_dm.KubernetesMetadata); ext != nil && ext.KubernetesMetadata != nil {
+		appOpts.KubernetesMetadata = ext.KubernetesMetadata
+	}
+
+	return appOpts, nil
+}
+
 // getResourceDataByID fetches resource for the provided id from the data store
 func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resourceID resources.ID) (ResourceData, error) {
 	errMsg := "failed to fetch the resource %q. Err: %w"
@@ -468,25 +490,25 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(container.ResourceType):
-		obj := &datamodel.ContainerResource{}
+		obj := &corerp_dm.ContainerResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(gateway.ResourceType):
-		obj := &datamodel.Gateway{}
+		obj := &corerp_dm.Gateway{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(volume.ResourceType):
-		obj := &datamodel.VolumeResource{}
+		obj := &corerp_dm.VolumeResource{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
 		return dp.buildResourceDependency(resourceID, obj.Properties.Application, obj, obj.Properties.Status.OutputResources, obj.ComputedValues, obj.SecretValues, link_dm.RecipeData{})
 	case strings.ToLower(httproute.ResourceType):
-		obj := &datamodel.HTTPRoute{}
+		obj := &corerp_dm.HTTPRoute{}
 		if err = resource.As(obj); err != nil {
 			return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 		}
@@ -611,44 +633,44 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	return rendererDependency, nil
 }
 
-// getEnvironmentFromApplication returns environment id linked to the application fetched from the db
-func (dp *deploymentProcessor) getEnvironmentFromApplication(ctx context.Context, appID resources.ID, resourceID string) (string, error) {
+// getApplicationProperties returns application properties linked to the application fetched from the db
+func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, appID resources.ID, resourceID string) (*corerp_dm.ApplicationProperties, error) {
 	errMsg := "failed to fetch the application %q for the resource %q. Err: %w"
 
 	appIDType := appID.Type()
-	app := &datamodel.Application{}
+	app := &corerp_dm.Application{}
 	if !strings.EqualFold(appIDType, app.ResourceTypeName()) {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
 	}
 
 	sc, err := dp.sp.GetStorageClient(ctx, appIDType)
 	if err != nil {
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 
 	res, err := sc.Get(ctx, appID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
+			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
 		}
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 	err = res.As(app)
 	if err != nil {
-		return "", fmt.Errorf(errMsg, appID.String(), resourceID, err)
+		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
 	}
 
-	return app.Properties.Environment, nil
+	return &app.Properties, nil
 }
 
 // fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*datamodel.Environment, error) {
+func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*corerp_dm.Environment, error) {
 	envId, err := resources.ParseResource(environmentID)
 	if err != nil {
 		return nil, err
 	}
 
-	env := &datamodel.Environment{}
+	env := &corerp_dm.Environment{}
 
 	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
 		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))

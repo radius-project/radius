@@ -14,11 +14,11 @@ import (
 
 // Client is an interface to implement secret operations.
 type Client interface {
-	// Save creates or updates secrets. 
+	// Save creates or updates secret. 
 	// Returns ErrInvalid in case of invalid input.
 	Save(ctx context.Context, name string, value []byte) error
 
-	// Delete deletes secrets of id.
+	// Delete deletes the secret with the given name.
 	Delete(ctx context.Context, name string) error
 
 	// Get gets secret name if present else returns an error.

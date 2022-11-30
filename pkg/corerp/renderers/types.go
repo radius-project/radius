@@ -16,6 +16,14 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
+const (
+	// DefaultPort represents the default port of HTTP endpoint.
+	DefaultPort int32 = 80
+
+	// DefaultSecurePort represents the default port of HTTPS endpoint.
+	DefaultSecurePort int32 = 443
+)
+
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
 	GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
@@ -25,6 +33,7 @@ type Renderer interface {
 type RenderOptions struct {
 	Dependencies map[string]RendererDependency
 	Environment  EnvironmentOptions
+	Application  ApplicationOptions
 }
 
 // Represents a dependency of the resource currently being rendered. Currently dependencies are always Radius resources.
@@ -55,6 +64,14 @@ type EnvironmentOptions struct {
 	Gateway GatewayOptions
 	// Identity represents identity of the environment.
 	Identity *rp.IdentitySettings
+	// KubernetesMetadata represents the Environment KubernetesMetadata extension.
+	KubernetesMetadata *datamodel.KubeMetadataExtension
+}
+
+// ApplicationOptions represents the options for the linked application resource.
+type ApplicationOptions struct {
+	// KubernetesMetadata represents the Application KubernetesMetadata extension.
+	KubernetesMetadata *datamodel.KubeMetadataExtension
 }
 
 type GatewayOptions struct {

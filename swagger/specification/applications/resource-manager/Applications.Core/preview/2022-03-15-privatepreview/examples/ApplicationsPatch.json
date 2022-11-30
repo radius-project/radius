@@ -18,6 +18,10 @@
               "foo/bar/team": "credit",
               "foo/bar/contact": "radiususer"
             }
+          },
+          {
+            "kind": "kubernetesNamespaceOverride",
+            "namespace": "app-ns"
           }
         ]
       }
@@ -43,6 +47,10 @@
                 "foo/bar/team": "credit",
                 "foo/bar/contact": "radiususer"
               }
+            },
+            {
+              "kind": "kubernetesNamespaceOverride",
+              "namespace": "app-ns"
             }
           ]
         }

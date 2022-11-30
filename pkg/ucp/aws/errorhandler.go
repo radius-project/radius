@@ -6,6 +6,7 @@ package aws
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/smithy-go"
@@ -58,4 +59,19 @@ func HandleAWSError(err error) (armrpc_rest.Response, error) {
 	}
 
 	return armrpc_rest.NewInternalServerErrorARMResponse(e), nil
+}
+
+// AWSMissingPropertyError is an error type to be returned when the call to UCP CreateWithPost
+// is missing values for one of the expected primary identifier properties
+type AWSMissingPropertyError struct {
+	PropertyName string
+}
+
+func (e *AWSMissingPropertyError) Is(target error) bool {
+	_, ok := target.(*AWSMissingPropertyError)
+	return ok
+}
+
+func (e *AWSMissingPropertyError) Error() string {
+	return fmt.Sprintf("mandatory property %s is missing", e.PropertyName)
 }

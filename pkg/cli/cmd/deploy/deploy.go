@@ -9,6 +9,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -18,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/spf13/cobra"
 )
 
@@ -152,15 +155,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Verify application if provided
 	if r.ApplicationName != "" {
-		_, err = client.ShowApplication(cmd.Context(), r.ApplicationName)
-		if clients.Is404Error(err) {
-			return &cli.FriendlyError{Message: fmt.Sprintf("application %q does not exist in scope %q. Run `rad init` and try again \n", r.ApplicationName, workspace.Scope)}
-		} else if err != nil {
-			return err
-		}
-
 		r.ApplicationID = r.Workspace.Scope + "/providers/applications.core/applications/" + r.ApplicationName
 	}
 
@@ -185,6 +180,25 @@ func (r *Runner) Run(ctx context.Context) error {
 	template, err := r.Bicep.PrepareTemplate(r.FilePath)
 	if err != nil {
 		return err
+	}
+
+	// Create application if specified. This supports the case where the application resource
+	// is not specified in Bicep. Creating the application automatically helps us "bootstrap" in a new environment.
+	if r.ApplicationName != "" {
+		client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
+		if err != nil {
+			return err
+		}
+
+		err = client.CreateApplicationIfNotFound(ctx, r.ApplicationName, v20220315privatepreview.ApplicationResource{
+			Location: to.Ptr(v1.LocationGlobal),
+			Properties: &v20220315privatepreview.ApplicationProperties{
+				Environment: &r.Workspace.Environment,
+			},
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	progressText := ""

@@ -12,11 +12,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
-	"github.com/aws/aws-sdk-go-v2/service/cloudformation/types"
+	awsoperations "github.com/project-radius/radius/pkg/aws/operations"
 	"github.com/project-radius/radius/pkg/middleware"
 	awsclient "github.com/project-radius/radius/pkg/ucp/aws"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -54,38 +53,54 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 	return cloudControlClient, cloudFormationClient, resourceType, id, nil
 }
 
-func lookupAWSResourceSchema(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, resourceType string) ([]interface{}, error) {
-	output, err := cloudFormationClient.DescribeType(ctx, &cloudformation.DescribeTypeInput{
-		Type:     types.RegistryTypeResource,
-		TypeName: aws.String(resourceType),
-	})
+// getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
+// provided AWS CloudFormation type schema
+func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]string, error) {
+	schemaObject := map[string]interface{}{}
+	err := json.Unmarshal([]byte(schema), &schemaObject)
 	if err != nil {
 		return nil, err
 	}
 
-	description := map[string]interface{}{}
-	err = json.Unmarshal([]byte(*output.Schema), &description)
-	if err != nil {
-		return nil, err
+	primaryIdentifiersObject, exists := schemaObject["primaryIdentifier"]
+	if !exists {
+		return nil, fmt.Errorf("primaryIdentifier not found in schema")
 	}
-	primaryIdentifier := description["primaryIdentifier"].([]interface{})
-	return primaryIdentifier, nil
+
+	primaryIdentifiers, ok := primaryIdentifiersObject.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("primaryIdentifier is not an array")
+	}
+
+	var primaryIdentifiersString []string
+	for _, primaryIdentifier := range primaryIdentifiers {
+		primaryIdentifiersString = append(primaryIdentifiersString, primaryIdentifier.(string))
+	}
+
+	return primaryIdentifiersString, nil
 }
 
-func getResourceIDWithMultiIdentifiers(ctx context.Context, cloudFormationClient awsclient.AWSCloudFormationClient, url string, resourceType string, properties map[string]interface{}) (string, error) {
-	primaryIdentifiers, err := lookupAWSResourceSchema(ctx, cloudFormationClient, resourceType)
+// getPrimaryIdentifierFromMultiIdentifiers returns the primary identifier for the resource
+// when provided desired primary identifier values and the resource type schema
+func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]interface{}, schema string) (string, error) {
+	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
 	if err != nil {
 		return "", err
 	}
 
 	var resourceID string
-	for _, pi := range primaryIdentifiers {
+	for _, primaryIdentifier := range primaryIdentifiers {
 		// Primary identifier is of the form /properties/<property-name>
-		propertyName := strings.Split(pi.(string), "/")[2]
+		propertyName, err := awsoperations.ParsePropertyName(primaryIdentifier)
+		if err != nil {
+			return "", err
+		}
 
 		if _, ok := properties[propertyName]; !ok {
 			// Mandatory property is missing
-			err := fmt.Errorf("mandatory property %s is missing", propertyName)
+			err := &awsclient.AWSMissingPropertyError{
+				PropertyName: propertyName,
+			}
 			return "", err
 		}
 		resourceID += properties[propertyName].(string) + "|"

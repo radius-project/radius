@@ -19,8 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/linkrp/frontend"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
-	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
+	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
+	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -34,6 +34,13 @@ func main() {
 	flag.StringVar(&configFile, "config-file", defaultConfig, "The service configuration file.")
 	flag.BoolVar(&enableAsyncWorker, "enable-asyncworker", true, "Flag to run async request process worker (for private preview and dev/test purpose).")
 
+	var enableMetrics bool
+	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Flag to enable Radius metrics.")
+	var metricsPath string
+	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "The path to Radius metrics.")
+	var metricsPort int
+	flag.IntVar(&metricsPort, "metrics-port", 9090, "The port to expose Radius metrics.")
+
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
 	}
@@ -44,7 +51,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := radlogger.NewLogger("applications.link")
 	if err != nil {

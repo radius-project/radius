@@ -42,7 +42,11 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 	var extensions []datamodel.Extension
 	if src.Properties.Extensions != nil {
 		for _, e := range src.Properties.Extensions {
-			extensions = append(extensions, toAppExtensionDataModel(e))
+			//TODO : Check whether namespace extension has already been defined
+			ext := toAppExtensionDataModel(e)
+			if ext != nil {
+				extensions = append(extensions, *ext)
+			}
 		}
 		converted.Properties.Extensions = extensions
 	}
@@ -92,25 +96,56 @@ func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationE
 		}
 
 		return converted.GetApplicationExtension()
+
+	case datamodel.KubernetesNamespaceOverride:
+		var namespace = getFromExtensionNamespace(e)
+		converted := ApplicationKubernetesNamespaceExtension{
+			Kind:      to.StringPtr(string(e.Kind)),
+			Namespace: &namespace,
+		}
+
+		return converted.GetApplicationExtension()
+
 	}
 
 	return nil
 }
 
 // toAppExtensionDataModel: Converts from versioned datamodel to base datamodel
-func toAppExtensionDataModel(e ApplicationExtensionClassification) datamodel.Extension {
+func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Extension {
 	switch c := e.(type) {
 	case *ApplicationKubernetesMetadataExtension:
-
-		converted := datamodel.Extension{
+		return &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return converted
+
+	case *ApplicationKubernetesNamespaceExtension:
+		if c.Namespace == nil || *c.Namespace == "" {
+			return nil
+		}
+		return &datamodel.Extension{
+			Kind: datamodel.KubernetesNamespaceOverride,
+			KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
+				Namespace: *c.Namespace,
+			},
+		}
 	}
 
-	return datamodel.Extension{}
+	return nil
+}
+
+func getFromExtensionNamespace(e datamodel.Extension) string {
+	var namespace string
+
+	if e.KubernetesNamespaceOverride != nil {
+		if e.KubernetesNamespaceOverride.Namespace != "" {
+			namespace = e.KubernetesNamespaceOverride.Namespace
+		}
+	}
+
+	return namespace
 }

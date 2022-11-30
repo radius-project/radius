@@ -18,6 +18,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/aws/aws-sdk-go-v2/service/cloudformation"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
 	"github.com/stretchr/testify/require"
@@ -26,6 +27,8 @@ import (
 func Test_CreateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResource(gomock.Any(), gomock.Any(), gomock.Any()).Return(
@@ -56,7 +59,7 @@ func Test_CreateAWSResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testAWSSingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	request.Host = testHost
 	require.NoError(t, err)
 
@@ -73,16 +76,16 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	require.NotNil(t, res.Header.Get("Location"))
-	require.Equal(t, testlocationHeader, res.Header.Get("Location"))
+	require.Equal(t, testResource.LocationHeader, res.Header.Get("Location"))
 
 	require.NotNil(t, res.Header.Get("Azure-AsyncOperation"))
-	require.Equal(t, testazureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
+	require.Equal(t, testResource.AzureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{
-		"id":   testAWSSingleResourcePath,
-		"name": testAWSResourceName,
-		"type": testAWSResourceType,
+		"id":   testResource.SingleResourcePath,
+		"name": testResource.ResourceName,
+		"type": testResource.ResourceType,
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
@@ -101,27 +104,11 @@ func Test_UpdateAWSResource(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	resourceTypeAWS := "AWS::MemoryDB::Cluster"
-	resourceId := "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.MemoryDB/Cluster/mycluster"
-	resourceType := "AWS.MemoryDB/Cluster"
-	resourceName := "mycluster"
+	testResource := CreateMemoryDBClusterTestResource(uuid.NewString())
 
-	typeSchema := map[string]interface{}{
-		"readOnlyProperties": []interface{}{
-			"/properties/ClusterEndpoint/Address",
-			"/properties/ClusterEndpoint/Port",
-			"/properties/ARN",
-		},
-		"createOnlyProperties": []interface{}{
-			"/properties/ClusterName",
-			"/properties/Port",
-		},
-	}
-	serialized, err := json.Marshal(typeSchema)
-	require.NoError(t, err)
 	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(resourceTypeAWS),
-		Schema:   aws.String(string(serialized)),
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	getResponseBody := map[string]interface{}{
@@ -157,6 +144,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 
 	requestBody := map[string]interface{}{
 		"properties": map[string]interface{}{
+			"Port":                6379,
 			"NumReplicasPerShard": 0,
 		},
 	}
@@ -170,7 +158,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, resourceId, bytes.NewBuffer(requestBodyBytes))
+	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -187,9 +175,9 @@ func Test_UpdateAWSResource(t *testing.T) {
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{
-		"id":   resourceId,
-		"name": resourceName,
-		"type": resourceType,
+		"id":   testResource.SingleResourcePath,
+		"name": testResource.ResourceName,
+		"type": testResource.ResourceType,
 		"properties": map[string]interface{}{
 			"ClusterEndpoint": map[string]interface{}{
 				"Address": "test",
@@ -213,20 +201,11 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	resourceType := "AWS::Kinesis::Stream"
-	typeSchema := map[string]interface{}{
-		"readOnlyProperties": []interface{}{
-			"/properties/Arn",
-		},
-		"createOnlyProperties": []interface{}{
-			"/properties/Name",
-		},
-	}
-	serialized, err := json.Marshal(typeSchema)
-	require.NoError(t, err)
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
+
 	output := cloudformation.DescribeTypeOutput{
-		TypeName: aws.String(resourceType),
-		Schema:   aws.String(string(serialized)),
+		TypeName: aws.String(testResource.AWSResourceType),
+		Schema:   aws.String(testResource.Schema),
 	}
 
 	getResponseBody := map[string]interface{}{
@@ -263,7 +242,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodPut, testAWSSingleResourcePath, bytes.NewBuffer(requestBodyBytes))
+	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -280,9 +259,9 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	defer res.Body.Close()
 
 	expectedResponseObject := map[string]interface{}{
-		"id":   testAWSSingleResourcePath,
-		"name": testAWSResourceName,
-		"type": testAWSResourceType,
+		"id":   testResource.SingleResourcePath,
+		"name": testResource.ResourceName,
+		"type": testResource.ResourceType,
 		"properties": map[string]interface{}{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),

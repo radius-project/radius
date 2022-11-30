@@ -17,8 +17,12 @@ import (
 	"github.com/project-radius/radius/pkg/cli"
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
+	env_delete "github.com/project-radius/radius/pkg/cli/cmd/env/delete"
+	env_list "github.com/project-radius/radius/pkg/cli/cmd/env/list"
 	"github.com/project-radius/radius/pkg/cli/cmd/env/namespace"
+	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
 	"github.com/project-radius/radius/pkg/cli/setup"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -34,6 +38,7 @@ import (
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
+	"github.com/project-radius/radius/pkg/cli/cmd/run"
 	workspace_create "github.com/project-radius/radius/pkg/cli/cmd/workspace/create"
 	workspace_delete "github.com/project-radius/radius/pkg/cli/cmd/workspace/delete"
 	workspace_list "github.com/project-radius/radius/pkg/cli/cmd/workspace/list"
@@ -46,6 +51,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
+
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -122,6 +128,7 @@ func initSubCommands() {
 		ConnectionFactory: connections.DefaultFactory,
 		ConfigHolder:      ConfigHolder,
 		Deploy:            &deploy.Impl{},
+		Logstream:         &logstream.Impl{},
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
@@ -135,6 +142,9 @@ func initSubCommands() {
 
 	deployCmd, _ := cmddeploy.NewCommand(framework)
 	RootCmd.AddCommand(deployCmd)
+
+	runCmd, _ := run.NewCommand(framework)
+	RootCmd.AddCommand(runCmd)
 
 	showCmd, _ := resource_show.NewCommand(framework)
 	resourceCmd.AddCommand(showCmd)
@@ -165,6 +175,15 @@ func initSubCommands() {
 
 	envCreateCmd, _ := env_create.NewCommand(framework)
 	envCmd.AddCommand(envCreateCmd)
+
+	envDeleteCmd, _ := env_delete.NewCommand(framework)
+	envCmd.AddCommand(envDeleteCmd)
+
+	envListCmd, _ := env_list.NewCommand(framework)
+	envCmd.AddCommand(envListCmd)
+
+	envShowCmd, _ := env_show.NewCommand(framework)
+	envCmd.AddCommand(envShowCmd)
 
 	workspaceCreateCmd, _ := workspace_create.NewCommand(framework)
 	workspaceCmd.AddCommand(workspaceCreateCmd)

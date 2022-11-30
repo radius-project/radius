@@ -403,3 +403,24 @@ func requiredMultiple(cmd *cobra.Command, args []string, names ...string) ([]str
 	}
 	return results, nil
 }
+
+// RequireScope returns the scope the command should use to execute or an error if unset.
+//
+// This function considers the following sources:
+//
+// - --group flag
+// - workspace scope
+func RequireScope(cmd *cobra.Command, workspace workspaces.Workspace) (string, error) {
+	resourceGroup, err := cmd.Flags().GetString("group")
+	if err != nil {
+		return "", err
+	}
+
+	if resourceGroup != "" {
+		return fmt.Sprintf("/planes/radius/local/resourceGroups/%s", resourceGroup), nil
+	} else if workspace.Scope != "" {
+		return workspace.Scope, nil
+	} else {
+		return "", &FriendlyError{Message: "no resource group set, use `--group` to pass in a resource group name"}
+	}
+}

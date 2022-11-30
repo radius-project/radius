@@ -16,14 +16,15 @@ import (
 
 // ConvertTo converts from the versioned Gateway resource to version-agnostic datamodel.
 func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
-	var tls *datamodel.GatewayPropertiesTLS
-	if src.Properties.TLS != nil && src.Properties.TLS.SSLPassThrough != nil {
-		tls = &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: to.Bool(src.Properties.TLS.SSLPassThrough),
-		}
+
+	tls := &datamodel.GatewayPropertiesTLS{}
+	if src.Properties.TLS == nil {
+		tls = nil
 	} else {
-		tls = &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: true, // Defaulting to true allows us to support https backend server whenever the backend server is responsible for TLS termination.
+		if src.Properties.TLS.SSLPassThrough != nil {
+			tls.SSLPassThrough = to.Bool(src.Properties.TLS.SSLPassThrough)
+		} else {
+			tls.SSLPassThrough = false
 		}
 	}
 

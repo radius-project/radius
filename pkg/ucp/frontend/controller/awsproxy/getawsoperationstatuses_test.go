@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol"
 	"github.com/aws/aws-sdk-go-v2/service/cloudcontrol/types"
 	"github.com/golang/mock/gomock"
+	"github.com/google/uuid"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -25,8 +26,9 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
 
-	eventTime := time.Now()
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
+	eventTime := time.Now()
 	testOptions := setupTest(t)
 	testOptions.AWSCloudControlClient.EXPECT().GetResourceRequestStatus(gomock.Any(), gomock.Any(), gomock.Any()).Return(
 		&cloudcontrol.GetResourceRequestStatusOutput{
@@ -43,7 +45,7 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationStatusesPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
@@ -60,6 +62,8 @@ func Test_GetAWSOperationStatuses(t *testing.T) {
 func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	ctx, cancel := testcontext.New(t)
 	defer cancel()
+
+	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
 	eventTime := time.Now()
 	errorCode := types.HandlerErrorCodeInternalFailure
@@ -83,7 +87,7 @@ func Test_GetAWSOperationStatuses_Failed(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	request, err := http.NewRequest(http.MethodGet, testAWSOperationStatusesPath, nil)
+	request, err := http.NewRequest(http.MethodGet, testResource.OperationStatusesPath, nil)
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)

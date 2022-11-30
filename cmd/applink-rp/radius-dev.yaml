@@ -9,8 +9,9 @@ queueProvider:
   provider: inmemory
 metricsProvider:
   prometheus:
-    port: 2222
-    endpoint: "/metrics"
+    enabled: true
+    path: "/metrics"
+    port: 9090
 featureFlags:
   - "PLACEHOLDER"
 server:

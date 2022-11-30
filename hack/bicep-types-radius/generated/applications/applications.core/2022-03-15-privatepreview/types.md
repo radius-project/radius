@@ -88,6 +88,11 @@
 * **kind**: 'kubernetesMetadata' (Required): Specifies the extensions of a resource.
 * **labels**: [ApplicationKubernetesMetadataExtensionLabels](#applicationkubernetesmetadataextensionlabels): Labels to be applied to the Kubernetes resources output by the resource
 
+### ApplicationKubernetesNamespaceExtension
+#### Properties
+* **kind**: 'kubernetesNamespaceOverride' (Required): Specifies the extensions of a resource.
+* **namespace**: string (Required): The namespace to use for the application.
+
 
 ## ApplicationKubernetesMetadataExtensionAnnotations
 ### Properties

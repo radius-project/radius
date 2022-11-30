@@ -28,6 +28,10 @@
             "foo/bar/contact": "radiususer"
           }
         }
+      },
+      {
+        "kind": "kubernetesNamespaceOverride",
+        "namespace": "app0-ns"
       }
     ]
   }
