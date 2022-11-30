@@ -38,7 +38,7 @@ var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("PROJECT_RADIUS_SAMP
 // Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
 func Test_TutorialSampleMongoContainer(t *testing.T) {
 	if !samplesRepoEnvVarSet {
-		t.Fatalf("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH must be set to the absolute path of the project-radius/samples")
+		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
 	}
 	cwd, _ := os.Getwd()
 	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
