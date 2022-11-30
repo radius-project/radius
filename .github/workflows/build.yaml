@@ -30,7 +30,7 @@ env:
 jobs:
   build:
     name: Build ${{ matrix.target_os }}_${{ matrix.target_arch }} binaries
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius]
     env:
       GOOS: ${{ matrix.target_os }}
       GOARCH: ${{ matrix.target_arch }}
