@@ -20,7 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-const reservedKeyStart = "radius.dev/"
+const reservedRadiusDevPrefix = "radius.dev/"
 
 // Renderer is the renderers.Renderer implementation for the kubernetesmetadata extension.
 type Renderer struct {
@@ -206,7 +206,7 @@ func mergeMaps(mergeMap map[string]string, newInputMap map[string]string, existi
 // Reject custom user entries that would affect Radius reserved keys
 func rejectReservedEntries(inputMap map[string]string, logger logr.Logger) map[string]string {
 	for k := range inputMap {
-		if strings.HasPrefix(k, reservedKeyStart) {
+		if strings.HasPrefix(k, reservedRadiusDevPrefix) {
 			logger.Info("User provided label/annotation key starts with 'radius.dev/' and is not being applied", "key", k)
 			delete(inputMap, k)
 		}
