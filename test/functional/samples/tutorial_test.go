@@ -31,13 +31,16 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-var samplesRepositoryPath  = os.Getenv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
+var samplesRepoAbsPath, samplesRepoEnvVarSet  = os.LookupEnv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
 
 // To run, sample directory must be cloned adjacent to this folder
 // Ex: test/functional/samples/samples/
 func Test_TutorialSampleMongoContainer(t *testing.T) {
+	if !samplesRepoEnvVarSet {
+		t.Fatalf("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH must be set to the absolute path of the project-radius/samples")
+	}
 	cwd, _ := os.Getwd()
-	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepositoryPath)
+	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
 	template := filepath.Join(relPathSamplesRepo, "tutorial/app.bicep")
 	appName := "webapp"
 
