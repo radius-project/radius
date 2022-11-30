@@ -31,10 +31,11 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-var samplesRepoAbsPath, samplesRepoEnvVarSet  = os.LookupEnv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
+var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
 
-// To run, sample directory must be cloned adjacent to this folder
-// Ex: test/functional/samples/samples/
+// Test process must run with PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH env var set to samples repo absolute path
+// You can set the variables used by vscode codelens (e.g. 'debug test', 'run test') using 'go.testEnvVars' in vscode settings.json
+// Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
 func Test_TutorialSampleMongoContainer(t *testing.T) {
 	if !samplesRepoEnvVarSet {
 		t.Fatalf("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH must be set to the absolute path of the project-radius/samples")
