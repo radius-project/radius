@@ -31,7 +31,7 @@ const (
 
 func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-gateway"
+	name := "corerp-resources-http-gateway"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -45,27 +45,27 @@ func Test_Gateway(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gtwy-gtwy",
+						Name: "http-gtwy-gtwy",
 						Type: validation.GatewaysResource,
 						App:  name,
 					},
 					{
-						Name: "gtwy-front-rte",
+						Name: "http-gtwy-front-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "gtwy-front-ctnr",
+						Name: "http-gtwy-front-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "gtwy-back-rte",
+						Name: "http-gtwy-back-rte",
 						Type: validation.HttpRoutesResource,
 						App:  name,
 					},
 					{
-						Name: "gtwy-back-ctnr",
+						Name: "http-gtwy-back-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -74,13 +74,13 @@ func Test_Gateway(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
-						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
-						validation.NewK8sPodForResource(name, "gtwy-back-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-back-rte"),
-						validation.NewK8sServiceForResource(name, "gtwy-back-rte"),
+						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr"),
+						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr"),
+						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
+						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-front-rte"),
+						validation.NewK8sServiceForResource(name, "http-gtwy-front-rte"),
+						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-back-rte"),
+						validation.NewK8sServiceForResource(name, "http-gtwy-back-rte"),
 					},
 				},
 			},
