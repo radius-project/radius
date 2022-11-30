@@ -12,14 +12,13 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/labels"
 )
-
-const reservedRadiusDevPrefix = "radius.dev/"
 
 // Renderer is the renderers.Renderer implementation for the kubernetesmetadata extension.
 type Renderer struct {
@@ -206,7 +205,7 @@ func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[
 	logger := radlogger.GetLogger(ctx)
 
 	for k := range inputMap {
-		if strings.HasPrefix(k, reservedRadiusDevPrefix) {
+		if strings.HasPrefix(k, kubernetes.RadiusDevPrefix) {
 			logger.Info("User provided label/annotation key starts with 'radius.dev/' and is not being applied", "key", k)
 			delete(inputMap, k)
 		}
