@@ -8,8 +8,8 @@ package resource_test
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"testing"
 	"time"
@@ -178,7 +178,7 @@ func Test_HTTPSGateway(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int, https bool) error {
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int, isHttps bool) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -197,27 +197,23 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
-		if https {
-			if err := testHTTPSGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
-				close(stopChan)
-				return err
-			}
-			return nil
-		}
-
-		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, isHttps); err != nil {
 			close(stopChan)
 			return err
+		}
+
+		if isHttps {
+			return nil
 		}
 
 		// Both of these URLs route to the same backend service,
 		// but /backend2 maps to / which allows it to access /healthz
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200, isHttps); err != nil {
 			close(stopChan)
 			return err
 		}
 
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404, isHttps); err != nil {
 			close(stopChan)
 			return err
 		}
@@ -228,7 +224,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	}
 }
 
-func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int, isHttps bool) error {
 	req, err := autorest.Prepare(&http.Request{},
 		autorest.WithBaseURL(baseURL),
 		autorest.WithPath(path))
@@ -239,51 +235,44 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 	req.Host = hostname
 
 	// Send requests to backing container via port-forward
-	response, err := autorest.Send(req,
+	response, err := autorest.SendWithSender(
+		newTestHTTPClient(isHttps),
+		req,
 		autorest.WithLogging(functional.NewTestLogger(t)),
 		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
-		autorest.DoRetryForDuration(retryTimeout, retryBackoff),
-	)
-
-	if err != nil {
-		return err
-	}
+		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
 
 	if response.Body != nil {
 		defer response.Body.Close()
 	}
 
-	if response.StatusCode != expectedStatusCode {
-		return errors.New("did not encounter correct status code")
+	if err != nil {
+		return err
 	}
 
 	// Encountered the correct status code
 	return nil
+
 }
 
-func testHTTPSGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // ignore expired SSL certificates
-	}
-	client := &http.Client{Transport: transCfg}
-	url := "https://" + hostname + "/" + path
-
-	response, err := client.Get(url)
-
-	if err != nil {
-		return err
-
-	}
-
-	if response.Body != nil {
-		defer response.Body.Close()
+func newTestHTTPClient(isHttps bool) autorest.Sender {
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		ForceAttemptHTTP2:     true,
+		MaxIdleConns:          100,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	if response.StatusCode != expectedStatusCode {
-		return errors.New("did not encounter correct status code")
+	if isHttps {
+		transport.TLSClientConfig = &tls.Config{
+			InsecureSkipVerify: true, //ignore certificate verification errors; needed since we use self-signed cert for magpie
+			MinVersion:         tls.VersionTLS12,
+		}
 	}
-
-	// Encountered the correct status code
-	return nil
-
+	return &http.Client{Transport: transport}
 }

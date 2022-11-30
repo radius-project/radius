@@ -126,8 +126,8 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
     container: {
       image: magpieimage
       env: {
-        KEY: base64ToString(secret.data.key)
-        CERT: base64ToString(secret.data.cert)
+        TLS_KEY: base64ToString(secret.data.key)
+        TLS_CERT: base64ToString(secret.data.cert)
       }
       ports: {
         web: {
