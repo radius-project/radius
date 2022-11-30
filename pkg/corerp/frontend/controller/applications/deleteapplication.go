@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -19,6 +20,8 @@ import (
 )
 
 var _ ctrl.Controller = (*DeleteApplication)(nil)
+
+var AsyncDeleteAppOperationTimeout = time.Duration(120) * time.Second
 
 // DeleteApplication is the controller implementation to delete application resource.
 type DeleteApplication struct {
@@ -60,5 +63,10 @@ func (a *DeleteApplication) Run(ctx context.Context, w http.ResponseWriter, req 
 		return nil, err
 	}
 
-	return rest.NewOKResponse(nil), nil
+	if r, err := a.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteAppOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
+	}
+
+	return a.ConstructAsyncResponse(ctx, req.Method, etag, old)
+
 }

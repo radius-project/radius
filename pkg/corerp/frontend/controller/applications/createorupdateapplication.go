@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -23,6 +24,9 @@ import (
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
+
+// AsyncPutGatewayOperationTimeout is the default timeout duration of async put gateway operation.
+var AsyncPutAppOperationTimeout = time.Duration(120) * time.Second
 
 const (
 	envNamespaceQuery = "properties.compute.kubernetes.namespace"
@@ -120,11 +124,9 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	// Populate kubernetes namespace to internal metadata property.
 	newResource.AppInternal.KubernetesNamespace = kubeNamespace
 
-	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
-	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)
-	if err != nil {
-		return nil, err
+	if r, err := a.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, AsyncPutAppOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
-	return a.ConstructSyncResponse(ctx, req.Method, newEtag, newResource)
+	return a.ConstructAsyncResponse(ctx, req.Method, etag, newResource)
 }
