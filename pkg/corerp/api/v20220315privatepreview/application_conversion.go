@@ -117,7 +117,7 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Ex
 	case *ApplicationKubernetesMetadataExtension:
 		return &datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
-			KubernetesMetadata: &datamodel.BaseKubernetesMetadataExtension{
+			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
@@ -129,7 +129,7 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Ex
 		}
 		return &datamodel.Extension{
 			Kind: datamodel.KubernetesNamespaceOverride,
-			KubernetesNamespaceOverride: &datamodel.BaseK8sNSOverrideExtension{
+			KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
 				Namespace: *c.Namespace,
 			},
 		}

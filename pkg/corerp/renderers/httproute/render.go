@@ -39,8 +39,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	outputResources := []outputresource.OutputResource{}
 
 	if route.Properties.Port == 0 {
-		defaultPort := kubernetes.GetDefaultPort()
-		route.Properties.Port = defaultPort
+		route.Properties.Port = renderers.DefaultPort
 	}
 
 	computedValues := map[string]rp.ComputedValueReference{

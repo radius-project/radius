@@ -126,8 +126,3 @@ func GetShortenedTargetPortName(name string) string {
 	h.Write([]byte(strings.ToLower(name)))
 	return "a" + fmt.Sprint(h.Sum32())
 }
-
-// GetDefaultPort() returns the default HTTP port (80)
-func GetDefaultPort() int32 {
-	return 80
-}

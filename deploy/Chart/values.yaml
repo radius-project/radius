@@ -16,5 +16,8 @@ global:
   rp:
     provider:
       azure: {}
-    publicEndpointOverride: ''
-    
+    publicEndpointOverride: ""
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 9090

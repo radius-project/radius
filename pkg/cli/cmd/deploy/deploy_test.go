@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/config"
+	"github.com/project-radius/radius/pkg/cli/connections"
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/output"
@@ -106,29 +107,6 @@ func Test_Validate(t *testing.T) {
 					GetEnvDetails(gomock.Any(), "prod").
 					Return(v20220315privatepreview.EnvironmentResource{}, nil).
 					Times(1)
-				mocks.ApplicationManagementClient.EXPECT().
-					ShowApplication(gomock.Any(), "my-app").
-					Return(v20220315privatepreview.ApplicationResource{}, nil).
-					Times(1)
-			},
-		},
-		{
-			Name:          "rad deploy - app does not exist invalid",
-			Input:         []string{"app.bicep", "-e", "prod", "-a", "my-app"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
-			},
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				mocks.ApplicationManagementClient.EXPECT().
-					GetEnvDetails(gomock.Any(), "prod").
-					Return(v20220315privatepreview.EnvironmentResource{}, nil).
-					Times(1)
-				mocks.ApplicationManagementClient.EXPECT().
-					ShowApplication(gomock.Any(), "my-app").
-					Return(v20220315privatepreview.ApplicationResource{}, radcli.Create404Error()).
-					Times(1)
 			},
 		},
 		{
@@ -149,10 +127,6 @@ func Test_Validate(t *testing.T) {
 					GetEnvDetails(gomock.Any(), "prod").
 					Return(v20220315privatepreview.EnvironmentResource{}, nil).
 					Times(1)
-				mocks.ApplicationManagementClient.EXPECT().
-					ShowApplication(gomock.Any(), "my-app").
-					Return(v20220315privatepreview.ApplicationResource{}, nil).
-					Times(1)
 			},
 		},
 		{
@@ -171,15 +145,6 @@ func Test_Validate(t *testing.T) {
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),
-			},
-		},
-		{
-			Name:          "Create Command with too many args",
-			Input:         []string{"a", "b"},
-			ExpectedValid: false,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         configWithWorkspace,
 			},
 		},
 	}
@@ -254,6 +219,12 @@ func Test_Run(t *testing.T) {
 
 		options := deploy.Options{}
 
+		appManagmentMock := clients.NewMockApplicationsManagementClient(ctrl)
+		appManagmentMock.EXPECT().
+			CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
+			Return(nil).
+			Times(1)
+
 		deployMock := deploy.NewMockInterface(ctrl)
 		deployMock.EXPECT().
 			DeployWithProgress(gomock.Any(), gomock.Any()).
@@ -273,9 +244,10 @@ func Test_Run(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Bicep:  bicep,
-			Deploy: deployMock,
-			Output: outputSink,
+			Bicep:             bicep,
+			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagmentMock},
+			Deploy:            deployMock,
+			Output:            outputSink,
 
 			FilePath:        "app.bicep",
 			ApplicationID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/applications/%s", radcli.TestEnvironmentName, "test-application"),

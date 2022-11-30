@@ -18,10 +18,10 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/corerp/backend"
 	"github.com/project-radius/radius/pkg/corerp/frontend"
+	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
+	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
-	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -59,6 +59,13 @@ func main() {
 	defaultLinkConfig := fmt.Sprintf("link-%s.yaml", hostoptions.Environment())
 	flag.StringVar(&linkConfigFile, "link-config", defaultLinkConfig, "The service configuration file for Applications.Link.")
 
+	var enableMetrics bool
+	flag.BoolVar(&enableMetrics, "enable-metrics", true, "Flag to enable Radius metrics.")
+	var metricsPath string
+	flag.StringVar(&metricsPath, "metrics-path", "/metrics", "The path to expose Radius metrics.")
+	var metricsPort int
+	flag.IntVar(&metricsPort, "metrics-port", 9090, "The port to expose Radius metrics.")
+
 	if configFile == "" {
 		log.Fatal("config-file is empty.")
 	}
@@ -69,7 +76,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := radlogger.NewLogger("applications.core")
 	if err != nil {

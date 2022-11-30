@@ -95,9 +95,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	case datamodel.LinkModeRecipe:
 		mode := DaprSecretStorePropertiesModeRecipe
 		var recipe *Recipe
-		if daprSecretStore.Properties.Recipe.Name != "" {
-			recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
-		}
+		recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 		dst.Properties = &RecipeDaprSecretStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),

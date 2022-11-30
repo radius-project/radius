@@ -209,11 +209,6 @@ type DaprSidecarExtension struct {
 	Provides string   `json:"provides,omitempty"`
 }
 
-// ContainerKubernetesMetadataExtension - Specifies user defined labels and annotations
-type ContainerKubernetesMetadataExtension struct {
-	BaseKubernetesMetadataExtension
-}
-
 // IAMProperties represents the properties of IAM provider.
 type IAMProperties struct {
 	Kind  IAMKind  `json:"kind,omitempty"`

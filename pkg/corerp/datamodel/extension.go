@@ -17,19 +17,30 @@ const (
 
 // Extension of a resource.
 type Extension struct {
-	Kind                        ExtensionKind                    `json:"kind,omitempty"`
-	ManualScaling               *ManualScalingExtension          `json:"manualScaling,omitempty"`
-	DaprSidecar                 *DaprSidecarExtension            `json:"daprSidecar,omitempty"`
-	KubernetesMetadata          *BaseKubernetesMetadataExtension `json:"kubernetesMetadata,omitempty"`
-	KubernetesNamespaceOverride *BaseK8sNSOverrideExtension      `json:"kubernetesNamespaceOverride,omitempty"`
+	Kind                        ExtensionKind                   `json:"kind,omitempty"`
+	ManualScaling               *ManualScalingExtension         `json:"manualScaling,omitempty"`
+	DaprSidecar                 *DaprSidecarExtension           `json:"daprSidecar,omitempty"`
+	KubernetesMetadata          *KubeMetadataExtension          `json:"kubernetesMetadata,omitempty"`
+	KubernetesNamespaceOverride *KubeNamespaceOverrideExtension `json:"kubernetesNamespaceOverride,omitempty"`
 }
 
-// BaseKubernetesMetadataExtension - Specifies base struct for user defined labels and annotations
-type BaseKubernetesMetadataExtension struct {
+// KubeMetadataExtension represents the extension of kubernetes resource.
+type KubeMetadataExtension struct {
 	Annotations map[string]string `json:"annotations,omitempty"`
 	Labels      map[string]string `json:"labels,omitempty"`
 }
 
-type BaseK8sNSOverrideExtension struct {
+// KubeNamespaceOverrideExtension represents the extension to override kubernetes namespace.
+type KubeNamespaceOverrideExtension struct {
 	Namespace string `json:"namespace,omitempty"`
+}
+
+// FindExtension finds the extension.
+func FindExtension(exts []Extension, kind ExtensionKind) *Extension {
+	for _, ext := range exts {
+		if ext.Kind == kind {
+			return &ext
+		}
+	}
+	return nil
 }
