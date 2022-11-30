@@ -20,6 +20,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
+const reservedKeyStart = "radius.dev/"
+
 // Renderer is the renderers.Renderer implementation for the kubernetesmetadata extension.
 type Renderer struct {
 	Inner renderers.Renderer
@@ -33,6 +35,7 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModel
 
 // Render augments the container's kubernetes output resource with value for kubernetesmetadata replica if applicable.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+	logger := radlogger.GetLogger(ctx)
 
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
