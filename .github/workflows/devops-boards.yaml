@@ -7,7 +7,7 @@ on:
 
 jobs:
   alert:
-    runs-on: self-hosted
+    runs-on: [self-hosted,1ES.Pool=1ES-Radius ]
     steps:
       - uses: danhellem/github-actions-issue-to-work-item@v2.0
         env:
