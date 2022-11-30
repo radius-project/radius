@@ -92,6 +92,7 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
 					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)

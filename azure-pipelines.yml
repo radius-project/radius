@@ -82,7 +82,6 @@ stages:
     - checkout: self
       path: s
     - checkout: ProjectRadiusSamples
-      path: s/test/functional/samples/samples
     - task: GoTool@0
       inputs:
         version: '1.18'
@@ -237,6 +236,7 @@ stages:
         AWS_ACCESS_KEY_ID: $(AWS_ACCESS_KEY_ID)
         AWS_SECRET_ACCESS_KEY: $(AWS_SECRET_ACCESS_KEY)
         AWS_REGION: $(AWS_REGION)
+        PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH: $(Build.SourcesDirectory)/samples
     - publish: $(Build.SourcesDirectory)/dist/container_logs
       displayName: Publish container logs
       artifact: FunctionalTest.ApplicationsCoreRPLogs.$(Build.BuildNumber)

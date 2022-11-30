@@ -10,6 +10,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -29,10 +31,14 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
+var samplesRepositoryPath  = os.Getenv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
+
 // To run, sample directory must be cloned adjacent to this folder
 // Ex: test/functional/samples/samples/
 func Test_TutorialSampleMongoContainer(t *testing.T) {
-	template := "samples/tutorial/app.bicep"
+	cwd, _ := os.Getwd()
+	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepositoryPath)
+	template := filepath.Join(relPathSamplesRepo, "tutorial/app.bicep")
 	appName := "webapp"
 
 	requiredSecrets := map[string]map[string]string{}
@@ -74,6 +80,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				t.Run("check gwy", func(t *testing.T) {
 					for i := 1; i <= retries; i++ {
 						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+						// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
 						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
 						if err != nil {
 							t.Logf("Failed to test Gateway via portforward with error: %s", err)
@@ -85,9 +92,8 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				})
 			},
 			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
-			// TODO: https://github.com/project-radius/radius/issues/4689, validation doesn't work correctly today
+			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
 			K8sOutputResources: []unstructured.Unstructured{},
-			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default": {
