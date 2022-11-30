@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	reflect "reflect"
 	"strings"
 
 	"github.com/go-openapi/jsonpointer"
@@ -207,67 +208,25 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		}
 	}
 
-	// Transform Radius resource with computedValues. DecodeMap applies all the computed values to the associated properties on the data model.
-	resourceType := strings.ToLower(resourceID.Type())
-	switch resourceType {
-	case strings.ToLower(mongodatabases.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.MongoDatabase)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(sqldatabases.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.SqlDatabase)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(rediscaches.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.RedisCache)
-		// weaklyTypedInput is true here as the Host value needs to get converted to int32 correctly.
-		err = store.DecodeMap(computedValues, &obj.Properties, true, true)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.RabbitMQMessageQueue)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(extenders.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.Extender)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(daprstatestores.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.DaprStateStore)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(daprsecretstores.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.DaprSecretStore)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(daprpubsubbrokers.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.DaprPubSubBroker)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	case strings.ToLower(daprinvokehttproutes.ResourceType):
-		obj := rendererOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute)
-		err = store.DecodeMap(computedValues, &obj.Properties, true, false)
-		if err != nil {
-			return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for esource type: %q with resource ID: %q", err.Error(), resourceType, resourceID.String())
-		}
-	default:
-		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return DeploymentOutput{}, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+	// Use reflection to pull the typed link object. Elem() here ensures we get the value and not just a pointer.
+	resourceValue := reflect.ValueOf(rendererOutput.RadiusResource).Elem()
+	if (resourceValue == reflect.Value{}) {
+		return DeploymentOutput{}, fmt.Errorf("RadiusResource was nil in renderer output. resource type: %q with resource ID: %q", strings.ToLower(resourceID.Type()), resourceID.String())
+	}
+
+	// Pulling the properties object of of the typed link object.
+	propertyValue := resourceValue.FieldByName("Properties")
+	if (propertyValue == reflect.Value{}) {
+		return DeploymentOutput{}, fmt.Errorf("properties field was not found on resource type: %q with resource ID: %q", strings.ToLower(resourceID.Type()), resourceID.String())
+	}
+
+	// Transform properties with computedValues. DecodeMap applies all the computed values to the associated properties.
+	// Addr() and Interface() allow us to ensure we get the pointer to the properties instance so we don't create a copy.
+	// zeroFields is true here since we want to maintain existing properties on the resource.
+	// weaklyTypedInput is true to handle setting int32 values correctly (for the port property)
+	err = store.DecodeMap(computedValues, propertyValue.Addr().Interface(), true, true)
+	if err != nil {
+		return DeploymentOutput{}, fmt.Errorf("%q encountered while adding computed values to data model properties for resource type: %q with resource ID: %q", err.Error(), strings.ToLower(resourceID.Type()), resourceID.String())
 	}
 
 	return DeploymentOutput{
