@@ -9,7 +9,6 @@ import (
 	"context"
 	"strings"
 
-	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -35,7 +34,6 @@ func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModel
 
 // Render augments the container's kubernetes output resource with value for kubernetesmetadata replica if applicable.
 func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
-	logger := radlogger.GetLogger(ctx)
 
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
@@ -80,7 +78,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		existingMetaAnnotations, existingSpecAnnotations := getAnnotations(dep)
 
 		// Merge cumulative annotation values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		existingMetaAnnotations, existingSpecAnnotations = mergeAnnotations(options, inputAnnotations, existingMetaAnnotations, existingSpecAnnotations, logger)
+		existingMetaAnnotations, existingSpecAnnotations = mergeAnnotations(ctx, options, inputAnnotations, existingMetaAnnotations, existingSpecAnnotations)
 		setAnnotations(dep, existingMetaAnnotations, existingSpecAnnotations)
 
 		if kubeMetadataExt != nil && kubeMetadataExt.Labels != nil {
@@ -90,7 +88,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		existingMetaLabels, existingSpecLabels := getLabels(dep)
 
 		// Merge cumulative label values from Env->App->Container->InputExt kubernetes metadata. In case of collisions, rightmost entity wins
-		existingMetaLabels, existingSpecLabels = mergeLabels(options, inputLabels, existingMetaLabels, existingSpecLabels, logger)
+		existingMetaLabels, existingSpecLabels = mergeLabels(ctx, options, inputLabels, existingMetaLabels, existingSpecLabels)
 		setLabels(dep, existingMetaLabels, existingSpecLabels)
 
 	}
@@ -149,7 +147,7 @@ func setAnnotations(dep *appsv1.Deployment, metaAnnotations map[string]string, s
 }
 
 // mergeAnnotations merges environment, application annotations with current values
-func mergeAnnotations(options renderers.RenderOptions, currAnnotations map[string]string, existingMetaAnnotations map[string]string, existingSpecAnnotations map[string]string, logger logr.Logger) (map[string]string, map[string]string) {
+func mergeAnnotations(ctx context.Context, options renderers.RenderOptions, currAnnotations map[string]string, existingMetaAnnotations map[string]string, existingSpecAnnotations map[string]string) (map[string]string, map[string]string) {
 	envOpts := &options.Environment
 	appOpts := &options.Application
 	mergeAnnotations := map[string]string{}
@@ -163,13 +161,13 @@ func mergeAnnotations(options renderers.RenderOptions, currAnnotations map[strin
 	}
 
 	// Cumulative Env+App Annotations is now merged with input annotations. Existing metaAnnotations and specAnnotations are subsequently merged with the result map.
-	existingMetaAnnotations, existingSpecAnnotations = mergeMaps(mergeAnnotations, currAnnotations, existingMetaAnnotations, existingSpecAnnotations, logger)
+	existingMetaAnnotations, existingSpecAnnotations = mergeMaps(ctx, mergeAnnotations, currAnnotations, existingMetaAnnotations, existingSpecAnnotations)
 
 	return existingMetaAnnotations, existingSpecAnnotations
 }
 
 // mergeLabels merges environment, application labels with current values
-func mergeLabels(options renderers.RenderOptions, currLabels map[string]string, existingMetaLabels map[string]string, existingSpecLabels map[string]string, logger logr.Logger) (map[string]string, map[string]string) {
+func mergeLabels(ctx context.Context, options renderers.RenderOptions, currLabels map[string]string, existingMetaLabels map[string]string, existingSpecLabels map[string]string) (map[string]string, map[string]string) {
 	envOpts := &options.Environment
 	appOpts := &options.Application
 	mergeLabels := map[string]string{}
@@ -183,17 +181,17 @@ func mergeLabels(options renderers.RenderOptions, currLabels map[string]string, 
 	}
 
 	// Cumulative Env+App Labels is now merged with input labels. Existing metaLabels and specLabels are subsequently merged with the result map.
-	existingMetaLabels, existingSpecLabels = mergeMaps(mergeLabels, currLabels, existingMetaLabels, existingSpecLabels, logger)
+	existingMetaLabels, existingSpecLabels = mergeMaps(ctx, mergeLabels, currLabels, existingMetaLabels, existingSpecLabels)
 
 	return existingMetaLabels, existingSpecLabels
 }
 
 // mergeMaps merges four maps
-func mergeMaps(mergeMap map[string]string, newInputMap map[string]string, existingMetaMap map[string]string, existingSpecMap map[string]string, logger logr.Logger) (map[string]string, map[string]string) {
+func mergeMaps(ctx context.Context, mergeMap map[string]string, newInputMap map[string]string, existingMetaMap map[string]string, existingSpecMap map[string]string) (map[string]string, map[string]string) {
 
 	// Reject custom user entries that may affect Radius reserved keys.
-	mergeMap = rejectReservedEntries(mergeMap, logger)
-	newInputMap = rejectReservedEntries(newInputMap, logger)
+	mergeMap = rejectReservedEntries(ctx, mergeMap)
+	newInputMap = rejectReservedEntries(ctx, newInputMap)
 
 	// Cumulative Env+App Labels (mergeMap) is now merged with new input map. Existing metaLabels and specLabels are subsequently merged with the result map.
 	mergeMap = labels.Merge(mergeMap, newInputMap)
@@ -204,7 +202,9 @@ func mergeMaps(mergeMap map[string]string, newInputMap map[string]string, existi
 }
 
 // Reject custom user entries that would affect Radius reserved keys
-func rejectReservedEntries(inputMap map[string]string, logger logr.Logger) map[string]string {
+func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[string]string {
+	logger := radlogger.GetLogger(ctx)
+
 	for k := range inputMap {
 		if strings.HasPrefix(k, reservedRadiusDevPrefix) {
 			logger.Info("User provided label/annotation key starts with 'radius.dev/' and is not being applied", "key", k)
