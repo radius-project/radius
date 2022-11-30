@@ -42,7 +42,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 		SecretValues: map[string]rp.SecretValueReference{},
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			renderers.DatabaseNameValue: {
-				Value: "db",
+				Value: "testDatabase",
 			},
 			renderers.ServerNameValue: {
 				LocalID:     outputresource.LocalIDAzureSqlServer,
@@ -111,7 +111,6 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.SqlDatabase).Properties.Database = rendererOutput.ComputedValues[renderers.DatabaseNameValue].Value.(string)
-				deploymentOutput.RadiusResource.(*datamodel.SqlDatabase).Properties.Server = rendererOutput.ComputedValues[renderers.ServerNameValue].Value.(string)
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 
@@ -191,7 +190,6 @@ func TestCreateOrUpdateSqlDatabase_20220315PrivatePreview(t *testing.T) {
 			if !testcase.shouldFail {
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.SqlDatabase).Properties.Database = rendererOutput.ComputedValues[renderers.DatabaseNameValue].Value.(string)
-				deploymentOutput.RadiusResource.(*datamodel.SqlDatabase).Properties.Server = rendererOutput.ComputedValues[renderers.ServerNameValue].Value.(string)
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
