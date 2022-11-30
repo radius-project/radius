@@ -10,6 +10,8 @@ resources:
     type: github
     endpoint: project-radius
     name: project-radius/samples
+    trigger:
+      - edge
 
 trigger: none
 
@@ -78,9 +80,9 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
     - checkout: self
-      path: .
+      path: s
     - checkout: ProjectRadiusSamples
-      path: test/functional/samples/samples
+      path: s/test/functional/samples/samples
     - task: GoTool@0
       inputs:
         version: '1.18'
