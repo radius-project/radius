@@ -112,7 +112,7 @@ func Test_Gateway(t *testing.T) {
 
 func Test_HTTPSGateway(t *testing.T) {
 	template := "testdata/corerp-resources-https-gateway.bicep"
-	name := "corerp-resources-gateway"
+	name := "corerp-resources-secure-gateway"
 
 	requiredSecrets := map[string]map[string]string{}
 
