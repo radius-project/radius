@@ -938,7 +938,7 @@
         "tenantId"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "azure.com.credential"
+      "x-ms-discriminator-value": "azure.com.serviceprincipal"
     },
     "AWSCredentialProperties": {
       "additionalProperties": false,
@@ -964,7 +964,7 @@
         "secretAccessKey"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "aws.com.credential"
+      "x-ms-discriminator-value": "aws.com.iam"
     },
     "CredentialStorageKind": {
       "type": "string",

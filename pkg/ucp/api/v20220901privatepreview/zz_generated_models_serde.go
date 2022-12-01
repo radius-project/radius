@@ -20,7 +20,7 @@ import (
 func (a AWSCredentialProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "accessKeyId", a.AccessKeyID)
-	objectMap["kind"] = "aws.com.credential"
+	objectMap["kind"] = "aws.com.iam"
 	populate(objectMap, "namespace", a.Namespace)
 	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
 	populate(objectMap, "storage", a.Storage)
@@ -63,7 +63,7 @@ func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
 func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "clientId", a.ClientID)
-	objectMap["kind"] = "azure.com.credential"
+	objectMap["kind"] = "azure.com.serviceprincipal"
 	populate(objectMap, "namespace", a.Namespace)
 	populate(objectMap, "secret", a.Secret)
 	populate(objectMap, "storage", a.Storage)
