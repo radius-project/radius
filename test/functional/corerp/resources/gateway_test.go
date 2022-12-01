@@ -100,7 +100,7 @@ func Test_Gateway(t *testing.T) {
 					return
 				}
 
-				require.Fail(t, fmt.Sprintf("Gateway tests failed"))
+				require.Fail(t, "Gateway tests failed")
 			},
 		},
 	}, requiredSecrets)
@@ -216,7 +216,7 @@ func Test_HTTPSGateway(t *testing.T) {
 					return
 				}
 
-				require.Fail(t, fmt.Sprintf("Gateway tests failed"))
+				require.Fail(t, "Gateway tests failed")
 			},
 		},
 	}, requiredSecrets)
