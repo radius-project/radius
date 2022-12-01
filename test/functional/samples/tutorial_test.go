@@ -83,10 +83,10 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Run("check gwy", func(t *testing.T) {
-					for i := 1; i <= 1; i++ {
+					for i := 1; i <= retries; i++ {
 						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
 						// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
+						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort)
 						if err != nil {
 							t.Logf("Failed to test Gateway via portforward with error: %s", err)
 						} else {
@@ -116,7 +116,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
