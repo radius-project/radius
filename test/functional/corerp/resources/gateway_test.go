@@ -31,7 +31,7 @@ const (
 
 func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-http-gateway"
+	name := "corerp-resources-gateway"
 
 	requiredSecrets := map[string]map[string]string{}
 

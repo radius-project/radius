@@ -13,7 +13,7 @@ param port int = 3000
 param magpieimage string
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-http-gateway'
+  name: 'corerp-resources-gateway'
   location: location
   properties: {
     environment: environment
