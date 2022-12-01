@@ -292,3 +292,30 @@ func testHTTPSGatewayAvailability(t *testing.T, hostname, baseURL, path string, 
 	return nil
 
 }
+
+/*func testHTTPSGatewayAvailability1(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+	transCfg := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // ignore expired SSL certificates
+	}
+	client := &http.Client{Transport: transCfg}
+	url := "https://" + hostname + "/" + path
+
+	response, err := client.Get(url)
+
+	if err != nil {
+		return err
+
+	}
+
+	if response.Body != nil {
+		defer response.Body.Close()
+	}
+
+	if response.StatusCode != expectedStatusCode {
+		return errors.New("did not encounter correct status code")
+	}
+
+	// Encountered the correct status code
+	return nil
+
+}*/
