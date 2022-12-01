@@ -875,10 +875,6 @@
         "properties"
       ],
       "properties": {
-        "namespace": {
-          "type": "string",
-          "description": "namespace in which credential secret are stored using k8s"
-        },
         "properties": {
           "$ref": "#/definitions/CredentialResourceProperties"
         }
@@ -889,12 +885,28 @@
       "type": "object",
       "discriminator": "kind",
       "required": [
-        "kind"
+        "kind",
+        "storage"
       ],
       "properties": {
         "kind": {
           "description": "The kind of secret",
           "type": "string"
+        },
+        "namespace": {
+          "type": "string",
+          "description": "namespace in which credential secret are stored using k8s"
+        },
+        "storage": {
+          "type": "object",
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "$ref": "#/definitions/CredentialStorageKind"
+            }
+          }
         }
       }
     },
@@ -926,7 +938,7 @@
         "tenantId"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "ServicePrincipal"
+      "x-ms-discriminator-value": "azure.com.credential"
     },
     "AWSCredentialProperties": {
       "additionalProperties": false,
@@ -952,7 +964,18 @@
         "secretAccessKey"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "AWSCredential"
+      "x-ms-discriminator-value": "aws.com.credential"
+    },
+    "CredentialStorageKind": {
+      "type": "string",
+      "description": "credential store kinds supported.",
+      "enum": [
+        "Internal"
+      ],
+      "x-ms-enum": {
+        "name": "CredentialStorageKind",
+        "modelAsString": true
+      }
     },
     "ErrorDetail": {
       "description": "The error detail.",

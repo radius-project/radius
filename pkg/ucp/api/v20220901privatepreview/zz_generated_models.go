@@ -23,12 +23,20 @@ type AWSCredentialProperties struct {
 
 	// REQUIRED; Secret Access Key for AWS identity
 	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+
+	// namespace in which credential secret are stored using k8s
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AWSCredentialProperties.
 func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
 	return &CredentialResourceProperties{
 		Kind: a.Kind,
+		Namespace: a.Namespace,
+		Storage: a.Storage,
 	}
 }
 
@@ -78,14 +86,22 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; secret when the CredentialKind is ServicePrincipal
 	Secret *string `json:"secret,omitempty"`
 
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+
 	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
+
+	// namespace in which credential secret are stored using k8s
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
 func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
 	return &CredentialResourceProperties{
 		Kind: a.Kind,
+		Namespace: a.Namespace,
+		Storage: a.Storage,
 	}
 }
 
@@ -96,9 +112,6 @@ type CredentialResource struct {
 
 	// REQUIRED; Credential properties
 	Properties CredentialResourcePropertiesClassification `json:"properties,omitempty"`
-
-	// namespace in which credential secret are stored using k8s
-	Namespace *string `json:"namespace,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -132,10 +145,21 @@ type CredentialResourcePropertiesClassification interface {
 type CredentialResourceProperties struct {
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED
+	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+
+	// namespace in which credential secret are stored using k8s
+	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type CredentialResourceProperties.
 func (c *CredentialResourceProperties) GetCredentialResourceProperties() *CredentialResourceProperties { return c }
+
+type CredentialResourcePropertiesStorage struct {
+	// REQUIRED; credential store kinds supported.
+	Kind *CredentialStorageKind `json:"kind,omitempty"`
+}
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
