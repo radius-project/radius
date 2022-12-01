@@ -93,12 +93,7 @@ func Test_Gateway(t *testing.T) {
 				// Set up pod port-forwarding for contour-envoy
 				for i := 1; i <= retries; i++ {
 					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-<<<<<<< HEAD
-					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
-=======
 					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries, false)
->>>>>>> 64d6e7b1 (add https passthrough test)
 					if err != nil {
 						t.Logf("Failed to test Gateway via portforward with error: %s", err)
 					} else {
@@ -292,30 +287,3 @@ func testHTTPSGatewayAvailability(t *testing.T, hostname, baseURL, path string, 
 	return nil
 
 }
-
-/*func testHTTPSGatewayAvailability1(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
-	transCfg := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // ignore expired SSL certificates
-	}
-	client := &http.Client{Transport: transCfg}
-	url := "https://" + hostname + "/" + path
-
-	response, err := client.Get(url)
-
-	if err != nil {
-		return err
-
-	}
-
-	if response.Body != nil {
-		defer response.Body.Close()
-	}
-
-	if response.StatusCode != expectedStatusCode {
-		return errors.New("did not encounter correct status code")
-	}
-
-	// Encountered the correct status code
-	return nil
-
-}*/
