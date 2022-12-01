@@ -102,7 +102,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	// Override environment-scope namespace with application-scope kuberentes namespace.
+	// Override environment-scope namespace with application-scope kubernetes namespace.
 	if scope.Application != "" {
 		app, err := rp_util.FetchScopeResource[coreDatamodel.Application](ctx, dp.sp, scope.Application, id)
 		if err != nil {

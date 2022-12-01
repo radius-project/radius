@@ -126,7 +126,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	// Override environment-scope namespace with application-scope kuberentes namespace.
+	// Override environment-scope namespace with application-scope kubernetes namespace.
 	if app.AppInternal.KubernetesNamespace != "" {
 		envOptions.Namespace = app.AppInternal.KubernetesNamespace
 	}

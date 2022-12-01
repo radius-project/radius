@@ -15,7 +15,7 @@ var _ conv.DataModelInterface = (*Application)(nil)
 
 // ApplicationInternalMetadata represents the internal metadata for application resource, which hold any metadata used internally.
 type ApplicationInternalMetadata struct {
-	// KubernetesNamespace represents the application level kuberentes namespace name.
+	// KubernetesNamespace represents the application level kubernetes namespace name.
 	KubernetesNamespace string `json:"kubernetesNamespace,omitempty"`
 }
 
