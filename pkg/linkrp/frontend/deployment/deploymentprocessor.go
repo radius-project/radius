@@ -30,9 +30,9 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -91,15 +91,26 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment ID and recipe name from the resource
-	env, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
+	scope, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipe.Name)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, scope.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
+	}
+
+	if scope.Application != "" {
+		app, err := rp_util.FetchScopeResource[coreDatamodel.Application](ctx, dp.sp, scope.Application, id)
+		if err != nil {
+			return renderers.RendererOutput{}, err
+		}
+		// Override environment namespace with application scope kuberentes namespace.
+		if app.AppInternal.KubernetesNamespace != "" {
+			envMetadata.Namespace = app.AppInternal.KubernetesNamespace
+		}
 	}
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
@@ -345,101 +356,84 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (envId string, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (scope *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := resource.(*datamodel.Extender)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
-		envId = obj.Properties.Environment
+		scope = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Recipe.Name != "" {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return "", recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		return nil, recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
 	}
 
-	return envId, recipe, nil
+	return scope, recipe, nil
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the link and linked resources ```
 func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
-	envId, err := resources.ParseResource(environmentID)
 	envMetadata = EnvironmentMetadata{}
 	if err != nil {
 		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
 	}
 
-	env := &coreDatamodel.Environment{}
-	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id type %q is not a valid type.", envId.Type()))
-	}
-
-	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
-	if err != nil {
-		return
-	}
-	res, err := sc.Get(ctx, environmentID)
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment %q does not exist", environmentID))
-		}
-		return
-	}
-	err = res.As(env)
+	env, err := rp_util.FetchScopeResource[coreDatamodel.Environment](ctx, dp.sp, environmentID, resources.ID{})
 	if err != nil {
 		return
 	}

@@ -39,6 +39,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -79,7 +80,7 @@ type ResourceData struct {
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]interface{}
 	SecretValues    map[string]rp.SecretValueReference
-	AppID           resources.ID       // Application ID for which the resource is created
+	AppID           *resources.ID      // Application ID for which the resource is created
 	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
@@ -99,12 +100,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 2. fetch the application properties from the DB
-	appProperties, err := dp.getApplicationProperties(ctx, res.AppID, resourceID.String())
+	app, err := rp_util.FetchScopeResource[corerp_dm.Application](ctx, dp.sp, res.AppID.String(), resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	env, err := dp.fetchEnvironment(ctx, appProperties.BasicResourceProperties.Environment, resourceID)
+	env, err := rp_util.FetchScopeResource[corerp_dm.Environment](ctx, dp.sp, app.Properties.Environment, resourceID)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -125,7 +126,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
-	appOptions, err := dp.getAppOptions(ctx, appProperties)
+	// Override environment namespace with application scope kuberentes namespace.
+	if app.AppInternal.KubernetesNamespace != "" {
+		envOptions.Namespace = app.AppInternal.KubernetesNamespace
+	}
+
+	appOptions, err := dp.getAppOptions(ctx, &app.Properties)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -573,16 +579,16 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 }
 
 func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
-	var appID resources.ID
+	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
 			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
-		appID = parsedID
+		appID = &parsedID
 	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {
 		// Application id is optional for link resource types
-		appID = resources.ID{}
+		appID = nil
 	} else {
 		return ResourceData{}, fmt.Errorf("missing required application id for the resource %q", resourceID.String())
 	}
@@ -631,70 +637,4 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	}
 
 	return rendererDependency, nil
-}
-
-// getApplicationProperties returns application properties linked to the application fetched from the db
-func (dp *deploymentProcessor) getApplicationProperties(ctx context.Context, appID resources.ID, resourceID string) (*corerp_dm.ApplicationProperties, error) {
-	errMsg := "failed to fetch the application %q for the resource %q. Err: %w"
-
-	appIDType := appID.Type()
-	app := &corerp_dm.Application{}
-	if !strings.EqualFold(appIDType, app.ResourceTypeName()) {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application ID %q for resource %q has invalid application resource type.", appID.String(), resourceID))
-	}
-
-	sc, err := dp.sp.GetStorageClient(ctx, appIDType)
-	if err != nil {
-		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
-	}
-
-	res, err := sc.Get(ctx, appID.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked application %q for resource %q does not exist", appID.String(), resourceID))
-		}
-		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
-	}
-	err = res.As(app)
-	if err != nil {
-		return nil, fmt.Errorf(errMsg, appID.String(), resourceID, err)
-	}
-
-	return &app.Properties, nil
-}
-
-// fetchEnvironment fetches the environment resource from the db for getting the namespace to deploy the resources
-func (dp *deploymentProcessor) fetchEnvironment(ctx context.Context, environmentID string, resourceID resources.ID) (*corerp_dm.Environment, error) {
-	envId, err := resources.ParseResource(environmentID)
-	if err != nil {
-		return nil, err
-	}
-
-	env := &corerp_dm.Environment{}
-
-	if !strings.EqualFold(envId.Type(), env.ResourceTypeName()) {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("environment id %q linked to the application for resource %s is not a valid environment type. Error: %s", envId.Type(), resourceID, err.Error()))
-	}
-
-	sc, err := dp.sp.GetStorageClient(ctx, envId.Type())
-	if err != nil {
-		return nil, err
-	}
-
-	const errMsg = "failed to fetch the environment %q for the resource %q. Error: %w"
-
-	res, err := sc.Get(ctx, envId.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("linked environment %q for resource %s does not exist", environmentID, resourceID))
-		}
-		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-
-	err = res.As(env)
-	if err != nil {
-		return nil, fmt.Errorf(errMsg, environmentID, resourceID, err)
-	}
-
-	return env, nil
 }
