@@ -113,7 +113,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
   location: location
   properties: {
     application: app.id
-    port: 81
+    port: 443
   }
 }
 
