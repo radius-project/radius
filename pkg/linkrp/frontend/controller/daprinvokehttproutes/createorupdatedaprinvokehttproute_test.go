@@ -29,7 +29,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 	rendererOutput := renderers.RendererOutput{
 		ComputedValues: map[string]renderers.ComputedValueReference{
 			"appId": {
-				Value: "test-appId",
+				Value: "daprAppId",
 			},
 		},
 	}
