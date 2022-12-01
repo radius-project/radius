@@ -30,7 +30,7 @@ const (
 func GetMagpieImage() string {
 	setDefault()
 	defaultDockerReg, imageTag := setDefault()
-	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiego:" + imageTag
+	magpieImage := "magpieimage=" + defaultDockerReg + "/magpiegossl:" + imageTag
 	return magpieImage
 }
 
