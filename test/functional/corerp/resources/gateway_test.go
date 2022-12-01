@@ -23,6 +23,7 @@ import (
 )
 
 const (
+	retries      = 3
 	remotePort   = 8080
 	retryTimeout = 1 * time.Minute
 	retryBackoff = 1 * time.Second
@@ -90,14 +91,16 @@ func Test_Gateway(t *testing.T) {
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				// Set up pod port-forwarding for contour-envoy
-				t.Logf("Setting up portforward")
-				// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, false)
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward")
+					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, false)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
+					}
 				}
 
 				require.Fail(t, "Gateway tests failed")
@@ -208,12 +211,14 @@ func Test_HTTPSGateway(t *testing.T) {
 
 				// Set up pod port-forwarding for contour-envoy
 				t.Logf("Setting up portforward")
-				err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, true)
-				if err != nil {
-					t.Logf("Failed to test Gateway via portforward with error: %s", err)
-				} else {
-					// Successfully ran tests
-					return
+				for i := 1; i <= retries; i++ {
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, true)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
+					}
 				}
 
 				require.Fail(t, "Gateway tests failed")
