@@ -6,7 +6,7 @@ param logGroupName string
 resource metricsFilter 'AWS.Logs/MetricFilter@default' = {
   properties: {
     FilterName: filterName
-    LogGroupName: logGroupName
+    LogGroupName: logGroup.properties.LogGroupName
     FilterPattern: '[ip, identity, user_id, timestamp, request, status_code = 404, size]'
     MetricTransformations: [
       {
