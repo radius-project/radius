@@ -505,13 +505,12 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
-		converted := ManualScalingExtension{
+		return &ManualScalingExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
-		return converted.GetContainerExtension()
 	case datamodel.DaprSidecar:
-		converted := DaprSidecarExtension{
+		return &DaprSidecarExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			AppID:    to.StringPtr(e.DaprSidecar.AppID),
 			AppPort:  to.Int32Ptr(e.DaprSidecar.AppPort),
@@ -519,15 +518,13 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
 			Provides: to.StringPtr(e.DaprSidecar.Provides),
 		}
-		return converted.GetContainerExtension()
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
-		converted := ContainerKubernetesMetadataExtension{
+		var ann, lbl = fromExtensionClassificationFields(e)
+		return &ContainerKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
-		return converted.GetContainerExtension()
 	}
 
 	return nil
@@ -548,7 +545,7 @@ func toVolumeBaseDataModel(v Volume) datamodel.VolumeBase {
 	}
 }
 
-func getFromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
+func fromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
 	var ann map[string]string
 	var lbl map[string]string
 

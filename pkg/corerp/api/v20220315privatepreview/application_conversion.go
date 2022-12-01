@@ -88,24 +88,19 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
-		converted := ApplicationKubernetesMetadataExtension{
+		var ann, lbl = fromExtensionClassificationFields(e)
+		return &ApplicationKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
 
-		return converted.GetApplicationExtension()
-
 	case datamodel.KubernetesNamespaceOverride:
-		var namespace = getFromExtensionNamespace(e)
-		converted := ApplicationKubernetesNamespaceExtension{
+		var namespace = fromExtensionNamespace(e)
+		return &ApplicationKubernetesNamespaceExtension{
 			Kind:      to.StringPtr(string(e.Kind)),
 			Namespace: &namespace,
 		}
-
-		return converted.GetApplicationExtension()
-
 	}
 
 	return nil
@@ -138,14 +133,12 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Ex
 	return nil
 }
 
-func getFromExtensionNamespace(e datamodel.Extension) string {
-	var namespace string
-
+func fromExtensionNamespace(e datamodel.Extension) string {
 	if e.KubernetesNamespaceOverride != nil {
 		if e.KubernetesNamespaceOverride.Namespace != "" {
-			namespace = e.KubernetesNamespaceOverride.Namespace
+			return e.KubernetesNamespaceOverride.Namespace
 		}
 	}
 
-	return namespace
+	return ""
 }
