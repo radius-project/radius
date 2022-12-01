@@ -15,6 +15,7 @@ import (
 )
 
 func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
+	t.Skip("This test is flaky and will be re-enabled once https://github.com/project-radius/radius/issues/4777 is fixed")
 	template := "testdata/aws-multi-identifier.bicep"
 	filterName := "ms" + uuid.New().String()
 	logGroupName := "ms" + uuid.New().String()
