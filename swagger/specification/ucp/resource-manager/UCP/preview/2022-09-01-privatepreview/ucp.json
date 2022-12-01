@@ -893,10 +893,6 @@
           "description": "The kind of secret",
           "type": "string"
         },
-        "namespace": {
-          "type": "string",
-          "description": "namespace in which credential secret are stored using k8s"
-        },
         "storage": {
           "type": "object",
           "required": [
@@ -905,6 +901,11 @@
           "properties": {
             "kind": {
               "$ref": "#/definitions/CredentialStorageKind"
+            },
+            "secretName": {
+              "readOnly": true,
+              "type": "string",
+              "description": "The name of secret stored."
             }
           }
         }

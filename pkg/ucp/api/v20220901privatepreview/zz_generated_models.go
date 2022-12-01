@@ -26,16 +26,12 @@ type AWSCredentialProperties struct {
 
 	// REQUIRED
 	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
-
-	// namespace in which credential secret are stored using k8s
-	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AWSCredentialProperties.
 func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
 	return &CredentialResourceProperties{
 		Kind: a.Kind,
-		Namespace: a.Namespace,
 		Storage: a.Storage,
 	}
 }
@@ -91,16 +87,12 @@ type AzureServicePrincipalProperties struct {
 
 	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
-
-	// namespace in which credential secret are stored using k8s
-	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
 func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
 	return &CredentialResourceProperties{
 		Kind: a.Kind,
-		Namespace: a.Namespace,
 		Storage: a.Storage,
 	}
 }
@@ -148,9 +140,6 @@ type CredentialResourceProperties struct {
 
 	// REQUIRED
 	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
-
-	// namespace in which credential secret are stored using k8s
-	Namespace *string `json:"namespace,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type CredentialResourceProperties.
@@ -159,6 +148,9 @@ func (c *CredentialResourceProperties) GetCredentialResourceProperties() *Creden
 type CredentialResourcePropertiesStorage struct {
 	// REQUIRED; credential store kinds supported.
 	Kind *CredentialStorageKind `json:"kind,omitempty"`
+
+	// READ-ONLY; The name of secret stored.
+	SecretName *string `json:"secretName,omitempty" azure:"ro"`
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
