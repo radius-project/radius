@@ -17,9 +17,14 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
-	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -48,6 +53,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 
 // Run executes CreateOrUpdateApplication operation.
 func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 	newResource, err := a.GetResourceFromRequest(ctx, req)
 	if err != nil {
@@ -119,6 +125,20 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 
 	// Populate kubernetes namespace to internal metadata property.
 	newResource.AppInternal.KubernetesNamespace = kubeNamespace
+
+	// TODO: Move it to backend controller
+	nsSpec := &corev1.Namespace{}
+	err = a.KubeClient().Get(ctx, client.ObjectKey{Name: kubeNamespace}, nsSpec)
+	if apierrors.IsNotFound(err) {
+		logger.Info("Creating kubernetes namespace", "namespace", kubeNamespace)
+		if err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}}); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
+		return nil, err
+	} else {
+		logger.Info("Use existing namespace", "namespace", kubeNamespace)
+	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

@@ -13,11 +13,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,6 +115,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewDeleteApplication(opts)

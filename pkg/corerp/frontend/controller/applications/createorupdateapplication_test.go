@@ -120,6 +120,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				DataProvider:  mockSP,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -205,6 +206,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				DataProvider:  mockSP,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -271,6 +273,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				DataProvider:  mockSP,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -343,6 +346,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				DataProvider:  mockSP,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -446,6 +450,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				DataProvider:  mockSP,
+				KubeClient:    radiustesting.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
