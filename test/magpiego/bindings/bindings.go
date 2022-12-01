@@ -1,6 +1,7 @@
 package bindings
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -28,6 +29,7 @@ func LoadBindings(registeredProviders map[string]BindingProvider) []Providers {
 	// We match env-vars using the form CONNECTION_<KIND>_VALUE, so group them by that structure.
 	// Each binding type get a collection of key-value pairs
 	for _, env := range os.Environ() {
+		fmt.Println(env)
 		typeKeyPair, value := parseEnvVariable(strings.Trim(env, " "))
 		if typeKeyPair == nil || typeKeyPair.bindingKey != "" && typeKeyPair.bindingType != "" {
 			tp := typeKeyPair.bindingType

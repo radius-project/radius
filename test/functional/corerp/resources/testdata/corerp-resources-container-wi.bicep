@@ -1,7 +1,7 @@
 import radius as radius
 
 @description('Specifies the location for resources.')
-param location string = 'global'
+param location string = 'eastus'
 
 @description('Specifies the image of the container resource.')
 param magpieimage string
@@ -32,7 +32,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'test-app'
+  name: 'corerp-resources-container-wi'
   location: location
   properties: {
     environment: env.id
