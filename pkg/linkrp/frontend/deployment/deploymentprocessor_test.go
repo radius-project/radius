@@ -246,6 +246,10 @@ func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
 }
 
 func buildApplicationResource(namespace string) *store.Object {
+	if namespace == "" {
+		namespace = "radius-test"
+	}
+
 	app := corerpDatamodel.Application{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
