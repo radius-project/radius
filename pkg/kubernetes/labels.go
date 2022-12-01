@@ -29,6 +29,7 @@ const (
 	ControlPlane = "radius-control-plane"
 
 	AnnotationSecretHash = "radius.dev/secret-hash"
+	RadiusDevPrefix      = "radius.dev/"
 
 	// AnnotationIdentityType is the annotation for supported identity.
 	AnnotationIdentityType = "radius.dev/identity-type"

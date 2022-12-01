@@ -3,13 +3,15 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package resource_test
+package samples
 
 import (
 	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -19,6 +21,7 @@ import (
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
 	"github.com/stretchr/testify/require"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 const (
@@ -28,81 +31,82 @@ const (
 	retryBackoff = 1 * time.Second
 )
 
-func Test_Gateway(t *testing.T) {
-	template := "testdata/corerp-resources-gateway.bicep"
-	name := "corerp-resources-gateway"
+var samplesRepoAbsPath, samplesRepoEnvVarSet = os.LookupEnv("PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH")
+
+// Test process must run with PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH env var set to samples repo absolute path
+// You can set the variables used by vscode codelens (e.g. 'debug test', 'run test') using 'go.testEnvVars' in vscode settings.json
+// Ex: export PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH=/home/uname/src/samples
+func Test_TutorialSampleMongoContainer(t *testing.T) {
+	if !samplesRepoEnvVarSet {
+		t.Skipf("Skip samples test execution, to enable you must set env var PROJECT_RADIUS_SAMPLES_REPO_ABS_PATH to the absolute path of the project-radius/samples repository")
+	}
+	cwd, _ := os.Getwd()
+	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
+	template := filepath.Join(relPathSamplesRepo, "tutorial/app.bicep")
+	appName := "webapp"
 
 	requiredSecrets := map[string]map[string]string{}
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
 		{
-			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			Executor: step.NewDeployExecutor(template),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: name,
+						Name: appName,
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "gtwy-gtwy",
+						Name: "frontend",
+						Type: validation.ContainersResource,
+					},
+					{
+						Name: "http-route",
+						Type: validation.HttpRoutesResource,
+					},
+					{
+						Name: "public",
 						Type: validation.GatewaysResource,
-						App:  name,
 					},
 					{
-						Name: "gtwy-front-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
-						Name: "gtwy-front-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-					{
-						Name: "gtwy-back-rte",
-						Type: validation.HttpRoutesResource,
-						App:  name,
-					},
-					{
-						Name: "gtwy-back-ctnr",
-						Type: validation.ContainersResource,
-						App:  name,
-					},
-				},
-			},
-			K8sObjects: &validation.K8sObjectSet{
-				Namespaces: map[string][]validation.K8sObject{
-					"default": {
-						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
-						validation.NewK8sPodForResource(name, "gtwy-back-ctnr"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
-						validation.NewK8sServiceForResource(name, "gtwy-front-rte"),
-						validation.NewK8sHTTPProxyForResource(name, "gtwy-back-rte"),
-						validation.NewK8sServiceForResource(name, "gtwy-back-rte"),
+						Name: "db",
+						Type: validation.MongoDatabasesResource,
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", name)
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", appName)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				// Set up pod port-forwarding for contour-envoy
-				for i := 1; i <= retries; i++ {
-					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
-					if err != nil {
-						t.Logf("Failed to test Gateway via portforward with error: %s", err)
-					} else {
-						// Successfully ran tests
-						return
+				t.Run("check gwy", func(t *testing.T) {
+					for i := 1; i <= retries; i++ {
+						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+						// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
+						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
+						if err != nil {
+							t.Logf("Failed to test Gateway via portforward with error: %s", err)
+						} else {
+							// Successfully ran tests
+							return
+						}
 					}
-				}
-
-				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
+				})
+			},
+			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
+			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
+			K8sOutputResources: []unstructured.Unstructured{},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					"default": {
+						validation.NewK8sPodForResource(appName, "frontend"),
+						validation.NewK8sHTTPProxyForResource(appName, "public"),
+						validation.NewK8sHTTPProxyForResource(appName, "http-route"),
+						validation.NewK8sServiceForResource(appName, "http-route"),
+					},
+				},
 			},
 		},
 	}, requiredSecrets)
@@ -129,19 +133,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
-		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200); err != nil {
-			close(stopChan)
-			return err
-		}
-
-		// Both of these URLs route to the same backend service,
-		// but /backend2 maps to / which allows it to access /healthz
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend2/healthz", 200); err != nil {
-			close(stopChan)
-			return err
-		}
-
-		if err := testGatewayAvailability(t, hostname, baseURL, "backend1/healthz", 404); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "", 200); err != nil {
 			close(stopChan)
 			return err
 		}
@@ -153,6 +145,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 }
 
 func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+	// Using autorest as an http client library because of its retry capabilities
 	req, err := autorest.Prepare(&http.Request{},
 		autorest.WithBaseURL(baseURL),
 		autorest.WithPath(path))
