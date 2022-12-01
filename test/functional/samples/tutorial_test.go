@@ -154,7 +154,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		var actualListResponseBody map[string]interface{}
+		var actualListResponseBody map[string]any
 		err = json.Unmarshal(listResponseBody, &actualListResponseBody)
 		if err != nil {
 			return err
