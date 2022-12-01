@@ -22,7 +22,6 @@ func (a AWSCredentialProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "accessKeyId", a.AccessKeyID)
 	objectMap["kind"] = "AWSCredential"
 	populate(objectMap, "secretAccessKey", a.SecretAccessKey)
-	populate(objectMap, "storage", a.Storage)
 	return json.Marshal(objectMap)
 }
 
@@ -44,9 +43,6 @@ func (a *AWSCredentialProperties) UnmarshalJSON(data []byte) error {
 		case "secretAccessKey":
 				err = unpopulate(val, "SecretAccessKey", &a.SecretAccessKey)
 				delete(rawMsg, key)
-		case "storage":
-				err = unpopulate(val, "Storage", &a.Storage)
-				delete(rawMsg, key)
 		}
 		if err != nil {
 			return fmt.Errorf("unmarshalling type %T: %v", a, err)
@@ -61,7 +57,6 @@ func (a AzureServicePrincipalProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "clientId", a.ClientID)
 	objectMap["kind"] = "ServicePrincipal"
 	populate(objectMap, "secret", a.Secret)
-	populate(objectMap, "storage", a.Storage)
 	populate(objectMap, "tenantId", a.TenantID)
 	return json.Marshal(objectMap)
 }
@@ -84,9 +79,6 @@ func (a *AzureServicePrincipalProperties) UnmarshalJSON(data []byte) error {
 		case "secret":
 				err = unpopulate(val, "Secret", &a.Secret)
 				delete(rawMsg, key)
-		case "storage":
-				err = unpopulate(val, "Storage", &a.Storage)
-				delete(rawMsg, key)
 		case "tenantId":
 				err = unpopulate(val, "TenantID", &a.TenantID)
 				delete(rawMsg, key)
@@ -104,6 +96,7 @@ func (c CredentialResource) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "id", c.ID)
 	populate(objectMap, "location", c.Location)
 	populate(objectMap, "name", c.Name)
+	populate(objectMap, "namespace", c.Namespace)
 	populate(objectMap, "properties", c.Properties)
 	populate(objectMap, "tags", c.Tags)
 	populate(objectMap, "type", c.Type)
@@ -127,6 +120,9 @@ func (c *CredentialResource) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "name":
 				err = unpopulate(val, "Name", &c.Name)
+				delete(rawMsg, key)
+		case "namespace":
+				err = unpopulate(val, "Namespace", &c.Namespace)
 				delete(rawMsg, key)
 		case "properties":
 				c.Properties, err = unmarshalCredentialResourcePropertiesClassification(val)
@@ -176,42 +172,11 @@ func (c *CredentialResourceList) UnmarshalJSON(data []byte) error {
 func (c CredentialResourceProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	objectMap["kind"] = c.Kind
-	populate(objectMap, "storage", c.Storage)
 	return json.Marshal(objectMap)
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface for type CredentialResourceProperties.
 func (c *CredentialResourceProperties) UnmarshalJSON(data []byte) error {
-	var rawMsg map[string]json.RawMessage
-	if err := json.Unmarshal(data, &rawMsg); err != nil {
-		return fmt.Errorf("unmarshalling type %T: %v", c, err)
-	}
-	for key, val := range rawMsg {
-		var err error
-		switch key {
-		case "kind":
-				err = unpopulate(val, "Kind", &c.Kind)
-				delete(rawMsg, key)
-		case "storage":
-				err = unpopulate(val, "Storage", &c.Storage)
-				delete(rawMsg, key)
-		}
-		if err != nil {
-			return fmt.Errorf("unmarshalling type %T: %v", c, err)
-		}
-	}
-	return nil
-}
-
-// MarshalJSON implements the json.Marshaller interface for type CredentialResourcePropertiesStorage.
-func (c CredentialResourcePropertiesStorage) MarshalJSON() ([]byte, error) {
-	objectMap := make(map[string]interface{})
-	populate(objectMap, "kind", c.Kind)
-	return json.Marshal(objectMap)
-}
-
-// UnmarshalJSON implements the json.Unmarshaller interface for type CredentialResourcePropertiesStorage.
-func (c *CredentialResourcePropertiesStorage) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", c, err)

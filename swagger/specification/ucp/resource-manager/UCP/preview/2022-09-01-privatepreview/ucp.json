@@ -875,6 +875,10 @@
         "properties"
       ],
       "properties": {
+        "namespace": {
+          "type": "string",
+          "description": "namespace in which credential secret are stored using k8s"
+        },
         "properties": {
           "$ref": "#/definitions/CredentialResourceProperties"
         }
@@ -885,24 +889,12 @@
       "type": "object",
       "discriminator": "kind",
       "required": [
-        "kind",
-        "storage"
+        "kind"
       ],
       "properties": {
         "kind": {
           "description": "The kind of secret",
           "type": "string"
-        },
-        "storage": {
-          "type": "object",
-          "required": [
-            "kind"
-          ],
-          "properties": {
-            "kind": {
-              "$ref": "#/definitions/CredentialStorageKind"
-            }
-          }
         }
       }
     },
@@ -961,17 +953,6 @@
       ],
       "type": "object",
       "x-ms-discriminator-value": "AWSCredential"
-    },
-    "CredentialStorageKind": {
-      "type": "string",
-      "description": "credential store kinds supported.",
-      "enum": [
-        "Kubernetes"
-      ],
-      "x-ms-enum": {
-        "name": "CredentialStorageKind",
-        "modelAsString": true
-      }
     },
     "ErrorDetail": {
       "description": "The error detail.",
