@@ -717,7 +717,7 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "linked application ID \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" for resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" has invalid application resource type.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "linked \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" has invalid Applications.Core/applications resource type.", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {

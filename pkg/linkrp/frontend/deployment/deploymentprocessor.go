@@ -104,8 +104,8 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 
 	// Override environment-scope namespace with application-scope kubernetes namespace.
 	if scope.Application != "" {
-		app, err := rp_util.FetchScopeResource[coreDatamodel.Application](ctx, dp.sp, scope.Application, id)
-		if err != nil {
+		app := &coreDatamodel.Application{}
+		if err := rp_util.FetchScopeResource(ctx, dp.sp, scope.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		if app.AppInternal.KubernetesNamespace != "" {
@@ -428,16 +428,12 @@ func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, reso
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the link and linked resources ```
 func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, environmentID string, recipeName string) (envMetadata EnvironmentMetadata, err error) {
-	envMetadata = EnvironmentMetadata{}
-	if err != nil {
-		return envMetadata, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided environment id %q is not a valid id.", environmentID))
-	}
-
-	env, err := rp_util.FetchScopeResource[coreDatamodel.Environment](ctx, dp.sp, environmentID, resources.ID{})
-	if err != nil {
+	env := &coreDatamodel.Environment{}
+	if err = rp_util.FetchScopeResource(ctx, dp.sp, environmentID, env); err != nil {
 		return
 	}
 
+	envMetadata = EnvironmentMetadata{}
 	if env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
 		envMetadata.Namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {

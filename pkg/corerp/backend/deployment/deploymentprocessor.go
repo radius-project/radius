@@ -100,12 +100,14 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 	// 2. fetch the application properties from the DB
-	app, err := rp_util.FetchScopeResource[corerp_dm.Application](ctx, dp.sp, res.AppID.String(), resourceID)
+	app := &corerp_dm.Application{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, res.AppID.String(), app)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 	// 3. fetch the environment resource from the db to get the Namespace
-	env, err := rp_util.FetchScopeResource[corerp_dm.Environment](ctx, dp.sp, app.Properties.Environment, resourceID)
+	env := &corerp_dm.Environment{}
+	err = rp_util.FetchScopeResource(ctx, dp.sp, app.Properties.Environment, env)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
