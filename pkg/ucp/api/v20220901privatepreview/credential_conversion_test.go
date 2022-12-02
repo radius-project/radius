@@ -63,7 +63,7 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 						ClientID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
 					},
 					Storage: &datamodel.CredentialStorageProperties{
-						Kind: &internalStorageKind,
+						Kind:               &internalStorageKind,
 						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
 					},
 				},
@@ -71,21 +71,7 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "credentialresource-other.json",
-			expected: &datamodel.Credential{
-				TrackedResource: v1.TrackedResource{
-					ID:       "/planes/other/othercloud/providers/System.Other/credentials/default",
-					Name:     "default",
-					Type:     "System.Other/credentials",
-					Location: "west-us-2",
-				},
-				Properties: &datamodel.CredentialResourceProperties{
-					Kind: "other.com.credential",
-					Storage: &datamodel.CredentialStorageProperties{
-						Kind: &internalStorageKind,
-						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
-					},
-				},
-			},
+			err:      conv.ErrInvalidModelConversion,
 		},
 		{
 			filename: "credentialresource-empty-properties.json",

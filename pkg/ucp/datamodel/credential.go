@@ -6,7 +6,14 @@
 package datamodel
 
 import (
+	"strings"
+
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+)
+
+const (
+	// InternalStorageKind represents ucp credential storage type for internal credential type
+	InternalStorageKind = CredentialStorageKind("Internal")
 )
 
 // Credential represents UCP Credential.
@@ -16,35 +23,65 @@ type Credential struct {
 	Properties *CredentialResourceProperties `json:"properties,omitempty"`
 }
 
+// ResourceTypeName gives the type of ucp resource.
 func (c *Credential) ResourceTypeName() string {
 	return c.Type
 }
 
 // Credential Properties represents UCP Credential Properties.
 type CredentialResourceProperties struct {
-	Kind            string                       `json:"kind,omitempty"`
-	AzureCredential *AzureCredentialProperties   `json:"azureCredential,omitempty"`
-	AWSCredential   *AWSCredentialProperties     `json:"awsCredential,omitempty"`
-	Storage         *CredentialStorageProperties `json:"storage,omitempty"`
+	// Kind is the kind of credential resource.
+	Kind string `json:"kind,omitempty"`
+	// AzureCredential is the azure service principal credentials.
+	AzureCredential *AzureCredentialProperties `json:"azureCredential,omitempty"`
+	// AWSCredential is the aws iam credentials.
+	AWSCredential *AWSCredentialProperties `json:"awsCredential,omitempty"`
+	// Storage contains the properties of the storage associated with the kind.
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 }
 
+// AzureCredentialProperties contains ucp Azure credential properties.
 type AzureCredentialProperties struct {
+	// TenantID represents the tenantId of azure service principal.
 	TenantID *string `json:"tenantId,omitempty"`
+	// ClientID represents the clientId of azure service principal.
 	ClientID *string `json:"clientId,omitempty"`
 }
 
+// AWSCredentialProperties contains ucp AWS credential properties.
 type AWSCredentialProperties struct {
-	AccessKeyID     *string `json:"accessKeyId,omitempty"`
+	// AccessKeyID contains aws access key for iam.
+	AccessKeyID *string `json:"accessKeyId,omitempty"`
+	// SecretAccessKey contains secret access key for iam.
 	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
 }
 
+// CredentialStorageKind represents ucp credential storage kind.
 type CredentialStorageKind string
 
+// Gets the case insensitive storage kind for a given storage string value.
+func (c CredentialStorageKind) GetKind(kind string) CredentialStorageKind {
+	storagekindMap := map[string]CredentialStorageKind{
+		"internal": InternalStorageKind,
+	}
+	storageKind, ok := storagekindMap[strings.ToLower(kind)]
+	if !ok {
+		return CredentialStorageKind("")
+	}
+
+	return storageKind
+}
+
+// CredentialStorageProperties contains ucp credential storage properties.
 type CredentialStorageProperties struct {
-	Kind               *CredentialStorageKind               `json:"kind,omitempty"`
+	// Kind represents ucp credential storage kind.
+	Kind *CredentialStorageKind `json:"kind,omitempty"`
+	// InternalCredential represents ucp internal credential storage properties.
 	InternalCredential *InternalCredentialStorageProperties `json:"internalCredential,omitempty"`
 }
 
+// CredentialStorageProperties contains ucp internal credential storage properties.
 type InternalCredentialStorageProperties struct {
+	// SecretName is the name of secret stored in ucp for the crendentials.
 	SecretName *string `json:"secretName"`
 }
