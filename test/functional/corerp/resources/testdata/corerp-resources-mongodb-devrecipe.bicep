@@ -64,7 +64,7 @@ resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' =
     environment: env.id
     mode: 'recipe'
     recipe: {
-      name: 'mongodb'
+      name: 'mongo-azure'
     }
   }
 }
