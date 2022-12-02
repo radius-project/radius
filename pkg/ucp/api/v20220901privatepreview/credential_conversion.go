@@ -148,8 +148,7 @@ func (dst *CredentialResource) ConvertFrom(src conv.DataModelInterface) error {
 }
 
 func getStorage(credential *datamodel.Credential) CredentialStoragePropertiesClassification {
-	storageKind := credential.Properties.Storage.Kind
-	switch storageKind.GetKind("internal") {
+	switch *credential.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		return &InternalCredentialStorageProperties{
 			Kind:       (*CredentialStorageKind)(credential.Properties.Storage.Kind),

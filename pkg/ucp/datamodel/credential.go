@@ -6,8 +6,6 @@
 package datamodel
 
 import (
-	"strings"
-
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 )
 
@@ -58,19 +56,6 @@ type AWSCredentialProperties struct {
 
 // CredentialStorageKind represents ucp credential storage kind.
 type CredentialStorageKind string
-
-// Gets the case insensitive storage kind for a given storage string value.
-func (c CredentialStorageKind) GetKind(kind string) CredentialStorageKind {
-	storagekindMap := map[string]CredentialStorageKind{
-		"internal": InternalStorageKind,
-	}
-	storageKind, ok := storagekindMap[strings.ToLower(kind)]
-	if !ok {
-		return CredentialStorageKind("")
-	}
-
-	return storageKind
-}
 
 // CredentialStorageProperties contains ucp credential storage properties.
 type CredentialStorageProperties struct {
