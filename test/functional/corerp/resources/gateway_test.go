@@ -30,6 +30,7 @@ const (
 )
 
 func Test_Gateway(t *testing.T) {
+	//t.Skip()
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
 
@@ -238,9 +239,7 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 		return err
 	}
 
-	if !isHttps {
-		req.Host = hostname
-	}
+	req.Host = hostname
 
 	// Send requests to backing container via port-forward
 	response, err := autorest.SendWithSender(
