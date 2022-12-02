@@ -981,9 +981,6 @@
           "description": "The name of secret stored."
         }
       },
-      "required": [
-        "secretName"
-      ],
       "type": "object",
       "x-ms-discriminator-value": "Internal"
     },
