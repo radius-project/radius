@@ -113,7 +113,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 func Test_MongoDB_Recipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
-	name := "corerp-resources-mongodb-recipe"
+	name := "corerp-resources-mongodb-devrecipe"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -123,21 +123,21 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-recipes-env",
+						Name: "corerp-resources-environment-devrecipes-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
-						Name: "corerp-resources-mongodb-recipe",
+						Name: "corerp-resources-mongodb-devrecipe",
 						Type: validation.ApplicationsResource,
 						App:  name,
 					},
 					{
-						Name: "mongodb-recipe-app-ctnr",
+						Name: "mongodb-devrecipe-app-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-db",
+						Name: "mongo-devrecipe-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 					},
@@ -145,8 +145,8 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-resources-environment-recipes-env": {
-						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr"),
+					"corerp-resources-environment-devrecipes-env": {
+						validation.NewK8sPodForResource(name, "mongodb-devrecipe-app-ctnr"),
 					},
 				},
 			},
