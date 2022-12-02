@@ -16,10 +16,10 @@ func main() {
 	var err error
 	if crt == "" && key == "" {
 		log.Println("Starting magpie in http mode")
-		err = startMagpieServer()
+		err = startHTTPServer()
 	} else {
 		log.Println("Starting magpie in https mode")
-		err = startSecureMagpieServer([]byte(crt), []byte(key))
+		err = startHTTPSServer([]byte(crt), []byte(key))
 	}
 	if err != nil {
 		log.Println("Terminating Magpie. Encountered error - ", err.Error())
