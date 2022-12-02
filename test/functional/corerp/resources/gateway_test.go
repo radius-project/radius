@@ -130,14 +130,14 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		t.Logf("Portforward session active at %s", baseURL)
 
 		if isHttps {
-			if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, true); err != nil {
+			if err := testGatewayAvailability(t, hostname, baseURL, "", 404, true); err != nil {
 				close(stopChan)
 				return err
 			}
 			return nil
 		}
 
-		if err := testGatewayAvailability(t, hostname, baseURL, "", 200, false); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, false); err != nil {
 			close(stopChan)
 			return err
 		}
