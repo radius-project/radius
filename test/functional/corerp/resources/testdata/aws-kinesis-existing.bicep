@@ -27,12 +27,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   location: location
   properties: {
     environment: environment
-    extensions: [
-      {
-          kind: 'kubernetesNamespaceOverride'
-          namespace: 'aws-kinesis-existing-app'
-      }
-    ]
   }
 }
 

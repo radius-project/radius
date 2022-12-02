@@ -17,6 +17,7 @@ import (
 func Test_DaprSecretStoreGeneric(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-secretstore-generic.bicep"
 	name := "corerp-resources-dapr-secretstore-generic"
+	appNamespace := "default-corerp-resources-dapr-secretstore-generic"
 
 	requiredSecrets := map[string]map[string]string{
 		"mysecret": {
@@ -47,7 +48,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "gnrc-scs-ctnr"),
 					},
 				},

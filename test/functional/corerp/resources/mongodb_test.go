@@ -18,6 +18,7 @@ func Test_MongoDB(t *testing.T) {
 	t.Skip()
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
+	appNamespace := "default-corerp-resources-mongodb"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -44,7 +45,7 @@ func Test_MongoDB(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mdb-app-ctnr"),
 					},
 				},
@@ -58,6 +59,7 @@ func Test_MongoDB(t *testing.T) {
 func Test_MongoDBUserSecrets(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
+	appNamespace := "default-corerp-resources-mongodb-user-secrets"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -94,7 +96,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mdb-us-app-ctnr"),
 						validation.NewK8sPodForResource(name, "mdb-us-ctnr"),
 						validation.NewK8sServiceForResource(name, "mdb-us-rte"),
@@ -114,6 +116,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
+	appNamespace := "corerp-resources-mongodb-recipe-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -145,7 +148,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-resources-environment-recipes-env": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mongodb-recipe-app-ctnr"),
 					},
 				},

@@ -50,6 +50,12 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   location: location
   properties: {
     environment: env.id
+    extensions: [
+      {
+          kind: 'kubernetesNamespaceOverride'
+          namespace: 'corerp-resources-volume-azure-keyvault-app'
+      }
+    ]
   }
 }
 

@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     extensions: [
       {
           kind: 'kubernetesNamespaceOverride'
-          namespace: 'corerp-resources-container-live-ready'
+          namespace: 'corerp-resources-container-live-ready-app'
       }
     ]
   }

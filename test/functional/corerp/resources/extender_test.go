@@ -17,6 +17,7 @@ import (
 func Test_Extender(t *testing.T) {
 	template := "testdata/corerp-resources-extender.bicep"
 	name := "corerp-resources-extender"
+	appNamespace := "default-corerp-resources-extender"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -42,7 +43,7 @@ func Test_Extender(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "extr-ctnr"),
 					},
 				},
