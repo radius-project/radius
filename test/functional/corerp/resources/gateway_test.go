@@ -126,9 +126,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		return fmt.Errorf("portforward failed with error: %s", err)
 	case localPort := <-portChan:
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
-		if isHttps {
-			baseURL = fmt.Sprintf("http://%s:%d", hostname, localPort)
-		}
+
 		t.Logf("Portforward session active at %s", baseURL)
 
 		if isHttps {
@@ -139,7 +137,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return nil
 		}
 
-		if err := testGatewayAvailability(t, hostname, baseURL, "healthz", 200, false); err != nil {
+		if err := testGatewayAvailability(t, hostname, baseURL, "", 200, false); err != nil {
 			close(stopChan)
 			return err
 		}
