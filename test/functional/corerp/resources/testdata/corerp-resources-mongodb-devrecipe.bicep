@@ -51,7 +51,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
         kind:'httpGet'
         containerPort:3000
         path: '/healthz'
-      }s
+      }
     }
   }
 }
