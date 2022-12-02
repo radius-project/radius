@@ -1,0 +1,205 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+package v20220901privatepreview
+
+import (
+	"encoding/json"
+	"fmt"
+	"testing"
+
+	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/stretchr/testify/require"
+)
+
+func TestCredentialConvertVersionedToDataModel(t *testing.T) {
+	internalStorageKind := datamodel.CredentialStorageKind(CredentialStorageKindInternal)
+	conversionTests := []struct {
+		filename string
+		expected *datamodel.Credential
+		err      error
+	}{
+		{
+			filename: "credentialresource-aws.json",
+			expected: &datamodel.Credential{
+				TrackedResource: v1.TrackedResource{
+					ID:       "/planes/aws/awscloud/providers/System.AWS/credentials/default",
+					Name:     "default",
+					Type:     "System.AWS/credentials",
+					Location: "west-us-2",
+				},
+				Properties: &datamodel.CredentialResourceProperties{
+					Kind: "aws.com.iam",
+					AWSCredential: &datamodel.AWSCredentialProperties{
+						AccessKeyID:     to.StringPtr("00000000-0000-0000-0000-000000000000"),
+						SecretAccessKey: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					},
+					Storage: &datamodel.CredentialStorageProperties{
+						Kind:               &internalStorageKind,
+						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresource-azure.json",
+			expected: &datamodel.Credential{
+				TrackedResource: v1.TrackedResource{
+					ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+					Name:     "default",
+					Type:     "System.Azure/credentials",
+					Location: "west-us-2",
+				},
+				Properties: &datamodel.CredentialResourceProperties{
+					Kind: "azure.com.serviceprincipal",
+					AzureCredential: &datamodel.AzureCredentialProperties{
+						TenantID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+						ClientID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					},
+					Storage: &datamodel.CredentialStorageProperties{
+						Kind: &internalStorageKind,
+						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresource-other.json",
+			expected: &datamodel.Credential{
+				TrackedResource: v1.TrackedResource{
+					ID:       "/planes/other/othercloud/providers/System.Other/credentials/default",
+					Name:     "default",
+					Type:     "System.Other/credentials",
+					Location: "west-us-2",
+				},
+				Properties: &datamodel.CredentialResourceProperties{
+					Kind: "other.com.credential",
+					Storage: &datamodel.CredentialStorageProperties{
+						Kind: &internalStorageKind,
+						InternalCredential: &datamodel.InternalCredentialStorageProperties{},
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresource-empty-properties.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
+		},
+		{
+			filename: "credentialresource-empty-storage.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
+		},
+		{
+			filename: "credentialresource-empty-storage-kind.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
+		},
+		{
+			filename: "credentialresource-invalid-storagekind.json",
+			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())},
+		},
+	}
+	for _, tt := range conversionTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			rawPayload := radiustesting.ReadFixture(tt.filename)
+			r := &CredentialResource{}
+			err := json.Unmarshal(rawPayload, r)
+			require.NoError(t, err)
+
+			dm, err := r.ConvertTo()
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+				ct := dm.(*datamodel.Credential)
+				require.Equal(t, tt.expected, ct)
+			}
+		})
+	}
+}
+
+func TestCredentialConvertDataModelToVersioned(t *testing.T) {
+	internalStorageKind := CredentialStorageKindInternal
+	conversionTests := []struct {
+		filename string
+		expected *CredentialResource
+		err      error
+	}{
+		{
+			filename: "credentialresourcedatamodel-aws.json",
+			expected: &CredentialResource{
+				ID:       to.StringPtr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+				Name:     to.StringPtr("default"),
+				Type:     to.StringPtr("System.AWS/credentials"),
+				Location: to.StringPtr("west-us-2"),
+				Properties: &AWSCredentialProperties{
+					Kind:            to.StringPtr("aws.com.credential"),
+					AccessKeyID:     to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					SecretAccessKey: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					Storage: &InternalCredentialStorageProperties{
+						Kind:       &internalStorageKind,
+						SecretName: to.StringPtr("aws_awscloud_default"),
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresourcedatamodel-azure.json",
+			expected: &CredentialResource{
+				ID:       to.StringPtr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+				Name:     to.StringPtr("default"),
+				Type:     to.StringPtr("System.Azure/credentials"),
+				Location: to.StringPtr("west-us-2"),
+				Properties: &AzureServicePrincipalProperties{
+					Kind:     to.StringPtr("azure.com.credential"),
+					ClientID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					TenantID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					Storage: &InternalCredentialStorageProperties{
+						Kind:       &internalStorageKind,
+						SecretName: to.StringPtr("azure_azurecloud_default"),
+					},
+				},
+			},
+		},
+		{
+			filename: "credentialresourcedatamodel-default.json",
+			expected: &CredentialResource{
+				ID:       to.StringPtr("/planes/other/othercloud/providers/System.Other/credentials/default"),
+				Name:     to.StringPtr("default"),
+				Type:     to.StringPtr("System.Other/credentials"),
+				Location: to.StringPtr("west-us-2"),
+				Properties: &CredentialResourceProperties{
+					Kind: to.StringPtr("other.com.credential"),
+					Storage: &InternalCredentialStorageProperties{
+						Kind:       &internalStorageKind,
+						SecretName: to.StringPtr("other_othercloud_default"),
+					},
+				},
+			},
+		},
+	}
+	for _, tt := range conversionTests {
+		t.Run(tt.filename, func(t *testing.T) {
+			rawPayload := radiustesting.ReadFixture(tt.filename)
+			r := &datamodel.Credential{}
+			err := json.Unmarshal(rawPayload, r)
+			require.NoError(t, err)
+
+			versioned := &CredentialResource{}
+			err = versioned.ConvertFrom(r)
+
+			if tt.err != nil {
+				require.ErrorIs(t, err, tt.err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expected, versioned)
+			}
+		})
+	}
+}
