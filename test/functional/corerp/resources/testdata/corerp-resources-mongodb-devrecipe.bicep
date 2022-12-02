@@ -7,13 +7,13 @@ param sub string = subscription().subscriptionId
 param magpieimage string 
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-environment-devrecipes-env'
+  name: 'corerp-resources-environment-devrecipe-env'
   location: 'global'
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'corerp-resources-environment-devrecipes-env'
+      namespace: 'corerp-resources-environment-devrecipe-env'
     }
     providers: {
       azure: {
