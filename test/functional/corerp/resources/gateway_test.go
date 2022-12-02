@@ -245,7 +245,7 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 
 	// Send requests to backing container via port-forward
 	response, err := autorest.SendWithSender(
-		newTestHTTPClient(isHttps),
+		newTestHTTPClient(isHttps, hostname),
 		req,
 		autorest.WithLogging(functional.NewTestLogger(t)),
 		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
@@ -263,7 +263,7 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 	return nil
 }
 
-func newTestHTTPClient(isHttps bool) autorest.Sender {
+func newTestHTTPClient(isHttps bool, hostname string) autorest.Sender {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout:   30 * time.Second,
@@ -280,6 +280,7 @@ func newTestHTTPClient(isHttps bool) autorest.Sender {
 		transport.TLSClientConfig = &tls.Config{
 			InsecureSkipVerify: true, //ignore certificate verification errors; needed since we use self-signed cert for magpie
 			MinVersion:         tls.VersionTLS12,
+			ServerName:         hostname,
 		}
 	}
 	return &http.Client{Transport: transport}
