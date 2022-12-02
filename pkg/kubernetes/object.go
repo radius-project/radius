@@ -15,6 +15,7 @@ import (
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/util/validation"
 )
 
 // FindDeployment finds deployment in a list of output resources
@@ -125,4 +126,10 @@ func GetShortenedTargetPortName(name string) string {
 	h := fnv.New32a()
 	h.Write([]byte(strings.ToLower(name)))
 	return "a" + fmt.Sprint(h.Sum32())
+}
+
+// IsValidObjectName returns true if name is valid Kubernetes object name
+func IsValidObjectName(name string) bool {
+	msgs := validation.IsDNS1123Label(name)
+	return len(msgs) == 0
 }
