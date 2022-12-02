@@ -123,6 +123,10 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
+	if !kubernetes.IsValidObjectName(kubeNamespace) {
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. namespace must be at most 63 alphanumeric characters or '-'.", kubeNamespace)), nil
+	}
+
 	// Populate kubernetes namespace to internal metadata property.
 	newResource.AppInternal.KubernetesNamespace = kubeNamespace
 
