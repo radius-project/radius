@@ -18,13 +18,13 @@ const (
 type CredentialStorageKind string
 
 const (
-	CredentialStorageKindKubernetes CredentialStorageKind = "Kubernetes"
+	CredentialStorageKindInternal CredentialStorageKind = "Internal"
 )
 
 // PossibleCredentialStorageKindValues returns the possible values for the CredentialStorageKind const type.
 func PossibleCredentialStorageKindValues() []CredentialStorageKind {
 	return []CredentialStorageKind{	
-		CredentialStorageKindKubernetes,
+		CredentialStorageKindInternal,
 	}
 }
 

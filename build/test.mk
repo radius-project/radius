@@ -51,7 +51,7 @@ test-validate-bicep: ## Validates that all .bicep files compile cleanly
 .PHONY: oav-installed
 oav-installed:
 	@echo "$(ARROW) Detecting oav (https://github.com/Azure/oav)..."
-	@which autorest > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
+	@which oav > /dev/null || { echo "run 'npm install -g oav' to install oav"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: test-ucp-spec-examples 
