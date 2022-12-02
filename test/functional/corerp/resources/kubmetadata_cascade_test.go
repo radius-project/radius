@@ -27,25 +27,37 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 	requiredSecrets := map[string]map[string]string{}
 
 	expectedAnnotations := map[string]string{
-		"user.env.ann.1":  "user.env.ann.val.1",
-		"user.env.ann.2":  "user.env.ann.val.2",
-		"user.app.ann.1":  "user.app.ann.val.1",
-		"user.app.ann.2":  "user.app.ann.val.2",
-		"user.cntr.ann.1": "user.cntr.ann.val.1",
-		"user.cntr.ann.2": "user.cntr.ann.val.2",
-		"collision.ann.1": "collision.cntr.ann.val.1",
-		"collision.env.app.ann.1": "collision.app.ann.val.1",
+		"user.env.ann.1":          "user.env.ann.val.1",
+		"user.env.ann.2":          "user.env.ann.val.2",
+		"user.app.ann.1":          "user.app.ann.val.1",
+		"user.app.ann.2":          "user.app.ann.val.2",
+		"user.cntr.ann.1":         "user.cntr.ann.val.1",
+		"user.cntr.ann.2":         "user.cntr.ann.val.2",
+		"collision.ann.1":         "collision.cntr.ann.val.1", // has container value for collision key
+		"collision.env.app.ann.1": "collision.app.ann.val.1",  // has app value for collision at env-app
 	}
 
 	expectedLabels := map[string]string{
-		"user.env.lbl.1":  "user.env.lbl.val.1",
-		"user.env.lbl.2":  "user.env.lbl.val.2",
-		"user.app.lbl.1":  "user.app.lbl.val.1",
-		"user.app.lbl.2":  "user.app.lbl.val.2",
-		"user.cntr.lbl.1": "user.cntr.lbl.val.1",
-		"user.cntr.lbl.2": "user.cntr.lbl.val.2",
-		"collision.lbl.1": "collision.cntr.lbl.val.1",
-		"collision.app.cntr.lbl.1": "collision.cntr.lbl.val.1",
+		"user.env.lbl.1":           "user.env.lbl.val.1",
+		"user.env.lbl.2":           "user.env.lbl.val.2",
+		"user.app.lbl.1":           "user.app.lbl.val.1",
+		"user.app.lbl.2":           "user.app.lbl.val.2",
+		"user.cntr.lbl.1":          "user.cntr.lbl.val.1",
+		"user.cntr.lbl.2":          "user.cntr.lbl.val.2",
+		"collision.lbl.1":          "collision.cntr.lbl.val.1", // has container value for collision key
+		"collision.app.cntr.lbl.1": "collision.cntr.lbl.val.1", // has container value for collision at app-cntr
+	}
+
+	notExpectedAnnotations := map[string]string{
+		"radius.dev/env.ann.1":  "reserved.ann.val.1",
+		"radius.dev/app.ann.1":  "reserved.ann.val.1",
+		"radius.dev/cntr.ann.1": "reserved.ann.val.1",
+	}
+
+	notExpectedLabels := map[string]string{
+		"radius.dev/env.lbl.1":  "reserved.lbl.val.1",
+		"radius.dev/app.lbl.1":  "reserved.lbl.val.1",
+		"radius.dev/cntr.lbl.1": "reserved.lbl.val.1",
 	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -87,6 +99,8 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				pod := pods.Items[0]
 				require.Equal(t, isMapSubSet(expectedAnnotations, pod.Annotations), true)
 				require.Equal(t, isMapSubSet(expectedLabels, pod.Labels), true)
+				require.Equal(t, isMapSubSet(notExpectedAnnotations, pod.Annotations), false)
+				require.Equal(t, isMapSubSet(notExpectedLabels, pod.Labels), false)
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(ns).List(context.Background(), metav1.ListOptions{
@@ -97,6 +111,8 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				deployment := deployments.Items[0]
 				require.Equal(t, isMapSubSet(expectedAnnotations, deployment.Annotations), true)
 				require.Equal(t, isMapSubSet(expectedLabels, deployment.Labels), true)
+				require.Equal(t, isMapSubSet(notExpectedAnnotations, pod.Annotations), false)
+				require.Equal(t, isMapSubSet(notExpectedLabels, pod.Labels), false)
 			},
 		},
 	}, requiredSecrets)
