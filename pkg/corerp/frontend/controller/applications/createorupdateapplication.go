@@ -124,15 +124,14 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 	}
 
 	if !kubernetes.IsValidObjectName(kubeNamespace) {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. namespace must be at most 63 alphanumeric characters or '-'.", kubeNamespace)), nil
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. namespace must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
 	}
 
 	// Populate kubernetes namespace to internal metadata property.
 	newResource.AppInternal.KubernetesNamespace = kubeNamespace
 
-	// TODO: Move it to backend controller
-	nsSpec := &corev1.Namespace{}
-	err = a.KubeClient().Get(ctx, client.ObjectKey{Name: kubeNamespace}, nsSpec)
+	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
+	err = a.KubeClient().Get(ctx, client.ObjectKey{Name: kubeNamespace}, &corev1.Namespace{})
 	if apierrors.IsNotFound(err) {
 		logger.Info("Creating kubernetes namespace", "namespace", kubeNamespace)
 		if err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}}); err != nil {
