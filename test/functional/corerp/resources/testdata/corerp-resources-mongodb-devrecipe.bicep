@@ -25,7 +25,7 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-mongodb-evrecipe'
+  name: 'corerp-resources-mongodb-devrecipe'
   location: 'global'
   properties: {
     environment: env.id
