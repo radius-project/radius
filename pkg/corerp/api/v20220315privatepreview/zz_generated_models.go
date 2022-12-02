@@ -69,7 +69,7 @@ type ApplicationKubernetesNamespaceExtension struct {
 	// REQUIRED; Specifies the extensions of a resource.
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; The namespace to use for the application.
+	// REQUIRED; The Kubernetes namespace to use for this application.
 	Namespace *string `json:"namespace,omitempty"`
 }
 
