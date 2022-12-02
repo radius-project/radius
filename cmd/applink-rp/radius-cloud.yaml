@@ -29,6 +29,6 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 9090
+    port: 2222
 featureFlags:
   - "PLACEHOLDER"

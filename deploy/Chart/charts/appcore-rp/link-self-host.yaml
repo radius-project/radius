@@ -23,7 +23,7 @@ metricsProvider:
   prometheus:
     enabled: true
     path: "/metrics"
-    port: 9090
+    port: 2222
 server:
   host: "0.0.0.0"
   port: 5444

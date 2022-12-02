@@ -29,15 +29,6 @@ spec:
         - --config-file=/etc/config/radius-self-host.yaml
         - --run-link
         - --link-config=/etc/config/link-self-host.yaml
-        {{ if eq .Values.global.prometheus.enabled true }}
-        - --enable-metrics
-        - --metrics-path
-        - "{{ .Values.global.prometheus.path }}"
-        - --metrics-port
-        - "{{ .Values.global.prometheus.port }}"
-        {{ else }}
-        - --enable-metrics=false"
-        {{ end }}
         image: {{ .Values.global.appcorerp.image }}:{{ .Values.global.appcorerp.tag }}
         envFrom:
         - secretRef: 
