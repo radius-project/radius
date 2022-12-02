@@ -20,8 +20,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 )
 
-const reservedRadiusDevPrefix = "radius.dev/"
-
 // Renderer is the renderers.Renderer implementation for the kubernetesmetadata extension.
 type Renderer struct {
 	Inner renderers.Renderer
