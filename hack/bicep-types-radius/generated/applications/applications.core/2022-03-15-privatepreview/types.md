@@ -91,7 +91,7 @@
 ### ApplicationKubernetesNamespaceExtension
 #### Properties
 * **kind**: 'kubernetesNamespaceOverride' (Required): Specifies the extensions of a resource.
-* **namespace**: string (Required): The namespace to use for the application.
+* **namespace**: string (Required): The Kubernetes namespace to use for this application.
 
 
 ## ApplicationKubernetesMetadataExtensionAnnotations

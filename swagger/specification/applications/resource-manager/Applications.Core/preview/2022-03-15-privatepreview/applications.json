@@ -331,7 +331,7 @@
       "properties": {
         "namespace": {
           "type": "string",
-          "description": "The namespace to use for the application."
+          "description": "The Kubernetes namespace to use for this application."
         }
       },
       "required": [
