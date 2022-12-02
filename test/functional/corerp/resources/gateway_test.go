@@ -239,7 +239,9 @@ func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expec
 		return err
 	}
 
-	req.Host = hostname
+	if !isHttps {
+		req.Host = hostname
+	}
 
 	// Send requests to backing container via port-forward
 	response, err := autorest.SendWithSender(
