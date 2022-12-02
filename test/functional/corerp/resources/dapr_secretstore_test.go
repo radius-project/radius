@@ -12,6 +12,7 @@ import (
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 func Test_DaprSecretStoreGeneric(t *testing.T) {
@@ -19,19 +20,70 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 	name := "corerp-resources-dapr-secretstore-generic"
 	appNamespace := "default-corerp-resources-dapr-secretstore-generic"
 
-	requiredSecrets := map[string]map[string]string{
-		"mysecret": {
-			"mysecret": "mysecret",
+	requiredSecrets := map[string]map[string]string{}
+
+	// TODO: create role and rolebindings in container renderer.
+	resources := []unstructured.Unstructured{
+		{
+			Object: map[string]any{
+				"apiVersion": "v1",
+				"kind":       "Secret",
+				"metadata": map[string]any{
+					"name":      "mysecret",
+					"namespace": appNamespace,
+				},
+				"data": map[string]any{
+					"mysecret": []byte("mysecret"),
+				},
+			},
+		},
+		{
+			Object: map[string]any{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind":       "Role",
+				"metadata": map[string]any{
+					"name":      "secret-reader",
+					"namespace": appNamespace,
+				},
+				"rules": []map[string]any{
+					{
+						"apiGroups": []string{""},
+						"resources": []string{"secrets"},
+						"verbs":     []string{"get", "list"},
+					},
+				},
+			},
+		},
+		{
+			Object: map[string]any{
+				"apiVersion": "rbac.authorization.k8s.io/v1",
+				"kind":       "RoleBinding",
+				"metadata": map[string]any{
+					"name":      "dapr-secret-reader",
+					"namespace": appNamespace,
+				},
+				"subjects": []map[string]any{
+					{
+						"kind": "ServiceAccount",
+						"name": "default",
+					},
+				},
+				"roleRef": map[string]any{
+					"kind":     "Role",
+					"name":     "secret-reader",
+					"apiGroup": "rbac.authorization.k8s.io",
+				},
+			},
 		},
 	}
 
-	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-dapr-secretstore-generic",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -54,7 +106,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	}, requiredSecrets, resources...)
 
 	test.Test(t)
 }

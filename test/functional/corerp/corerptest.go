@@ -14,10 +14,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/restmapper"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
@@ -26,7 +24,6 @@ import (
 	"github.com/project-radius/radius/test/validation"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	memory "k8s.io/client-go/discovery/cached"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -86,27 +83,13 @@ func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[stri
 }
 
 func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
-	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
-	if err != nil {
+	if err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name); err != nil {
 		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
 	}
 
-	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(ct.Options.K8sClient.Discovery()))
 	for _, r := range ct.InitialResources {
-		mapping, err := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
-		if err != nil {
-			return fmt.Errorf("unknown kind %q: %w", r.GroupVersionKind().String(), err)
-		}
-		if mapping.Scope == meta.RESTScopeNamespace {
-			_, err = ct.Options.DynamicClient.Resource(mapping.Resource).
-				Namespace(ct.Name).
-				Create(ctx, &r, v1.CreateOptions{})
-		} else {
-			_, err = ct.Options.DynamicClient.Resource(mapping.Resource).
-				Create(ctx, &r, v1.CreateOptions{})
-		}
-		if err != nil {
-			return fmt.Errorf("failed to create %q resource %#v:  %w", mapping.Resource.String(), r, err)
+		if err := ct.Options.Client.Create(ctx, &r); err != nil {
+			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
 		}
 	}
 
@@ -164,17 +147,8 @@ func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
 }
 
 func (ct CoreRPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
-	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(ct.Options.K8sClient.Discovery()))
-	for _, r := range resources {
-		mapping, _ := restMapper.RESTMapping(r.GroupVersionKind().GroupKind(), r.GroupVersionKind().Version)
-		if mapping.Scope == meta.RESTScopeNamespace {
-			_ = ct.Options.DynamicClient.Resource(mapping.Resource).
-				Namespace(r.GetNamespace()).
-				Delete(context.TODO(), r.GetName(), v1.DeleteOptions{})
-		} else {
-			_ = ct.Options.DynamicClient.Resource(mapping.Resource).
-				Delete(context.TODO(), r.GetName(), v1.DeleteOptions{})
-		}
+	for i := len(resources) - 1; i >= 0; i-- {
+		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
 	}
 }
 
