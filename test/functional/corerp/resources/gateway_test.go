@@ -127,7 +127,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	case localPort := <-portChan:
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		if isHttps {
-			baseURL = fmt.Sprintf("http://hostname:%d", localPort)
+			baseURL = fmt.Sprintf("http://%s:%d", hostname, localPort)
 		}
 		t.Logf("Portforward session active at %s", baseURL)
 
