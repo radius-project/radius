@@ -74,7 +74,7 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 	switch p := cr.Properties.(type) {
 	case *AzureServicePrincipalProperties:
 		return &datamodel.CredentialResourceProperties{
-			Kind: *p.Kind,
+			Kind: to.String(p.Kind),
 			AzureCredential: &datamodel.AzureCredentialProperties{
 				TenantID: p.TenantID,
 				ClientID: p.ClientID,
@@ -96,10 +96,11 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 }
 
 func (cr *CredentialResource) getCredentialStorageProperties() (*datamodel.CredentialStorageProperties, error) {
+	storageKind := datamodel.CredentialStorageKind(*cr.Properties.GetCredentialResourceProperties().Storage.GetCredentialStorageProperties().Kind)
 	switch p := cr.Properties.GetCredentialResourceProperties().Storage.(type) {
 	case *InternalCredentialStorageProperties:
 		return &datamodel.CredentialStorageProperties{
-			Kind: (*datamodel.CredentialStorageKind)(p.Kind),
+			Kind: &storageKind,
 			InternalCredential: &datamodel.InternalCredentialStorageProperties{
 				SecretName: p.SecretName,
 			},
@@ -148,10 +149,11 @@ func (dst *CredentialResource) ConvertFrom(src conv.DataModelInterface) error {
 }
 
 func getStorage(credential *datamodel.Credential) CredentialStoragePropertiesClassification {
+	credentialStorageKind := CredentialStorageKind(*credential.Properties.Storage.Kind)
 	switch *credential.Properties.Storage.Kind {
 	case datamodel.InternalStorageKind:
 		return &InternalCredentialStorageProperties{
-			Kind:       (*CredentialStorageKind)(credential.Properties.Storage.Kind),
+			Kind:       &credentialStorageKind,
 			SecretName: credential.Properties.Storage.InternalCredential.SecretName,
 		}
 	default:
