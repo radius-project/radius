@@ -112,7 +112,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
 
-	template := "testdata/corerp-resources-mongodb-recipe.bicep"
+	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 
 	requiredSecrets := map[string]map[string]string{}
