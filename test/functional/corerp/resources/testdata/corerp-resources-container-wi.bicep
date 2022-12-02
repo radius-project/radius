@@ -46,15 +46,23 @@ resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     container: {
       image: magpieimage
-      command: ['/bin/sh']
-      args: ['-c', 'while true; do echo hello; sleep 10;done']
+      env: {
+        CONNECTION_STORAGE_ACCOUNTNAME: storageAccount.name
+      }
+      readinessProbe:{
+        kind:'httpGet'
+        containerPort:3000
+        path: '/healthz'
+      }
     }
     connections: {
       storage: {
         source: storageAccount.id
         iam: {
           kind: 'azure'
-          roles: ['Storage Blob Data Contributor']
+          roles: [
+            'Storage Blob Data Contributor'
+          ]
         }
       }
     }
