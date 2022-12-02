@@ -59,14 +59,14 @@ func Test_podWatcher_CanShutdownGracefully(t *testing.T) {
 		StatusMessage{
 			Kind:          KindConnected,
 			ContainerName: "test-container",
-			ReplicaName:   "abcd-efghij",
+			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},
 		StatusMessage{
 			Kind:          KindDisconnected,
 			ContainerName: "test-container",
-			ReplicaName:   "abcd-efghij",
+			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},
@@ -122,14 +122,14 @@ func Test_podWatcher_CanStartWhenPodIsReady(t *testing.T) {
 		StatusMessage{
 			Kind:          KindConnected,
 			ContainerName: "test-container",
-			ReplicaName:   "abcd-efghij",
+			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},
 		StatusMessage{
 			Kind:          KindDisconnected,
 			ContainerName: "test-container",
-			ReplicaName:   "abcd-efghij",
+			ReplicaName:   "test-app-test-container-abcd-efghij",
 			LocalPort:     3000,
 			RemotePort:    3000,
 		},

@@ -23,6 +23,7 @@ import (
 	env_show "github.com/project-radius/radius/pkg/cli/cmd/env/show"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/setup"
 
 	"github.com/project-radius/radius/pkg/cli/bicep"
@@ -132,6 +133,7 @@ func initSubCommands() {
 		Output: &output.OutputWriter{
 			Writer: RootCmd.OutOrStdout(),
 		},
+		Portforward:         &portforward.Impl{},
 		Prompter:            &prompt.Impl{},
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
