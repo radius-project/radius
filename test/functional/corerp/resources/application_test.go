@@ -20,6 +20,7 @@ import (
 func Test_Application(t *testing.T) {
 	template := "testdata/corerp-resources-application.bicep"
 	name := "corerp-resources-application"
+	appNamespace := "corerp-resources-application-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -37,9 +38,8 @@ func Test_Application(t *testing.T) {
 			// Application should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				appNS := "corerp-resources-application-app"
-				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNS, metav1.GetOptions{})
-				require.NoErrorf(t, err, "%s must be created", appNS)
+				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNamespace, metav1.GetOptions{})
+				require.NoErrorf(t, err, "%s must be created", appNamespace)
 			},
 		},
 	}, requiredSecrets)
