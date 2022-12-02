@@ -894,20 +894,7 @@
           "type": "string"
         },
         "storage": {
-          "type": "object",
-          "required": [
-            "kind"
-          ],
-          "properties": {
-            "kind": {
-              "$ref": "#/definitions/CredentialStorageKind"
-            },
-            "secretName": {
-              "readOnly": true,
-              "type": "string",
-              "description": "The name of secret stored."
-            }
-          }
+          "$ref":"#/definitions/CredentialStorageProperties"
         }
       }
     },
@@ -966,6 +953,39 @@
       ],
       "type": "object",
       "x-ms-discriminator-value": "aws.com.iam"
+    },
+    "CredentialStorageProperties": {
+      "description": "Credential storage properties",
+      "type": "object",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/CredentialStorageKind"
+        }
+      }
+    },
+    "InternalCredentialStorageProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/CredentialStorageProperties"
+        }
+      ],
+      "properties": {
+        "secretName": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The name of secret stored."
+        }
+      },
+      "required": [
+        "secretName"
+      ],
+      "type": "object",
+      "x-ms-discriminator-value": "Internal"
     },
     "CredentialStorageKind": {
       "type": "string",

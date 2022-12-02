@@ -24,8 +24,8 @@ type AWSCredentialProperties struct {
 	// REQUIRED; Secret Access Key for AWS identity
 	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
 
-	// REQUIRED
-	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+	// REQUIRED; Credential storage properties
+	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AWSCredentialProperties.
@@ -82,8 +82,8 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; secret when the CredentialKind is ServicePrincipal
 	Secret *string `json:"secret,omitempty"`
 
-	// REQUIRED
-	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+	// REQUIRED; Credential storage properties
+	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 
 	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
@@ -138,20 +138,30 @@ type CredentialResourceProperties struct {
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED
-	Storage *CredentialResourcePropertiesStorage `json:"storage,omitempty"`
+	// REQUIRED; Credential storage properties
+	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
 }
 
 // GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type CredentialResourceProperties.
 func (c *CredentialResourceProperties) GetCredentialResourceProperties() *CredentialResourceProperties { return c }
 
-type CredentialResourcePropertiesStorage struct {
+// CredentialStoragePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetCredentialStorageProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *CredentialStorageProperties, *InternalCredentialStorageProperties
+type CredentialStoragePropertiesClassification interface {
+	// GetCredentialStorageProperties returns the CredentialStorageProperties content of the underlying type.
+	GetCredentialStorageProperties() *CredentialStorageProperties
+}
+
+// CredentialStorageProperties - Credential storage properties
+type CredentialStorageProperties struct {
 	// REQUIRED; credential store kinds supported.
 	Kind *CredentialStorageKind `json:"kind,omitempty"`
-
-	// READ-ONLY; The name of secret stored.
-	SecretName *string `json:"secretName,omitempty" azure:"ro"`
 }
+
+// GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type CredentialStorageProperties.
+func (c *CredentialStorageProperties) GetCredentialStorageProperties() *CredentialStorageProperties { return c }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
@@ -185,6 +195,21 @@ type ErrorDetail struct {
 type ErrorResponse struct {
 	// The error object.
 	Error *ErrorDetail `json:"error,omitempty"`
+}
+
+type InternalCredentialStorageProperties struct {
+	// REQUIRED; credential store kinds supported.
+	Kind *CredentialStorageKind `json:"kind,omitempty"`
+
+	// READ-ONLY; The name of secret stored.
+	SecretName *string `json:"secretName,omitempty" azure:"ro"`
+}
+
+// GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type InternalCredentialStorageProperties.
+func (i *InternalCredentialStorageProperties) GetCredentialStorageProperties() *CredentialStorageProperties {
+	return &CredentialStorageProperties{
+		Kind: i.Kind,
+	}
 }
 
 // PlaneResource - UCP Plane.
