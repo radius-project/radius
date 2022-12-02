@@ -31,7 +31,7 @@ var Providers = map[string]bindings.BindingProvider{
 	"DAPRHTTPROUTE":   bindings.DaprHttpRouteBinding,
 }
 
-func startMagpieServer() error {
+func startHTTPServer() error {
 	mux := setupServeMux()
 	server = &http.Server{
 		Addr:    ":" + port,
@@ -45,7 +45,7 @@ func startMagpieServer() error {
 	return nil
 }
 
-func startSecureMagpieServer(crt []byte, key []byte) error {
+func startHTTPSServer(crt []byte, key []byte) error {
 	mux := setupServeMux()
 	cert, err := tls.X509KeyPair(crt, key)
 	if err != nil {
