@@ -34,6 +34,7 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 		"user.cntr.ann.1": "user.cntr.ann.val.1",
 		"user.cntr.ann.2": "user.cntr.ann.val.2",
 		"collision.ann.1": "collision.cntr.ann.val.1",
+		"collision.env.app.ann.1": "collision.app.ann.val.1",
 	}
 
 	expectedLabels := map[string]string{
@@ -44,6 +45,7 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 		"user.cntr.lbl.1": "user.cntr.lbl.val.1",
 		"user.cntr.lbl.2": "user.cntr.lbl.val.2",
 		"collision.lbl.1": "collision.cntr.lbl.val.1",
+		"collision.app.cntr.lbl.1": "collision.cntr.lbl.val.1",
 	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
