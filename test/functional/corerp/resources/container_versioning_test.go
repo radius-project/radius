@@ -46,7 +46,7 @@ func Test_ContainerVersioning(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "friendly-ctnr"),
 					},
 				},
@@ -54,7 +54,7 @@ func Test_ContainerVersioning(t *testing.T) {
 			SkipResourceDeletion: true,
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				label := fmt.Sprintf("radius.dev/application=%s", name)
-				secrets, err := test.Options.K8sClient.CoreV1().Secrets("default").List(ctx, metav1.ListOptions{
+				secrets, err := test.Options.K8sClient.CoreV1().Secrets(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)
