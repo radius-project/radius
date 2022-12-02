@@ -42,7 +42,7 @@ func Test_Container(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-resources-container": {
 						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
@@ -82,7 +82,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-resources-container-httproute": {
 						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
 						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
 					},
@@ -118,7 +118,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-resources-container-live-ready": {
 						validation.NewK8sPodForResource(name, "ctnr-live-ready"),
 					},
 				},
@@ -153,7 +153,7 @@ func Test_ContainerManualScale(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-resources-container-manualscale": {
 						validation.NewK8sPodForResource(name, "ctnr-manualscale"),
 					},
 				},
@@ -188,7 +188,7 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"corerp-resources-container-cmd-args": {
 						validation.NewK8sPodForResource(name, "ctnr-cmd-args"),
 					},
 				},

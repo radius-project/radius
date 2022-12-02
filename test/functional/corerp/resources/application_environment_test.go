@@ -12,6 +12,8 @@ import (
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
+	"github.com/stretchr/testify/require"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func Test_ApplicationAndEnvironment(t *testing.T) {
@@ -38,10 +40,9 @@ func Test_ApplicationAndEnvironment(t *testing.T) {
 			// Application and Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
-				/*
-					appNS := "corerp-resources-application-app-ns"
-					_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNS, metav1.GetOptions{})
-					require.NoErrorf(t, err, "%s must be created", appNS)*/
+				appNS := "corerp-resources-application-app"
+				_, err := test.Options.K8sClient.CoreV1().Namespaces().Get(ctx, appNS, metav1.GetOptions{})
+				require.NoErrorf(t, err, "%s must be created", appNS)
 			},
 		},
 	}, requiredSecrets)

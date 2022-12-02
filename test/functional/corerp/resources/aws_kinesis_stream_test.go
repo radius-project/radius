@@ -85,7 +85,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"aws-kinesis-existing-app": {
 						validation.NewK8sPodForResource("aws-kinesis-existing-app", "aws-ctnr"),
 					},
 				},
@@ -93,7 +93,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				labelset := kubernetes.MakeSelectorLabels("aws-kinesis-existing-app", "aws-ctnr")
 
-				deployments, err := ct.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
+				deployments, err := ct.Options.K8sClient.AppsV1().Deployments("aws-kinesis-existing-app").List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 				require.NoError(t, err, "failed to list deployments")
