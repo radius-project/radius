@@ -3,7 +3,6 @@ package bindings
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"log"
 	"time"
 
@@ -30,7 +29,7 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 	ctx := context.Background()
 	err = client.Ping(ctx).Err()
 	if err != nil {
-		log.Printf("failed to connect with redis instance at %s - %v\n", redisHost, err.Error()))
+		log.Printf("failed to connect with redis instance at %s - %v\n", redisHost, err.Error())
 		return BindingStatus{false, "not connected"}
 	}
 	return BindingStatus{true, "connected"}
