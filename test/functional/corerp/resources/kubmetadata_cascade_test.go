@@ -99,8 +99,8 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				pod := pods.Items[0]
 				require.Equal(t, isMapSubSet(expectedAnnotations, pod.Annotations), true)
 				require.Equal(t, isMapSubSet(expectedLabels, pod.Labels), true)
-				require.Equal(t, isMapSubSet(notExpectedAnnotations, pod.Annotations), false)
-				require.Equal(t, isMapSubSet(notExpectedLabels, pod.Labels), false)
+				require.Equal(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations), true)
+				require.Equal(t, isMapNonIntersecting(notExpectedLabels, pod.Labels), true)
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(ns).List(context.Background(), metav1.ListOptions{
@@ -111,8 +111,8 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				deployment := deployments.Items[0]
 				require.Equal(t, isMapSubSet(expectedAnnotations, deployment.Annotations), true)
 				require.Equal(t, isMapSubSet(expectedLabels, deployment.Labels), true)
-				require.Equal(t, isMapSubSet(notExpectedAnnotations, pod.Annotations), false)
-				require.Equal(t, isMapSubSet(notExpectedLabels, pod.Labels), false)
+				require.Equal(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations), true)
+				require.Equal(t, isMapNonIntersecting(notExpectedLabels, pod.Labels), true)
 			},
 		},
 	}, requiredSecrets)
@@ -134,4 +134,18 @@ func isMapSubSet(expectedMap map[string]string, actualMap map[string]string) boo
 	}
 
 	return true
+}
+
+func isMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
+	if len(actualMap) > len(notExpectedMap) {
+		return true
+	}
+
+	for k1 := range notExpectedMap {
+		if _, ok := actualMap[k1]; ok {
+			return true
+		}
+	}
+
+	return false
 }
