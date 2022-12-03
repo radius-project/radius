@@ -102,6 +102,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
+	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
 	if scope.Application != "" {
 		app := &coreDatamodel.Application{}
@@ -109,12 +110,12 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if app.AppInternal.KubernetesNamespace != "" {
-			envMetadata.Namespace = app.AppInternal.KubernetesNamespace
+			kubeNamespace = app.AppInternal.KubernetesNamespace
 		}
 	}
 
 	rendererOutput, err := renderer.Render(ctx, resource, renderers.RenderOptions{
-		Namespace: envMetadata.Namespace,
+		Namespace: kubeNamespace,
 		RecipeProperties: datamodel.RecipeProperties{
 			LinkRecipe:   recipe,
 			LinkType:     envMetadata.RecipeLinkType,
