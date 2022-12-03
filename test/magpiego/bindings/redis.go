@@ -22,8 +22,13 @@ func RedisBinding(envParams map[string]string) BindingStatus {
 		Addr:         redisHost,
 		Password:     redisPassword,
 		WriteTimeout: 5 * time.Second,
-		TLSConfig:    &tls.Config{},
 	}
+
+	// Enable TLS if the port is 6380.
+	if envParams["PORT"] == "6380" {
+		op.TLSConfig = &tls.Config{}
+	}
+
 	client := redis.NewClient(op)
 
 	ctx := context.Background()
