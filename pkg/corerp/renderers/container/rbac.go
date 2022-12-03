@@ -31,6 +31,7 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 		// At this time, we support only secret rbac permission for the namespace.
 		Rules: []rbacv1.PolicyRule{
 			{
+				APIGroups: []string{""},
 				Resources: []string{"secrets"},
 				Verbs:     []string{"get", "list"},
 			},
@@ -46,7 +47,7 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 	return &or
 }
 
-func makeRBACRoleBinding(appName, name, namespace, saName string, resource *datamodel.ContainerResource) *outputresource.OutputResource {
+func makeRBACRoleBinding(appName, name, saName, namespace string, resource *datamodel.ContainerResource) *outputresource.OutputResource {
 	labels := kubernetes.MakeDescriptiveLabels(appName, resource.Name, resource.Type)
 
 	bindings := &rbacv1.RoleBinding{
@@ -74,7 +75,7 @@ func makeRBACRoleBinding(appName, name, namespace, saName string, resource *data
 
 	or := outputresource.NewKubernetesOutputResource(
 		resourcekinds.KubernetesRoleBinding,
-		outputresource.LocalIDKubernetesRoleBindings,
+		outputresource.LocalIDKubernetesRoleBinding,
 		bindings,
 		bindings.ObjectMeta)
 
