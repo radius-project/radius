@@ -454,6 +454,13 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		}
 	}
 
+	// Create the role and role bindings for SA.
+	role := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
+	outputResources = append(outputResources, *role)
+
+	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
+	outputResources = append(outputResources, *roleBinding)
+
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Deployment",

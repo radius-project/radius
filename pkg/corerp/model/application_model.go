@@ -158,6 +158,20 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8sClient client.Client, k8sCli
 			ResourceTransformer: azcontainer.TransformFederatedIdentitySA,
 			ResourceHandler:     handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
 		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.KubernetesRole,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     resourcekinds.KubernetesRoleBinding,
+				Provider: resourcemodel.ProviderKubernetes,
+			},
+			ResourceHandler: handlers.NewKubernetesHandler(k8sClient, k8sClientSet),
+		},
 	}
 
 	azureOutputResourceModel := []OutputResourceModel{
