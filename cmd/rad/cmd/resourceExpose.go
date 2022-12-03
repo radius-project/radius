@@ -13,8 +13,8 @@ import (
 	"github.com/agnivade/levenshtein"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -40,10 +40,11 @@ rad resource expose --application icecream-store containers orders --port 5000 -
 			return err
 		}
 
-		// TODO: support fallback workspace
-		if !workspace.IsNamedWorkspace() {
-			return workspaces.ErrNamedWorkspaceRequired
+		scope, err := cli.RequireScope(cmd, *workspace)
+		if err != nil {
+			return err
 		}
+		workspace.Scope = scope
 
 		// This gets the application name from the args provided
 		application, err := cli.RequireApplication(cmd, *workspace)
@@ -151,6 +152,7 @@ func init() {
 	resourceExposeCmd.Flags().IntP("remote-port", "", -1, "specify the remote port")
 	resourceExposeCmd.Flags().String("replica", "", "specify the replica to expose")
 	resourceExposeCmd.Flags().IntP("port", "p", -1, "specify the local port")
+	commonflags.AddResourceGroupFlag(resourceExposeCmd)
 	err := resourceExposeCmd.MarkFlagRequired("port")
 	if err != nil {
 		panic(err)

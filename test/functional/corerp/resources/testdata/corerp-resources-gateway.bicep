@@ -21,7 +21,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
-  name: 'gtwy-gtwy'
+  name: 'http-gtwy-gtwy'
   location: location
   properties: {
     application: app.id
@@ -46,7 +46,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
 }
 
 resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'gtwy-front-rte'
+  name: 'http-gtwy-front-rte'
   location: location
   properties: {
     application: app.id
@@ -55,7 +55,7 @@ resource frontendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' 
 }
 
 resource frontendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'gtwy-front-ctnr'
+  name: 'http-gtwy-front-ctnr'
   location: location
   properties: {
     application: app.id
@@ -82,7 +82,7 @@ resource frontendContainer 'Applications.Core/containers@2022-03-15-privateprevi
 }
 
 resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' = {
-  name: 'gtwy-back-rte'
+  name: 'http-gtwy-back-rte'
   location: location
   properties: {
     application: app.id
@@ -90,7 +90,7 @@ resource backendRoute 'Applications.Core/httpRoutes@2022-03-15-privatepreview' =
 }
 
 resource backendContainer 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'gtwy-back-ctnr'
+  name: 'http-gtwy-back-ctnr'
   location: location
   properties: {
     application: app.id

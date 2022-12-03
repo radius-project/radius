@@ -21,7 +21,12 @@ type Options struct {
 	// Namespace is the kubernetes namespace of the application.
 	Namespace string
 
-	// Client is the Kubernetes client used to access the cluster.
+	// KubeContext is the kubernetes context to use. If Client or RESTConfig is unset, this will be
+	// used to initialize those fields.
+	KubeContext string
+
+	// Client is the Kubernetes client used to access the cluster. If this is set then RESTConfig
+	// must also be set.
 	//
 	// We are using client-go here because the fake client from client-go has
 	// better support for watch.
@@ -30,7 +35,8 @@ type Options struct {
 	// Out is where output will be written.
 	Out io.Writer
 
-	// RESTConfig is the Kubernetes configuration for connecting to the server.
+	// RESTConfig is the Kubernetes configuration for connecting to the server. If this is set then
+	// Client must also be set.
 	RESTConfig *rest.Config
 
 	// Status chan will recieve StatusMessage updates if provided.
