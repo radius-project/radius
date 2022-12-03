@@ -115,7 +115,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
-	appNamespace := "default-corerp-resources-mongodb-recipe"
+	appNamespace := "corerp-resources-mongodb-recipe-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -165,7 +165,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
-	appNamespace := "default-corerp-resources-mongodb-devrecipe"
+	appNamespace := "corerp-resources-mongodb-devrecipe-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
