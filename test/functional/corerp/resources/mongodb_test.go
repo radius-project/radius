@@ -113,10 +113,9 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 // the creation of a mongoDB from recipe
 // container using the mongoDB link to connect to the mongoDB resource
 func Test_MongoDB_Recipe(t *testing.T) {
-
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
-	appNamespace := "corerp-resources-mongodb-recipe-app"
+	appNamespace := "default-corerp-resources-mongodb-recipe"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -166,6 +165,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
+	appNamespace := "default-corerp-resources-mongodb-devrecipe"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -197,7 +197,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-resources-environment-devrecipe-env": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mongodb-devrecipe-app-ctnr"),
 					},
 				},
