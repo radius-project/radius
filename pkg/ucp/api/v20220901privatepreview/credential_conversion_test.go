@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -37,8 +37,8 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 				Properties: &datamodel.CredentialResourceProperties{
 					Kind: "aws.com.iam",
 					AWSCredential: &datamodel.AWSCredentialProperties{
-						AccessKeyID:     to.StringPtr("00000000-0000-0000-0000-000000000000"),
-						SecretAccessKey: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+						AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+						SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					},
 					Storage: &datamodel.CredentialStorageProperties{
 						Kind:               &internalStorageKind,
@@ -59,8 +59,8 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 				Properties: &datamodel.CredentialResourceProperties{
 					Kind: "azure.com.serviceprincipal",
 					AzureCredential: &datamodel.AzureCredentialProperties{
-						TenantID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
-						ClientID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+						TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+						ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					},
 					Storage: &datamodel.CredentialStorageProperties{
 						Kind:               &internalStorageKind,
@@ -120,17 +120,17 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-aws.json",
 			expected: &CredentialResource{
-				ID:       to.StringPtr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
-				Name:     to.StringPtr("default"),
-				Type:     to.StringPtr("System.AWS/credentials"),
-				Location: to.StringPtr("west-us-2"),
+				ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
+				Name:     to.Ptr("default"),
+				Type:     to.Ptr("System.AWS/credentials"),
+				Location: to.Ptr("west-us-2"),
 				Properties: &AWSCredentialProperties{
-					Kind:            to.StringPtr("aws.com.credential"),
-					AccessKeyID:     to.StringPtr("00000000-0000-0000-0000-000000000000"),
-					SecretAccessKey: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					Kind:            to.Ptr("aws.com.credential"),
+					AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+					SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
 						Kind:       &internalStorageKind,
-						SecretName: to.StringPtr("aws_awscloud_default"),
+						SecretName: to.Ptr("aws_awscloud_default"),
 					},
 				},
 			},
@@ -138,17 +138,17 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-azure.json",
 			expected: &CredentialResource{
-				ID:       to.StringPtr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
-				Name:     to.StringPtr("default"),
-				Type:     to.StringPtr("System.Azure/credentials"),
-				Location: to.StringPtr("west-us-2"),
+				ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+				Name:     to.Ptr("default"),
+				Type:     to.Ptr("System.Azure/credentials"),
+				Location: to.Ptr("west-us-2"),
 				Properties: &AzureServicePrincipalProperties{
-					Kind:     to.StringPtr("azure.com.credential"),
-					ClientID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
-					TenantID: to.StringPtr("00000000-0000-0000-0000-000000000000"),
+					Kind:     to.Ptr("azure.com.credential"),
+					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
+					TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 					Storage: &InternalCredentialStorageProperties{
 						Kind:       &internalStorageKind,
-						SecretName: to.StringPtr("azure_azurecloud_default"),
+						SecretName: to.Ptr("azure_azurecloud_default"),
 					},
 				},
 			},
@@ -156,15 +156,15 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 		{
 			filename: "credentialresourcedatamodel-default.json",
 			expected: &CredentialResource{
-				ID:       to.StringPtr("/planes/other/othercloud/providers/System.Other/credentials/default"),
-				Name:     to.StringPtr("default"),
-				Type:     to.StringPtr("System.Other/credentials"),
-				Location: to.StringPtr("west-us-2"),
+				ID:       to.Ptr("/planes/other/othercloud/providers/System.Other/credentials/default"),
+				Name:     to.Ptr("default"),
+				Type:     to.Ptr("System.Other/credentials"),
+				Location: to.Ptr("west-us-2"),
 				Properties: &CredentialResourceProperties{
-					Kind: to.StringPtr("other.com.credential"),
+					Kind: to.Ptr("other.com.credential"),
 					Storage: &InternalCredentialStorageProperties{
 						Kind:       &internalStorageKind,
-						SecretName: to.StringPtr("other_othercloud_default"),
+						SecretName: to.Ptr("other_othercloud_default"),
 					},
 				},
 			},

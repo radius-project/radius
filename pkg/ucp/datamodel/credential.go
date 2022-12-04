@@ -65,7 +65,7 @@ type CredentialStorageProperties struct {
 	InternalCredential *InternalCredentialStorageProperties `json:"internalCredential,omitempty"`
 }
 
-// CredentialStorageProperties contains ucp internal credential storage properties.
+// InternalCredentialStorageProperties contains ucp internal credential storage properties.
 type InternalCredentialStorageProperties struct {
 	// SecretName is the name of secret stored in ucp for the crendentials.
 	SecretName *string `json:"secretName"`
