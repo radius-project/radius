@@ -22,7 +22,7 @@ import (
 func Test_KubeMetadataCascade(t *testing.T) {
 	template := "testdata/corerp-resources-kubemetadata-cascade.bicep"
 	name := "corerp-kmd-cascade-app"
-	ns := "corerp-kmd-cascade-ns"
+	appNamespace := "corerp-kmd-cascade-ns-corerp-kmd-cascade-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -82,7 +82,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					ns: {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "corerp-kmd-cascade-ctnr"),
 					},
 				},
@@ -90,7 +90,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				// Verify pod labels and annotations
 				label := fmt.Sprintf("radius.dev/application=%s", name)
-				pods, err := test.Options.K8sClient.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)
@@ -103,7 +103,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments(ns).List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)
