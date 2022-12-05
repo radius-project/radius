@@ -255,8 +255,16 @@ func Test_Render_Basic(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		require.Equal(t, outputResource, expectedOutputResource)
+		expected := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expected.Dependencies = []outputresource.Dependency{
+			{
+				LocalID: outputresource.LocalIDKubernetesRole,
+			},
+			{
+				LocalID: outputresource.LocalIDKubernetesRoleBinding,
+			},
+		}
+		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
 		require.Equal(t, labels, deployment.Labels)
@@ -283,7 +291,7 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 1)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
@@ -318,8 +326,16 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		deployment, outputResource := kubernetes.FindDeployment(output.Resources)
 		require.NotNil(t, deployment)
 
-		expectedOutputResource := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
-		require.Equal(t, outputResource, expectedOutputResource)
+		expected := outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, deployment, deployment.ObjectMeta)
+		expected.Dependencies = []outputresource.Dependency{
+			{
+				LocalID: outputresource.LocalIDKubernetesRole,
+			},
+			{
+				LocalID: outputresource.LocalIDKubernetesRoleBinding,
+			},
+		}
+		require.Equal(t, outputResource, expected)
 
 		// Only real thing to verify here is the image and the labels
 		require.Equal(t, labels, deployment.Labels)
@@ -343,7 +359,7 @@ func Test_Render_WithCommandArgsWorkingDir(t *testing.T) {
 		require.Equal(t, expectedEnv, container.Env)
 
 	})
-	require.Len(t, output.Resources, 1)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_PortWithoutRoute(t *testing.T) {
@@ -387,7 +403,7 @@ func Test_Render_PortWithoutRoute(t *testing.T) {
 		require.Equal(t, expected, port)
 
 	})
-	require.Len(t, output.Resources, 1)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_PortConnectedToRoute(t *testing.T) {
@@ -442,7 +458,7 @@ func Test_Render_PortConnectedToRoute(t *testing.T) {
 		}
 		require.Equal(t, expected, port)
 	})
-	require.Len(t, output.Resources, 1)
+	require.Len(t, output.Resources, 3)
 }
 
 func Test_Render_Connections(t *testing.T) {
@@ -543,7 +559,7 @@ func Test_Render_Connections(t *testing.T) {
 		require.Equal(t, "ComputedValue1", string(secret.Data["CONNECTION_A_COMPUTEDKEY1"]))
 		require.Equal(t, "82", string(secret.Data["CONNECTION_A_COMPUTEDKEY2"]))
 	})
-	require.Len(t, output.Resources, 2)
+	require.Len(t, output.Resources, 4)
 }
 
 func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
@@ -708,7 +724,7 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	require.Equal(t, output.ComputedValues[handlers.IdentityProperties].Value.(*rp.IdentitySettings).Kind, rp.AzureIdentityWorkload)
 	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 	require.Empty(t, output.SecretValues)
-	require.Len(t, output.Resources, 7)
+	require.Len(t, output.Resources, 9)
 
 	resourceMap := outputResourcesToKindMap(output.Resources)
 
@@ -844,7 +860,7 @@ func Test_Render_AzureConnection(t *testing.T) {
 	require.Equal(t, output.ComputedValues[handlers.UserAssignedIdentityIDKey].PropertyReference, handlers.UserAssignedIdentityIDKey)
 
 	require.Empty(t, output.SecretValues)
-	require.Len(t, output.Resources, 5)
+	require.Len(t, output.Resources, 7)
 
 	kindResourceMap := outputResourcesToKindMap(output.Resources)
 
@@ -1133,15 +1149,17 @@ func Test_Render_PersistentAzureKeyVaultVolumes(t *testing.T) {
 	renderOutput, err := renderer.Render(createContext(t), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: testEnvironmentOptions})
 
 	require.NoError(t, err)
-	require.Lenf(t, renderOutput.Resources, 7, "expected 7 output resources, instead got %+v", len(renderOutput.Resources))
+	require.Lenf(t, renderOutput.Resources, 9, "expected 9 output resources, instead got %+v", len(renderOutput.Resources))
 
 	// Verify deployment
-	deploymentSpec := renderOutput.Resources[5]
+	deploymentSpec := renderOutput.Resources[7]
 	require.Equal(t, outputresource.LocalIDDeployment, deploymentSpec.LocalID, "expected output resource of kind deployment instead got :%v", renderOutput.Resources[0].LocalID)
 	require.Contains(t, deploymentSpec.Dependencies[0].LocalID, "RoleAssignment")
 	require.Equal(t, deploymentSpec.Dependencies[1].LocalID, "SecretProviderClass")
 	require.Equal(t, deploymentSpec.Dependencies[2].LocalID, "ServiceAccount")
-	require.Equal(t, deploymentSpec.Dependencies[3].LocalID, "Secret")
+	require.Equal(t, deploymentSpec.Dependencies[3].LocalID, "KubernetesRole")
+	require.Equal(t, deploymentSpec.Dependencies[4].LocalID, "KubernetesRoleBinding")
+	require.Equal(t, deploymentSpec.Dependencies[5].LocalID, "Secret")
 
 	// Verify volume spec
 	volumes := deploymentSpec.Resource.(*appsv1.Deployment).Spec.Template.Spec.Volumes
