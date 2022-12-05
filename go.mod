@@ -53,7 +53,7 @@ require (
 	github.com/vippsas/go-cosmosdb v0.0.0-20200428065936-29dab535353d
 	github.com/wI2L/jsondiff v0.2.0
 	go.mongodb.org/mongo-driver v1.9.1
-	go.opentelemetry.io/otel v1.10.0
+	go.opentelemetry.io/otel v1.11.1
 	go.opentelemetry.io/otel/exporters/prometheus v0.32.1
 	go.opentelemetry.io/otel/metric v0.32.1
 	go.opentelemetry.io/otel/sdk/metric v0.32.1
@@ -219,7 +219,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.3.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.3.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.10.0 // indirect
-	go.opentelemetry.io/otel/trace v1.10.0 // indirect
+	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	go.opentelemetry.io/proto/otlp v0.11.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
 	golang.org/x/oauth2 v0.0.0-20220909003341-f21342109be1 // indirect

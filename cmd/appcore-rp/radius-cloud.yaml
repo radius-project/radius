@@ -30,7 +30,8 @@ workerServer:
   maxOperationRetryCount: 2
 metricsProvider:
   prometheus:
-    endpoint: "/metrics"
+    enabled: true
+    path: "/metrics"
+    port: 2222
 featureFlags:
   - "PLACEHOLDER"
-  

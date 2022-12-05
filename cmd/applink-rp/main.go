@@ -19,8 +19,8 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/linkrp/frontend"
 	"github.com/project-radius/radius/pkg/radlogger"
-	"github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice"
-	mh "github.com/project-radius/radius/pkg/telemetry/metrics/metricsservice/hostoptions"
+	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
+	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
@@ -44,7 +44,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	metricOptions := mh.NewHostOptionsFromEnvironment(*options.Config)
+	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
 	logger, flush, err := radlogger.NewLogger("applications.link")
 	if err != nil {

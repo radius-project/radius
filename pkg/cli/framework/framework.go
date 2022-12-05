@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/helm"
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
 	"github.com/project-radius/radius/pkg/cli/setup"
@@ -29,6 +30,9 @@ type Factory interface {
 	GetDeploy() deploy.Interface
 	GetLogstream() logstream.Interface
 	GetOutput() output.Interface
+
+	// GetPortforward fetches the portforward interface.
+	GetPortforward() portforward.Interface
 	GetPrompter() prompt.Interface
 	GetConfigFileInterface() ConfigFileInterface
 	GetKubernetesInterface() kubernetes.Interface
@@ -44,6 +48,7 @@ type Impl struct {
 	Deploy              deploy.Interface
 	Logstream           logstream.Interface
 	Output              output.Interface
+	Portforward         portforward.Interface
 	Prompter            prompt.Interface
 	ConfigFileInterface ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
@@ -76,27 +81,32 @@ func (i *Impl) GetOutput() output.Interface {
 	return i.Output
 }
 
-// Fetches the interface to prompt user for values
+// GetPortforward fetches the portforward interface.
+func (i *Impl) GetPortforward() portforward.Interface {
+	return i.Portforward
+}
+
+// GetPrompter fetches the interface to prompt user for values
 func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
 }
 
-// Fetches the interface to interace with radius config file
+// GetConfigFileInterface fetches the interface to interace with radius config file
 func (i *Impl) GetConfigFileInterface() ConfigFileInterface {
 	return i.ConfigFileInterface
 }
 
-// Fetches the interface to get info related to the kubernetes cluster
+// GetKubernetesInterface fetches the interface to get info related to the kubernetes cluster
 func (i *Impl) GetKubernetesInterface() kubernetes.Interface {
 	return i.KubernetesInterface
 }
 
-// Fetches the interface for operations related to radius installation
+// GetHelmInterface fetches the interface for operations related to radius installation
 func (i *Impl) GetHelmInterface() helm.Interface {
 	return i.HelmInterface
 }
 
-// Fetches the interface for operations related to radius installation
+// GetNamespaceInterface fetches the interface for operations related to radius installation
 func (i *Impl) GetNamespaceInterface() namespace.Interface {
 	return i.NamespaceInterface
 }

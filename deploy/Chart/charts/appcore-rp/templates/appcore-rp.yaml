@@ -16,6 +16,12 @@ spec:
       labels:
         control-plane: appcore-rp
         app.kubernetes.io/part-of: radius-control-plane
+      {{ if eq .Values.global.prometheus.enabled true }}
+      annotations:
+        prometheus.io/path: "{{ .Values.global.prometheus.path }}"
+        prometheus.io/port: "{{ .Values.global.prometheus.port }}"
+        prometheus.io/scrape: "{{ .Values.global.prometheus.enabled }}"
+      {{ end }}
     spec:
       serviceAccountName: appcore-rp
       containers:
@@ -46,6 +52,11 @@ spec:
         - containerPort: 5444
           name: applink-rp
           protocol: TCP
+        {{ if eq .Values.global.prometheus.enabled true }}
+        - containerPort: {{ .Values.global.prometheus.port }}
+          name: metrics
+          protocol: TCP
+        {{ end }}
         securityContext:
           allowPrivilegeEscalation: false
         volumeMounts:
@@ -73,6 +84,12 @@ spec:
       name: link-http
       protocol: TCP
       targetPort: 5444
+    {{ if eq .Values.global.prometheus.enabled true }}
+    - port: {{ .Values.global.prometheus.port }}
+      name: metrics-http
+      protocol: TCP
+      targetPort: {{ .Values.global.prometheus.port }}
+    {{ end }}
   selector:
     control-plane: appcore-rp
 ---

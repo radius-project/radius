@@ -7,12 +7,12 @@ storageProvider:
   #   database: applicationscore
   #   # Set primary key to in this configuration or to RADIUS_STORAGEPROVIDER_COSMOSDB_MASTERKEY environment variable
   #   masterKey: set-me-in-a-different-way
-  
-  # Uncomment to use the Kubernetes APIServer store. 
+
+  # Uncomment to use the Kubernetes APIServer store.
   # This supports two modes:
   # - incluster = true => uses the credentials/service-account of a pod. FOR PRODUCTION USE.
   # - incluster = false => uses your LOCAL kubernetes context. For TESTING
-  
+
   # provider: "apiserver"
   # apiserver:
   #   incluster: true
@@ -22,12 +22,12 @@ storageProvider:
   #Uncomment to use the etcd store. Right now this only supports running in-memory (not for production use).
   provider: "etcd"
   etcd:
-   inmemory: true
+    inmemory: true
 
 secretProvider:
   provider: "etcd"
   etcd:
-   inmemory: true
+    inmemory: true
 
 #Default planes configuration with which ucp starts
 # TODO: Remove azure and aws planes once rad provider commands are supported
@@ -46,5 +46,10 @@ planes:
       resourceProviders:
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
-      
 
+# Metrics configuration
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 2222

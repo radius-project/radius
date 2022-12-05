@@ -44,8 +44,8 @@ func Test_Validate(t *testing.T) {
 		},
 		{
 			Name:          "Show Command with fallback workspace",
-			Input:         []string{"containers", "foo"},
-			ExpectedValid: false,
+			Input:         []string{"containers", "foo", "-g", "my-group"},
+			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
 				ConfigFilePath: "",
 				Config:         radcli.LoadEmptyConfig(t),

@@ -20,7 +20,7 @@ jobs:
   linter_check:
     name: Lint
     runs-on: self-hosted
-    timeout-minutes: 12
+    timeout-minutes: 30
     env:
       GOVER: '^1.18'
       GOPROXY: https://proxy.golang.org

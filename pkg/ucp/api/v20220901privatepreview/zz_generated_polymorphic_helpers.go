@@ -21,12 +21,30 @@ func unmarshalCredentialResourcePropertiesClassification(rawMsg json.RawMessage)
 	}
 	var b CredentialResourcePropertiesClassification
 	switch m["kind"] {
-	case "AWSCredential":
+	case "aws.com.iam":
 		b = &AWSCredentialProperties{}
-	case "ServicePrincipal":
+	case "azure.com.serviceprincipal":
 		b = &AzureServicePrincipalProperties{}
 	default:
 		b = &CredentialResourceProperties{}
+	}
+	return b, json.Unmarshal(rawMsg, b)
+}
+
+func unmarshalCredentialStoragePropertiesClassification(rawMsg json.RawMessage) (CredentialStoragePropertiesClassification, error) {
+	if rawMsg == nil {
+		return nil, nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(rawMsg, &m); err != nil {
+		return nil, err
+	}
+	var b CredentialStoragePropertiesClassification
+	switch m["kind"] {
+	case string(CredentialStorageKindInternal):
+		b = &InternalCredentialStorageProperties{}
+	default:
+		b = &CredentialStorageProperties{}
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }

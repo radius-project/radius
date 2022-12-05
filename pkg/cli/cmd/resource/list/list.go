@@ -48,6 +48,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	}
 
 	commonflags.AddApplicationNameFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
 
@@ -83,10 +84,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// TODO: support fallback workspace
-	if !r.Workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
+	scope, err := cli.RequireScope(cmd, *r.Workspace)
+	if err != nil {
+		return err
 	}
+	r.Workspace.Scope = scope
 
 	applicationName, err := cli.ReadApplicationName(cmd, *workspace)
 	if err != nil {
