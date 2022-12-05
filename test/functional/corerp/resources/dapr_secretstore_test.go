@@ -37,44 +37,6 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 				},
 			},
 		},
-		{
-			Object: map[string]any{
-				"apiVersion": "rbac.authorization.k8s.io/v1",
-				"kind":       "Role",
-				"metadata": map[string]any{
-					"name":      "secret-reader",
-					"namespace": appNamespace,
-				},
-				"rules": []map[string]any{
-					{
-						"apiGroups": []string{""},
-						"resources": []string{"secrets"},
-						"verbs":     []string{"get", "list"},
-					},
-				},
-			},
-		},
-		{
-			Object: map[string]any{
-				"apiVersion": "rbac.authorization.k8s.io/v1",
-				"kind":       "RoleBinding",
-				"metadata": map[string]any{
-					"name":      "dapr-secret-reader",
-					"namespace": appNamespace,
-				},
-				"subjects": []map[string]any{
-					{
-						"kind": "ServiceAccount",
-						"name": "default",
-					},
-				},
-				"roleRef": map[string]any{
-					"kind":     "Role",
-					"name":     "secret-reader",
-					"apiGroup": "rbac.authorization.k8s.io",
-				},
-			},
-		},
 	}
 
 	test := corerp.NewCoreRPTest(t, appNamespace, []corerp.TestStep{
