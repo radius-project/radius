@@ -17,7 +17,6 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
       kind: 'kubernetes'
       namespace: 'corerp-kmd-ns'
     }
-
   }
 }
 
@@ -27,7 +26,6 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   properties: {
     environment: env.id
   }
-
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
