@@ -137,15 +137,11 @@ func isMapSubSet(expectedMap map[string]string, actualMap map[string]string) boo
 }
 
 func isMapNonIntersecting(notExpectedMap map[string]string, actualMap map[string]string) bool {
-	if len(actualMap) > len(notExpectedMap) {
-		return true
-	}
-
 	for k1 := range notExpectedMap {
 		if _, ok := actualMap[k1]; ok {
-			return true
+			return false
 		}
 	}
 
-	return false
+	return true
 }
