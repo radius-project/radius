@@ -7,54 +7,54 @@ param location string = 'global'
 param magpieimage string
 
 @description('Specifies the port of the container resource.')
-param port int = 3001
+param port int = 3000
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
   name: 'corerp-kmd-env'
   location: location
-   properties: {
-   compute: {
-     kind: 'kubernetes'
-     namespace: 'corerp-kmd-ns'
-   } 
-   
+  properties: {
+    compute: {
+      kind: 'kubernetes'
+      namespace: 'corerp-kmd-ns'
+    }
+
   }
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-kmd-app' 
+  name: 'corerp-kmd-app'
   location: location
   properties: {
-     environment: env.id
-   }
-    
+    environment: env.id
+  }
+
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
   name: 'corerp-kmd-ctnr'
   location: location
   properties: {
-      application: app.id
-      container: {
-        image: magpieimage
-        ports: {
-          web: {
-            containerPort: port
-          }
+    application: app.id
+    container: {
+      image: magpieimage
+      ports: {
+        web: {
+          containerPort: port
         }
       }
-      extensions: [
-        {
-         kind: 'kubernetesMetadata'
-         annotations:{
-          'user.cntr.ann.1' : 'user.cntr.ann.val.1'
-          'user.cntr.ann.2' : 'user.cntr.ann.val.2'
+    }
+    extensions: [
+      {
+        kind: 'kubernetesMetadata'
+        annotations: {
+          'user.cntr.ann.1': 'user.cntr.ann.val.1'
+          'user.cntr.ann.2': 'user.cntr.ann.val.2'
         }
-        labels:{
-          'user.cntr.lbl.1' : 'user.cntr.lbl.val.1'
-          'user.cntr.lbl.2' : 'user.cntr.lbl.val.2'
+        labels: {
+          'user.cntr.lbl.1': 'user.cntr.lbl.val.1'
+          'user.cntr.lbl.2': 'user.cntr.lbl.val.2'
         }
-      }   
+      }
     ]
   }
 }
