@@ -72,6 +72,8 @@ type EnvironmentOptions struct {
 type ApplicationOptions struct {
 	// KubernetesMetadata represents the Application KubernetesMetadata extension.
 	KubernetesMetadata *datamodel.KubeMetadataExtension
+	// KubernetesNamespaceOverride represents the Application KubernetesNamespaceOverride extension.
+	KubernetesNamespaceOverride *datamodel.KubeNamespaceOverrideExtension
 }
 
 type GatewayOptions struct {
