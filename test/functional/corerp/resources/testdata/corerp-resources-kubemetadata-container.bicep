@@ -10,19 +10,19 @@ param magpieimage string
 param port int = 3001
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'corerp-kubemetadata-env'
+  name: 'corerp-kmd-env'
   location: location
    properties: {
    compute: {
      kind: 'kubernetes'
-     namespace: 'corerp-kubemetadata-ns'
+     namespace: 'corerp-kmd-ns'
    } 
    
   }
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-kubemetadata-app' 
+  name: 'corerp-kmd-app' 
   location: location
   properties: {
      environment: env.id
@@ -31,7 +31,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'corerp-kubemetadata-ctnr'
+  name: 'corerp-kmd-ctnr'
   location: location
   properties: {
       application: app.id

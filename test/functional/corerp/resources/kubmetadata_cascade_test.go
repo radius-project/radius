@@ -19,10 +19,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_KubernetesMetadataContainer(t *testing.T) {
+func Test_KubeMetadataCascade(t *testing.T) {
 	template := "testdata/corerp-resources-kubemetadata-cascade.bicep"
-	name := "corerp-kubemetadata-app"
-	ns := "corerp-kubemetadata-ns"
+	name := "corerp-kmd-cascade-app"
+	ns := "corerp-kmd-cascade-ns"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -66,7 +66,7 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-kubemetadata-env",
+						Name: "corerp-kmd-cascade-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -74,7 +74,7 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-kubemetadata-ctnr",
+						Name: "corerp-kmd-cascade-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -82,8 +82,8 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-kubemetadata-ns": {
-						validation.NewK8sPodForResource(name, "corerp-kubemetadata-ctnr"),
+					ns: {
+						validation.NewK8sPodForResource(name, "corerp-kmd-cascade-ctnr"),
 					},
 				},
 			},
@@ -97,10 +97,10 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				require.Len(t, pods.Items, 1)
 				t.Logf("validated number of pods: %d", len(pods.Items))
 				pod := pods.Items[0]
-				require.Equal(t, isMapSubSet(expectedAnnotations, pod.Annotations), true)
-				require.Equal(t, isMapSubSet(expectedLabels, pod.Labels), true)
-				require.Equal(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations), true)
-				require.Equal(t, isMapNonIntersecting(notExpectedLabels, pod.Labels), true)
+				require.True(t, isMapSubSet(expectedAnnotations, pod.Annotations))
+				require.True(t, isMapSubSet(expectedLabels, pod.Labels))
+				require.True(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
+				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(ns).List(context.Background(), metav1.ListOptions{
@@ -109,10 +109,10 @@ func Test_KubernetesMetadataContainer(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, deployments.Items, 1)
 				deployment := deployments.Items[0]
-				require.Equal(t, isMapSubSet(expectedAnnotations, deployment.Annotations), true)
-				require.Equal(t, isMapSubSet(expectedLabels, deployment.Labels), true)
-				require.Equal(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations), true)
-				require.Equal(t, isMapNonIntersecting(notExpectedLabels, pod.Labels), true)
+				require.True(t, isMapSubSet(expectedAnnotations, deployment.Annotations))
+				require.True(t, isMapSubSet(expectedLabels, deployment.Labels))
+				require.True(t, isMapNonIntersecting(notExpectedAnnotations, pod.Annotations))
+				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
 			},
 		},
 	}, requiredSecrets)

@@ -18,10 +18,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func Test_KubMetadataContainer(t *testing.T) {
+func Test_KubeMetadataContainer(t *testing.T) {
 	template := "testdata/corerp-resources-kubemetadata-container.bicep"
-	name := "corerp-kubemetadata-app"
-	ns := "corerp-kubemetadata-ns"
+	name := "corerp-kmd-app"
+	ns := "corerp-kmd-ns"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -41,7 +41,7 @@ func Test_KubMetadataContainer(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-kubemetadata-env",
+						Name: "corerp-kmd-env",
 						Type: validation.EnvironmentsResource,
 					},
 					{
@@ -49,7 +49,7 @@ func Test_KubMetadataContainer(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "corerp-kubemetadata-ctnr",
+						Name: "corerp-kmd-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -57,8 +57,8 @@ func Test_KubMetadataContainer(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"corerp-kubemetadata-ns": {
-						validation.NewK8sPodForResource(name, "corerp-kubemetadata-ctnr"),
+					ns: {
+						validation.NewK8sPodForResource(name, "corerp-kmd-ctnr"),
 					},
 				},
 			},
@@ -72,8 +72,8 @@ func Test_KubMetadataContainer(t *testing.T) {
 				require.Len(t, pods.Items, 1)
 				t.Logf("validated number of pods: %d", len(pods.Items))
 				pod := pods.Items[0]
-				require.Equal(t, isMapSubSet(expectedAnnotations, pod.Annotations), true)
-				require.Equal(t, isMapSubSet(expectedLabels, pod.Labels), true)
+				require.True(t, isMapSubSet(expectedAnnotations, pod.Annotations))
+				require.True(t, isMapSubSet(expectedLabels, pod.Labels))
 
 				// Verify deployment labels and annotations
 				deployments, err := test.Options.K8sClient.AppsV1().Deployments(ns).List(context.Background(), metav1.ListOptions{
@@ -82,8 +82,8 @@ func Test_KubMetadataContainer(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, deployments.Items, 1)
 				deployment := deployments.Items[0]
-				require.Equal(t, isMapSubSet(expectedAnnotations, deployment.Annotations), true)
-				require.Equal(t, isMapSubSet(expectedLabels, deployment.Labels), true)
+				require.True(t, isMapSubSet(expectedAnnotations, deployment.Annotations))
+				require.True(t, isMapSubSet(expectedLabels, deployment.Labels))
 			},
 		},
 	}, requiredSecrets)
