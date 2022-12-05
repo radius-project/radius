@@ -10,14 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-type DaprPubSubBrokerKind string
-
-const (
-	DaprPubSubBrokerKindAzureServiceBus DaprPubSubBrokerKind = "pubsub.azure.servicebus"
-	DaprPubSubBrokerKindGeneric         DaprPubSubBrokerKind = "generic"
-	DaprPubSubBrokerKindUnknown         DaprPubSubBrokerKind = "unknown"
-)
-
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
 type DaprPubSubBroker struct {
 	v1.TrackedResource

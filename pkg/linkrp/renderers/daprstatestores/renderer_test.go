@@ -7,6 +7,7 @@ package daprstatestores
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -50,7 +51,7 @@ func Test_Render_Success(t *testing.T) {
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
@@ -91,13 +92,36 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*conv.ErrClientRP).Message)
 }
 
+func Test_Render_UnsupportedMode(t *testing.T) {
+	renderer := Renderer{}
+	resource := datamodel.DaprStateStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/test-state-store",
+			Name: resourceName,
+			Type: "Applications.Link/daprStateStores",
+		},
+		Properties: datamodel.DaprStateStoreProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Mode:     "invalid",
+			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.SomethingElse/test-storageAccounts/test-account",
+		},
+	}
+	renderer.StateStores = SupportedStateStoreModes
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedStateStoreModes)), err.(*conv.ErrClientRP).Message)
+}
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprStateStore{
@@ -114,7 +138,7 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 			Mode: datamodel.LinkModeResource,
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -142,7 +166,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			},
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
@@ -194,7 +218,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Version: daprStateStoreVersion,
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -221,7 +245,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Version: daprStateStoreVersion,
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -248,7 +272,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: stateStoreType,
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
@@ -273,7 +297,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -296,7 +320,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.Storage/storageAccounts/test-account/tableServices/default/tables/mytable",
 		},
 	}
-	renderer.StateStores = SupportedStateStoreKindValues
+	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 }

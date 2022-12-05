@@ -23,10 +23,9 @@ import (
 
 type SecretStoreFunc = func(resource datamodel.DaprSecretStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
-var SupportedSecretStoreKindValues = map[string]SecretStoreFunc{
-	resourcekinds.DaprGeneric: GetDaprSecretStoreGeneric,
+var SupportedSecretStoreModes = map[string]SecretStoreFunc{
+	string(datamodel.LinkModeValues): GetDaprSecretStoreGeneric,
 }
-
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type Renderer struct {
@@ -40,13 +39,9 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}
 
 	properties := resource.Properties
-	var supportedKind string
-	if properties.Mode == datamodel.LinkModeValues {
-		supportedKind = resourcekinds.DaprGeneric
-	}
-	secretStoreFunc := r.SecretStores[supportedKind]
+	secretStoreFunc := r.SecretStores[string(properties.Mode)]
 	if secretStoreFunc == nil {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid secret store kind, Supported kind values: %s", getAlphabeticallySortedKeys(r.SecretStores))
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid secret store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.SecretStores)))
 	}
 	var applicationName string
 	if properties.Application != "" {

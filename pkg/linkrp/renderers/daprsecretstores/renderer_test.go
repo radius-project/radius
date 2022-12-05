@@ -7,6 +7,7 @@ package daprsecretstores
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -42,9 +43,35 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
+func Test_Render_UnsupportedMode(t *testing.T) {
+	ctx := createContext(t)
+	renderer := Renderer{SupportedSecretStoreModes}
+
+	resource := datamodel.DaprSecretStore{
+		TrackedResource: v1.TrackedResource{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
+			Name: resourceName,
+			Type: "Applications.Link/daprSecretStores",
+		},
+		Properties: datamodel.DaprSecretStoreProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Type: ResourceType,
+			Mode: "invalid",
+		},
+	}
+
+	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("invalid secret store mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreModes)), err.(*conv.ErrClientRP).Message)
+}
+
 func Test_Render_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -106,7 +133,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -131,7 +158,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 
 func Test_Render_Generic_MissingType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -159,7 +186,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -188,7 +215,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -217,7 +244,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 func Test_Render_EmptyApplicationID(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",

@@ -14,17 +14,15 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 )
 
 var _ renderers.Renderer = (*Renderer)(nil)
 
 type PubSubFunc = func(resource datamodel.DaprPubSubBroker, applicationName string, namespace string) (renderers.RendererOutput, error)
 
-// SupportedAzurePubSubKindValues is a map of supported resource kinds for Azure and the associated renderer
-var SupportedPubSubKindValues = map[string]PubSubFunc{
-	resourcekinds.DaprPubSubTopicAzureServiceBus: GetDaprPubSubAzureServiceBus,
-	resourcekinds.DaprGeneric:                    GetDaprPubSubGeneric,
+var SupportedPubSubModes = map[string]PubSubFunc{
+	string(datamodel.LinkModeResource): GetDaprPubSubAzureServiceBus,
+	string(datamodel.LinkModeValues):   GetDaprPubSubGeneric,
 }
 
 type Renderer struct {
@@ -41,21 +39,16 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	if !ok {
 		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
 	}
-
-	var supportedKind string
-	if resource.Properties.Mode == datamodel.LinkModeValues {
-		supportedKind = resourcekinds.DaprGeneric
-	}
-	if resource.Properties.Mode == datamodel.LinkModeResource {
-		supportedKind = resourcekinds.DaprPubSubTopicAzureServiceBus
+	if resource.Properties.Mode == "" {
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Mode not specified for Dapr Pub/Sub component")
 	}
 	if r.PubSubs == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
-
-	pubSubFunc, ok := r.PubSubs[supportedKind]
+	mode := resource.Properties.Mode
+	pubSubFunc, ok := r.PubSubs[string(mode)]
 	if !ok {
-		return renderers.RendererOutput{}, fmt.Errorf("invalid pub sub broker kind, Supported kind values: %s", getAlphabeticallySortedKeys(r.PubSubs))
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.PubSubs)))
 	}
 
 	var applicationName string

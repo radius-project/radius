@@ -7,6 +7,7 @@ package daprpubsubbrokers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -59,7 +60,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			},
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 	require.Len(t, result.Resources, 1)
@@ -111,7 +112,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 			Version: "v1",
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -138,7 +139,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			Version: "v1",
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -165,7 +166,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			Type: "pubsub.kafka",
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -233,7 +234,7 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 			Resource: serviceBusResourceID,
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
@@ -275,7 +276,7 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 			Resource: serviceBusResourceID,
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	result, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 
@@ -317,11 +318,35 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 			Resource: "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.ServiceBus/namespaces/test-namespace/topics/test-topic",
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
 	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.(*conv.ErrClientRP).Message)
+}
+
+func Test_Render_UnsupportedMode(t *testing.T) {
+	renderer := Renderer{SupportedPubSubModes}
+	resource := datamodel.DaprPubSubBroker{
+		TrackedResource: v1.TrackedResource{
+			ID:   resourceID,
+			Name: resourceName,
+			Type: ResourceType,
+		},
+		Properties: datamodel.DaprPubSubBrokerProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: applicationID,
+				Environment: environmentID,
+			},
+			Mode:     "invalid",
+			Resource: serviceBusResourceID,
+		},
+	}
+	renderer.PubSubs = SupportedPubSubModes
+	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
+	require.Error(t, err)
+	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedPubSubModes)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -345,7 +370,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			},
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
@@ -372,7 +397,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			},
 		},
 	}
-	renderer.PubSubs = SupportedPubSubKindValues
+	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.NoError(t, err)
 }
