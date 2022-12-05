@@ -16,10 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*DeleteApplication)(nil)
@@ -55,12 +51,6 @@ func (a *DeleteApplication) Run(ctx context.Context, w http.ResponseWriter, req 
 
 	if r, err := a.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
 		return r, err
-	}
-
-	// TODO: Move it to backend controller
-	err = a.KubeClient().Delete(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: old.AppInternal.KubernetesNamespace}})
-	if err != nil && !apierrors.IsNotFound(err) {
-		return nil, err
 	}
 
 	if err := a.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {

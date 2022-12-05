@@ -19,12 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-
-	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -51,31 +45,8 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run executes CreateOrUpdateApplication operation.
-func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
+func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	newResource, err := a.GetResourceFromRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-
-	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
-		return r, err
-	}
-
-	if old != nil {
-		oldProp := &old.Properties.BasicResourceProperties
-		newProp := &newResource.Properties.BasicResourceProperties
-		if !oldProp.EqualLinkedResource(newProp) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
-		}
-	}
 
 	kubeNamespace := ""
 	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceOverride)
@@ -127,20 +98,50 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. namespace must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
 	}
 
-	// Populate kubernetes namespace to internal metadata property.
+	// Populate kubernetes namespace to internal metadata property for query indexing.
 	newResource.AppInternal.KubernetesNamespace = kubeNamespace
 
-	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
-	err = a.KubeClient().Get(ctx, client.ObjectKey{Name: kubeNamespace}, &corev1.Namespace{})
-	if apierrors.IsNotFound(err) {
-		logger.Info("Creating kubernetes namespace", "namespace", kubeNamespace)
-		if err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}}); err != nil {
-			return nil, err
-		}
-	} else if err != nil {
-		return nil, err
+	// Populate kuberentes namespace to extensions.
+	if ext != nil {
+		ext.KubernetesNamespaceOverride.Namespace = kubeNamespace
 	} else {
-		logger.Info("Use existing namespace", "namespace", kubeNamespace)
+		newExtension := datamodel.Extension{
+			Kind:                        datamodel.KubernetesNamespaceOverride,
+			KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{Namespace: kubeNamespace},
+		}
+		newResource.Properties.Extensions = append(newResource.Properties.Extensions, newExtension)
+	}
+
+	return nil, nil
+}
+
+// Run executes CreateOrUpdateApplication operation.
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	newResource, err := a.GetResourceFromRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
+	}
+
+	if old != nil {
+		oldProp := &old.Properties.BasicResourceProperties
+		newProp := &newResource.Properties.BasicResourceProperties
+		if !oldProp.EqualLinkedResource(newProp) {
+			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
+		}
+	}
+
+	if r, err := a.populateKubernetesExtension(ctx, old, newResource); r != nil || err != nil {
+		return r, err
 	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)

@@ -366,7 +366,7 @@ func Test_CLI(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"default-kubernetes-cli": {
 						validation.NewK8sPodForResource(name, "containera"),
 						validation.NewK8sPodForResource(name, "containerb"),
 					},
@@ -382,7 +382,6 @@ func Test_CLI(t *testing.T) {
 func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
 	name := "kubernetes-cli-json"
-
 	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
@@ -408,7 +407,7 @@ func Test_CLI_JSON(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"default-kubernetes-cli-json": {
 						validation.NewK8sPodForResource(name, "containera-json"),
 						validation.NewK8sPodForResource(name, "containerb-json"),
 					},
@@ -448,7 +447,7 @@ func Test_CLI_Delete(t *testing.T) {
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"default": {
+				"default-kubernetes-cli-with-resources": {
 					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
 					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
@@ -482,7 +481,7 @@ func Test_CLI_Delete(t *testing.T) {
 
 		validation.ValidateObjectsRunning(ctx, t, options.K8sClient, options.DynamicClient, validation.K8sObjectSet{
 			Namespaces: map[string][]validation.K8sObject{
-				"default": {
+				"default-kubernetes-cli-with-resources": {
 					validation.NewK8sPodForResource(appName, "containera-app-with-resources"),
 					validation.NewK8sPodForResource(appName, "containerb-app-with-resources"),
 				},
@@ -542,7 +541,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					"default-kubernetes-cli-params": {
 						validation.NewK8sPodForResource(name, "containerc"),
 						validation.NewK8sPodForResource(name, "containerd"),
 					},
