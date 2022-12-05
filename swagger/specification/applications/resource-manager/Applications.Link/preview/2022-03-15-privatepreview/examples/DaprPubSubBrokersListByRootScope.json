@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -11,6 +11,7 @@
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprPubSubBrokers/daprPubSub0",
               "name": "daprPubSub0",
               "type": "Applications.Link/daprPubSubBrokers",
+              "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
@@ -24,6 +25,7 @@
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Link/daprPubSubBrokers/daprPubSub1",
               "name": "daprPubSub1",
               "type": "Applications.Link/daprPubSubBrokers",
+              "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",

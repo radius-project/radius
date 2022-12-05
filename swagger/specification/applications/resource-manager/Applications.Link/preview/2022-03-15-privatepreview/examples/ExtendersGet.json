@@ -1,6 +1,7 @@
 {
     "parameters": {
-      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview",
       "extenderName": "extender0"
     },
@@ -10,6 +11,7 @@
           "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/extenders/extender0",
           "name": "extender0",
           "type": "Applications.Link/extenders",
+          "location": "global",
           "properties": {
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
