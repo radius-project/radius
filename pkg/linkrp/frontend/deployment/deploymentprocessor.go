@@ -207,7 +207,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			computedValues[k] = computedValue.Value
 		}
 	}
-
+         // Add computed values to resource properties.
 	// Use reflection to pull the typed link object. Elem() here ensures we get the value and not just a pointer.
 	resourceValue := reflect.ValueOf(rendererOutput.RadiusResource).Elem()
 	if (resourceValue == reflect.Value{}) {
