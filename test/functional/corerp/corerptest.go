@@ -170,17 +170,24 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		logPrefix = "./logs/corerptest"
 	}
 
+	// Find all validating namespaces.
+	logNamespaces := map[string]bool{"radius-system": true}
+	for _, step := range ct.Steps {
+		if step.K8sObjects == nil {
+			continue
+		}
+		for ns := range step.K8sObjects.Namespaces {
+			logNamespaces[ns] = true
+		}
+	}
+
 	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
-		err := validation.SaveLogsForController(ctx, ct.Options.K8sClient, "radius-system", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
-		}
-
-		// Getting logs from all pods in the default namespace as well, which is where all app pods run for calls to rad deploy
-		err = validation.SaveLogsForController(ctx, ct.Options.K8sClient, "default", logPrefix)
-		if err != nil {
-			t.Errorf("failed to capture logs from radius controller: %v", err)
+		for ns := range logNamespaces {
+			err := validation.SaveLogsForController(ctx, ct.Options.K8sClient, ns, logPrefix)
+			if err != nil {
+				t.Errorf("failed to capture logs from radius controller: %v", err)
+			}
 		}
 	})
 
