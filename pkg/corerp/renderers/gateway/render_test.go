@@ -396,7 +396,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	validateGateway(t, output.Resources, appName, expectedIncludes, nil)
 }
 
-func Test_Render_Fails_SSLsslPassthroughWithRoutePath(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName := "routename"
 	destination := makeRouteResourceID(routeName)
@@ -429,7 +429,7 @@ func Test_Render_Fails_SSLsslPassthroughWithRoutePath(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 }
 
-func Test_Render_Fails_SSLsslPassthroughWithMultipleRoutes(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughWithMultipleRoutes(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName1 := "routename1"
 	destination1 := makeRouteResourceID(routeName1)
@@ -470,7 +470,7 @@ func Test_Render_Fails_SSLsslPassthroughWithMultipleRoutes(t *testing.T) {
 	require.Empty(t, output.ComputedValues)
 }
 
-func Test_Render_Fails_SSLsslPassthroughFalse(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughFalse(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName := "routename1"
 	destination := makeRouteResourceID(routeName)
@@ -613,7 +613,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	validateHttpRoute(t, output.Resources, routeName, 80, nil)
 }
 
-func Test_Render_SSLsslPassthrough(t *testing.T) {
+func Test_Render_SSLPassthrough(t *testing.T) {
 	r := &Renderer{}
 
 	var routes []datamodel.GatewayRoute
