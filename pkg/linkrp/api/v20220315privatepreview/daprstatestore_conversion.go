@@ -58,7 +58,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
-		converted.Properties.Mode = datamodel.LinkModeResource
+		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
