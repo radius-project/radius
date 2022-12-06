@@ -58,19 +58,19 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 		{
 			ResourceType: daprpubsubbrokers.ResourceType,
 			Renderer: &daprpubsubbrokers.Renderer{
-				PubSubs: daprpubsubbrokers.SupportedPubSubKindValues,
+				PubSubs: daprpubsubbrokers.SupportedPubSubModes,
 			},
 		},
 		{
 			ResourceType: daprsecretstores.ResourceType,
 			Renderer: &daprsecretstores.Renderer{
-				SecretStores: daprsecretstores.SupportedSecretStoreKindValues,
+				SecretStores: daprsecretstores.SupportedSecretStoreModes,
 			},
 		},
 		{
 			ResourceType: daprstatestores.ResourceType,
 			Renderer: &daprstatestores.Renderer{
-				StateStores: daprstatestores.SupportedStateStoreKindValues,
+				StateStores: daprstatestores.SupportedStateStoreModes,
 			},
 		},
 		{

@@ -10,13 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-type DaprSecretStoreKind string
-
-const (
-	DaprSecretStoreKindGeneric DaprSecretStoreKind = "generic"
-	DaprSecretStoreKindUnknown DaprSecretStoreKind = "unknown"
-)
-
 // DaprSecretStore represents DaprSecretStore link resource.
 type DaprSecretStore struct {
 	v1.TrackedResource
@@ -43,7 +36,6 @@ type DaprSecretStoreProperties struct {
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
 	Mode              LinkMode               `json:"mode"`
-	Kind              DaprSecretStoreKind    `json:"kind"`
 	Type              string                 `json:"type"`
 	Version           string                 `json:"version"`
 	Metadata          map[string]interface{} `json:"metadata"`
