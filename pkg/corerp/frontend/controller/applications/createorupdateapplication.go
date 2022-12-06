@@ -120,7 +120,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Cont
 
 	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
 	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
-	if apierrors.IsConflict(err) {
+	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", kubeNamespace)
 	} else if err != nil {
 		return nil, err
