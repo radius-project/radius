@@ -396,7 +396,7 @@ func Test_Render_WithMissingPublicIP(t *testing.T) {
 	validateGateway(t, output.Resources, appName, expectedIncludes, nil)
 }
 
-func Test_Render_Fails_SSLPassThroughWithRoutePath(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName := "routename"
 	destination := makeRouteResourceID(routeName)
@@ -412,7 +412,7 @@ func Test_Render_Fails_SSLPassThroughWithRoutePath(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: true,
+			SSLPassthrough: true,
 		},
 		Routes: routes,
 	}
@@ -423,13 +423,13 @@ func Test_Render_Fails_SSLPassThroughWithRoutePath(t *testing.T) {
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
 	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
 }
 
-func Test_Render_Fails_SSLPassThroughWithMultipleRoutes(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughWithMultipleRoutes(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName1 := "routename1"
 	destination1 := makeRouteResourceID(routeName1)
@@ -453,7 +453,7 @@ func Test_Render_Fails_SSLPassThroughWithMultipleRoutes(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: true,
+			SSLPassthrough: true,
 		},
 		Routes: routes,
 	}
@@ -464,13 +464,13 @@ func Test_Render_Fails_SSLPassThroughWithMultipleRoutes(t *testing.T) {
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
 	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support multiple routes with SSLPassThrough set to true")
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support multiple routes with sslPassthrough set to true")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
 }
 
-func Test_Render_Fails_SSLPassThroughFalse(t *testing.T) {
+func Test_Render_Fails_SSLPassthroughFalse(t *testing.T) {
 	var routes []datamodel.GatewayRoute
 	routeName := "routename1"
 	destination := makeRouteResourceID(routeName)
@@ -484,7 +484,7 @@ func Test_Render_Fails_SSLPassThroughFalse(t *testing.T) {
 			Application: "/subscriptions/test-sub-id/resourceGroups/test-rg/providers/Applications.Core/applications/test-application",
 		},
 		TLS: &datamodel.GatewayPropertiesTLS{
-			SSLPassThrough: false,
+			SSLPassthrough: false,
 		},
 		Routes: routes,
 	}
@@ -495,7 +495,7 @@ func Test_Render_Fails_SSLPassThroughFalse(t *testing.T) {
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
 	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "only passthrough is supported for TLS currently")
+	require.Equal(t, err.(*conv.ErrClientRP).Message, "only sslPassthrough is supported for TLS currently")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
@@ -613,7 +613,7 @@ func Test_Render_Single_Route(t *testing.T) {
 	validateHttpRoute(t, output.Resources, routeName, 80, nil)
 }
 
-func Test_Render_SSLPassThrough(t *testing.T) {
+func Test_Render_SSLPassthrough(t *testing.T) {
 	r := &Renderer{}
 
 	var routes []datamodel.GatewayRoute
@@ -624,7 +624,7 @@ func Test_Render_SSLPassThrough(t *testing.T) {
 	}
 	routes = append(routes, route)
 	tls := &datamodel.GatewayPropertiesTLS{
-		SSLPassThrough: true,
+		SSLPassthrough: true,
 	}
 	properties := datamodel.GatewayProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{

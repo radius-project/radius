@@ -71,5 +71,5 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - Declare TLS information for the Gateway.
 type GatewayPropertiesTLS struct {
-	SSLPassThrough bool `json:"sslPassThrough,omitempty"`
+	SSLPassthrough bool `json:"sslPassthrough,omitempty"`
 }
