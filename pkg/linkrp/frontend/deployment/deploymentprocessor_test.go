@@ -467,7 +467,7 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "invalid-id is not a valid resource for Applications.Core/environments.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "invalid-id is not a valid resource id for Applications.Core/environments.", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
@@ -543,7 +543,7 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "linked \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0\" does not exist", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "linked resource /subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0 does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
