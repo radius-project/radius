@@ -55,6 +55,7 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 				recipes[key] = datamodel.EnvironmentRecipeProperties{
 					LinkType:     to.String(val.LinkType),
 					TemplatePath: to.String(val.TemplatePath),
+					Parameters:   val.Parameters,
 				}
 			}
 		}
@@ -110,6 +111,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 			recipes[key] = &EnvironmentRecipeProperties{
 				LinkType:     to.StringPtr(val.LinkType),
 				TemplatePath: to.StringPtr(val.TemplatePath),
+				Parameters:   val.Parameters,
 			}
 		}
 		dst.Properties.Recipes = recipes
