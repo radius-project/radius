@@ -63,6 +63,8 @@ const (
 	LocalIDSecret                       = "Secret"
 	LocalIDSecretProviderClass          = "SecretProviderClass"
 	LocalIDServiceAccount               = "ServiceAccount"
+	LocalIDKubernetesRole               = "KubernetesRole"
+	LocalIDKubernetesRoleBinding        = "KubernetesRoleBinding"
 	LocalIDService                      = "Service"
 	LocalIDStatefulSet                  = "StatefulSet"
 	LocalIDUserAssignedManagedIdentity  = "UserAssignedManagedIdentity"
