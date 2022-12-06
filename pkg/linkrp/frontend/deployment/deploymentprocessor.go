@@ -214,7 +214,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		return DeploymentOutput{}, fmt.Errorf("RadiusResource was nil in renderer output. resource type: %q with resource ID: %q", strings.ToLower(resourceID.Type()), resourceID.String())
 	}
 
-	// Pulling the properties object of of the typed link object.
+	// Pulling the properties object of the typed link object.
 	propertyValue := resourceValue.FieldByName("Properties")
 	if (propertyValue == reflect.Value{}) {
 		return DeploymentOutput{}, fmt.Errorf("properties field was not found on resource type: %q with resource ID: %q", strings.ToLower(resourceID.Type()), resourceID.String())
