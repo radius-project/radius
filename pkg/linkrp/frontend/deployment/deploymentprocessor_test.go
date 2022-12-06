@@ -697,60 +697,6 @@ func Test_Deploy(t *testing.T) {
 	})
 }
 
-func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
-	ctx := createContext(t)
-	mocks := setup(t)
-	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
-
-	testResourceType := resourcemodel.ResourceType{
-		Type:     resourcekinds.AzureCosmosAccount,
-		Provider: resourcemodel.ProviderAzure,
-	}
-	testOutputResource := outputresource.OutputResource{
-		LocalID:      outputresource.LocalIDAzureCosmosAccount,
-		ResourceType: testResourceType,
-		Resource: map[string]interface{}{
-			"some-data": "jsonpointer-value",
-		},
-	}
-	rendererOutput := renderers.RendererOutput{
-		Resources: []outputresource.OutputResource{testOutputResource},
-		ComputedValues: map[string]renderers.ComputedValueReference{
-			"test-key1": {
-				LocalID: outputresource.LocalIDAzureCosmosAccount,
-				Value:   "static-value",
-			},
-			"test-key2": {
-				LocalID:           outputresource.LocalIDAzureCosmosAccount,
-				PropertyReference: "property-key",
-			},
-			"test-key3": {
-				LocalID:     outputresource.LocalIDAzureCosmosAccount,
-				JSONPointer: "/some-data",
-			},
-		},
-		RadiusResource: &datamodel.MongoDatabase{},
-	}
-
-	expectedCosmosAccountIdentity := resourcemodel.ResourceIdentity{
-		ResourceType: &testResourceType,
-		Data:         resourcemodel.ARMIdentity{},
-	}
-	properties := map[string]string{"property-key": "property-value"}
-	mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(expectedCosmosAccountIdentity, properties, nil)
-
-	deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
-	require.NoError(t, err)
-
-	expected := map[string]interface{}{
-		"test-key1": "static-value",
-		"test-key2": "property-value",
-		"test-key3": "jsonpointer-value",
-	}
-	require.Equal(t, expected, deploymentOutput.ComputedValues)
-	require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.Resources[0].Identity)
-}
-
 func Test_Deploy_InvalidComputedValues(t *testing.T) {
 	ctx := createContext(t)
 	mocks := setup(t)
@@ -826,6 +772,18 @@ func Test_DeployRenderedResources_SetComputedValuesOnProperties(t *testing.T) {
 					testcase.computedValueName: {
 						Value: "db",
 					},
+					"test-key1": {
+						LocalID: outputresource.LocalIDAzureCosmosAccount,
+						Value:   "static-value",
+					},
+					"test-key2": {
+						LocalID:           outputresource.LocalIDAzureCosmosAccount,
+						PropertyReference: "property-key",
+					},
+					"test-key3": {
+						LocalID:     outputresource.LocalIDAzureCosmosAccount,
+						JSONPointer: "/some-data",
+					},
 				},
 				RadiusResource: dataModel,
 			}
@@ -857,9 +815,22 @@ func Test_DeployRenderedResources_SetComputedValuesOnProperties(t *testing.T) {
 			}
 			if testcase.validateDBName {
 				expected.Properties.Database = rendererOutput.ComputedValues[renderers.DatabaseNameValue].Value.(string)
+			} else {
+				expected.Properties.Database = ""
 			}
 
 			require.Equal(t, expected, deploymentOutput.RadiusResource)
+
+			expectedValues := map[string]interface{}{
+				"host":                     "testAccount1.mongo.cosmos.azure.com",
+				"port":                     portValue,
+				testcase.computedValueName: "db",
+				"test-key1":                "static-value",
+				"test-key2":                "property-value",
+				"test-key3":                "jsonpointer-value",
+			}
+			require.Equal(t, expectedValues, deploymentOutput.ComputedValues)
+			require.Equal(t, expectedCosmosAccountIdentity, deploymentOutput.Resources[0].Identity)
 		})
 	}
 }
