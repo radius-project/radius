@@ -320,6 +320,8 @@ func sendPostRequest(t *testing.T, hostname, baseURL, path string, body *[]byte,
 	if err != nil {
 		return nil, err
 	}
+
+	req.Host = hostname
 	return sendRequest(t, req, expectedStatusCode)
 }
 
@@ -333,6 +335,8 @@ func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, 
 	if err != nil {
 		return nil, err
 	}
+
+	req.Host = hostname
 	return sendRequest(t, req, expectedStatusCode)
 }
 
@@ -345,5 +349,6 @@ func sendDeleteRequest(t *testing.T, hostname, baseURL, path string, expectedSta
 		return nil, err
 	}
 
+	req.Host = hostname
 	return sendRequest(t, req, expectedStatusCode)
 }
