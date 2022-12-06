@@ -63,15 +63,24 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 	containerName := fmt.Sprintf("magpiego-%s", randomString())
 	log.Println("Container Name: " + containerName)
 
+	// Create a container
 	containerClient := client.NewContainerClient(containerName)
 	resp, err := containerClient.Create(context.TODO(), nil)
 	if err != nil {
-		log.Println("Failed to create container: %s", err.Error())
+		log.Printf("Failed to create container: %s\n", err.Error())
 		return BindingStatus{false, "Failed to create container"}
 	}
+	log.Printf("Successfully created a blob container %q. Response: %s\n", containerName, string(*resp.RequestID))
 
-	log.Println("Successfully created a blob container %q. Response: %s", containerName, string(*resp.RequestID))
-	return BindingStatus{true, "Created blob container"}
+	// Delete the container
+	delResp, err := containerClient.Delete(context.TODO(), nil)
+	if err != nil {
+		log.Printf("Failed to mark container for deletion: %s\n", err.Error())
+		return BindingStatus{false, "Failed to mark container for deletion"}
+	}
+	log.Printf("Successfully marked the container for deletion %q. Response: %s\n", containerName, string(*delResp.RequestID))
+
+	return BindingStatus{true, "Created a container and marked it for deletion successfully"}
 }
 
 func randomString() string {
