@@ -82,20 +82,19 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				// Set up pod port-forwarding for contour-envoy
-				t.Run("check gwy", func(t *testing.T) {
-					for i := 1; i <= retries; i++ {
-						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-						// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort)
-						if err != nil {
-							t.Logf("Failed to test Gateway via portforward with error: %s", err)
-						} else {
-							// Successfully ran tests
-							return
-						}
-
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
 					}
-				})
+				}
+
+				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
 			},
 			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
 			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
@@ -127,6 +126,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	errorChan := make(chan error)
 
 	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+	defer close(stopChan)
 
 	select {
 	case err := <-errorChan:
@@ -138,14 +138,12 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		// Test base endpoint, i.e., base URL returns a 200
 		_, err := sendGetRequest(t, hostname, baseURL, "", 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
 		// Test GET /api/todos (list)
 		listResponse, err := sendGetRequest(t, hostname, baseURL, "api/todos", 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
@@ -177,7 +175,6 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 
 		createResponse, err := sendPostRequest(t, hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
@@ -200,7 +197,6 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		// Test GET /api/todos (list)
 		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
@@ -225,7 +221,6 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		// Test GET /api/todos/:id (get)
 		getResponse, err := sendGetRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
@@ -257,21 +252,18 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 
 		_, err = sendPutRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
 		// Test DELETE /api/todos/:id (delete)
 		_, err = sendDeleteRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
 		// Test GET /api/todos (list)
 		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
 		if err != nil {
-			close(stopChan)
 			return err
 		}
 
