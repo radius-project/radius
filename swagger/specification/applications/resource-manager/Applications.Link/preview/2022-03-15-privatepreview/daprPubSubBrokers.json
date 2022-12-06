@@ -265,13 +265,6 @@
         }
       ],
       "properties": {
-        "kind": {
-          "description": "The DaprPubSubProperties kind",
-          "type": "string",
-          "enum": [
-            "pubsub.azure.servicebus"
-          ]
-        },
         "resource": {
           "description": "PubSub resource",
           "type": "string"
@@ -290,7 +283,6 @@
         }
       },
       "required": [
-        "kind",
         "resource"
       ],
       "type": "object",
@@ -304,13 +296,6 @@
         }
       ],
       "properties": {
-        "kind": {
-          "description": "The DaprPubSubProperties kind",
-          "type": "string",
-          "enum": [
-            "generic"
-          ]
-        },
         "metadata": {
           "description": "Metadata for the pub sub resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -322,14 +307,9 @@
         "version": {
           "description": "Dapr component version",
           "type": "string"
-        },
-        "resource": {
-          "description": "PubSub resource",
-          "type": "string"
         }
       },
       "required": [
-        "kind",
         "type",
         "version",
         "metadata"
@@ -350,10 +330,6 @@
           "type": "object",
           "additionalProperties": false,
           "$ref": "global.json#/definitions/Recipe"
-        },
-        "resource": {
-          "description": "PubSub resource",
-          "type": "string"
         },
         "type": {
           "description": "Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.",

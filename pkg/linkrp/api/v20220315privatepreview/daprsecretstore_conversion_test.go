@@ -41,7 +41,6 @@ func TestDaprSecretStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, "daprSecretStore", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
 		case *ValuesDaprSecretStoreProperties:
-			require.Equal(t, "generic", string(convertedResource.Properties.Kind))
 			require.Equal(t, "secretstores.hashicorp.vault", convertedResource.Properties.Type)
 			require.Equal(t, "v1", convertedResource.Properties.Version)
 			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
@@ -78,7 +77,6 @@ func TestDaprSecretStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "Deployment", versionedResource.Properties.GetDaprSecretStoreProperties().Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "kubernetes", versionedResource.Properties.GetDaprSecretStoreProperties().Status.OutputResources[0]["Provider"])
 		case *ValuesDaprSecretStoreProperties:
-			require.Equal(t, "generic", string(*v.Kind))
 			require.Equal(t, "secretstores.hashicorp.vault", *v.Type)
 			require.Equal(t, "v1", *v.Version)
 			require.Equal(t, "bar", v.Metadata["foo"])
@@ -109,7 +107,7 @@ func TestDaprSecretStore_ConvertVersionedToDataModel_InvalidRequest(t *testing.T
 		}
 		if description == "invalid_properties_with_mode_values" {
 			expectedErr.Code = "BadRequest"
-			expectedErr.Message = "type/version/metadata/kind are required properties for mode 'values'"
+			expectedErr.Message = "type/version/metadata are required properties for mode 'values'"
 		}
 		_, err = versionedResource.ConvertTo()
 		require.Equal(t, &expectedErr, err)
