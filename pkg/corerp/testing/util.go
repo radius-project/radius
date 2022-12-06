@@ -45,6 +45,7 @@ func NewTestContext(t *testing.T) *TestContext {
 	}
 }
 
+// FakeStoreObject creates store.Object for datamodel.
 func FakeStoreObject(dm conv.DataModelInterface) *store.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
