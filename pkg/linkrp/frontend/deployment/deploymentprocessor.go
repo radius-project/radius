@@ -91,22 +91,22 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment ID and recipe name from the resource
-	scope, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
+	basicResource, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, scope.Environment, recipe.Name)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if scope.Application != "" {
+	if basicResource.Application != "" {
 		app := &coreDatamodel.Application{}
-		if err := rp_util.FetchScopeResource(ctx, dp.sp, scope.Application, app); err != nil {
+		if err := rp_util.FetchScopeResource(ctx, dp.sp, basicResource.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		if app.AppInternal.KubernetesNamespace != "" {
@@ -357,74 +357,75 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (scope *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):
 		obj := resource.(*datamodel.MongoDatabase)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(sqldatabases.ResourceType):
 		obj := resource.(*datamodel.SqlDatabase)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rediscaches.ResourceType):
 		obj := resource.(*datamodel.RedisCache)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(rabbitmqmessagequeues.ResourceType):
 		obj := resource.(*datamodel.RabbitMQMessageQueue)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(extenders.ResourceType):
 		obj := resource.(*datamodel.Extender)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 	case strings.ToLower(daprstatestores.ResourceType):
 		obj := resource.(*datamodel.DaprStateStore)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprsecretstores.ResourceType):
 		obj := resource.(*datamodel.DaprSecretStore)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprpubsubbrokers.ResourceType):
 		obj := resource.(*datamodel.DaprPubSubBroker)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Mode == datamodel.LinkModeRecipe {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	case strings.ToLower(daprinvokehttproutes.ResourceType):
 		obj := resource.(*datamodel.DaprInvokeHttpRoute)
-		scope = &obj.Properties.BasicResourceProperties
+		basicResource = &obj.Properties.BasicResourceProperties
 		if obj.Properties.Recipe.Name != "" {
 			recipe.Name = obj.Properties.Recipe.Name
 			recipe.Parameters = obj.Properties.Recipe.Parameters
 		}
 	default:
 		// Internal error: this shouldn't happen unless a new supported resource type wasn't added here
-		return nil, recipe, fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		err = fmt.Errorf("unsupported resource type: %q for resource ID: %q", resourceType, resourceID.String())
+		basicResource = nil
+		return
 	}
-
-	return scope, recipe, nil
+	return
 }
 
 // getEnvironmentMetadata fetches the environment resource from the db to retrieve namespace and recipe metadata required to deploy the link and linked resources ```
