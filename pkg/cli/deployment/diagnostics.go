@@ -158,47 +158,30 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
 	}
 
-	obj, ok = applicationResponse.Properties["environment"]
+	obj, ok = applicationResponse.Properties["extensions"]
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	environment, ok := obj.(string)
+	extensions, ok := obj.([]map[string]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	id, err = resources.ParseResource(environment)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
+	for _, ext := range extensions {
+		kind, ok := ext["kind"].(string)
+		if !ok {
+			continue
+		}
+		if strings.EqualFold(kind, "kuberentesNamespaceOverride") {
+			namespace, ok := ext["namespace"].(string)
+			if ok {
+				return namespace, nil
+			}
+		}
 	}
 
-	environmentResponse, err := dc.EnvironmentClient.Get(ctx, id.Name(), nil)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
-
-	obj, ok = environmentResponse.Properties["compute"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	compute, ok := obj.(map[string]interface{})
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	obj, ok = compute["namespace"]
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	namespace, ok := obj.(string)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
-	}
-
-	return namespace, nil
+	return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 }
 
 // Note: If an error is returned, any streams that were created before the error will also be returned.
