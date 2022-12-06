@@ -19,6 +19,11 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -46,6 +51,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 }
 
 func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
+	logger := logr.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	kubeNamespace := ""
@@ -110,6 +116,16 @@ func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Cont
 			KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{Namespace: kubeNamespace},
 		}
 		newResource.Properties.Extensions = append(newResource.Properties.Extensions, newExtension)
+	}
+
+	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
+	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
+	if apierrors.IsConflict(err) {
+		logger.Info("Using existing namespace", "namespace", kubeNamespace)
+	} else if err != nil {
+		return nil, err
+	} else {
+		logger.Info("Created the namespace", "namespace", kubeNamespace)
 	}
 
 	return nil, nil
