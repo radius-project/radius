@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	metricsprovider "github.com/project-radius/radius/pkg/telemetry/metrics/provider"
+	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
+	metricsservicehostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
@@ -32,6 +35,7 @@ type Options struct {
 	SecretClient           secret.Client
 	StorageProviderOptions dataprovider.StorageProviderOptions
 	SecretProviderOptions  provider.SecretProviderOptions
+	MetricsProviderOptions metricsprovider.MetricsProviderOptions
 	TLSCertDir             string
 	BasePath               string
 	InitialPlanes          []rest.Plane
@@ -59,6 +63,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 	storeOpts := opts.Config.StorageProvider
 	planes := opts.Config.Planes
 	secretOpts := opts.Config.SecretProvider
+	metricsOpts := opts.Config.MetricsProvider
 
 	return Options{
 		Port:                   port,
@@ -66,6 +71,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 		BasePath:               basePath,
 		StorageProviderOptions: storeOpts,
 		SecretProviderOptions:  secretOpts,
+		MetricsProviderOptions: metricsOpts,
 		InitialPlanes:          planes,
 	}, nil
 }
@@ -80,7 +86,7 @@ func NewServer(options Options) (*hosting.Host, error) {
 			TLSCertDir:             options.TLSCertDir,
 			BasePath:               options.BasePath,
 			StorageProviderOptions: options.StorageProviderOptions,
-			SecretProviderOptions: options.SecretProviderOptions,
+			SecretProviderOptions:  options.SecretProviderOptions,
 			InitialPlanes:          options.InitialPlanes,
 		}),
 	}
@@ -95,8 +101,14 @@ func NewServer(options Options) (*hosting.Host, error) {
 		hostingServices = append(hostingServices, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: clientconfigSource}))
 	}
 
+	if options.MetricsProviderOptions.Prometheus.Enabled {
+		metricOptions := metricsservicehostoptions.HostOptions{
+			Config: &options.MetricsProviderOptions,
+		}
+		hostingServices = append(hostingServices, metricsservice.NewService(metricOptions))
+	}
+
 	return &hosting.Host{
 		Services: hostingServices,
 	}, nil
-
 }

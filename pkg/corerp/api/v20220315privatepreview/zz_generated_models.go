@@ -69,7 +69,7 @@ type ApplicationKubernetesNamespaceExtension struct {
 	// REQUIRED; Specifies the extensions of a resource.
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; The namespace to use for the application.
+	// REQUIRED; The Kubernetes namespace to use for this application.
 	Namespace *string `json:"namespace,omitempty"`
 }
 
@@ -765,8 +765,8 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - TLS configuration for the Gateway.
 type GatewayPropertiesTLS struct {
-	// If true, gateway lets the https traffic passthrough to the backend servers for decryption.
-	SSLPassThrough *bool `json:"sslPassThrough,omitempty"`
+	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
+	SSLPassthrough *bool `json:"sslPassthrough,omitempty"`
 }
 
 // GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.

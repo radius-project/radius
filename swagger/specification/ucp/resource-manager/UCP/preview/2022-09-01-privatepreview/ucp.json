@@ -894,15 +894,7 @@
           "type": "string"
         },
         "storage": {
-          "type": "object",
-          "required": [
-            "kind"
-          ],
-          "properties": {
-            "kind": {
-              "$ref": "#/definitions/CredentialStorageKind"
-            }
-          }
+          "$ref":"#/definitions/CredentialStorageProperties"
         }
       }
     },
@@ -934,7 +926,7 @@
         "tenantId"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "ServicePrincipal"
+      "x-ms-discriminator-value": "azure.com.serviceprincipal"
     },
     "AWSCredentialProperties": {
       "additionalProperties": false,
@@ -960,13 +952,43 @@
         "secretAccessKey"
       ],
       "type": "object",
-      "x-ms-discriminator-value": "AWSCredential"
+      "x-ms-discriminator-value": "aws.com.iam"
+    },
+    "CredentialStorageProperties": {
+      "description": "Credential storage properties",
+      "type": "object",
+      "discriminator": "kind",
+      "required": [
+        "kind"
+      ],
+      "properties": {
+        "kind": {
+          "$ref": "#/definitions/CredentialStorageKind"
+        }
+      }
+    },
+    "InternalCredentialStorageProperties": {
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "$ref": "#/definitions/CredentialStorageProperties"
+        }
+      ],
+      "properties": {
+        "secretName": {
+          "readOnly": true,
+          "type": "string",
+          "description": "The name of secret stored."
+        }
+      },
+      "type": "object",
+      "x-ms-discriminator-value": "Internal"
     },
     "CredentialStorageKind": {
       "type": "string",
       "description": "credential store kinds supported.",
       "enum": [
-        "Kubernetes"
+        "Internal"
       ],
       "x-ms-enum": {
         "name": "CredentialStorageKind",

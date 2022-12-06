@@ -1,8 +1,8 @@
 {
     "parameters": {
-      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
       "api-version": "2022-03-15-privatepreview",
-      "daprInvokeHttpRouteName": "daprHttpRoute0"
+      "daprInvokeHttpRouteName": "daprhttproute0"
     },
     "responses": {
       "200": {
@@ -10,6 +10,7 @@
           "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/daprHttpRoute0",
           "name": "daprHttpRoute0",
           "type": "Applications.Link/daprInvokeHttpRoutes",
+          "location": "global",
           "properties": {
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",

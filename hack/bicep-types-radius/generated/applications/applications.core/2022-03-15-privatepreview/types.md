@@ -91,7 +91,7 @@
 ### ApplicationKubernetesNamespaceExtension
 #### Properties
 * **kind**: 'kubernetesNamespaceOverride' (Required): Specifies the extensions of a resource.
-* **namespace**: string (Required): The namespace to use for the application.
+* **namespace**: string (Required): The Kubernetes namespace to use for this application.
 
 
 ## ApplicationKubernetesMetadataExtensionAnnotations
@@ -366,7 +366,7 @@
 
 ## GatewayPropertiesTls
 ### Properties
-* **sslPassThrough**: bool: If true, gateway lets the https traffic passthrough to the backend servers for decryption.
+* **sslPassthrough**: bool: If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
 
 ## TrackedResourceTags
 ### Properties

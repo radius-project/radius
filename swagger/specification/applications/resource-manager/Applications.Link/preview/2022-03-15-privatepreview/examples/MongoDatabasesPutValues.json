@@ -1,9 +1,9 @@
 {
   "parameters": {
-    "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+    "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
     "mongoDatabaseName": "mongo0",
     "api-version": "2022-03-15-privatepreview",
-    "MongoDatabaseResource": {
+    "MongoDatabaseParameters": {
       "location": "West US",
       "properties": {
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
@@ -11,7 +11,6 @@
         "mode":"values",
         "host": "testAccount1.mongo.cosmos.azure.com",
         "port": 10255,
-        "database": "mongo0",
         "secrets": {
           "username": "testUser",
           "password": "testPassword",
@@ -26,6 +25,7 @@
         "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
         "name": "mongo0",
         "type": "Applications.Link/mongoDatabases",
+        "location": "global",
         "properties": {
           "provisioningState": "Succeeded",
           "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
@@ -34,6 +34,23 @@
           "host": "testAccount1.mongo.cosmos.azure.com",
           "port": 10255,
           "database": "mongo0"
+        }
+      }
+    },
+    "201": {
+      "body": {
+        "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo1",
+        "name": "mongo1",
+        "type": "Applications.Link/mongoDatabases",
+        "location": "global",
+        "properties": {
+          "provisioningState": "Succeeded",
+          "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
+          "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0",
+          "mode":"values",
+          "host": "testAccount1.mongo.cosmos.azure.com",
+          "port": 10255,
+          "database": "mongo1"
         }
       }
     }

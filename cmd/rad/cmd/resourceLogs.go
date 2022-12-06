@@ -15,8 +15,8 @@ import (
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
+	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/spf13/cobra"
 )
 
@@ -48,10 +48,11 @@ rad resource logs containers orders --application icecream-store --container dap
 			return err
 		}
 
-		// TODO: support fallback workspace
-		if !workspace.IsNamedWorkspace() {
-			return workspaces.ErrNamedWorkspaceRequired
+		scope, err := cli.RequireScope(cmd, *workspace)
+		if err != nil {
+			return err
 		}
+		workspace.Scope = scope
 
 		application, err := cli.RequireApplication(cmd, *workspace)
 		if err != nil {
@@ -169,5 +170,6 @@ func init() {
 	resourceLogsCmd.Flags().String("container", "", "specify the container from which logs should be streamed")
 	resourceLogsCmd.Flags().BoolP("follow", "f", false, "specify that logs should be stream until the command is canceled")
 	resourceLogsCmd.Flags().String("replica", "", "specify the replica to collect logs from")
+	commonflags.AddResourceGroupFlag(resourceLogsCmd)
 	resourceCmd.AddCommand(resourceLogsCmd)
 }
