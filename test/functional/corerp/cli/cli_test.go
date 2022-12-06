@@ -65,6 +65,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 
 	})
 }
+
 func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 	options := corerp.NewCoreRPTestOptions(t)
 	cli := radcli.NewCLI(t, options.ConfigFilePath)

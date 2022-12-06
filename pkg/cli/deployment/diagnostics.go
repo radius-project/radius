@@ -163,17 +163,18 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	extensions, ok := obj.([]map[string]any)
+	extensions, ok := obj.([]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	for _, ext := range extensions {
+	for _, e := range extensions {
+		ext := e.(map[string]any)
 		kind, ok := ext["kind"].(string)
 		if !ok {
 			continue
 		}
-		if strings.EqualFold(kind, "kuberentesNamespaceOverride") {
+		if strings.EqualFold(kind, "kubernetesNamespaceOverride") {
 			namespace, ok := ext["namespace"].(string)
 			if ok {
 				return namespace, nil
