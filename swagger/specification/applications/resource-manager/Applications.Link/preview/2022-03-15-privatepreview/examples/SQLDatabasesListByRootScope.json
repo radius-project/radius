@@ -1,6 +1,6 @@
 {
     "parameters": {
-      "rootScope": "/subscriptions/00000000-0000-0000-0000-000000000000",
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview"
     },
     "responses": {
@@ -11,6 +11,7 @@
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
               "name": "sql0",
               "type": "Applications.Link/sqlDatabases",
+              "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
@@ -23,6 +24,7 @@
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup1/providers/Applications.Link/sqlDatabases/sql1",
               "name": "sql1",
               "type": "Applications.Link/sqlDatabases",
+              "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
@@ -36,6 +38,7 @@
               "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql2",
               "name": "sql2",
               "type": "Applications.Link/sqlDatabases",
+              "location": "global",
               "properties": {
                 "provisioningState": "Succeeded",
                 "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",
