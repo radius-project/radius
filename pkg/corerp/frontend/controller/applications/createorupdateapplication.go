@@ -101,7 +101,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Cont
 	}
 
 	if !kubernetes.IsValidObjectName(kubeNamespace) {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. namespace must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
 	}
 
 	// Populate kubernetes namespace to internal metadata property for query indexing.
