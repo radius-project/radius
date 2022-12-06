@@ -170,36 +170,6 @@ func PossibleRedisCachePropertiesModeValues() []RedisCachePropertiesMode {
 	}
 }
 
-// ResourceDaprPubSubPropertiesKind - The DaprPubSubProperties kind
-type ResourceDaprPubSubPropertiesKind string
-
-const (
-	ResourceDaprPubSubPropertiesKindPubsubAzureServicebus ResourceDaprPubSubPropertiesKind = "pubsub.azure.servicebus"
-)
-
-// PossibleResourceDaprPubSubPropertiesKindValues returns the possible values for the ResourceDaprPubSubPropertiesKind const type.
-func PossibleResourceDaprPubSubPropertiesKindValues() []ResourceDaprPubSubPropertiesKind {
-	return []ResourceDaprPubSubPropertiesKind{	
-		ResourceDaprPubSubPropertiesKindPubsubAzureServicebus,
-	}
-}
-
-// ResourceDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
-type ResourceDaprStateStoreResourcePropertiesKind string
-
-const (
-	ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage ResourceDaprStateStoreResourcePropertiesKind = "state.azure.tablestorage"
-	ResourceDaprStateStoreResourcePropertiesKindStateSqlserver ResourceDaprStateStoreResourcePropertiesKind = "state.sqlserver"
-)
-
-// PossibleResourceDaprStateStoreResourcePropertiesKindValues returns the possible values for the ResourceDaprStateStoreResourcePropertiesKind const type.
-func PossibleResourceDaprStateStoreResourcePropertiesKindValues() []ResourceDaprStateStoreResourcePropertiesKind {
-	return []ResourceDaprStateStoreResourcePropertiesKind{	
-		ResourceDaprStateStoreResourcePropertiesKindStateAzureTablestorage,
-		ResourceDaprStateStoreResourcePropertiesKindStateSqlserver,
-	}
-}
-
 // SQLDatabasePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or 'resource', or build
 // manually via 'values'. Selection determines which set of fields to additionally require.
 type SQLDatabasePropertiesMode string
@@ -216,48 +186,6 @@ func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
 		SQLDatabasePropertiesModeRecipe,
 		SQLDatabasePropertiesModeResource,
 		SQLDatabasePropertiesModeValues,
-	}
-}
-
-// ValuesDaprPubSubPropertiesKind - The DaprPubSubProperties kind
-type ValuesDaprPubSubPropertiesKind string
-
-const (
-	ValuesDaprPubSubPropertiesKindGeneric ValuesDaprPubSubPropertiesKind = "generic"
-)
-
-// PossibleValuesDaprPubSubPropertiesKindValues returns the possible values for the ValuesDaprPubSubPropertiesKind const type.
-func PossibleValuesDaprPubSubPropertiesKindValues() []ValuesDaprPubSubPropertiesKind {
-	return []ValuesDaprPubSubPropertiesKind{	
-		ValuesDaprPubSubPropertiesKindGeneric,
-	}
-}
-
-// ValuesDaprSecretStorePropertiesKind - Radius kind for Dapr Secret Store
-type ValuesDaprSecretStorePropertiesKind string
-
-const (
-	ValuesDaprSecretStorePropertiesKindGeneric ValuesDaprSecretStorePropertiesKind = "generic"
-)
-
-// PossibleValuesDaprSecretStorePropertiesKindValues returns the possible values for the ValuesDaprSecretStorePropertiesKind const type.
-func PossibleValuesDaprSecretStorePropertiesKindValues() []ValuesDaprSecretStorePropertiesKind {
-	return []ValuesDaprSecretStorePropertiesKind{	
-		ValuesDaprSecretStorePropertiesKindGeneric,
-	}
-}
-
-// ValuesDaprStateStoreResourcePropertiesKind - The Dapr StateStore kind
-type ValuesDaprStateStoreResourcePropertiesKind string
-
-const (
-	ValuesDaprStateStoreResourcePropertiesKindGeneric ValuesDaprStateStoreResourcePropertiesKind = "generic"
-)
-
-// PossibleValuesDaprStateStoreResourcePropertiesKindValues returns the possible values for the ValuesDaprStateStoreResourcePropertiesKind const type.
-func PossibleValuesDaprStateStoreResourcePropertiesKindValues() []ValuesDaprStateStoreResourcePropertiesKind {
-	return []ValuesDaprStateStoreResourcePropertiesKind{	
-		ValuesDaprStateStoreResourcePropertiesKindGeneric,
 	}
 }
 

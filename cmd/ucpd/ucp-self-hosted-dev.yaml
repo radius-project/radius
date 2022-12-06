@@ -46,3 +46,10 @@ planes:
       resourceProviders:
         Microsoft.Resources: "http://localhost:5017"
       kind: "UCPNative"
+
+# Metrics configuration
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 2222

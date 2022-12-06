@@ -38,6 +38,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 
 	commonflags.AddOutputFlag(cmd)
 	commonflags.AddWorkspaceFlag(cmd)
+	commonflags.AddResourceGroupFlag(cmd)
 
 	return cmd, runner
 }
@@ -70,10 +71,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	}
 	r.Workspace = workspace
 
-	// TODO: support fallback workspace
-	if !r.Workspace.IsNamedWorkspace() {
-		return workspaces.ErrNamedWorkspaceRequired
+	scope, err := cli.RequireScope(cmd, *r.Workspace)
+	if err != nil {
+		return err
 	}
+	r.Workspace.Scope = scope
 
 	resourceType, resourceName, err := cli.RequireResourceTypeAndName(args)
 	if err != nil {

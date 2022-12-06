@@ -7,7 +7,6 @@ package v20220315privatepreview
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -47,11 +46,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
-		if *v.Kind != ResourceDaprPubSubPropertiesKindPubsubAzureServicebus {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'resource'", ResourceDaprPubSubPropertiesKindPubsubAzureServicebus))
-		}
 		converted.Properties.Mode = datamodel.LinkModeResource
-		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindAzureServiceBus
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
@@ -60,22 +55,16 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
-		if *v.Kind != ValuesDaprPubSubPropertiesKindGeneric {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("kind must be %s when mode is 'values'", ValuesDaprPubSubPropertiesKindGeneric))
-		}
 		converted.Properties.Mode = datamodel.LinkModeValues
-		converted.Properties.Kind = datamodel.DaprPubSubBrokerKindGeneric
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
-		converted.Properties.Resource = to.String(v.Resource)
 	case *RecipeDaprPubSubProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
 		converted.Properties.Mode = datamodel.LinkModeRecipe
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
-		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
@@ -113,7 +102,6 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
-			Resource:          to.StringPtr(daprPubSub.Properties.Resource),
 			Type:              to.StringPtr(daprPubSub.Properties.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.Version),
 			Metadata:          daprPubSub.Properties.Metadata,
@@ -121,7 +109,6 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 		}
 	case datamodel.LinkModeResource:
 		mode := DaprPubSubBrokerPropertiesModeResource
-		kind := ResourceDaprPubSubPropertiesKindPubsubAzureServicebus
 		dst.Properties = &ResourceDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -131,14 +118,12 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              &kind,
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Resource:          to.StringPtr(daprPubSub.Properties.Resource),
 			Metadata:          daprPubSub.Properties.Metadata,
 		}
 	case datamodel.LinkModeValues:
 		mode := DaprPubSubBrokerPropertiesModeValues
-		kind := ValuesDaprPubSubPropertiesKindGeneric
 		dst.Properties = &ValuesDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -148,7 +133,6 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
 			Mode:              &mode,
-			Kind:              &kind,
 			Topic:             to.StringPtr(daprPubSub.Properties.Topic),
 			Type:              to.StringPtr(daprPubSub.Properties.Type),
 			Version:           to.StringPtr(daprPubSub.Properties.Version),

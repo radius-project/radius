@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -130,39 +131,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 			done <- err
 		}()
 
-		for i := 0; i < retries; i++ {
-			url := fmt.Sprintf("http://localhost:%d/healthz", port)
-			t.Logf("making request to %s", url)
-			response, err := http.Get(url)
-			if err != nil {
-				if i == retries-1 {
-					// last retry failed, report failure
-					require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
-				}
-				t.Logf("got error %s", err.Error())
-				time.Sleep(1 * time.Second)
-				continue
-			}
-			if response.Body != nil {
-				defer response.Body.Close()
-			}
-
-			if response.StatusCode > 299 || response.StatusCode < 200 {
-				if i == retries-1 {
-					// last retry failed, report failure
-					require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
-				}
-				t.Logf("got status %d", response.StatusCode)
-				time.Sleep(1 * time.Second)
-				continue
-			}
-
-			content, err := io.ReadAll(response.Body)
-			require.NoError(t, err)
-
-			t.Logf("[response] %s", string(content))
-			break
-		}
+		callHealthEndpointOnLocalPort(t, retries, port)
 
 		cancel()
 		err = <-done
@@ -170,17 +139,54 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		// The error should be due to cancellation (we can canceled the command).
 		require.Equal(t, context.Canceled, err)
 	})
-
 }
 
-func Test_Run(t *testing.T) {
+// callHealthEndpointOnLocalPort calls the magpie health endpoint '/healthz' with retries. It will fail the
+// test if the exceed the number of retries without success.
+func callHealthEndpointOnLocalPort(t *testing.T, retries int, port int) {
+	for i := 0; i < retries; i++ {
+		url := fmt.Sprintf("http://localhost:%d/healthz", port)
+		t.Logf("making request to %s", url)
+		response, err := http.Get(url)
+		if err != nil {
+			if i == retries-1 {
+				// last retry failed, report failure
+				require.NoError(t, err, "failed to get connect to resource after %d retries", retries)
+			}
+			t.Logf("got error %s", err.Error())
+			time.Sleep(1 * time.Second)
+			continue
+		}
+		if response.Body != nil {
+			defer response.Body.Close()
+		}
+
+		if response.StatusCode > 299 || response.StatusCode < 200 {
+			if i == retries-1 {
+				// last retry failed, report failure
+				require.NoError(t, err, "status code was a bad response after %d retries %d", retries, response.StatusCode)
+			}
+			t.Logf("got status %d", response.StatusCode)
+			time.Sleep(1 * time.Second)
+			continue
+		}
+
+		content, err := io.ReadAll(response.Body)
+		require.NoError(t, err)
+
+		t.Logf("[response] %s", string(content))
+		return
+	}
+}
+
+func Test_Run_Logger(t *testing.T) {
 	// Will be used to cancel `rad run`
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
 	options := corerp.NewCoreRPTestOptions(t)
 
 	template := "testdata/corerp-kubernetes-cli-run.bicep"
-	applicationName := "cli-run"
+	applicationName := "cli-run-logger"
 
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
@@ -222,6 +228,92 @@ func Test_Run(t *testing.T) {
 		output.WriteString(line)
 		output.WriteString("\n")
 		if strings.Contains(line, "hello from the streaming logs!") {
+			cancel() // Stop the command, but keep reading to drain all output.
+		}
+	}
+
+	// It's only safe to call wait when we've read all of the output.
+	err = cmd.Wait()
+	err = cli.ReportCommandResult(ctx, output.String(), description, err)
+
+	// Now we can delete the application (before we report pass/fail)
+	t.Run("delete application", func(t *testing.T) {
+		// Create a new context since we canceled the outer one.
+		ctx, cancel := test.GetContext(t)
+		defer cancel()
+
+		err := cli.ApplicationDelete(ctx, applicationName)
+		require.NoErrorf(t, err, "failed to delete %s", applicationName)
+	})
+
+	// We should have an error, but only because we canceled the context.
+	require.Errorf(t, err, "rad run should have been canceled")
+	require.Equal(t, err, ctx.Err(), "rad run should have been canceled")
+}
+
+func Test_Run_Portforward(t *testing.T) {
+	// Will be used to cancel `rad run`
+	ctx, cancel := test.GetContext(t)
+	defer cancel()
+	options := corerp.NewCoreRPTestOptions(t)
+
+	template := "testdata/corerp-kubernetes-cli-run-portforward.bicep"
+	applicationName := "cli-run-portforward"
+
+	cwd, err := os.Getwd()
+	require.NoError(t, err)
+
+	cli := radcli.NewCLI(t, options.ConfigFilePath)
+
+	args := []string{
+		"run",
+		filepath.Join(cwd, template),
+		"--application",
+		applicationName,
+		"--parameters",
+		functional.GetMagpieImage(),
+	}
+
+	// 'rad run' streams logs until canceled by the user. This is why we can't 'just' run the command in
+	// the test, because we have to decide when to shut down.
+	//
+	// The challenge with this command is that we want to stream the log output as it comes out so we can find
+	// the output we expect and shut down the test. We don't want to use a fixed timeout and make a test
+	// that takes forever to run even on the happy path.
+	cmd, heartbeat, description := cli.CreateCommand(ctx, args)
+
+	// Read from stdout to get the logs.
+	stdout, err := cmd.StdoutPipe()
+	require.NoError(t, err)
+
+	err = cmd.Start()
+	require.NoError(t, err)
+
+	// Start heartbeat to trigger logging
+	done := make(chan struct{})
+	go heartbeat(done)
+
+	// Read the text line-by-line while the command is running, but store it so we can report failures.
+	output := bytes.Buffer{}
+	scanner := bufio.NewScanner(stdout)
+	scanner.Split(bufio.ScanLines)
+
+	rgx := regexp.MustCompile(`.*\[port-forward\] .* from localhost:(.*) -> ::.*`)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		output.WriteString(line)
+		output.WriteString("\n")
+		matches := rgx.FindSubmatch([]byte(line))
+		if len(matches) == 2 {
+			t.Log("found matching output", line)
+
+			// Found the portforward local port.
+			port, err := strconv.Atoi(string(matches[1]))
+			require.NoErrorf(t, err, "port is not an integer")
+			t.Logf("found local port %d", port)
+			callHealthEndpointOnLocalPort(t, retries, port)
+
 			cancel() // Stop the command, but keep reading to drain all output.
 		}
 	}

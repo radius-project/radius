@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/cli/deploy"
 	"github.com/project-radius/radius/pkg/cli/framework"
 	"github.com/project-radius/radius/pkg/cli/kubernetes/logstream"
+	"github.com/project-radius/radius/pkg/cli/kubernetes/portforward"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
 	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
@@ -141,6 +142,24 @@ func Test_Run(t *testing.T) {
 		}).
 		Times(1)
 
+	portforwardOptionsChan := make(chan portforward.Options, 1)
+	portforwardMock := portforward.NewMockInterface(ctrl)
+	portforwardMock.EXPECT().
+		Run(gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, o portforward.Options) error {
+			// Capture options for verification
+			portforwardOptionsChan <- o
+			close(portforwardOptionsChan)
+
+			// Wait for context to be canceled
+			<-ctx.Done()
+
+			// Run is expected to close this channel.
+			close(o.StatusChan)
+			return ctx.Err()
+		}).
+		Times(1)
+
 	logstreamOptionsChan := make(chan logstream.Options, 1)
 	logstreamMock := logstream.NewMockInterface(ctrl)
 	logstreamMock.EXPECT().
@@ -200,7 +219,8 @@ func Test_Run(t *testing.T) {
 			Parameters:      map[string]map[string]interface{}{},
 			Workspace:       workspace,
 		},
-		Logstream: logstreamMock,
+		Logstream:   logstreamMock,
+		Portforward: portforwardMock,
 	}
 
 	// We'll run the actual command in the background, and do cancellation and verification in
@@ -223,6 +243,12 @@ func Test_Run(t *testing.T) {
 	require.Equal(t, runner.ApplicationName, logStreamOptions.ApplicationName)
 	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
 	require.Equal(t, "test-namespace", logStreamOptions.Namespace)
+
+	portforwardOptions := <-portforwardOptionsChan
+	// Port-forward is scoped to application and namespace
+	require.Equal(t, runner.ApplicationName, portforwardOptions.ApplicationName)
+	require.Equal(t, "kind-kind", portforwardOptions.KubeContext)
+	require.Equal(t, "test-namespace", portforwardOptions.Namespace)
 
 	// Shut down the log stream and verify result
 	cancel()

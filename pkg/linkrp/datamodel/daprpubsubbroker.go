@@ -10,14 +10,6 @@ import (
 	"github.com/project-radius/radius/pkg/rp"
 )
 
-type DaprPubSubBrokerKind string
-
-const (
-	DaprPubSubBrokerKindAzureServiceBus DaprPubSubBrokerKind = "pubsub.azure.servicebus"
-	DaprPubSubBrokerKindGeneric         DaprPubSubBrokerKind = "generic"
-	DaprPubSubBrokerKindUnknown         DaprPubSubBrokerKind = "unknown"
-)
-
 // DaprPubSubBroker represents DaprPubSubBroker link resource.
 type DaprPubSubBroker struct {
 	v1.TrackedResource
@@ -43,7 +35,6 @@ type DaprPubSubBrokerProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
 	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Kind              DaprPubSubBrokerKind   `json:"kind"`
 	Topic             string                 `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
 	Mode              LinkMode               `json:"mode"`
 	Metadata          map[string]interface{} `json:"metadata,omitempty"`

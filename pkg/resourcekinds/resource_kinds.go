@@ -16,6 +16,8 @@ const (
 	Secret                           = "Secret"
 	Gateway                          = "Gateway"
 	Volume                           = "Volume"
+	KubernetesRole                   = "KubernetesRole"
+	KubernetesRoleBinding            = "KubernetesRoleBinding"
 	KubernetesHTTPRoute              = "HTTPRoute" // For httproutes.networking.x-k8s.io
 	RadiusHttpRoute                  = "HttpRoute" // For httproutes.radius.dev
 	StatefulSet                      = "StatefulSet"

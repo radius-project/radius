@@ -15,16 +15,15 @@ import (
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
-var SupportedStateStoreKindValues = map[string]StateStoreFunc{
-	resourcekinds.DaprStateStoreAzureTableStorage: GetDaprStateStoreAzureStorage,
-	resourcekinds.DaprGeneric:                     GetDaprStateStoreGeneric,
+var SupportedStateStoreModes = map[string]StateStoreFunc{
+	string(datamodel.LinkModeResource): GetDaprStateStoreAzureStorage,
+	string(datamodel.LinkModeValues):   GetDaprStateStoreGeneric,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -44,10 +43,9 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	if r.StateStores == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
 	}
-
-	stateStoreFunc := r.StateStores[string(properties.Kind)]
+	stateStoreFunc := r.StateStores[string(properties.Mode)]
 	if stateStoreFunc == nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("%s is not supported. Supported kind values: %s", properties.Kind, getAlphabeticallySortedKeys(r.StateStores)))
+		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.StateStores)))
 	}
 
 	var applicationName string
