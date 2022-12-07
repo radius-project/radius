@@ -112,7 +112,6 @@ func (a *ApplicationKubernetesNamespaceExtension) UnmarshalJSON(data []byte) err
 // MarshalJSON implements the json.Marshaller interface for type ApplicationProperties.
 func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "application", a.Application)
 	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
@@ -129,9 +128,6 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "application":
-				err = unpopulate(val, "Application", &a.Application)
-				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
 				delete(rawMsg, key)

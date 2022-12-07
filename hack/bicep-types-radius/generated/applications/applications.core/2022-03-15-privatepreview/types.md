@@ -74,8 +74,7 @@
 
 ## ApplicationProperties
 ### Properties
-* **application**: string (Required): Specifies the resource id of the application
-* **environment**: string: The resource id of the environment linked to the resource
+* **environment**: string (Required): The resource id of the environment linked to application.
 * **extensions**: [ApplicationExtension](#applicationextension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.

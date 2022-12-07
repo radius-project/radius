@@ -88,10 +88,7 @@ func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
 
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; Specifies the resource id of the application
-	Application *string `json:"application,omitempty"`
-
-	// The resource id of the environment linked to the resource
+	// REQUIRED; The resource id of the environment linked to application.
 	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
