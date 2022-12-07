@@ -321,7 +321,7 @@
       ]
     },
     "ApplicationKubernetesNamespaceExtension": {
-      "description": "Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments resource.",
+      "description": "Specifies application-scoped namespace.",
       "type": "object",
       "allOf": [
         {
@@ -337,7 +337,7 @@
       "required": [
         "namespace"
       ],
-      "x-ms-discriminator-value": "kubernetesNamespaceOverride"
+      "x-ms-discriminator-value": "kubernetesNamespace"
     },
     "ApplicationKubernetesMetadataExtension": {
       "type": "object",

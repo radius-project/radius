@@ -20,7 +20,7 @@
             }
           },
           {
-            "kind": "kubernetesNamespaceOverride",
+            "kind": "kubernetesNamespace",
             "namespace": "app-ns"
           }
         ]
@@ -49,7 +49,7 @@
               }
             },
             {
-              "kind": "kubernetesNamespaceOverride",
+              "kind": "kubernetesNamespace",
               "namespace": "app-ns"
             }
           ]

@@ -9,6 +9,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/rp"
 
 	"github.com/Azure/go-autorest/autorest/to"
@@ -144,7 +145,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 			return nil, err
 		}
 
-		if v.Namespace == nil || len(*v.Namespace) == 0 || len(*v.Namespace) >= 64 {
+		if !kubernetes.IsValidObjectName(to.String(v.Namespace)) {
 			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
@@ -220,13 +221,11 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentE
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
 		var ann, lbl = getFromExtensionClassificationFields(e)
-		converted := EnvironmentKubernetesMetadataExtension{
+		return &EnvironmentKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
-
-		return converted.GetEnvironmentExtension()
 	}
 
 	return nil
@@ -236,15 +235,13 @@ func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentE
 func toEnvExtensionDataModel(e EnvironmentExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *EnvironmentKubernetesMetadataExtension:
-
-		converted := datamodel.Extension{
+		return datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return converted
 	}
 
 	return datamodel.Extension{}

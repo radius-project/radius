@@ -81,7 +81,7 @@ func (a *ApplicationKubernetesMetadataExtension) UnmarshalJSON(data []byte) erro
 // MarshalJSON implements the json.Marshaller interface for type ApplicationKubernetesNamespaceExtension.
 func (a ApplicationKubernetesNamespaceExtension) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	objectMap["kind"] = "kubernetesNamespaceOverride"
+	objectMap["kind"] = "kubernetesNamespace"
 	populate(objectMap, "namespace", a.Namespace)
 	return json.Marshal(objectMap)
 }

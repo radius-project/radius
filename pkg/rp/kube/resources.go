@@ -15,16 +15,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
-// Radius uses Kubernetes namespace by following rules:
-// +-----------------+--------------------+------------------------------+------------------------------+
-// | namespace       | namespace override | env-scope resource namespace | app-scope resource namespace |
-// | in Environments | in Applications    |                              |                              |
-// +-----------------+--------------------+------------------------------+------------------------------+
-// | UNDEFINED       | UNDEFINED          | {envName}                    | {envName}-{appName}          |
-// | envNS           | UNDEFINED          | envNS                        | envNS-{appName}              |
-// | envNS           | appNS              | envNS                        | appNS                        |
-// +-----------------+--------------------+------------------------------+------------------------------+
-
 // FindNamespaceByEnvID finds the environment-scope Kuberentes namespace.
 func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvider, envID string) (namespace string, err error) {
 	id, err := resources.ParseResource(envID)

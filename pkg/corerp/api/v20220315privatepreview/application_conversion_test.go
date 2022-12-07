@@ -16,7 +16,6 @@ import (
 )
 
 func TestApplicationConvertVersionedToDataModel(t *testing.T) {
-
 	conversionTests := []struct {
 		filename string
 		err      error
@@ -63,7 +62,7 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				if tt.emptyExt {
 					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
 				} else {
-					require.Equal(t, getTestKubernetesMetadataAppExtensions(t), ct.Properties.Extensions)
+					require.Equal(t, getTestKubernetesMetadataExtensions(t), ct.Properties.Extensions)
 				}
 			}
 		})
@@ -81,11 +80,6 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 			filename: "applicationresourcedatamodel.json",
 			err:      nil,
 			emptyExt: false,
-		},
-		{
-			filename: "applicationresourcedatamodelemptyext.json",
-			err:      nil,
-			emptyExt: true,
 		},
 	}
 
@@ -110,11 +104,7 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "Applications.Core/applications", r.Type)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", r.Properties.Environment)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
-				require.Equal(t, "kubernetesNamespaceOverride", *versioned.Properties.Extensions[1].GetExtension().Kind)
-				if !tt.emptyExt {
-					require.Equal(t, "kubernetesNamespaceOverride", *versioned.Properties.Extensions[1].GetExtension().Kind)
-					require.Equal(t, 2, len(versioned.Properties.Extensions))
-				}
+				require.Equal(t, "kubernetesNamespace", *versioned.Properties.Extensions[1].GetExtension().Kind)
 			}
 		})
 	}
@@ -134,15 +124,4 @@ func TestApplicationConvertFromValidation(t *testing.T) {
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
-}
-
-func getTestKubernetesMetadataAppExtensions(t *testing.T) []datamodel.Extension {
-	extensions := append(getTestKubernetesMetadataExtensions(t), datamodel.Extension{
-		Kind: datamodel.KubernetesNamespaceOverride,
-		KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-			Namespace: "app0-ns",
-		},
-	})
-
-	return extensions
 }
