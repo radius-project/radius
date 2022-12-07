@@ -60,7 +60,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // | envNS           | appNS              | envNS                         | appNS                         |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
-func (a *CreateOrUpdateApplication) populateKubernetesExtension(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
+func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
@@ -154,7 +154,7 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	if r, err := a.populateKubernetesExtension(ctx, old, newResource); r != nil || err != nil {
+	if r, err := a.populateKubernetesNamespace(ctx, old, newResource); r != nil || err != nil {
 		return r, err
 	}
 
