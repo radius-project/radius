@@ -164,7 +164,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	computedValues := map[string]rp.ComputedValueReference{}
 
 	// Create the deployment as the primary workload
-	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, len(roles) > 0)
+	deploymentResources, secretData, err := r.makeDeployment(ctx, appId.Name(), options, computedValues, resource, roles)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -182,12 +182,14 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 	}, nil
 }
 
-func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, identityRequired bool) ([]outputresource.OutputResource, map[string][]byte, error) {
+func (r Renderer) makeDeployment(ctx context.Context, applicationName string, options renderers.RenderOptions, computedValues map[string]rp.ComputedValueReference, resource *datamodel.ContainerResource, roles []outputresource.OutputResource) ([]outputresource.OutputResource, map[string][]byte, error) {
 	// Keep track of the set of routes, we will need these to generate labels later
 	routes := []struct {
 		Name string
 		Type string
 	}{}
+
+	identityRequired := len(roles) > 0
 
 	dependencies := options.Dependencies
 	cc := resource.Properties
@@ -413,6 +415,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDServiceAccount})
 
+		// 4. Add RBAC resources to the dependencies.
+		for _, role := range roles {
+			deps = append(deps, outputresource.Dependency{LocalID: role.LocalID})
+		}
+
 		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
 			Value: options.Environment.Identity,
 			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
@@ -453,6 +460,15 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 			},
 		}
 	}
+
+	// Create the role and role bindings for SA.
+	role := makeRBACRole(applicationName, kubeIdentityName, options.Environment.Namespace, resource)
+	outputResources = append(outputResources, *role)
+	deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDKubernetesRole})
+
+	roleBinding := makeRBACRoleBinding(applicationName, kubeIdentityName, serviceAccountName, options.Environment.Namespace, resource)
+	outputResources = append(outputResources, *roleBinding)
+	deps = append(deps, outputresource.Dependency{LocalID: outputresource.LocalIDKubernetesRoleBinding})
 
 	deployment := appsv1.Deployment{
 		TypeMeta: metav1.TypeMeta{

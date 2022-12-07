@@ -68,7 +68,7 @@ func TestDaprSecretStoreDataModelFromVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/daprsecretstoreresource-invalid.json",
 			"2022-03-15-privatepreview",
-			errors.New("json: cannot unmarshal number into Go struct field DaprSecretStoreProperties.properties.resource of type string"),
+			errors.New("json: cannot unmarshal number into Go struct field DaprSecretStoreProperties.properties.version of type string"),
 		},
 		{
 			"",

@@ -161,7 +161,6 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 }
 
 func Test_HTTPSGateway(t *testing.T) {
-
 	template := "testdata/corerp-resources-secure-gateway.bicep"
 	name := "corerp-resources-gateways"
 

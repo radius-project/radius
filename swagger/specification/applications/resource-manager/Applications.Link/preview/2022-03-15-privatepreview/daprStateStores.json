@@ -265,14 +265,6 @@
         }
       ],
       "properties": {
-        "kind": {
-          "description": "The Dapr StateStore kind",
-          "type": "string",
-          "enum": [
-            "state.sqlserver",
-            "state.azure.tablestorage"
-          ]
-        },
         "metadata": {
           "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -294,7 +286,6 @@
         }
       },
       "required": [
-        "kind",
         "resource"
       ],
       "type": "object",
@@ -308,13 +299,6 @@
         }
       ],
       "properties": {
-        "kind": {
-          "description": "The Dapr StateStore kind",
-          "type": "string",
-          "enum": [
-            "generic"
-          ]
-        },
         "metadata": {
           "description": "Metadata for the state store resource. This should match the values specified in Dapr component spec",
           "type": "object"
@@ -329,14 +313,9 @@
         "version": {
           "description": "Dapr component version",
           "type": "string"
-        },
-        "resource": {
-          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
-          "type": "string"
         }
       },
       "required": [
-        "kind",
         "type",
         "metadata",
         "version"
@@ -365,10 +344,6 @@
         },
         "version": {
           "description": "Dapr component version",
-          "type": "string"
-        },
-        "resource": {
-          "description": "The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.",
           "type": "string"
         },
         "recipe": {

@@ -39,11 +39,12 @@ jobs:
           ref: edge
       - name: Setup Azure CLI
         run: curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
-      - name: az Login
-        uses: azure/login@v1
-        with:
-          creds: ${{ secrets.RADIUS_BICEP_VALIDATION_AZURE_SP }}
-          allow-no-subscriptions: true
+      - name: az CLI login
+        run: |
+          az login --service-principal \
+            --username ${{ secrets.AZURE_SP_TESTS_APPID }} \
+            --password ${{ secrets.AZURE_SP_TESTS_PASSWORD }} \
+            --tenant ${{ secrets.AZURE_SP_TESTS_TENANTID }}
       - name: Parse release version and set environment variables
         run: python ./.github/scripts/get_release_version.py
       - name: Download rad-bicep-corerp

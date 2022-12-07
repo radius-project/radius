@@ -29,6 +29,7 @@ var Providers = map[string]bindings.BindingProvider{
 	"RABBITMQ":        bindings.RabbitMQBinding,
 	"DAPRSECRETSTORE": bindings.DaprSecretStoreBinding,
 	"DAPRHTTPROUTE":   bindings.DaprHttpRouteBinding,
+	"STORAGE":         bindings.StorageBinding,
 }
 
 func startHTTPServer() error {

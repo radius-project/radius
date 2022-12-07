@@ -39,14 +39,13 @@ func (src *DaprSecretStoreResource) ConvertTo() (conv.DataModelInterface, error)
 	}
 	switch v := src.Properties.(type) {
 	case *ValuesDaprSecretStoreProperties:
-		if v.Type == nil || v.Version == nil || v.Metadata == nil || v.Kind == nil {
-			return nil, conv.NewClientErrInvalidRequest("type/version/metadata/kind are required properties for mode 'values'")
+		if v.Type == nil || v.Version == nil || v.Metadata == nil {
+			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Mode = datamodel.LinkModeValues
-		converted.Properties.Kind = toDaprSecretStoreKindDataModel(v.Kind)
 	case *RecipeDaprSecretStoreProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
@@ -85,7 +84,6 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 			ProvisioningState: fromProvisioningStateDataModel(daprSecretStore.Properties.ProvisioningState),
 			Environment:       to.StringPtr(daprSecretStore.Properties.Environment),
 			Application:       to.StringPtr(daprSecretStore.Properties.Application),
-			Kind:              fromDaprSecretStoreKindDataModel(daprSecretStore.Properties.Kind),
 			Mode:              &mode,
 			Type:              to.StringPtr(daprSecretStore.Properties.Type),
 			Version:           to.StringPtr(daprSecretStore.Properties.Version),
@@ -112,25 +110,4 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 		}
 	}
 	return nil
-}
-
-func toDaprSecretStoreKindDataModel(kind *ValuesDaprSecretStorePropertiesKind) datamodel.DaprSecretStoreKind {
-	switch *kind {
-	case ValuesDaprSecretStorePropertiesKindGeneric:
-		return datamodel.DaprSecretStoreKindGeneric
-	default:
-		return datamodel.DaprSecretStoreKindUnknown
-	}
-
-}
-
-func fromDaprSecretStoreKindDataModel(kind datamodel.DaprSecretStoreKind) *ValuesDaprSecretStorePropertiesKind {
-	var convertedKind ValuesDaprSecretStorePropertiesKind
-	switch kind {
-	case datamodel.DaprSecretStoreKindGeneric:
-		convertedKind = ValuesDaprSecretStorePropertiesKindGeneric
-	default:
-		convertedKind = ValuesDaprSecretStorePropertiesKindGeneric // 2022-03-15-privatprevie supports only generic.
-	}
-	return &convertedKind
 }

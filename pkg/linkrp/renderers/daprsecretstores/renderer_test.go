@@ -43,9 +43,9 @@ func createContext(t *testing.T) context.Context {
 	return logr.NewContext(context.Background(), logger)
 }
 
-func Test_Render_UnsupportedKind(t *testing.T) {
+func Test_Render_UnsupportedMode(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
@@ -59,19 +59,19 @@ func Test_Render_UnsupportedKind(t *testing.T) {
 				Environment: environmentID,
 			},
 			Type: ResourceType,
-			Kind: "azure.keyvault",
+			Mode: "invalid",
 		},
 	}
 
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, fmt.Sprintf("azure.keyvault is not supported. Supported kind values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreKindValues)), err.(*conv.ErrClientRP).Message)
+	require.Equal(t, fmt.Sprintf("invalid secret store mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedSecretStoreModes)), err.(*conv.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -84,7 +84,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 				Environment: environmentID,
 			},
 			Type:    ResourceType,
-			Kind:    resourcekinds.DaprGeneric,
+			Mode:    datamodel.LinkModeValues,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
@@ -133,7 +133,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 
 func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -145,8 +145,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
+			Mode:    datamodel.LinkModeValues,
 			Type:    "secretstores.kubernetes",
-			Kind:    resourcekinds.DaprGeneric,
 			Version: daprSecretStoreVersion,
 		},
 	}
@@ -158,7 +158,7 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 
 func Test_Render_Generic_MissingType(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -170,7 +170,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
-			Kind:    resourcekinds.DaprGeneric,
+			Mode:    datamodel.LinkModeValues,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
@@ -186,7 +186,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -198,8 +198,8 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Application: applicationID,
 				Environment: environmentID,
 			},
+			Mode: datamodel.LinkModeValues,
 			Type: "secretstores.kubernetes",
-			Kind: resourcekinds.DaprGeneric,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
 			},
@@ -215,7 +215,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -227,8 +227,8 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Application: "invalid-app-id",
 				Environment: environmentID,
 			},
+			Mode:    datamodel.LinkModeValues,
 			Type:    ResourceType,
-			Kind:    resourcekinds.DaprGeneric,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",
@@ -244,7 +244,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 func Test_Render_EmptyApplicationID(t *testing.T) {
 	ctx := createContext(t)
-	renderer := Renderer{SupportedSecretStoreKindValues}
+	renderer := Renderer{SupportedSecretStoreModes}
 	resource := datamodel.DaprSecretStore{
 		TrackedResource: v1.TrackedResource{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
@@ -255,8 +255,8 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			BasicResourceProperties: rp.BasicResourceProperties{
 				Environment: environmentID,
 			},
+			Mode:    datamodel.LinkModeValues,
 			Type:    ResourceType,
-			Kind:    resourcekinds.DaprGeneric,
 			Version: daprSecretStoreVersion,
 			Metadata: map[string]interface{}{
 				"foo": "bar",

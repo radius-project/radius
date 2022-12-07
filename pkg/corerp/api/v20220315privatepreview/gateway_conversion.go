@@ -21,10 +21,10 @@ func (src *GatewayResource) ConvertTo() (conv.DataModelInterface, error) {
 	if src.Properties.TLS == nil {
 		tls = nil
 	} else {
-		if src.Properties.TLS.SSLPassThrough != nil {
-			tls.SSLPassThrough = to.Bool(src.Properties.TLS.SSLPassThrough)
+		if src.Properties.TLS.SSLPassthrough != nil {
+			tls.SSLPassthrough = to.Bool(src.Properties.TLS.SSLPassthrough)
 		} else {
-			tls.SSLPassThrough = false
+			tls.SSLPassthrough = false
 		}
 	}
 
@@ -87,7 +87,7 @@ func (dst *GatewayResource) ConvertFrom(src conv.DataModelInterface) error {
 	var tls *GatewayPropertiesTLS
 	if g.Properties.TLS != nil {
 		tls = &GatewayPropertiesTLS{
-			SSLPassThrough: to.BoolPtr(g.Properties.TLS.SSLPassThrough),
+			SSLPassthrough: to.BoolPtr(g.Properties.TLS.SSLPassthrough),
 		}
 	}
 
