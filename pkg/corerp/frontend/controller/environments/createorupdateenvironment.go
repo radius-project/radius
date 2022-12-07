@@ -215,7 +215,7 @@ func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]dat
 
 func findHighestVersion(versions []string) (latest float64, err error) {
 	for _, version := range versions {
-		f, err := strconv.ParseFloat(version, 8)
+		f, err := strconv.ParseFloat(version, 32)
 		if err != nil {
 			return 0.0, fmt.Errorf("Unable to convert tag %s into valid version.", version)
 		}
