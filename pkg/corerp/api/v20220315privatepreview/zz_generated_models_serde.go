@@ -112,9 +112,11 @@ func (a *ApplicationKubernetesNamespaceExtension) UnmarshalJSON(data []byte) err
 // MarshalJSON implements the json.Marshaller interface for type ApplicationProperties.
 func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "application", a.Application)
 	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
+	populate(objectMap, "status", a.Status)
 	return json.Marshal(objectMap)
 }
 
@@ -127,6 +129,9 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "application":
+				err = unpopulate(val, "Application", &a.Application)
+				delete(rawMsg, key)
 		case "environment":
 				err = unpopulate(val, "Environment", &a.Environment)
 				delete(rawMsg, key)
@@ -135,6 +140,9 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &a.Status)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1980,6 +1988,7 @@ func (r *Resource) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
 func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "compute", r.Compute)
 	populate(objectMap, "outputResources", r.OutputResources)
 	return json.Marshal(objectMap)
 }
@@ -1993,6 +2002,9 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "compute":
+				r.Compute, err = unmarshalEnvironmentComputeClassification(val)
+				delete(rawMsg, key)
 		case "outputResources":
 				err = unpopulate(val, "OutputResources", &r.OutputResources)
 				delete(rawMsg, key)

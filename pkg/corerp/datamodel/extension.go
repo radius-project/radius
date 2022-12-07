@@ -9,17 +9,19 @@ package datamodel
 type ExtensionKind string
 
 const (
-	ManualScaling      ExtensionKind = "manualScaling"
-	DaprSidecar        ExtensionKind = "daprSidecar"
-	KubernetesMetadata ExtensionKind = "kubernetesMetadata"
+	ManualScaling                ExtensionKind = "manualScaling"
+	DaprSidecar                  ExtensionKind = "daprSidecar"
+	KubernetesMetadata           ExtensionKind = "kubernetesMetadata"
+	KubernetesNamespaceExtension ExtensionKind = "kubernetesNamespace"
 )
 
 // Extension of a resource.
 type Extension struct {
-	Kind               ExtensionKind           `json:"kind,omitempty"`
-	ManualScaling      *ManualScalingExtension `json:"manualScaling,omitempty"`
-	DaprSidecar        *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
-	KubernetesMetadata *KubeMetadataExtension  `json:"kubernetesMetadata,omitempty"`
+	Kind                ExtensionKind           `json:"kind,omitempty"`
+	ManualScaling       *ManualScalingExtension `json:"manualScaling,omitempty"`
+	DaprSidecar         *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
+	KubernetesMetadata  *KubeMetadataExtension  `json:"kubernetesMetadata,omitempty"`
+	KubernetesNamespace *KubeNamespaceExtension `json:"kubernetesNamespace,omitempty"`
 }
 
 // KubeMetadataExtension represents the extension of kubernetes resource.

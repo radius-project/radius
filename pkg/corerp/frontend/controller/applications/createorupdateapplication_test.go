@@ -468,8 +468,11 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: testEnvID,
 				},
-				KubernetesOptions: &datamodel.KubernetesComputeProperties{
-					Namespace: "app-ns",
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "app-ns"},
+					},
 				},
 			},
 		}
@@ -483,7 +486,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		require.Equal(t, "app-ns", newResource.Properties.KubernetesOptions.Namespace)
+		require.Equal(t, "app-ns", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
 	})
 
 	t.Run("generate namespace with environment", func(t *testing.T) {
@@ -500,9 +503,9 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					Kind: datamodel.KubernetesComputeKind,
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
 						Namespace: "default",
 					},
 				},
@@ -531,7 +534,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		require.Equal(t, "default-app0", newResource.Properties.KubernetesOptions.Namespace)
+		require.Equal(t, "default-app0", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
 	})
 }
 
@@ -562,8 +565,11 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: testEnvID,
 				},
-				KubernetesOptions: &datamodel.KubernetesComputeProperties{
-					Namespace: strings.Repeat("invalid-name", 6),
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: strings.Repeat("invalid-name", 6)},
+					},
 				},
 			},
 		}
@@ -582,9 +588,9 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					Kind: datamodel.KubernetesComputeKind,
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
 						Namespace: "testns",
 					},
 				},
@@ -604,8 +610,11 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: testEnvID,
 				},
-				KubernetesOptions: &datamodel.KubernetesComputeProperties{
-					Namespace: "testns",
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
+					},
 				},
 			},
 		}
@@ -632,8 +641,11 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: testEnvID,
 				},
-				KubernetesOptions: &datamodel.KubernetesComputeProperties{
-					Namespace: "testns",
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
+					},
 				},
 			},
 		}

@@ -13,8 +13,22 @@
     },
     "properties": {
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
-        "kubernetesOptions": {
-            "namespace": "app0-ns"
+        "extensions": [
+            {
+                "kind": "kubernetesNamespace",
+                "kubernetesNamespace": {
+                    "namespace": "app0-ns"
+                }
+            }
+        ],
+        "status": {
+            "compute": {
+                "kind": "kubernetes",
+                "kubernetes": {
+                    "resourceId": "",
+                    "namespace": "app0-ns"
+                }
+            }
         }
     },
     "provisioningState": "Succeeded",

@@ -17,6 +17,8 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/rp"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
@@ -30,7 +32,7 @@ var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 const (
 	envNamespaceQuery = "properties.compute.kubernetes.namespace"
-	appNamespaceQuery = "properties.kubernetesCompute.namespace"
+	appNamespaceQuery = "properties.status.compute.namespace"
 )
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
@@ -65,9 +67,10 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	kubeNamespace := ""
-	if newResource.Properties.KubernetesOptions != nil {
+	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceExtension)
+	if ext != nil {
 		// Override environment namespace.
-		kubeNamespace = newResource.Properties.KubernetesOptions.Namespace
+		kubeNamespace = ext.KubernetesNamespace.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
@@ -114,7 +117,10 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	}
 
 	// Populate kubernetes namespace to internal metadata property for query indexing.
-	newResource.Properties.KubernetesOptions = &datamodel.KubernetesComputeProperties{Namespace: kubeNamespace}
+	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
+		Kind:              rp.KubernetesComputeKind,
+		KubernetesCompute: rp.KubernetesComputeProperties{Namespace: kubeNamespace},
+	}
 
 	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
 	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
@@ -146,12 +152,8 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
-	if old != nil {
-		oldProp := &old.Properties.BasicResourceProperties
-		newProp := &newResource.Properties.BasicResourceProperties
-		if !oldProp.EqualLinkedResource(newProp) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
-		}
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+		return r, err
 	}
 
 	if r, err := a.populateKubernetesNamespace(ctx, old, newResource); r != nil || err != nil {

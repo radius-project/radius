@@ -367,6 +367,11 @@
       "x-ms-discriminator-value": "kubernetesMetadata"
     },
     "ApplicationProperties": {
+      "allOf": [
+        {
+          "$ref": "global.json#/definitions/BasicResourceProperties"
+        }
+      ],
       "description": "Application properties",
       "type": "object",
       "required": [

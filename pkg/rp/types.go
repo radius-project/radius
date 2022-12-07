@@ -14,6 +14,16 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
+// EnvironmentComputeKind is the type of compute resource.
+type EnvironmentComputeKind string
+
+const (
+	// UnknownComputeKind represents kubernetes compute resource type.
+	UnknownComputeKind EnvironmentComputeKind = "unknown"
+	// KubernetesComputeKind represents kubernetes compute resource type.
+	KubernetesComputeKind EnvironmentComputeKind = "kubernetes"
+)
+
 // ComputedValueReference represents a non-secret value that can accessed once the output resources
 // have been deployed.
 type ComputedValueReference struct {
@@ -128,11 +138,32 @@ func (b *BasicResourceProperties) EqualLinkedResource(prop *BasicResourcePropert
 }
 
 type ResourceStatus struct {
+	Compute         *EnvironmentCompute             `json:"compute,omitempty"`
 	OutputResources []outputresource.OutputResource `json:"outputResources,omitempty"`
 }
 
 func (in *ResourceStatus) DeepCopy(out *ResourceStatus) {
+	in.Compute = out.Compute
 	in.OutputResources = out.OutputResources
+}
+
+// EnvironmentCompute represents the compute resource of Environment.
+type EnvironmentCompute struct {
+	Kind              EnvironmentComputeKind      `json:"kind"`
+	KubernetesCompute KubernetesComputeProperties `json:"kubernetes,omitempty"`
+
+	// Environment-level identity that can be used by any resource in the environment.
+	// Resources can specify its own identities and they will override the environment-level identity.
+	Identity *IdentitySettings `json:"identity,omitempty"`
+}
+
+// KubernetesComputeProperties represents the kubernetes compute of the environment.
+type KubernetesComputeProperties struct {
+	// ResourceID represents the resource ID for kuberentes compute resource.
+	ResourceID string `json:"resourceId,omitempty"`
+
+	// Namespace represents Kubernetes namespace.
+	Namespace string `json:"namespace"`
 }
 
 // OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response

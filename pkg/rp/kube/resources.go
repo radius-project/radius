@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -41,7 +42,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 		return
 	}
 
-	if env.Properties.Compute.Kind != cdm.KubernetesComputeKind {
+	if env.Properties.Compute.Kind != rp.KubernetesComputeKind {
 		err = errors.New("cannot get namespace because the current environment is not Kubernetes")
 		return
 	}

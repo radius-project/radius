@@ -137,7 +137,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
-func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamodel.EnvironmentCompute, error) {
+func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.EnvironmentCompute, error) {
 	switch v := h.(type) {
 	case *KubernetesCompute:
 		k, err := toEnvironmentComputeKindDataModel(*v.Kind)
@@ -158,9 +158,9 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 			}
 		}
 
-		return &datamodel.EnvironmentCompute{
+		return &rp.EnvironmentCompute{
 			Kind: k,
-			KubernetesCompute: datamodel.KubernetesComputeProperties{
+			KubernetesCompute: rp.KubernetesComputeProperties{
 				ResourceID: to.String(v.ResourceID),
 				Namespace:  to.String(v.Namespace),
 			},
@@ -171,9 +171,13 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*datamod
 	}
 }
 
-func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) EnvironmentComputeClassification {
+func fromEnvironmentComputeDataModel(envCompute *rp.EnvironmentCompute) EnvironmentComputeClassification {
+	if envCompute == nil {
+		return nil
+	}
+
 	switch envCompute.Kind {
-	case datamodel.KubernetesComputeKind:
+	case rp.KubernetesComputeKind:
 		var identity *IdentitySettings
 		if envCompute.Identity != nil {
 			identity = &IdentitySettings{
@@ -182,31 +186,34 @@ func fromEnvironmentComputeDataModel(envCompute *datamodel.EnvironmentCompute) E
 				OidcIssuer: toStringPtr(envCompute.Identity.OIDCIssuer),
 			}
 		}
-
-		return &KubernetesCompute{
+		compute := &KubernetesCompute{
 			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
 			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
 			Namespace:  &envCompute.KubernetesCompute.Namespace,
 			Identity:   identity,
 		}
+		if envCompute.KubernetesCompute.ResourceID != "" {
+			compute.ResourceID = to.StringPtr(envCompute.KubernetesCompute.ResourceID)
+		}
+		return compute
 	default:
 		return nil
 	}
 }
 
-func toEnvironmentComputeKindDataModel(kind string) (datamodel.EnvironmentComputeKind, error) {
+func toEnvironmentComputeKindDataModel(kind string) (rp.EnvironmentComputeKind, error) {
 	switch kind {
 	case EnvironmentComputeKindKubernetes:
-		return datamodel.KubernetesComputeKind, nil
+		return rp.KubernetesComputeKind, nil
 	default:
-		return datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
+		return rp.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
 }
 
-func fromEnvironmentComputeKind(kind datamodel.EnvironmentComputeKind) *string {
+func fromEnvironmentComputeKind(kind rp.EnvironmentComputeKind) *string {
 	var k string
 	switch kind {
-	case datamodel.KubernetesComputeKind:
+	case rp.KubernetesComputeKind:
 		k = EnvironmentComputeKindKubernetes
 	default:
 		k = EnvironmentComputeKindKubernetes // 2022-03-15-privatepreview supports only kubernetes.

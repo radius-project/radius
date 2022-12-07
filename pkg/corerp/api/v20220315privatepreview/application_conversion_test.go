@@ -62,7 +62,9 @@ func TestApplicationConvertVersionedToDataModel(t *testing.T) {
 				if tt.emptyExt {
 					require.Equal(t, getTestKubernetesEmptyMetadataExtensions(t), ct.Properties.Extensions)
 				} else {
-					require.Equal(t, getTestKubernetesMetadataExtensions(t), ct.Properties.Extensions)
+					exts := getTestKubernetesMetadataExtensions(t)
+					exts = append(exts, datamodel.Extension{Kind: datamodel.KubernetesNamespaceExtension, KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "app0-ns"}})
+					require.Equal(t, exts, ct.Properties.Extensions)
 				}
 			}
 		})
@@ -105,6 +107,7 @@ func TestApplicationConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/environments/env0", r.Properties.Environment)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, "kubernetesNamespace", *versioned.Properties.Extensions[1].GetExtension().Kind)
+				require.Equal(t, "app0-ns", *(versioned.Properties.Status.Compute.(*KubernetesCompute).Namespace))
 			}
 		})
 	}

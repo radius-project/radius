@@ -88,7 +88,10 @@ func (a *ApplicationKubernetesNamespaceExtension) GetExtension() *Extension {
 
 // ApplicationProperties - Application properties
 type ApplicationProperties struct {
-	// REQUIRED; The resource id of the environment linked to application.
+	// REQUIRED; Specifies the resource id of the application
+	Application *string `json:"application,omitempty"`
+
+	// The resource id of the environment linked to the resource
 	Environment *string `json:"environment,omitempty"`
 
 	// Extensions spec of the resource
@@ -96,6 +99,9 @@ type ApplicationProperties struct {
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // ApplicationResource - Radius Application.
@@ -1118,6 +1124,8 @@ type Resource struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// Compute resource used by application environment resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
