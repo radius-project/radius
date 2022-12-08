@@ -21,11 +21,6 @@ import (
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-
-	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -62,7 +57,6 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
 func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
-	logger := logr.FromContextOrDiscard(ctx)
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
 	kubeNamespace := ""
@@ -111,24 +105,15 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 		}
 	}
 
-	if !kubernetes.IsValidObjectName(kubeNamespace) {
-		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
-	}
+	// TODO: Enable this in https://github.com/project-radius/radius/pull/4783
+	// if !kubernetes.IsValidObjectName(kubeNamespace) {
+	//	return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
+	// }
 
 	// Populate kubernetes namespace to internal metadata property for query indexing.
 	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
 		Kind:              rp.KubernetesComputeKind,
 		KubernetesCompute: rp.KubernetesComputeProperties{Namespace: kubeNamespace},
-	}
-
-	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
-	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
-	if apierrors.IsAlreadyExists(err) {
-		logger.Info("Using existing namespace", "namespace", kubeNamespace)
-	} else if err != nil {
-		return nil, err
-	} else {
-		logger.Info("Created the namespace", "namespace", kubeNamespace)
 	}
 
 	return nil, nil
