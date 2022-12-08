@@ -22,7 +22,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 
 	requiredSecrets := map[string]map[string]string{}
 
-	// TODO: create role and rolebindings in container renderer.
+	// TODO: remove requiredSecrets, but instead use the below initialResource approach.
 	resources := []unstructured.Unstructured{
 		{
 			Object: map[string]any{
