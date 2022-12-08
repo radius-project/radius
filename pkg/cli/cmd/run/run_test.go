@@ -177,8 +177,9 @@ func Test_Run(t *testing.T) {
 
 	app := v20220315privatepreview.ApplicationResource{
 		Properties: &v20220315privatepreview.ApplicationProperties{
-			Extensions: []v20220315privatepreview.ApplicationExtensionClassification{
-				&v20220315privatepreview.ApplicationKubernetesNamespaceExtension{
+			Status: &v20220315privatepreview.ResourceStatus{
+				Compute: &v20220315privatepreview.KubernetesCompute{
+					Kind:      to.Ptr("kubernetes"),
 					Namespace: to.Ptr("test-namespace-app"),
 				},
 			},

@@ -121,10 +121,12 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	namespace := ""
-	c, ok := app.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
-	if ok && *c.Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
-		namespace = to.String(c.Namespace)
-
+	appStatus := app.Properties.Status
+	if appStatus != nil && appStatus.Compute != nil {
+		kube, ok := appStatus.Compute.(*v20220315privatepreview.KubernetesCompute)
+		if ok && kube.Namespace != nil {
+			namespace = to.String(kube.Namespace)
+		}
 	}
 
 	if namespace == "" {
