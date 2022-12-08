@@ -179,7 +179,7 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 	}
 
 	kind, ok := compute["kind"].(string)
-	if !ok || kind != "kubernetes" {
+	if !ok || !strings.EqualFold(kind, "kubernetes") {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
