@@ -47,8 +47,6 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 	appName := "webapp"
 	appNamespace := "default-webapp"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, appName, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -111,7 +109,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

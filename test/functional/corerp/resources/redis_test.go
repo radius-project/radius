@@ -19,8 +19,6 @@ func Test_Redis(t *testing.T) {
 	name := "corerp-resources-redis-user-secrets"
 	appNamespace := "default-corerp-resources-redis-user-secrets"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -62,7 +60,7 @@ func Test_Redis(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -94,7 +92,7 @@ func Test_RedisAzure(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 		},
-	}, nil)
+	})
 
 	test.Test(t)
 }

@@ -24,8 +24,6 @@ func Test_AWS_KinesisStream(t *testing.T) {
 	template := "testdata/aws-kinesis.bicep"
 	name := "ms" + uuid.New().String()
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(template, "streamName="+name),
@@ -41,7 +39,7 @@ func Test_AWS_KinesisStream(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -51,8 +49,6 @@ func Test_KinesisStreamExisting(t *testing.T) {
 	templateExisting := "testdata/aws-kinesis-existing.bicep"
 	name := "ms" + uuid.New().String()
 	appNamespace := "default-aws-kinesis-existing-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -105,7 +101,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 				require.Equal(t, name, envVar.Value, "expected env var to be updated")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 

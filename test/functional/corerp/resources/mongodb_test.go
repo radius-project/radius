@@ -20,8 +20,6 @@ func Test_MongoDB(t *testing.T) {
 	name := "corerp-resources-mongodb"
 	appNamespace := "default-corerp-resources-mongodb"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -51,7 +49,7 @@ func Test_MongoDB(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -60,8 +58,6 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
 	appNamespace := "default-corerp-resources-mongodb-user-secrets"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -104,7 +100,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -116,8 +112,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 	appNamespace := "corerp-resources-mongodb-recipe-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -153,7 +147,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -166,8 +160,6 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -203,7 +195,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

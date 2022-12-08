@@ -19,8 +19,6 @@ func Test_RabbitMQ(t *testing.T) {
 	name := "corerp-resources-rabbitmq"
 	appNamespace := "default-corerp-resources-rabbitmq"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), "password=guest"),
@@ -62,7 +60,7 @@ func Test_RabbitMQ(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

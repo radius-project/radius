@@ -20,8 +20,6 @@ func Test_Storage(t *testing.T) {
 	name := "corerp-resources-container-workload"
 	appNamespace := "azstorage-workload-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -46,7 +44,7 @@ func Test_Storage(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

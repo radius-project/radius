@@ -342,8 +342,6 @@ func Test_CLI(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.bicep"
 	name := "kubernetes-cli"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -375,7 +373,7 @@ func Test_CLI(t *testing.T) {
 			},
 			PostStepVerify: verifyCLIBasics,
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -383,7 +381,6 @@ func Test_CLI(t *testing.T) {
 func Test_CLI_JSON(t *testing.T) {
 	template := "testdata/corerp-kubernetes-cli.json"
 	name := "kubernetes-cli-json"
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -416,7 +413,7 @@ func Test_CLI_JSON(t *testing.T) {
 			},
 			PostStepVerify: verifyCLIBasics,
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -518,8 +515,6 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 	name := "kubernetes-cli-params"
 	parameterFilePath := filepath.Join(cwd, parameterFile)
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{Executor: step.NewDeployExecutor(template, "@"+parameterFilePath),
 			CoreRPResources: &validation.CoreRPResourceSet{
@@ -549,7 +544,7 @@ func Test_CLI_DeploymentParameters(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -597,8 +592,6 @@ func Test_RecipeCommands(t *testing.T) {
 	template := "testdata/corerp-resources-environment.bicep"
 	name := "corerp-resources-environment"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -614,7 +607,7 @@ func Test_RecipeCommands(t *testing.T) {
 			K8sObjects:     &validation.K8sObjectSet{},
 			PostStepVerify: verifyRecipeCLI,
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

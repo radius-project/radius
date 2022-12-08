@@ -34,8 +34,6 @@ func Test_Gateway(t *testing.T) {
 	name := "corerp-resources-gateway"
 	appNamespace := "default-corerp-resources-gateway"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -105,7 +103,7 @@ func Test_Gateway(t *testing.T) {
 				require.Fail(t, "Gateway tests failed")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -166,8 +164,6 @@ func Test_HTTPSGateway(t *testing.T) {
 	name := "corerp-resources-gateways"
 	appNamespace := "default-corerp-resources-gateways"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -223,7 +219,7 @@ func Test_HTTPSGateway(t *testing.T) {
 				require.Fail(t, "Gateway tests failed")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
