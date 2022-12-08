@@ -121,10 +121,10 @@ func (r *Runner) Run(ctx context.Context) error {
 	}
 
 	namespace := ""
-	for _, ext := range app.Properties.Extensions {
-		if e, ok := ext.(*v20220315privatepreview.ApplicationKubernetesNamespaceExtension); ok {
-			namespace = to.String(e.Namespace)
-		}
+	c, ok := app.Properties.Status.Compute.(*v20220315privatepreview.KubernetesCompute)
+	if ok && *c.Kind == v20220315privatepreview.EnvironmentComputeKindKubernetes {
+		namespace = to.String(c.Namespace)
+
 	}
 
 	if namespace == "" {
