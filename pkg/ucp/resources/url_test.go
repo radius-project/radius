@@ -6,6 +6,7 @@
 package resources
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -66,5 +67,38 @@ func Test_ExtractPlanesPrefixFromURLPath_Valid(t *testing.T) {
 		require.Equal(t, datum.planeType, planeType)
 		require.Equal(t, datum.planeName, planeName)
 		require.Equal(t, datum.remainder, remainder)
+	}
+}
+
+func Test_ExtractCredentialFromURLPath(t *testing.T) {
+	tests := []struct {
+		name         string
+		input        string
+		expectedName string
+		err          error
+	}{
+		{
+			name:         "valid_azure_credential_url",
+			input:        "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+			expectedName: "azure_azurecloud_default",
+			err:          nil,
+		},
+		{
+			name:         "invalid_azure_credential_url",
+			input:        "/planes/azure/azurecloud/providers/System.Azure/credentials",
+			expectedName: "",
+			err:          errors.New("URL path is not a valid UCP path"),
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			name, err := ExtractSecretNameFromPath(tt.input)
+			if err != nil {
+				require.Equal(t, tt.err, err)
+			} else {
+				require.NoError(t, err)
+				require.Equal(t, tt.expectedName, name)
+			}
+		})
 	}
 }
