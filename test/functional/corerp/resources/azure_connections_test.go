@@ -18,6 +18,7 @@ func Test_AzureConnections(t *testing.T) {
 	name := "corerp-azure-connection-database-service"
 	containerResourceName := "db-service"
 	template := "testdata/corerp-azure-connection-database-service.bicep"
+	appNamespace := "default-corerp-azure-connection-database-service"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -39,7 +40,7 @@ func Test_AzureConnections(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, containerResourceName),
 					},
 				},

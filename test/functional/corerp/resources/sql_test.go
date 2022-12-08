@@ -22,6 +22,7 @@ func Test_SQL(t *testing.T) {
 	}
 	template := "testdata/corerp-resources-sql.bicep"
 	name := "corerp-resources-sql"
+	appNamespace := "default-corerp-resources-sql"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -58,7 +59,7 @@ func Test_SQL(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "sql-app-ctnr"),
 						validation.NewK8sPodForResource(name, "sql-ctnr"),
 						validation.NewK8sServiceForResource(name, "sql-rte"),

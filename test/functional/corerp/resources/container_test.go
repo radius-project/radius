@@ -21,6 +21,7 @@ import (
 func Test_Container(t *testing.T) {
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
+	appNamespace := "corerp-resources-container-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -42,7 +43,7 @@ func Test_Container(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
@@ -56,6 +57,7 @@ func Test_Container(t *testing.T) {
 func Test_ContainerHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
+	appNamespace := "corerp-resources-container-httproute-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -82,7 +84,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
 						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
 					},
@@ -97,6 +99,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
+	appNamespace := "corerp-resources-container-live-ready-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -118,7 +121,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-live-ready"),
 					},
 				},
@@ -132,6 +135,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
+	appNamespace := "corerp-resources-container-manualscale-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -153,7 +157,7 @@ func Test_ContainerManualScale(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-manualscale"),
 					},
 				},
@@ -167,6 +171,7 @@ func Test_ContainerManualScale(t *testing.T) {
 func Test_ContainerWithCommandAndArgs(t *testing.T) {
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
+	appNamespace := "corerp-resources-container-cmd-args-app"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -188,14 +193,14 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-cmd-args"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				label := fmt.Sprintf("radius.dev/application=%s", name)
-				pods, err := test.Options.K8sClient.CoreV1().Pods("default").List(ctx, metav1.ListOptions{
+				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)

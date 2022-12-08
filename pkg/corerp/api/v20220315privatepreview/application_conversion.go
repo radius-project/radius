@@ -91,7 +91,7 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
+		var ann, lbl = fromExtensionClassificationFields(e)
 		return &ApplicationKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),

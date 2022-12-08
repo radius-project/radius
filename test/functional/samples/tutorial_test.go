@@ -45,6 +45,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 	relPathSamplesRepo, _ := filepath.Rel(cwd, samplesRepoAbsPath)
 	template := filepath.Join(relPathSamplesRepo, "tutorial/app.bicep")
 	appName := "webapp"
+	appNamespace := "default-webapp"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -77,7 +78,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", appName)
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, appName)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
@@ -101,7 +102,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 			K8sOutputResources: []unstructured.Unstructured{},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(appName, "frontend"),
 						validation.NewK8sHTTPProxyForResource(appName, "public"),
 						validation.NewK8sHTTPProxyForResource(appName, "http-route"),

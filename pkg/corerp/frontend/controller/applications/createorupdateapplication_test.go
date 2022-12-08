@@ -552,7 +552,6 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	appCtrl := ctl.(*CreateOrUpdateApplication)
 
 	t.Run("invalid namespace", func(t *testing.T) {
-		t.SkipNow()
 		tCtx.MockSC.EXPECT().
 			Query(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -583,7 +582,7 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
-		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.")
+		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.")
 	})
 
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {

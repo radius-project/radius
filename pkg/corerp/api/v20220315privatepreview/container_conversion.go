@@ -506,7 +506,7 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 			Provides: to.StringPtr(e.DaprSidecar.Provides),
 		}
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
+		var ann, lbl = fromExtensionClassificationFields(e)
 		return &ContainerKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
@@ -532,7 +532,7 @@ func toVolumeBaseDataModel(v Volume) datamodel.VolumeBase {
 	}
 }
 
-func getFromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
+func fromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
 	var ann map[string]string
 	var lbl map[string]string
 

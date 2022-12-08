@@ -223,10 +223,9 @@ func fromEnvironmentComputeKind(kind rp.EnvironmentComputeKind) *string {
 
 // fromExtensionClassificationEnvDataModel: Converts from base datamodel to versioned datamodel
 func fromEnvExtensionClassificationDataModel(e datamodel.Extension) EnvironmentExtensionClassification {
-
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
+		var ann, lbl = fromExtensionClassificationFields(e)
 		return &EnvironmentKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),

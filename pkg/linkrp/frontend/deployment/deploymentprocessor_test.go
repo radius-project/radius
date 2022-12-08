@@ -245,7 +245,40 @@ func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
 	}
 }
 
-func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) store.Object {
+func buildApplicationResource(namespace string) *store.Object {
+	if namespace == "" {
+		namespace = "radius-test"
+	}
+
+	app := corerpDatamodel.Application{
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID: applicationID,
+			},
+		},
+		Properties: corerpDatamodel.ApplicationProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Status: rp.ResourceStatus{
+					Compute: &rp.EnvironmentCompute{
+						Kind: rp.KubernetesComputeKind,
+						KubernetesCompute: rp.KubernetesComputeProperties{
+							Namespace: namespace,
+						},
+					},
+				},
+			},
+		},
+	}
+
+	return &store.Object{
+		Metadata: store.Metadata{
+			ID: app.ID,
+		},
+		Data: app,
+	}
+}
+
+func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Providers) *store.Object {
 	environment := corerpDatamodel.Environment{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -271,13 +304,13 @@ func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Prov
 	if providers != nil {
 		environment.Properties.Providers = *providers
 	}
-	er := store.Object{
+
+	return &store.Object{
 		Metadata: store.Metadata{
 			ID: environment.ID,
 		},
 		Data: environment,
 	}
-	return er
 }
 
 type SharedMocks struct {
@@ -372,14 +405,15 @@ func Test_Render(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockRecipeHandler := handlers.NewMockRecipeHandler(ctrl)
 	dp := deploymentProcessor{mocks.model, mocks.dbProvider, mocks.secretsValueClient, nil}
+
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
-		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
@@ -392,9 +426,10 @@ func Test_Render(t *testing.T) {
 		testResource := buildInputResourceMongo(modeRecipe)
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
@@ -412,9 +447,10 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		rendererOutput, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.NoError(t, err)
@@ -440,14 +476,15 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "provided environment id \"invalid-id\" is not a valid id.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "invalid-id is not a valid resource id for Applications.Core/environments.", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(renderers.RendererOutput{}, errors.New("failed to render the resource"))
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		testResource := buildInputResourceMongo(modeResource)
 
@@ -502,7 +539,7 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "provided environment id type \"Applications.Core/env\" is not a valid type.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "linked \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env\" has invalid Applications.Core/environments resource type.", err.(*conv.ErrClientRP).Message)
 
 	})
 
@@ -515,7 +552,7 @@ func Test_Render(t *testing.T) {
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
 		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "environment \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0\" does not exist", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, "linked resource /subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0 does not exist", err.(*conv.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
@@ -524,9 +561,10 @@ func Test_Render(t *testing.T) {
 		testRendererOutput.Resources[0].ResourceType.Provider = ""
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
@@ -548,9 +586,10 @@ func Test_Render(t *testing.T) {
 		}
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
@@ -581,9 +620,10 @@ func Test_Render(t *testing.T) {
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
-		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
+		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		er := buildEnvironmentResource("", nil)
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildApplicationResource(""), nil)
 
 		_, err := mockdp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
@@ -1030,7 +1070,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		er := buildEnvironmentResource(recipeName, &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 
 		envMetadata, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.NoError(t, err)
@@ -1043,7 +1083,7 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(1).Return(mocks.db, nil)
 		er := buildEnvironmentResource("cosmos-test", &corerpDatamodel.Providers{Azure: corerpDatamodel.ProvidersAzure{Scope: "/subscriptions/testSub/resourceGroups/testGroup"}})
 		env := er.Metadata.ID
-		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(&er, nil)
+		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(er, nil)
 
 		_, err := dp.getEnvironmentMetadata(ctx, env, recipeName)
 		require.Error(t, err)
