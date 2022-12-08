@@ -30,6 +30,8 @@ Do not start the release until the following scenarios are validated:
 
 ## Performing a release
 
+TODO add documentation for when to do each type of release
+
 1. In the Bicep fork: `bicep-extensibility` branch at the time of writing
 
    If doing release on release branch (release/0.12)
@@ -37,7 +39,14 @@ Do not start the release until the following scenarios are validated:
    git checkout -b release/0.12
    git pull origin release/0.12 
    git tag v0.12.0
-   git push --tags
+   git push origin --tags
+   git push origin release/0.12
+   ```
+   
+   Do note, for some reason it may be required to repush the tag for the bicep-extensibility branch. We have seen the build fail to trigger after pushing the tag once, but after recreation, we have always seen the build start. To delete and recreate:
+   
+   ```
+   TODO add instructions to delete and recreate tag
    ```
 
    Else if on bicep-extensibility branch
@@ -66,7 +75,7 @@ Do not start the release until the following scenarios are validated:
    git checkout -b release/0.12
    git pull origin release/0.12 
    git tag v0.12.0
-   git push --tags
+   git push origin --tags
    git push origin release/0.12
    ```
 
@@ -109,19 +118,7 @@ Do not start the release until the following scenarios are validated:
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
 
 
-3. Updating Helm chart
-
-   Helm charts upload is automatic after v0.10.0. If the tools command mentioned in step 1 & 2 return the current version then skip the manual steps below:
-
-   ```bash
-   cd deploy/Chart
-   # Replace version: 0.X.0 with this release version in Chart.yaml
-   # Replace tag: 0.X with this release version in values.yaml
-   helm package .
-   az acr helm push -n radius radius-0.12.0.tgz --force
-   # To verify upload worked
-   az acr helm list -n radius
-   ```
+   TODO branching for a samples?
 
 4. Check the stable version marker
 
