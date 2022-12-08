@@ -28,8 +28,6 @@ import (
 	"k8s.io/client-go/kubernetes"
 	v1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/restmapper"
-
-	clikube "github.com/project-radius/radius/pkg/cli/kubernetes"
 )
 
 const (
@@ -139,9 +137,6 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 
 // SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
 func SaveLogsForController(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
-	if err := clikube.EnsureNamespace(ctx, k8s, namespace); err != nil {
-		return fmt.Errorf("failed to create namespace %s: %v", namespace, err)
-	}
 	return watchForPods(ctx, k8s, namespace, logPrefix, "")
 }
 
@@ -181,6 +176,13 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 				log.Printf("Could not convert object to pod or status, was %+v.", event.Object)
 				continue
 			}
+
+			// Skip streaming log when Pod is in pending state.
+			if pod.Status.Phase == corev1.PodPending {
+				continue
+			}
+
+			log.Printf("Start streaming Kubernetes logs - Pod %s is in state: %s", pod.Name, pod.Status.Phase)
 
 			// Only start one log capture per pod
 			_, ok = pods[pod.Name]
