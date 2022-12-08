@@ -32,7 +32,7 @@ var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 const (
 	envNamespaceQuery = "properties.compute.kubernetes.namespace"
-	appNamespaceQuery = "properties.status.compute.namespace"
+	appNamespaceQuery = "properties.status.compute.kubernetes.namespace"
 )
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.

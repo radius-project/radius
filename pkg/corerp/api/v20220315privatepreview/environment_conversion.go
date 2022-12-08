@@ -187,10 +187,9 @@ func fromEnvironmentComputeDataModel(envCompute *rp.EnvironmentCompute) Environm
 			}
 		}
 		compute := &KubernetesCompute{
-			Kind:       fromEnvironmentComputeKind(envCompute.Kind),
-			ResourceID: to.StringPtr(envCompute.KubernetesCompute.ResourceID),
-			Namespace:  &envCompute.KubernetesCompute.Namespace,
-			Identity:   identity,
+			Kind:      fromEnvironmentComputeKind(envCompute.Kind),
+			Namespace: to.StringPtr(envCompute.KubernetesCompute.Namespace),
+			Identity:  identity,
 		}
 		if envCompute.KubernetesCompute.ResourceID != "" {
 			compute.ResourceID = to.StringPtr(envCompute.KubernetesCompute.ResourceID)
