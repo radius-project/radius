@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
@@ -170,26 +171,32 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		logPrefix = "./logs/corerptest"
 	}
 
-	// Find all validating namespaces.
-	logNamespaces := map[string]bool{"radius-system": true}
+	// Only start capturing controller logs once.
+	radiusControllerLogSync.Do(func() {
+		_, err := validation.SaveContainerLogs(ctx, ct.Options.K8sClient, "radius-system", logPrefix)
+		if err != nil {
+			t.Errorf("failed to capture logs from radius controller: %v", err)
+		}
+	})
+
+	// Start pod watchers for this test.
+	watchers := map[string]watch.Interface{}
 	for _, step := range ct.Steps {
 		if step.K8sObjects == nil {
 			continue
 		}
 		for ns := range step.K8sObjects.Namespaces {
-			logNamespaces[ns] = true
-		}
-	}
+			if _, ok := watchers[ns]; ok {
+				continue
+			}
 
-	// Only start capturing controller logs once.
-	radiusControllerLogSync.Do(func() {
-		for ns := range logNamespaces {
-			err := validation.SaveLogsForController(ctx, ct.Options.K8sClient, ns, logPrefix)
+			var err error
+			watchers[ns], err = validation.SaveContainerLogs(ctx, ct.Options.K8sClient, ns, logPrefix)
 			if err != nil {
 				t.Errorf("failed to capture logs from radius controller: %v", err)
 			}
 		}
-	})
+	}
 
 	t.Logf("Creating secrets if provided")
 	err := ct.CreateSecrets(ctx)
@@ -316,6 +323,11 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		t.Logf("running post-delete verification for %s", ct.Description)
 		ct.PostDeleteVerify(ctx, t, ct)
 		t.Logf("finished post-delete verification for %s", ct.Description)
+	}
+
+	// Stop all watchers for the tests.
+	for _, watcher := range watchers {
+		watcher.Stop()
 	}
 
 	t.Logf("finished cleanup phase of %s", ct.Description)
