@@ -110,7 +110,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		c := app.Properties.Status.Compute
-		if c != nil && c.KubernetesCompute.Namespace != "" {
+		if c != nil && c.Kind == rp.KubernetesComputeKind {
 			kubeNamespace = c.KubernetesCompute.Namespace
 		}
 	}

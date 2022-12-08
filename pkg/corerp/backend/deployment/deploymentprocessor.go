@@ -128,9 +128,10 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 		return renderers.RendererOutput{}, err
 	}
 
+	c := app.Properties.Status.Compute
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if app.AppInternal.KubernetesNamespace != "" {
-		envOptions.Namespace = app.AppInternal.KubernetesNamespace
+	if c != nil && c.Kind == rp.KubernetesComputeKind {
+		envOptions.Namespace = c.KubernetesCompute.Namespace
 	}
 
 	appOptions, err := dp.getAppOptions(ctx, &app.Properties)

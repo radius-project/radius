@@ -256,8 +256,17 @@ func buildApplicationResource(namespace string) *store.Object {
 				ID: applicationID,
 			},
 		},
-		AppInternal: corerpDatamodel.ApplicationInternalMetadata{
-			KubernetesNamespace: namespace,
+		Properties: corerpDatamodel.ApplicationProperties{
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Status: rp.ResourceStatus{
+					Compute: &rp.EnvironmentCompute{
+						Kind: rp.KubernetesComputeKind,
+						KubernetesCompute: rp.KubernetesComputeProperties{
+							Namespace: namespace,
+						},
+					},
+				},
+			},
 		},
 	}
 
