@@ -77,6 +77,7 @@
 * **environment**: string (Required): The resource id of the environment linked to application.
 * **extensions**: [ApplicationExtension](#applicationextension)[]: Extensions spec of the resource
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
+* **status**: [ResourceStatus](#resourcestatus) (ReadOnly): Status of a resource.
 
 ## ApplicationExtension
 * **Discriminator**: kind
@@ -90,7 +91,7 @@
 
 ### ApplicationKubernetesNamespaceExtension
 #### Properties
-* **kind**: 'kubernetesNamespaceOverride' (Required): Specifies the extensions of a resource.
+* **kind**: 'kubernetesNamespace' (Required): Specifies the extensions of a resource.
 * **namespace**: string (Required): The Kubernetes namespace to use for this application.
 
 
@@ -103,6 +104,29 @@
 ### Properties
 ### Additional Properties
 * **Additional Properties Type**: string
+
+## ResourceStatus
+### Properties
+* **compute**: [EnvironmentCompute](#environmentcompute): Compute resource used by application environment resource.
+* **outputResources**: any[]: Array of AnyObject
+
+## EnvironmentCompute
+* **Discriminator**: kind
+
+### Base Properties
+* **identity**: [IdentitySettings](#identitysettings)
+* **resourceId**: string: The resource id of the compute resource for application environment.
+### KubernetesCompute
+#### Properties
+* **kind**: 'kubernetes' (Required): Type of compute resource.
+* **namespace**: string (Required): The namespace to use for the environment.
+
+
+## IdentitySettings
+### Properties
+* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
+* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
+* **resource**: string: The resource ID of the provisioned identity
 
 ## SystemData
 ### Properties
@@ -261,16 +285,6 @@
 ### Additional Properties
 * **Additional Properties Type**: string
 
-## IdentitySettings
-### Properties
-* **kind**: 'azure.com.workload' | 'undefined' (Required): Configuration for supported external identity providers
-* **oidcIssuer**: string: The URI for your compute platform's OIDC issuer
-* **resource**: string: The resource ID of the provisioned identity
-
-## ResourceStatus
-### Properties
-* **outputResources**: any[]: Array of AnyObject
-
 ## TrackedResourceTags
 ### Properties
 ### Additional Properties
@@ -284,18 +298,6 @@
 * **provisioningState**: 'Accepted' | 'Canceled' | 'Deleting' | 'Failed' | 'Provisioning' | 'Succeeded' | 'Updating' (ReadOnly): Provisioning state of the resource at the time the operation was called.
 * **recipes**: [EnvironmentPropertiesRecipes](#environmentpropertiesrecipes): Dictionary of <EnvironmentRecipeProperties>
 * **useDevRecipes**: bool: Flag to use radius owned recipes.
-
-## EnvironmentCompute
-* **Discriminator**: kind
-
-### Base Properties
-* **identity**: [IdentitySettings](#identitysettings)
-* **resourceId**: string: The resource id of the compute resource for application environment.
-### KubernetesCompute
-#### Properties
-* **kind**: 'kubernetes' (Required): Type of compute resource.
-* **namespace**: string (Required): The namespace to use for the environment.
-
 
 ## EnvironmentExtension
 * **Discriminator**: kind

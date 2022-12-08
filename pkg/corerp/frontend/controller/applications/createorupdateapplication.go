@@ -17,16 +17,17 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/ucp/resources"
-
+	"github.com/project-radius/radius/pkg/rp"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 const (
 	envNamespaceQuery = "properties.compute.kubernetes.namespace"
-	appNamespaceQuery = "appInternal.kubernetesNamespace"
+	appNamespaceQuery = "properties.status.compute.kubernetes.namespace"
 )
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
@@ -46,36 +47,23 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run executes CreateOrUpdateApplication operation.
-func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+// Radius uses Kubernetes namespace by following rules:
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+// | namespace       | namespace override | env-scoped resource namespace | app-scoped resource namespace |
+// | in Environments | in Applications    |                               |                               |
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+// | envNS           | UNDEFINED          | envNS                         | envNS-{appName}               |
+// | envNS           | appNS              | envNS                         | appNS                         |
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+
+func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	newResource, err := a.GetResourceFromRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-
-	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
-		return r, err
-	}
-
-	if old != nil {
-		oldProp := &old.Properties.BasicResourceProperties
-		newProp := &newResource.Properties.BasicResourceProperties
-		if !oldProp.EqualLinkedResource(newProp) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
-		}
-	}
 
 	kubeNamespace := ""
-	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceOverride)
+	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceExtension)
 	if ext != nil {
 		// Override environment namespace.
-		kubeNamespace = ext.KubernetesNamespaceOverride.Namespace
+		kubeNamespace = ext.KubernetesNamespace.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
@@ -117,8 +105,44 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	// Populate kubernetes namespace to internal metadata property.
-	newResource.AppInternal.KubernetesNamespace = kubeNamespace
+	// TODO: Enable this in https://github.com/project-radius/radius/pull/4783
+	// if !kubernetes.IsValidObjectName(kubeNamespace) {
+	//	return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.", kubeNamespace)), nil
+	// }
+
+	// Populate kubernetes namespace to internal metadata property for query indexing.
+	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
+		Kind:              rp.KubernetesComputeKind,
+		KubernetesCompute: rp.KubernetesComputeProperties{Namespace: kubeNamespace},
+	}
+
+	return nil, nil
+}
+
+// Run executes CreateOrUpdateApplication operation.
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	newResource, err := a.GetResourceFromRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := a.populateKubernetesNamespace(ctx, old, newResource); r != nil || err != nil {
+		return r, err
+	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

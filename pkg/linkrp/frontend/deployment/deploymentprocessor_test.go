@@ -253,8 +253,8 @@ func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Prov
 			},
 		},
 		Properties: corerpDatamodel.EnvironmentProperties{
-			Compute: corerpDatamodel.EnvironmentCompute{
-				KubernetesCompute: corerpDatamodel.KubernetesComputeProperties{
+			Compute: rp.EnvironmentCompute{
+				KubernetesCompute: rp.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
