@@ -1,8 +1,9 @@
 {
     "parameters": {
-      "subscriptionId": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "rootScope": "subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup",
+      "subscriptionId": "00000000-0000-0000-0000-000000000000",
       "api-version": "2022-03-15-privatepreview",
-      "daprStateStoreName": "daprStateStore0"
+      "daprStateStoreName": "daprstatestore0"
     },
     "responses": {
       "200": {
@@ -10,6 +11,7 @@
           "id": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Link/daprStateStores/daprStateStore0",
           "name": "daprStateStore0",
           "type": "Applications.Link/daprStateStores",
+          "location": "global",
           "properties": {
             "provisioningState": "Succeeded",
             "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Applications.Core/applications/testApplication",

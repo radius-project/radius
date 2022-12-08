@@ -109,8 +109,9 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		if err := rp_util.FetchScopeResource(ctx, dp.sp, basicResource.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
-		if app.AppInternal.KubernetesNamespace != "" {
-			kubeNamespace = app.AppInternal.KubernetesNamespace
+		c := app.Properties.Status.Compute
+		if c != nil && c.KubernetesCompute.Namespace != "" {
+			kubeNamespace = c.KubernetesCompute.Namespace
 		}
 	}
 
@@ -436,7 +437,7 @@ func (dp *deploymentProcessor) getEnvironmentMetadata(ctx context.Context, envir
 	}
 
 	envMetadata = EnvironmentMetadata{}
-	if env.Properties.Compute != (coreDatamodel.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (coreDatamodel.KubernetesComputeProperties{}) {
+	if env.Properties.Compute != (rp.EnvironmentCompute{}) && env.Properties.Compute.KubernetesCompute != (rp.KubernetesComputeProperties{}) {
 		envMetadata.Namespace = env.Properties.Compute.KubernetesCompute.Namespace
 	} else {
 		return envMetadata, fmt.Errorf("cannot find namespace in the environment resource")

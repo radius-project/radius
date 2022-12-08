@@ -440,7 +440,7 @@ func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *t
 	}
 }
 
-func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
+func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	tCtx := rptest.NewTestContext(t)
 
 	opts := ctrl.Options{
@@ -453,7 +453,7 @@ func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
 	require.NoError(t, err)
 	appCtrl := ctl.(*CreateOrUpdateApplication)
 
-	t.Run("override-namespace", func(t *testing.T) {
+	t.Run("override namespace", func(t *testing.T) {
 		tCtx.MockSC.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any()).
@@ -470,10 +470,8 @@ func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
 				},
 				Extensions: []datamodel.Extension{
 					{
-						Kind: datamodel.KubernetesNamespaceOverride,
-						KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-							Namespace: "app-ns",
-						},
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "app-ns"},
 					},
 				},
 			},
@@ -484,12 +482,11 @@ func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesExtension(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		require.Equal(t, "app-ns", newResource.AppInternal.KubernetesNamespace)
-		require.Equal(t, "app-ns", newResource.Properties.Extensions[0].KubernetesNamespaceOverride.Namespace)
+		require.Equal(t, "app-ns", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
 	})
 
 	t.Run("generate namespace with environment", func(t *testing.T) {
@@ -506,9 +503,9 @@ func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
 
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					Kind: datamodel.KubernetesComputeKind,
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
 						Namespace: "default",
 					},
 				},
@@ -533,16 +530,15 @@ func TestPopulateKubernetesExtension_valid_namespace(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesExtension(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
-		require.Equal(t, "default-app0", newResource.AppInternal.KubernetesNamespace)
-		require.Equal(t, "default-app0", newResource.Properties.Extensions[0].KubernetesNamespaceOverride.Namespace)
+		require.Equal(t, "default-app0", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
 	})
 }
 
-func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
+func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 	tCtx := rptest.NewTestContext(t)
 
 	opts := ctrl.Options{
@@ -571,10 +567,8 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 				},
 				Extensions: []datamodel.Extension{
 					{
-						Kind: datamodel.KubernetesNamespaceOverride,
-						KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-							Namespace: strings.Repeat("invalid-name", 6),
-						},
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: strings.Repeat("invalid-name", 6)},
 					},
 				},
 			},
@@ -585,7 +579,7 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesExtension(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
 		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify the valid namespace in properties.extensions[*].kubernetesNamespaceOverride.")
@@ -594,9 +588,9 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
 		envdm := &datamodel.Environment{
 			Properties: datamodel.EnvironmentProperties{
-				Compute: datamodel.EnvironmentCompute{
-					Kind: datamodel.KubernetesComputeKind,
-					KubernetesCompute: datamodel.KubernetesComputeProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
 						Namespace: "testns",
 					},
 				},
@@ -618,10 +612,8 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 				},
 				Extensions: []datamodel.Extension{
 					{
-						Kind: datamodel.KubernetesNamespaceOverride,
-						KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-							Namespace: "testns",
-						},
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
 					},
 				},
 			},
@@ -632,7 +624,7 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesExtension(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		res := resp.(*rest.ConflictResponse)
 		require.Equal(t, res.Body.Error.Message, "Environment env0 with the same namespace (testns) already exists")
@@ -651,10 +643,8 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 				},
 				Extensions: []datamodel.Extension{
 					{
-						Kind: datamodel.KubernetesNamespaceOverride,
-						KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-							Namespace: "testns",
-						},
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
 					},
 				},
 			},
@@ -672,7 +662,7 @@ func TestPopulateKubernetesExtension_invalid_property(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesExtension(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
 		require.NoError(t, err)
 		res := resp.(*rest.ConflictResponse)
 		require.Equal(t, res.Body.Error.Message, "Application /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0 with the same namespace (testns) already exists")

@@ -9,33 +9,42 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 var _ conv.DataModelInterface = (*Application)(nil)
-
-// ApplicationInternalMetadata represents the internal metadata for application resource, which hold any metadata used internally.
-type ApplicationInternalMetadata struct {
-	// KubernetesNamespace represents the application level kubernetes namespace name.
-	KubernetesNamespace string `json:"kubernetesNamespace,omitempty"`
-}
 
 // Application represents Application resource.
 type Application struct {
 	v1.BaseResource
 
-	// AppInternal represents Application internal metadata.
-	AppInternal ApplicationInternalMetadata `json:"appInternal,omitempty"`
-
 	// Properties is the properties of the resource.
 	Properties ApplicationProperties `json:"properties"`
 }
 
+// ResourceTypeName returns the qualified name of the resource
 func (e *Application) ResourceTypeName() string {
 	return "Applications.Core/applications"
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (c *Application) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	c.Properties.Status.OutputResources = do.DeployedOutputResources
+}
+
+// OutputResources returns the output resources array.
+func (c *Application) OutputResources() []outputresource.OutputResource {
+	return c.Properties.Status.OutputResources
+}
+
+// ResourceMetadata returns the application resource metadata.
+func (h *Application) ResourceMetadata() *rp.BasicResourceProperties {
+	return &h.Properties.BasicResourceProperties
 }
 
 // ApplicationProperties represents the properties of Application.
 type ApplicationProperties struct {
 	rp.BasicResourceProperties
+
 	Extensions []Extension `json:"extensions,omitempty"`
 }

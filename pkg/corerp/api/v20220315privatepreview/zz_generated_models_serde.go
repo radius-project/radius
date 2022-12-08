@@ -81,7 +81,7 @@ func (a *ApplicationKubernetesMetadataExtension) UnmarshalJSON(data []byte) erro
 // MarshalJSON implements the json.Marshaller interface for type ApplicationKubernetesNamespaceExtension.
 func (a ApplicationKubernetesNamespaceExtension) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	objectMap["kind"] = "kubernetesNamespaceOverride"
+	objectMap["kind"] = "kubernetesNamespace"
 	populate(objectMap, "namespace", a.Namespace)
 	return json.Marshal(objectMap)
 }
@@ -115,6 +115,7 @@ func (a ApplicationProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "environment", a.Environment)
 	populate(objectMap, "extensions", a.Extensions)
 	populate(objectMap, "provisioningState", a.ProvisioningState)
+	populate(objectMap, "status", a.Status)
 	return json.Marshal(objectMap)
 }
 
@@ -135,6 +136,9 @@ func (a *ApplicationProperties) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "provisioningState":
 				err = unpopulate(val, "ProvisioningState", &a.ProvisioningState)
+				delete(rawMsg, key)
+		case "status":
+				err = unpopulate(val, "Status", &a.Status)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1302,7 +1306,7 @@ func (g *GatewayPropertiesHostname) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type GatewayPropertiesTLS.
 func (g GatewayPropertiesTLS) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
-	populate(objectMap, "sslPassThrough", g.SSLPassThrough)
+	populate(objectMap, "sslPassthrough", g.SSLPassthrough)
 	return json.Marshal(objectMap)
 }
 
@@ -1315,8 +1319,8 @@ func (g *GatewayPropertiesTLS) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
-		case "sslPassThrough":
-				err = unpopulate(val, "SSLPassThrough", &g.SSLPassThrough)
+		case "sslPassthrough":
+				err = unpopulate(val, "SSLPassthrough", &g.SSLPassthrough)
 				delete(rawMsg, key)
 		}
 		if err != nil {
@@ -1980,6 +1984,7 @@ func (r *Resource) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ResourceStatus.
 func (r ResourceStatus) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "compute", r.Compute)
 	populate(objectMap, "outputResources", r.OutputResources)
 	return json.Marshal(objectMap)
 }
@@ -1993,6 +1998,9 @@ func (r *ResourceStatus) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "compute":
+				r.Compute, err = unmarshalEnvironmentComputeClassification(val)
+				delete(rawMsg, key)
 		case "outputResources":
 				err = unpopulate(val, "OutputResources", &r.OutputResources)
 				delete(rawMsg, key)

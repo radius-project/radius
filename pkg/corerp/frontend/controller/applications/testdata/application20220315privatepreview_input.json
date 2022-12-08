@@ -5,7 +5,7 @@
         "provisioningState": "Succeeded",
         "extensions": [
             {
-                "kind": "kubernetesNamespaceOverride",
+                "kind": "kubernetesNamespace",
                 "namespace": "app0-ns"
             }
         ]

@@ -11,19 +11,10 @@ import (
 	"strings"
 
 	cdm "github.com/project-radius/radius/pkg/corerp/datamodel"
+	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
-
-// Radius uses Kubernetes namespace by following rules:
-// +-----------------+--------------------+------------------------------+------------------------------+
-// | namespace       | namespace override | env-scope resource namespace | app-scope resource namespace |
-// | in Environments | in Applications    |                              |                              |
-// +-----------------+--------------------+------------------------------+------------------------------+
-// | UNDEFINED       | UNDEFINED          | {envName}                    | {envName}-{appName}          |
-// | envNS           | UNDEFINED          | envNS                        | envNS-{appName}              |
-// | envNS           | appNS              | envNS                        | appNS                        |
-// +-----------------+--------------------+------------------------------+------------------------------+
 
 // FindNamespaceByEnvID finds the environment-scope Kuberentes namespace.
 func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvider, envID string) (namespace string, err error) {
@@ -51,7 +42,7 @@ func FindNamespaceByEnvID(ctx context.Context, sp dataprovider.DataStorageProvid
 		return
 	}
 
-	if env.Properties.Compute.Kind != cdm.KubernetesComputeKind {
+	if env.Properties.Compute.Kind != rp.KubernetesComputeKind {
 		err = errors.New("cannot get namespace because the current environment is not Kubernetes")
 		return
 	}

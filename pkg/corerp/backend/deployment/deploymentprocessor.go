@@ -395,7 +395,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 
 	// Extract compute info
 	switch env.Properties.Compute.Kind {
-	case corerp_dm.KubernetesComputeKind:
+	case rp.KubernetesComputeKind:
 		kubeProp := &env.Properties.Compute.KubernetesCompute
 
 		if kubeProp.Namespace == "" {

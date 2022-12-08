@@ -7,10 +7,16 @@
         "provisioningState": "Succeeded",
         "extensions": [
             {
-                "kind": "kubernetesNamespaceOverride",
+                "kind": "kubernetesNamespace",
                 "namespace": "app0-ns"
             }
-        ]
+        ],
+        "status": {
+            "compute": {
+                "kind": "kubernetes",
+                "namespace": "app0-ns"
+            }
+        }
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

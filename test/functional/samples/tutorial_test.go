@@ -7,8 +7,9 @@ package samples
 
 import (
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -82,19 +83,19 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
 				// Set up pod port-forwarding for contour-envoy
-				t.Run("check gwy", func(t *testing.T) {
-					for i := 1; i <= retries; i++ {
-						t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
-						// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
-						err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort, retries)
-						if err != nil {
-							t.Logf("Failed to test Gateway via portforward with error: %s", err)
-						} else {
-							// Successfully ran tests
-							return
-						}
+				for i := 1; i <= retries; i++ {
+					t.Logf("Setting up portforward (attempt %d/%d)", i, retries)
+					// TODO: simplify code logic complexity through - https://github.com/project-radius/radius/issues/4778
+					err = testGatewayWithPortForward(t, ctx, ct, hostname, remotePort)
+					if err != nil {
+						t.Logf("Failed to test Gateway via portforward with error: %s", err)
+					} else {
+						// Successfully ran tests
+						return
 					}
-				})
+				}
+
+				require.Fail(t, fmt.Sprintf("Gateway tests failed after %d retries", retries))
 			},
 			// TODO: validation of k8s resources created by mongo-container is blocked by https://github.com/Azure/bicep-extensibility/issues/88
 			// TODO: validation of k8s resources blocked by https://github.com/project-radius/radius/issues/4689
@@ -115,7 +116,7 @@ func Test_TutorialSampleMongoContainer(t *testing.T) {
 	test.Test(t)
 }
 
-func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort, retries int) error {
+func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.CoreRPTest, hostname string, remotePort int) error {
 	// stopChan will close the port-forward connection on close
 	stopChan := make(chan struct{})
 
@@ -126,6 +127,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	errorChan := make(chan error)
 
 	go functional.ExposeIngress(t, ctx, at.Options.K8sClient, at.Options.K8sConfig, remotePort, stopChan, portChan, errorChan)
+	defer close(stopChan)
 
 	select {
 	case err := <-errorChan:
@@ -134,10 +136,153 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		baseURL := fmt.Sprintf("http://localhost:%d", localPort)
 		t.Logf("Portforward session active at %s", baseURL)
 
-		if err := testGatewayAvailability(t, hostname, baseURL, "", 200); err != nil {
-			close(stopChan)
+		// Test base endpoint, i.e., base URL returns a 200
+		_, err := sendGetRequest(t, hostname, baseURL, "", 200)
+		if err != nil {
 			return err
 		}
+
+		// Test GET /api/todos (list)
+		listResponse, err := sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		if err != nil {
+			return err
+		}
+
+		listResponseBody, err := io.ReadAll(listResponse.Body)
+		if err != nil {
+			return err
+		}
+
+		var actualListResponseBody map[string]any
+		err = json.Unmarshal(listResponseBody, &actualListResponseBody)
+		if err != nil {
+			return err
+		}
+
+		expectedListResponseBody := map[string]interface{}{
+			"items":   []interface{}{},
+			"message": nil,
+		}
+		require.Equal(t, expectedListResponseBody, actualListResponseBody)
+
+		// Test POST /api/todos (create)
+		createRequestBody := map[string]string{
+			"title": "My TODO Item",
+		}
+		createRequestBodyBytes, err := json.Marshal(createRequestBody)
+		if err != nil {
+			return err
+		}
+
+		createResponse, err := sendPostRequest(t, hostname, baseURL, "api/todos", &createRequestBodyBytes, 200)
+		if err != nil {
+			return err
+		}
+
+		createResponseBody, err := io.ReadAll(createResponse.Body)
+		if err != nil {
+			return err
+		}
+
+		var createdItem map[string]interface{}
+		err = json.Unmarshal(createResponseBody, &createdItem)
+		if err != nil {
+			return err
+		}
+
+		require.Equal(t, "My TODO Item", createdItem["title"])
+
+		// Set generated Id for use later
+		itemId := createdItem["id"]
+
+		// Test GET /api/todos (list)
+		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		if err != nil {
+			return err
+		}
+
+		listResponseBody, err = io.ReadAll(listResponse.Body)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(listResponseBody, &actualListResponseBody)
+		if err != nil {
+			return err
+		}
+
+		expectedListResponseBody = map[string]interface{}{
+			"items": []interface{}{
+				createdItem,
+			},
+			"message": nil,
+		}
+		require.Equal(t, expectedListResponseBody, actualListResponseBody)
+
+		// Test GET /api/todos/:id (get)
+		getResponse, err := sendGetRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 200)
+		if err != nil {
+			return err
+		}
+
+		getResponseBody, err := io.ReadAll(getResponse.Body)
+		if err != nil {
+			return err
+		}
+
+		var actualGetResponseBody map[string]interface{}
+		err = json.Unmarshal(getResponseBody, &actualGetResponseBody)
+		if err != nil {
+			return err
+		}
+
+		expectedGetResponseBody := createdItem
+		require.Equal(t, expectedGetResponseBody, actualGetResponseBody)
+
+		// Test PUT /api/todos/:id (update)
+		updateRequestBody := map[string]interface{}{
+			"id":    createdItem["id"],
+			"_id":   createdItem["_id"],
+			"title": createdItem["title"],
+			"done":  "true",
+		}
+		updateRequestBodyBytes, err := json.Marshal(updateRequestBody)
+		if err != nil {
+			return err
+		}
+
+		_, err = sendPutRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), &updateRequestBodyBytes, 200)
+		if err != nil {
+			return err
+		}
+
+		// Test DELETE /api/todos/:id (delete)
+		_, err = sendDeleteRequest(t, hostname, baseURL, fmt.Sprintf("api/todos/%s", itemId), 204)
+		if err != nil {
+			return err
+		}
+
+		// Test GET /api/todos (list)
+		listResponse, err = sendGetRequest(t, hostname, baseURL, "api/todos", 200)
+		if err != nil {
+			return err
+		}
+
+		listResponseBody, err = io.ReadAll(listResponse.Body)
+		if err != nil {
+			return err
+		}
+
+		err = json.Unmarshal(listResponseBody, &actualListResponseBody)
+		if err != nil {
+			return err
+		}
+
+		expectedListResponseBody = map[string]interface{}{
+			"items":   []interface{}{},
+			"message": nil,
+		}
+		require.Equal(t, expectedListResponseBody, actualListResponseBody)
 
 		// All of the requests were successful
 		t.Logf("All requests encountered the correct status code")
@@ -145,34 +290,66 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 	}
 }
 
-func testGatewayAvailability(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) error {
+func sendRequest(t *testing.T, req *http.Request, expectedStatusCode int) (*http.Response, error) {
 	// Using autorest as an http client library because of its retry capabilities
-	req, err := autorest.Prepare(&http.Request{},
-		autorest.WithBaseURL(baseURL),
-		autorest.WithPath(path))
-	if err != nil {
-		return err
-	}
-
-	req.Host = hostname
-
-	// Send requests to backing container via port-forward
-	response, err := autorest.Send(req,
+	return autorest.Send(req,
 		autorest.WithLogging(functional.NewTestLogger(t)),
 		autorest.DoErrorUnlessStatusCode(expectedStatusCode),
 		autorest.DoRetryForDuration(retryTimeout, retryBackoff))
+}
+
+func sendGetRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.AsGet(),
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if response.Body != nil {
-		defer response.Body.Close()
+	req.Host = hostname
+	return sendRequest(t, req, expectedStatusCode)
+}
+
+func sendPostRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.AsPost(),
+		autorest.AsJSON(),
+		autorest.WithBytes(body),
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
+	if err != nil {
+		return nil, err
 	}
 
-	if response.StatusCode != expectedStatusCode {
-		return errors.New("did not encounter correct status code")
+	req.Host = hostname
+	return sendRequest(t, req, expectedStatusCode)
+}
+
+func sendPutRequest(t *testing.T, hostname, baseURL, path string, body *[]byte, expectedStatusCode int) (*http.Response, error) {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.AsPut(),
+		autorest.AsJSON(),
+		autorest.WithBytes(body),
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
+	if err != nil {
+		return nil, err
 	}
 
-	// Encountered the correct status code
-	return nil
+	req.Host = hostname
+	return sendRequest(t, req, expectedStatusCode)
+}
+
+func sendDeleteRequest(t *testing.T, hostname, baseURL, path string, expectedStatusCode int) (*http.Response, error) {
+	req, err := autorest.Prepare(&http.Request{},
+		autorest.AsDelete(),
+		autorest.WithBaseURL(baseURL),
+		autorest.WithPath(path))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Host = hostname
+	return sendRequest(t, req, expectedStatusCode)
 }

@@ -63,8 +63,7 @@ func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
 	}
 }
 
-// ApplicationKubernetesNamespaceExtension - Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments
-// resource.
+// ApplicationKubernetesNamespaceExtension - Specifies application-scoped namespace.
 type ApplicationKubernetesNamespaceExtension struct {
 	// REQUIRED; Specifies the extensions of a resource.
 	Kind *string `json:"kind,omitempty"`
@@ -97,6 +96,9 @@ type ApplicationProperties struct {
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // ApplicationResource - Radius Application.
@@ -765,8 +767,8 @@ type GatewayPropertiesHostname struct {
 
 // GatewayPropertiesTLS - TLS configuration for the Gateway.
 type GatewayPropertiesTLS struct {
-	// If true, gateway lets the https traffic passthrough to the backend servers for decryption.
-	SSLPassThrough *bool `json:"sslPassThrough,omitempty"`
+	// If true, gateway lets the https traffic sslPassthrough to the backend servers for decryption.
+	SSLPassthrough *bool `json:"sslPassthrough,omitempty"`
 }
 
 // GatewayResource - Gateway Resource that specifies how traffic is exposed to the application.
@@ -1119,6 +1121,8 @@ type Resource struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// Compute resource used by application environment resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 

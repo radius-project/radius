@@ -9,19 +9,19 @@ package datamodel
 type ExtensionKind string
 
 const (
-	ManualScaling               ExtensionKind = "manualScaling"
-	DaprSidecar                 ExtensionKind = "daprSidecar"
-	KubernetesMetadata          ExtensionKind = "kubernetesMetadata"
-	KubernetesNamespaceOverride ExtensionKind = "kubernetesNamespaceOverride"
+	ManualScaling                ExtensionKind = "manualScaling"
+	DaprSidecar                  ExtensionKind = "daprSidecar"
+	KubernetesMetadata           ExtensionKind = "kubernetesMetadata"
+	KubernetesNamespaceExtension ExtensionKind = "kubernetesNamespace"
 )
 
 // Extension of a resource.
 type Extension struct {
-	Kind                        ExtensionKind                   `json:"kind,omitempty"`
-	ManualScaling               *ManualScalingExtension         `json:"manualScaling,omitempty"`
-	DaprSidecar                 *DaprSidecarExtension           `json:"daprSidecar,omitempty"`
-	KubernetesMetadata          *KubeMetadataExtension          `json:"kubernetesMetadata,omitempty"`
-	KubernetesNamespaceOverride *KubeNamespaceOverrideExtension `json:"kubernetesNamespaceOverride,omitempty"`
+	Kind                ExtensionKind           `json:"kind,omitempty"`
+	ManualScaling       *ManualScalingExtension `json:"manualScaling,omitempty"`
+	DaprSidecar         *DaprSidecarExtension   `json:"daprSidecar,omitempty"`
+	KubernetesMetadata  *KubeMetadataExtension  `json:"kubernetesMetadata,omitempty"`
+	KubernetesNamespace *KubeNamespaceExtension `json:"kubernetesNamespace,omitempty"`
 }
 
 // KubeMetadataExtension represents the extension of kubernetes resource.
@@ -31,7 +31,7 @@ type KubeMetadataExtension struct {
 }
 
 // KubeNamespaceOverrideExtension represents the extension to override kubernetes namespace.
-type KubeNamespaceOverrideExtension struct {
+type KubeNamespaceExtension struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 

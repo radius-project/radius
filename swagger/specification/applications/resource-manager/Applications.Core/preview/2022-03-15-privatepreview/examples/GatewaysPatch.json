@@ -13,7 +13,7 @@
           }
         ],    
         "tls":{
-          "sslPassThrough": true
+          "sslPassthrough": true
         }
       }
     }
@@ -33,7 +33,7 @@
             }
           ],    
           "tls":{
-            "sslPassThrough": true
+            "sslPassthrough": true
           }
         }
       }

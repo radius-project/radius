@@ -298,9 +298,9 @@ func Test_Render(t *testing.T) {
 			},
 		},
 		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind: datamodel.KubernetesComputeKind,
-				KubernetesCompute: datamodel.KubernetesComputeProperties{
+			Compute: rp.EnvironmentCompute{
+				Kind: rp.KubernetesComputeKind,
+				KubernetesCompute: rp.KubernetesComputeProperties{
 					Namespace: "radius-test",
 				},
 			},
@@ -1007,9 +1007,9 @@ func Test_getEnvOptions_PublicEndpointOverride(t *testing.T) {
 
 	env := &datamodel.Environment{
 		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind: datamodel.KubernetesComputeKind,
-				KubernetesCompute: datamodel.KubernetesComputeProperties{
+			Compute: rp.EnvironmentCompute{
+				Kind: rp.KubernetesComputeKind,
+				KubernetesCompute: rp.KubernetesComputeProperties{
 					Namespace: "radius-system",
 				},
 				Identity: &rp.IdentitySettings{},
