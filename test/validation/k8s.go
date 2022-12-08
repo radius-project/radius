@@ -177,6 +177,13 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 				continue
 			}
 
+			// Skip streaming log when Pod is in pending state.
+			if pod.Status.Phase == corev1.PodPending {
+				continue
+			}
+
+			log.Printf("Start streaming Kubernetes logs - Pod %s is in state: %s", pod.Name, pod.Status.Phase)
+
 			// Only start one log capture per pod
 			_, ok = pods[pod.Name]
 			if ok {
