@@ -168,22 +168,22 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	compute, ok := status["compute"]
+	obj, ok = status["compute"]
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	computeObj, ok := compute.(map[string]any)
+	compute, ok := obj.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	kind, ok := computeObj["kind"].(string)
+	kind, ok := compute["kind"].(string)
 	if !ok || kind != "kubernetes" {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	namespace, ok := computeObj["namespace"].(string)
+	namespace, ok := compute["namespace"].(string)
 	if ok {
 		return namespace, nil
 	}
