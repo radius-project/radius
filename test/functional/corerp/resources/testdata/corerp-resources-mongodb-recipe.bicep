@@ -36,7 +36,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: env.id
     extensions: [
       {
-          kind: 'kubernetesNamespaceOverride'
+          kind: 'kubernetesNamespace'
           namespace: 'corerp-resources-mongodb-recipe-app'
       }
     ]

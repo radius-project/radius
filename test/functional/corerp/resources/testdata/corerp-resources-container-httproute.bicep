@@ -19,7 +19,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
     environment: environment
     extensions: [
       {
-          kind: 'kubernetesNamespaceOverride'
+          kind: 'kubernetesNamespace'
           namespace: 'corerp-resources-container-httproute-app'
       }
     ]
