@@ -54,7 +54,7 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "Failed to create credential"}
 	}
 
-	client, err := azblob.NewServiceClient(url, cred, nil)
+	client, err := azblob.NewClient(url, cred, nil)
 	if err != nil {
 		log.Println("Failed to create client")
 		return BindingStatus{false, "Failed to create client"}
@@ -64,8 +64,7 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 	log.Println("Container Name: " + containerName)
 
 	// Create a container
-	containerClient := client.NewContainerClient(containerName)
-	resp, err := containerClient.Create(context.TODO(), nil)
+	resp, err := client.CreateContainer(context.TODO(), containerName, nil)
 	if err != nil {
 		log.Printf("Failed to create container: %s\n", err.Error())
 		return BindingStatus{false, "Failed to create container"}
@@ -73,7 +72,7 @@ func StorageBinding(envParams map[string]string) BindingStatus {
 	log.Printf("Successfully created a blob container %q. Response: %s\n", containerName, string(*resp.RequestID))
 
 	// Delete the container
-	delResp, err := containerClient.Delete(context.TODO(), nil)
+	delResp, err := client.DeleteContainer(context.TODO(), containerName, nil)
 	if err != nil {
 		log.Printf("Failed to mark container for deletion: %s\n", err.Error())
 		return BindingStatus{false, "Failed to mark container for deletion"}
@@ -104,9 +103,9 @@ type clientAssertionCredentialOptions struct {
 func newClientAssertionCredential(tenantID, clientID, authorityHost, file string, options *clientAssertionCredentialOptions) (*clientAssertionCredential, error) {
 	c := &clientAssertionCredential{file: file}
 
-	if options == nil {
-		options = &clientAssertionCredentialOptions{}
-	}
+	// if options == nil {
+	// 	options = &clientAssertionCredentialOptions{}
+	// }
 
 	cred := confidential.NewCredFromAssertionCallback(
 		func(ctx context.Context, _ confidential.AssertionRequestOptions) (string, error) {
@@ -124,14 +123,14 @@ func newClientAssertionCredential(tenantID, clientID, authorityHost, file string
 }
 
 // GetToken implements the TokenCredential interface
-func (c *clientAssertionCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (*azcore.AccessToken, error) {
+func (c *clientAssertionCredential) GetToken(ctx context.Context, opts policy.TokenRequestOptions) (azcore.AccessToken, error) {
 	// get the token from the confidential client
 	token, err := c.client.AcquireTokenByCredential(ctx, opts.Scopes)
 	if err != nil {
-		return &azcore.AccessToken{}, err
+		return azcore.AccessToken{}, err
 	}
 
-	return &azcore.AccessToken{
+	return azcore.AccessToken{
 		Token:     token.AccessToken,
 		ExpiresOn: token.ExpiresOn,
 	}, nil

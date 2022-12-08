@@ -47,7 +47,8 @@ func RabbitMQBinding(envParams map[string]string) BindingStatus {
 		return BindingStatus{false, "Failed to declare a queue"}
 	}
 	msg := "Hello World!"
-	err = ch.Publish(
+	err = ch.PublishWithContext(
+		ctx,
 		"",     // exchange
 		q.Name, // routing key
 		false,  // mandatory
