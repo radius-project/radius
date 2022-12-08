@@ -164,6 +164,8 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 
 	go func() {
 		pods := map[string]bool{}
+
+		log.Printf("start listening logs: %s", namespace)
 		for event := range podList.ResultChan() {
 			pod, ok := event.Object.(*corev1.Pod)
 			if !ok {
@@ -190,6 +192,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 				go streamLogFile(ctx, podClient, *pod, container, logPrefix)
 			}
 		}
+		log.Printf("end listening logs: %s", namespace)
 	}()
 
 	return nil
