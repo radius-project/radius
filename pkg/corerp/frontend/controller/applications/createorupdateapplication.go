@@ -57,7 +57,6 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // | namespace       | namespace override | env-scoped resource namespace | app-scoped resource namespace |
 // | in Environments | in Applications    |                               |                               |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
-// | UNDEFINED       | UNDEFINED          | {envName}                     | {envName}-{appName}           |
 // | envNS           | UNDEFINED          | envNS                         | envNS-{appName}               |
 // | envNS           | appNS              | envNS                         | appNS                         |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
