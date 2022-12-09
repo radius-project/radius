@@ -594,8 +594,8 @@ func Test_CLI_Only_version(t *testing.T) {
 }
 
 func Test_RecipeCommands(t *testing.T) {
-	template := "testdata/corerp-resources-environment.bicep"
-	name := "corerp-resources-environment"
+	template := "testdata/corerp-resources-recipe-env.bicep"
+	name := "corerp-resources-recipe-env"
 
 	requiredSecrets := map[string]map[string]string{}
 
@@ -605,7 +605,7 @@ func Test_RecipeCommands(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-environment-env",
+						Name: "corerp-resources-recipe-env",
 						Type: validation.EnvironmentsResource,
 					},
 				},
