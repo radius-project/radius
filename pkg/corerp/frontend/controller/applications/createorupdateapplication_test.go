@@ -454,6 +454,22 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 	appCtrl := ctl.(*CreateOrUpdateApplication)
 
 	t.Run("override namespace", func(t *testing.T) {
+		old := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+					Status: rp.ResourceStatus{
+						Compute: &rp.EnvironmentCompute{
+							Kind: rp.KubernetesComputeKind,
+							KubernetesCompute: rp.KubernetesComputeProperties{
+								Namespace: "app-ns",
+							},
+						},
+					},
+				},
+			},
+		}
+
 		tCtx.MockSC.
 			EXPECT().
 			Query(gomock.Any(), gomock.Any()).
@@ -482,7 +498,7 @@ func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
 		armctx := &v1.ARMRequestContext{ResourceID: id}
 		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
 
-		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, old, newResource)
 		require.NoError(t, err)
 		require.Nil(t, resp)
 
@@ -670,11 +686,6 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 
 	t.Run("update application with the different namespace", func(t *testing.T) {
 		old := &datamodel.Application{
-			BaseResource: v1.BaseResource{
-				TrackedResource: v1.TrackedResource{
-					ID: testAppID,
-				},
-			},
 			Properties: datamodel.ApplicationProperties{
 				BasicResourceProperties: rp.BasicResourceProperties{
 					Environment: testEnvID,
