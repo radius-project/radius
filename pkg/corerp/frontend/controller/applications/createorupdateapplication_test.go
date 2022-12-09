@@ -667,4 +667,60 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		res := resp.(*rest.ConflictResponse)
 		require.Equal(t, res.Body.Error.Message, "Application /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0 with the same namespace (testns) already exists")
 	})
+
+	t.Run("update application with the different namespace", func(t *testing.T) {
+		old := &datamodel.Application{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: testAppID,
+				},
+			},
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+					Status: rp.ResourceStatus{
+						Compute: &rp.EnvironmentCompute{
+							Kind: rp.KubernetesComputeKind,
+							KubernetesCompute: rp.KubernetesComputeProperties{
+								Namespace: "default-app0",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		newResource := &datamodel.Application{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: testAppID,
+				},
+			},
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "differentname"},
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			Return(&store.ObjectQueryResult{}, nil).Times(2)
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, old, newResource)
+		require.NoError(t, err)
+		res := resp.(*rest.BadRequestResponse)
+		require.Equal(t, res.Body.Error.Message, "Application-scoped namespace cannot be changed from 'default-app0' to 'differentname'. Please create new application to use the different namespace.")
+	})
 }

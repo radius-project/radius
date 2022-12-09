@@ -116,6 +116,13 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace)), nil
 	}
 
+	if old != nil {
+		c := old.Properties.Status.Compute
+		if c != nil && c.Kind == rp.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Application-scoped namespace cannot be changed from '%s' to '%s'. Please create new application to use the different namespace.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
+		}
+	}
+
 	// Populate kubernetes namespace to internal metadata property for query indexing.
 	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
 		Kind:              rp.KubernetesComputeKind,
