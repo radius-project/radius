@@ -732,6 +732,6 @@ func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
 		resp, err := appCtrl.populateKubernetesNamespace(ctx, old, newResource)
 		require.NoError(t, err)
 		res := resp.(*rest.BadRequestResponse)
-		require.Equal(t, res.Body.Error.Message, "Application-scoped namespace cannot be changed from 'default-app0' to 'differentname'. Please create new application to use the different namespace.")
+		require.Equal(t, res.Body.Error.Message, "Updating an application's Kubernetes namespace from 'default-app0' to 'differentname' requires the application to be deleted and redeployed. Please delete your application and try again.")
 	})
 }
