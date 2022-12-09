@@ -70,7 +70,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceExtension)
 	if ext != nil {
 		// Override environment namespace.
-		kubeNamespace = ext.KubernetesNamespace.Namespace
+		kubeNamespace = kubernetes.NormalizeResourceName(ext.KubernetesNamespace.Namespace)
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
