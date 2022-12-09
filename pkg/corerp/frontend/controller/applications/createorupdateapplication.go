@@ -119,7 +119,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	if old != nil {
 		c := old.Properties.Status.Compute
 		if c != nil && c.Kind == rp.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
-			return rest.NewBadRequestResponse(fmt.Sprintf("Application-scoped namespace cannot be changed from '%s' to '%s'. Please create new application to use the different namespace.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
+			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
 		}
 	}
 
