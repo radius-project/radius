@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package clients
+package clientv2
 
 import (
 	"github.com/Azure/go-autorest/autorest"
@@ -11,13 +11,13 @@ import (
 )
 
 // ExtractServiceError returns an azure.ServiceError if the error contains a service error payload.
-func ExtractServiceError(err error) (azure.ServiceError, bool) {
+func ExtractServiceError(err error) (*azure.ServiceError, bool) {
 	if err == nil {
-		return azure.ServiceError{}, false
+		return &azure.ServiceError{}, false
 	}
 
 	if service, ok := err.(*azure.ServiceError); ok {
-		return *service, true
+		return service, true
 	}
 
 	if detailed, ok := err.(*autorest.DetailedError); ok {
@@ -29,10 +29,10 @@ func ExtractServiceError(err error) (azure.ServiceError, bool) {
 	}
 
 	if request, ok := err.(*azure.RequestError); ok && request.ServiceError != nil {
-		return *request.ServiceError, true
+		return request.ServiceError, true
 	}
 
-	return azure.ServiceError{}, false
+	return &azure.ServiceError{}, false
 }
 
 // ExtractDetailedError returns an autorest.DetailedError if the error contains a detailed error payload.
