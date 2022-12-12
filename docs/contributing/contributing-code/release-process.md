@@ -142,6 +142,7 @@ TODO add documentation for when to do each type of release
    1. Within `docs/layouts/partials/hooks/body-end.html`:
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
    1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
+   1. In `docs/content/getting-started/tutorial/2-tutorial-app/_index.md` update edge to 0.16.
    1. Commit and push updates to be the new `v0.16` branch you created above.
    1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version.
    1. Verify https://radapp.dev now shows the new version.
