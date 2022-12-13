@@ -29,14 +29,7 @@ import (
 )
 
 var (
-	testResourceType   = "Applications.Core/environments"
-	testResourceObject = &store.Object{
-		Data: map[string]interface{}{
-			"name":              "env0",
-			"provisioningState": "Accepted",
-			"properties":        map[string]interface{}{},
-		},
-	}
+	testResourceType    = "Applications.Core/environments"
 	testOperationStatus = &manager.Status{
 		AsyncOperationStatus: v1.AsyncOperationStatus{
 			ID:        uuid.NewString(),
@@ -72,6 +65,17 @@ type testContext struct {
 
 	testQueue *inmemory.Client
 	internalQ *inmemory.InmemQueue
+}
+
+// newTestResourceObject returns new store.Object to prevent datarace when updateResourceState accesses map[string]any{} concurrently.
+func newTestResourceObject() *store.Object {
+	return &store.Object{
+		Data: map[string]any{
+			"name":              "env0",
+			"provisioningState": "Accepted",
+			"properties":        map[string]interface{}{},
+		},
+	}
 }
 
 func (c *testContext) drainQueueOrAssert(t *testing.T) {
@@ -189,7 +193,10 @@ func TestStart_MaxDequeueCount(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).Times(1)
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Eq(v1.ProvisioningStateFailed), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	tCtx.mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(tCtx.mockSC), nil).Times(1)
@@ -249,7 +256,10 @@ func TestStart_MaxConcurrency(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -325,7 +335,10 @@ func TestStart_RunOperation(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testOperationStatus, nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -394,7 +407,10 @@ func TestRunOperation_Successfully(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
@@ -430,7 +446,10 @@ func TestRunOperation_ExtendMessageLock(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 
@@ -515,7 +534,10 @@ func TestRunOperation_Timeout(t *testing.T) {
 	defer mctrl.Finish()
 
 	// set up mocks
-	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).Return(testResourceObject, nil).AnyTimes()
+	tCtx.mockSC.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+			return newTestResourceObject(), nil
+		}).AnyTimes()
 	tCtx.mockSC.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	tCtx.mockSM.EXPECT().Update(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ context.Context, _ resources.ID, _ uuid.UUID, state v1.ProvisioningState, _ *time.Time, opError *v1.ErrorDetails) error {
