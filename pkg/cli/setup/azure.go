@@ -16,6 +16,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/Azure/go-autorest/autorest/azure/auth"
 	"github.com/marstr/randname"
@@ -153,13 +154,13 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		// so it should be safe to interact with the Azure CLI.
 		subs, err := azure.LoadSubscriptionsFromProfile()
 		if err != nil {
-			authorizer, err := auth.NewAuthorizerFromCLI()
+			credential, err := azidentity.NewDefaultAzureCredential(nil)
 			if err != nil {
 				return nil, err
 			}
 
 			// Failed to load subscriptions from the user profile, fall back to online.
-			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context(), authorizer)
+			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context(), credential)
 			if err != nil {
 				return nil, err
 			}

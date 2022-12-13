@@ -10,8 +10,9 @@ import (
 	"fmt"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/purview/armpurview"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -47,7 +48,7 @@ func (handler *azureFileShareStorageAccountHandler) Put(ctx context.Context, opt
 		return nil, err
 	}
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[FileShareStorageAccountIDKey], clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[FileShareStorageAccountIDKey], clientv2.GetAPIVersionFromUserAgent(storage.UserAgent()))
 
 	return nil, nil
 }
@@ -56,18 +57,27 @@ func (handler *azureFileShareStorageAccountHandler) Delete(ctx context.Context, 
 	return nil
 }
 
-func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*storage.Account, error) {
+func getStorageAccountByID(ctx context.Context, arm armauth.ArmConfig, accountID string) (*armpurview.Account, error) {
 	parsed, err := resources.ParseResource(accountID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
-	sac := clients.NewAccountsClient(parsed.FindScope(resources.SubscriptionsSegment), arm.Auth)
+	subscriptionID := parsed.FindScope(resources.SubscriptionsSegment)
+	resourceGroupName := parsed.FindScope(resources.ResourceGroupsSegment)
+	accountName := parsed.TypeSegments()[0].Name
 
-	account, err := sac.GetProperties(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name, storage.AccountExpand(""))
+	client, err := armpurview.NewAccountsClient(subscriptionID, arm.TokenCredential, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.Get(ctx, resourceGroupName, accountName, &armpurview.AccountsClientGetOptions{
+		// TODO: Add this storage.AccountExpand("")
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
-	return &account, nil
+	return &resp.Account, nil
 }

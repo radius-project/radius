@@ -15,15 +15,15 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 )
 
-// ResourceDeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
+// DeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
 // It is used by both Azure and UCP clients.
-type ResourceDeploymentOperationsClient struct {
+type DeploymentOperationsClient struct {
 	armresources.DeploymentOperationsClient
 }
 
-// NewResourceDeploymentOperationsClient creates an instance of the ResourceDeploymentOperations client using the default endpoint.
-func NewResourceDeploymentOperationsClient(cred azcore.TokenCredential, subscriptionID string) (*ResourceDeploymentOperationsClient, error) {
-	client, err := NewResourceDeploymentOperationsClientWithBaseURI(cred, subscriptionID, DefaultBaseURI)
+// NewDeploymentOperationsClient creates an instance of the DeploymentOperations client using the default endpoint.
+func NewDeploymentOperationsClient(cred azcore.TokenCredential, subscriptionID string) (*DeploymentOperationsClient, error) {
+	client, err := NewDeploymentOperationsClientWithBaseURI(cred, subscriptionID, DefaultBaseURI)
 	if err != nil {
 		return nil, err
 	}
@@ -31,9 +31,9 @@ func NewResourceDeploymentOperationsClient(cred azcore.TokenCredential, subscrip
 	return client, err
 }
 
-// NewResourceDeploymentOperationsClientWithBaseURI creates an instance of the ResourceDeploymentOperations client using a custom endpoint.
+// NewDeploymentOperationsClientWithBaseURI creates an instance of the DeploymentOperations client using a custom endpoint.
 // Use this when interacting with UCP resources that uses a non-standard base URI.
-func NewResourceDeploymentOperationsClientWithBaseURI(cred azcore.TokenCredential, subscriptionID string, baseURI string) (*ResourceDeploymentOperationsClient, error) {
+func NewDeploymentOperationsClientWithBaseURI(cred azcore.TokenCredential, subscriptionID string, baseURI string) (*DeploymentOperationsClient, error) {
 	options := &arm.ClientOptions{
 		ClientOptions: azcore.ClientOptions{
 			Cloud: cloud.Configuration{
@@ -50,14 +50,14 @@ func NewResourceDeploymentOperationsClientWithBaseURI(cred azcore.TokenCredentia
 		return nil, err
 	}
 
-	return &ResourceDeploymentOperationsClient{*client}, nil
+	return &DeploymentOperationsClient{*client}, nil
 }
 
 // List gets all deployments operations for a deployment.
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
 // top - the number of results to return.
-func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
+func (client *DeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
 	result := &armresources.DeploymentOperationsListResult{
 		Value:    make([]*armresources.DeploymentOperation, 0),
 		NextLink: to.Ptr(""),

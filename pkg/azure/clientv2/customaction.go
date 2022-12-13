@@ -49,7 +49,6 @@ func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, cre
 			},
 		},
 	}
-
 	client, err := armresources.NewClient(subscriptionID, credential, options)
 	if err != nil {
 		return nil, err

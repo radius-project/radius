@@ -13,7 +13,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -64,7 +63,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return nil, err
 	}
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, subID, rgName)
+	rgLocation, err := clientv2.GetResourceGroupLocation(ctx, handler.arm.TokenCredential, subID, rgName)
 	if err != nil {
 		return properties, err
 	}
@@ -93,7 +92,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityClientIDKey] = to.String(identity.Properties.ClientID)
 	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clients.GetAPIVersionFromUserAgent(msi.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.GetAPIVersionFromUserAgent(msi.UserAgent()))
 	logger.WithValues(
 		radlogger.LogFieldResourceID, *identity.ID,
 		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")

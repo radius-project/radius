@@ -17,8 +17,9 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest"
-	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	clientv2 "github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -54,28 +55,38 @@ func (*impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.Wo
 
 	switch c := connection.(type) {
 	case *workspaces.KubernetesConnection:
-		url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(c.Overrides.UCP, c.Context)
-
-		if err != nil {
-			return nil, err
-		}
-
-		dc := azclients.NewResourceDeploymentClientWithBaseURI(url)
-
-		// Poll faster than the default, many deployments are quick
-		dc.PollingDelay = 5 * time.Second
-
-		dc.Sender = &sender{RoundTripper: roundTripper}
-
-		op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
-		op.PollingDelay = 5 * time.Second
-		op.Sender = &sender{RoundTripper: roundTripper}
-
 		// This client wants a resource group name, but we store the ID instead, so compute that.
 		id, err := resources.ParseScope(workspace.Scope)
 		if err != nil {
 			return nil, err
 		}
+
+		subscriptionID := id.FindScope(resources.SubscriptionsSegment)
+		resourceGroupName := id.FindScope(resources.ResourceGroupsSegment)
+
+		url, roundTripper, err := kubernetes.GetBaseUrlAndRoundTripperForDeploymentEngine(c.Overrides.UCP, c.Context)
+		if err != nil {
+			return nil, err
+		}
+
+		credential, err := azidentity.NewDefaultAzureCredential(nil)
+		if err != nil {
+			return nil, err
+		}
+
+		dc, err := clientv2.NewDeploymentsClientWithBaseURI(credential, subscriptionID, url)
+		if err != nil {
+			return nil, err
+		}
+
+		doc, err := clientv2.NewDeploymentOperationsClientWithBaseURI(credential, subscriptionID, url)
+		if err != nil {
+			return nil, err
+		}
+
+		op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(url)
+		op.PollingDelay = 5 * time.Second
+		op.Sender = &sender{RoundTripper: roundTripper}
 
 		return &deployment.ResourceDeploymentClient{
 			Client:              dc,

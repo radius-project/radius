@@ -32,6 +32,10 @@ type Deployment struct {
 	Tags map[string]*string `json:"tags"`
 }
 
+// TODO: Copy their code and optimize it
+// Write a Swagger file and have the client generated
+// Talk to Justin about this
+
 // DeploymentProperties deployment properties.
 type DeploymentProperties struct {
 	// Template - The template content. You use this element when you want to pass the template syntax directly in the request rather than link to an existing template. It can be a JObject or well-formed JSON string. Use either the templateLink property or the template property, but not both.
@@ -155,8 +159,9 @@ func NewClientBeginCreateOrUpdateOptions(resourceID, resumeToken, apiVersion str
 }
 
 // ClientCreateOrUpdateResponse contains the response from method Client.CreateOrUpdate.
+// TODO: Come up with a better name?
 type ClientCreateOrUpdateResponse struct {
-	armresources.GenericResource
+	armresources.DeploymentExtended
 }
 
 // CreateOrUpdate creates a deployment or updates the existing deployment.

@@ -11,11 +11,12 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -38,7 +39,7 @@ func (handler *armHandler) Put(ctx context.Context, resource *outputresource.Out
 	}
 
 	// Do a GET just to validate that the resource exists.
-	res, err := getByID(ctx, handler.arm.Auth, id, apiVersion)
+	res, err := getByID(ctx, handler.arm.TokenCredential, id, apiVersion)
 	if err != nil {
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
@@ -67,10 +68,15 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 		return err
 	}
 
-	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), handler.arm.Auth)
-	_, err = rc.DeleteByID(ctx, id, apiVersion)
+	subscriptionID := parsed.FindScope(ucpresources.SubscriptionsSegment)
+
+	client, err := armresources.NewClient(subscriptionID, handler.arm.TokenCredential, &arm.ClientOptions{})
 	if err != nil {
-		if !clients.Is404Error(err) {
+		return err
+	}
+	_, err = client.BeginDeleteByID(ctx, id, apiVersion, &armresources.ClientBeginDeleteByIDOptions{})
+	if err != nil {
+		if !clientv2.Is404Error(err) {
 			return fmt.Errorf("failed to delete resource %q: %w", id, err)
 		}
 		logger.Info(fmt.Sprintf("Resource %s does not exist: %s", id, err.Error()))
@@ -79,7 +85,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 	return nil
 }
 
-func serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
+func serializeResource(resource armresources.GenericResource) (map[string]interface{}, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
 	b, err := json.Marshal(&resource)
@@ -96,7 +102,7 @@ func serializeResource(resource resources.GenericResource) (map[string]interface
 	return data, nil
 }
 
-func getByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion string) (*resources.GenericResource, error) {
+func getByID(ctx context.Context, cred azcore.TokenCredential, id, apiVersion string) (*armresources.GenericResource, error) {
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
 		return nil, err
@@ -104,13 +110,22 @@ func getByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion strin
 
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
 	logger.Info("Fetching arm resource by id")
-	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
-	resource, err := rc.GetByID(ctx, id, apiVersion)
+
+	subscriptionID := parsed.FindScope(ucpresources.SubscriptionsSegment)
+
+	client, err := armresources.NewClient(subscriptionID, cred, &arm.ClientOptions{})
 	if err != nil {
-		if clients.Is404Error(err) {
+		return nil, err
+	}
+
+	resp, err := client.GetByID(ctx, id, apiVersion, &armresources.ClientGetByIDOptions{})
+	if err != nil {
+		// FIXME: Do we need this?
+		if clientv2.Is404Error(err) {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure resource %q does not exist", id))
 		}
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
-	return &resource, nil
+
+	return &resp.GenericResource, nil
 }

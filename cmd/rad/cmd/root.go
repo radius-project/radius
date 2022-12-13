@@ -13,7 +13,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli"
 
 	env_create "github.com/project-radius/radius/pkg/cli/cmd/env/create"
@@ -76,12 +76,12 @@ var ConfigHolderKey = framework.NewContextKey("config")
 var ConfigHolder = &framework.ConfigHolder{}
 
 func prettyPrintRPError(err error) string {
-	if new := clients.TryUnfoldErrorResponse(err); new != nil {
+	if new := clientv2.TryUnfoldErrorResponse(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m
 		}
-	} else if new := clients.TryUnfoldServiceError(err); new != nil {
+	} else if new := clientv2.TryUnfoldServiceError(err); new != nil {
 		m, err := prettyPrintJSON(new)
 		if err == nil {
 			return m

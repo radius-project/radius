@@ -11,12 +11,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/authorization/mgmt/authorization"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization"
 	"github.com/google/uuid"
 
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -26,25 +28,42 @@ import (
 // scope - fully qualified identifier of the scope of the role assignment to create. Example: '/subscriptions/{subscription-id}/',
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
 // roleNameOrID - Name of the role ('Reader') or definition id ('acdd72a7-3385-48ef-bd42-f606fba81ae7') for the role to be assigned.
-func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, principalID, scope, roleNameOrID string) (*authorization.RoleAssignment, error) {
+func Create(ctx context.Context, subscriptionID, principalID, scope, roleNameOrID string) (*armauthorization.RoleAssignment, error) {
 	logger := radlogger.GetLogger(ctx)
 
-	roleDefinitionID, err := GetRoleDefinitionID(ctx, auth, subscriptionID, scope, roleNameOrID)
+	// FIXME: What should the credential be?
+	cred, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create role assignment credential for role '%s': %w", roleNameOrID, err)
+	}
+
+	roleDefinitionID, err := GetRoleDefinitionID(ctx, cred, subscriptionID, scope, roleNameOrID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
 	}
 
-	// Check if role assignment already exists for the managed identity
-	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
-	existingRoleAssignments, err := roleAssignmentClient.List(ctx, fmt.Sprintf("principalID eq '%s'", principalID), "")
+	client, err := armauthorization.NewRoleAssignmentsClient(subscriptionID, cred, &arm.ClientOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create role assignment for role '%s': %w", roleNameOrID, err)
+		return nil, fmt.Errorf("failed to create role assignment client for role '%s': %w", roleNameOrID, err)
 	}
-	for _, roleAssignment := range existingRoleAssignments.Values() {
-		if roleDefinitionID == *roleAssignment.RoleAssignmentPropertiesWithScope.RoleDefinitionID &&
-			scope == *roleAssignment.RoleAssignmentPropertiesWithScope.Scope {
-			// The required role assignment already exists
-			return &roleAssignment, nil
+
+	pager := client.NewListPager(&armauthorization.RoleAssignmentsClientListOptions{
+		Filter: to.Ptr(fmt.Sprintf("principalID eq '%s'", principalID)),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list role assignments for principalID '%s': %w", principalID, err)
+	}
+
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return &armauthorization.RoleAssignment{}, err
+		}
+		roleAssignments := nextPage.Value
+		for _, roleAssignment := range roleAssignments {
+			if roleDefinitionID == *roleAssignment.ID && scope == *roleAssignment.Properties.Scope {
+				return roleAssignment, nil
+			}
 		}
 	}
 
@@ -52,26 +71,26 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 	raName := uuid.New()
 
 	// Retry to wait for the managed identity to propagate
-	MaxRetries := 100
-	// var ra authorization.RoleAssignment
-	for i := 0; i < MaxRetries; i++ {
-		roleAssignment, err := roleAssignmentClient.Create(
+	maxRetries := 100
+	for i := 0; i < maxRetries; i++ {
+		resp, err := client.Create(
 			ctx,
 			scope,
 			raName.String(),
-			authorization.RoleAssignmentCreateParameters{
-				RoleAssignmentProperties: &authorization.RoleAssignmentProperties{
+			armauthorization.RoleAssignmentCreateParameters{
+				Properties: &armauthorization.RoleAssignmentProperties{
 					PrincipalID:      &principalID,
 					RoleDefinitionID: to.Ptr(roleDefinitionID),
 				},
-			})
+			},
+			&armauthorization.RoleAssignmentsClientCreateOptions{})
 
 		if err == nil {
-			return &roleAssignment, nil
+			return &resp.RoleAssignment, nil
 		}
 
 		// Check the error and determine if it is ignorable/retryable
-		detailedError, ok := clients.ExtractDetailedError(err)
+		detailedError, ok := clientv2.ExtractDetailedError(err)
 		if !ok {
 			return nil, err
 		}
@@ -90,7 +109,7 @@ func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, princ
 }
 
 // Delete deletes the specified role name over the specified scope.
-func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error {
+func Delete(ctx context.Context, cred azcore.TokenCredential, roleID string) error {
 	rID, err := resources.Parse(roleID)
 	if err != nil {
 		return err
@@ -101,15 +120,19 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 		return fmt.Errorf("invalid role id: %s", roleID)
 	}
 
-	roleAssignmentClient := clients.NewRoleAssignmentsClient(subscriptionID, auth)
+	client, err := armauthorization.NewRoleAssignmentsClient(subscriptionID, cred, &arm.ClientOptions{})
+	if err != nil {
+		return fmt.Errorf("failed to create role assignment client for role '%s': %w", roleID, err)
+	}
+
 	// Deleting nonexisting role returns 204 so we do not need to check the existence.
-	_, err = roleAssignmentClient.DeleteByID(ctx, roleID, "")
+	_, err = client.DeleteByID(ctx, roleID, &armauthorization.RoleAssignmentsClientDeleteByIDOptions{})
 	if err == nil {
 		return nil
 	}
 
 	// Extract the detailedError from error.
-	detailedError, ok := clients.ExtractDetailedError(err)
+	detailedError, ok := clientv2.ExtractDetailedError(err)
 	if !ok {
 		return err
 	}
@@ -123,33 +146,50 @@ func Delete(ctx context.Context, auth autorest.Authorizer, roleID string) error 
 }
 
 // Returns roleDefinitionID: fully qualified identifier of role definition, example: "/providers/Microsoft.Authorization/roleDefinitions/b24988ac-6180-42a0-ab88-20f7382dd24c"
-func GetRoleDefinitionID(ctx context.Context, auth autorest.Authorizer, subscriptionID, scope, roleNameOrID string) (roleDefinitionID string, err error) {
+func GetRoleDefinitionID(ctx context.Context, cred azcore.TokenCredential, subscriptionID, scope, roleNameOrID string) (string, error) {
+	roleDefinitionID := ""
+
 	if strings.HasPrefix(roleNameOrID, "/subscriptions/") {
 		roleDefinitionID = roleNameOrID
-		return
+		return roleDefinitionID, nil
 	}
 
-	roleDefinitionClient := clients.NewRoleDefinitionsClient(subscriptionID, auth)
-	roleFilter := fmt.Sprintf("roleName eq '%s'", roleNameOrID)
-	roleList, err := roleDefinitionClient.List(ctx, scope, roleFilter)
+	client, err := armauthorization.NewRoleDefinitionsClient(cred, &arm.ClientOptions{})
 	if err != nil {
-		return "", err
+		return roleDefinitionID, err
 	}
 
-	if len(roleList.Values()) == 0 {
-		// Check if the passed value is a role definition id instead of role name. For example - id for role name "Contributor" is "b24988ac-6180-42a0-ab88-20f7382dd24c"
-		// https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
-		roleDefinition, err := roleDefinitionClient.Get(ctx, scope, roleNameOrID)
+	roleFilter := fmt.Sprintf("roleName eq '%s'", roleNameOrID)
+	pager := client.NewListPager(scope, &armauthorization.RoleDefinitionsClientListOptions{
+		Filter: &roleFilter,
+	})
+
+	var roleDefinitions []*armauthorization.RoleDefinition
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
 		if err != nil {
 			return "", err
-		} else if roleDefinition == (authorization.RoleDefinition{}) {
-			return "", fmt.Errorf("no role definition was found for the provided role %s", roleNameOrID)
-		} else {
-			roleDefinitionID = *roleDefinition.ID
 		}
-	} else {
-		roleDefinitionID = *roleList.Values()[0].ID
+		rds := nextPage.Value
+		for _, rd := range rds {
+			roleDefinitions = append(roleDefinitions, rd)
+		}
 	}
 
-	return
+	if len(roleDefinitions) == 0 {
+		// Check if the passed value is a role definition id instead of role name. For example - id for role name "Contributor" is "b24988ac-6180-42a0-ab88-20f7382dd24c"
+		// https://docs.microsoft.com/en-us/azure/role-based-access-control/built-in-roles
+		resp, err := client.Get(ctx, scope, roleNameOrID, &armauthorization.RoleDefinitionsClientGetOptions{})
+		if err != nil {
+			return "", err
+		} else if resp.RoleDefinition == (armauthorization.RoleDefinition{}) {
+			return "", fmt.Errorf("no role definition was found for the provided role %s", roleNameOrID)
+		} else {
+			roleDefinitionID = *resp.RoleDefinition.ID
+		}
+	} else {
+		roleDefinitionID = *roleDefinitions[0].ID
+	}
+
+	return roleDefinitionID, nil
 }

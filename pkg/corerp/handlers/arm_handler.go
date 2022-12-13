@@ -11,10 +11,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
@@ -30,13 +30,13 @@ type armHandler struct {
 
 func (handler *armHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
 	// Do a GET just to validate that the resource exists.
-	res, err := getByID(ctx, handler.arm.Auth, options.Resource.Identity)
+	resource, err := getByID(ctx, handler.arm.TokenCredential, options.Resource.Identity)
 	if err != nil {
 		return nil, err
 	}
 
 	// Return the resource so renderers can use it for computed values.
-	serialized, err := handler.serializeResource(*res)
+	serialized, err := handler.serializeResource(*resource)
 	if err != nil {
 		return nil, err
 	}
@@ -49,7 +49,7 @@ func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) e
 	return nil
 }
 
-func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
+func (handler *armHandler) serializeResource(resource armresources.GenericResource) (map[string]interface{}, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
 	b, err := json.Marshal(&resource)
@@ -66,7 +66,7 @@ func (handler *armHandler) serializeResource(resource resources.GenericResource)
 	return data, nil
 }
 
-func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemodel.ResourceIdentity) (*resources.GenericResource, error) {
+func getByID(ctx context.Context, cred azcore.TokenCredential, identity resourcemodel.ResourceIdentity) (*armresources.GenericResource, error) {
 	id, apiVersion, err := identity.RequireARM()
 	if err != nil {
 		return nil, err
@@ -77,10 +77,17 @@ func getByID(ctx context.Context, auth autorest.Authorizer, identity resourcemod
 		return nil, err
 	}
 
-	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
-	resource, err := rc.GetByID(ctx, id, apiVersion)
+	subscriptionID := parsed.FindScope(ucpresources.SubscriptionsSegment)
+
+	client, err := armresources.NewClient(subscriptionID, cred, &arm.ClientOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.GetByID(ctx, id, apiVersion, &armresources.ClientGetByIDOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to access resource %q", id)
 	}
-	return &resource, nil
+
+	return &resp.GenericResource, nil
 }

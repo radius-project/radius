@@ -11,10 +11,12 @@ import (
 	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus"
 
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -72,7 +74,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	}
 
 	// Use the identity of the namespace as the thing to monitor.
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clientv2.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
 	if err != nil {
@@ -165,12 +167,12 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.TokenCredential)
 
 	// Check if a service bus namespace exists in the resource group for this application
 	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
 	if err != nil {
-		if clients.Is404Error(err) {
+		if clientv2.Is404Error(err) {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", id))
 		}
 		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
@@ -185,7 +187,11 @@ func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.
 		return nil, err
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+	subscriptionID := parsed.FindScope(resources.SubscriptionsSegment)
+	client, err := armservicebus.NewNamespacesClient(subscriptionID, handler.arm.TokenCredential, &arm.ClientOptions{})
+	if err != nil {
+		return nil, err
+	}
 
 	accessKeys, err := sbc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey)
 	if err != nil {

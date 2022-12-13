@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	corerpDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
@@ -126,7 +126,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         cosmosAccountID,
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
 			RadiusManaged: &radiusManaged,
@@ -139,7 +139,7 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         cosmosMongoID,
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
 			Resource: map[string]interface{}{
@@ -204,7 +204,7 @@ func buildRendererOutputMongo(mode string) (rendererOutput renderers.RendererOut
 				},
 				TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			},
-			APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+			APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 			Provider:   resourcemodel.ProviderAzure,
 		}
 	}

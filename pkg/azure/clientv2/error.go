@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package clients
+package clientv2
 
 import (
 	"github.com/Azure/go-autorest/autorest"

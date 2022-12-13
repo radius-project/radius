@@ -15,7 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/model"
@@ -196,7 +196,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 					},
 					TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				},
-				APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+				APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				Resources: []string{"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
 					"/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database"},
 			},
@@ -242,7 +242,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				ResourceType: &accountResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
 			RadiusManaged: to.BoolPtr(true),
@@ -255,7 +255,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 				ResourceType: &dbResourceType,
 				Data: resourcemodel.ARMIdentity{
 					ID:         "/subscriptions/test-sub/resourceGroups/test-group/providers/Microsoft.DocumentDB/databaseAccounts/test-account/mongodbDatabases/test-database",
-					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+					APIVersion: clientv2.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
 			Resource: map[string]interface{}{
