@@ -152,21 +152,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	if recipeProperties[r.RecipeName] != nil {
 		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
-	if recipeProperties != nil {
-		recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
-			LinkType:     &r.LinkType,
-			TemplatePath: &r.TemplatePath,
-			Parameters:   convertToMapStringInterface(r.Parameters),
-		}
-	} else {
-		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{
-			r.RecipeName: {
-				LinkType:     &r.LinkType,
-				TemplatePath: &r.TemplatePath,
-				Parameters:   convertToMapStringInterface(r.Parameters),
-			},
-		}
+	if recipeProperties == nil {
+		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
 	}
+
+	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
+		LinkType:     &r.LinkType,
+		TemplatePath: &r.TemplatePath,
+		Parameters:   convertToMapStringInterface(r.Parameters),
+	}
+
 	namespace := cmd.GetNamespace(envResource)
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
