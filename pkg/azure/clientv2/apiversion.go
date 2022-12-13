@@ -9,6 +9,10 @@ import (
 	"strings"
 )
 
+const (
+	DefaultBaseURI = "https://management.azure.com"
+)
+
 // GetAPIVersionFromUserAgent can convert the user-agent used by an Azure SDK into an ARM API Version.
 //
 // Example: `apiVersion := clients.GetAPIVersionFromUserAgent(resource.UserAgent())`
