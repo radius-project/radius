@@ -19,8 +19,6 @@ func Test_PersistentVolume(t *testing.T) {
 	name := "corerp-resources-volume-azure-keyvault"
 	appNamespace := "corerp-resources-volume-azure-keyvault-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -54,7 +52,7 @@ func Test_PersistentVolume(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

@@ -20,8 +20,6 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 	name := "corerp-resources-dapr-pubsub-generic"
 	appNamespace := "default-corerp-resources-dapr-pubsub-generic"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -51,7 +49,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -60,8 +58,6 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -92,7 +88,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -100,8 +96,6 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 func Test_DaprPubSubServiceInvalid(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus-invalid.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus-invalid"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -116,7 +110,7 @@ func Test_DaprPubSubServiceInvalid(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

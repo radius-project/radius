@@ -20,8 +20,6 @@ func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
 	logGroupName := "ms" + uuid.New().String()
 	testName := "ms" + uuid.New().String()
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, testName, []corerp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(template, "filterName="+filterName, "logGroupName="+logGroupName),
@@ -42,7 +40,7 @@ func Test_AWS_MultiIdentifier_Resource(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

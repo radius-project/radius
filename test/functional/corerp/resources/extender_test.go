@@ -19,8 +19,6 @@ func Test_Extender(t *testing.T) {
 	name := "corerp-resources-extender"
 	appNamespace := "default-corerp-resources-extender"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -49,7 +47,7 @@ func Test_Extender(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

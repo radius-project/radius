@@ -19,8 +19,6 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 	name := "dapr-invokehttproute"
 	appNamespace := "default-dapr-invokehttproute"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -56,7 +54,7 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

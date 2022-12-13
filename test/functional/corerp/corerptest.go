@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -23,10 +22,6 @@ import (
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 var radiusControllerLogSync sync.Once
@@ -56,10 +51,6 @@ type CoreRPTest struct {
 	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
-
-	// Object Name => map of secret keys and values
-	Secrets            map[string]map[string]string
-	SkipSecretDeletion bool
 }
 
 type TestOptions struct {
@@ -71,15 +62,30 @@ func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
-func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
+func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
-		Options:            NewCoreRPTestOptions(t),
-		Name:               name,
-		Description:        name,
-		Steps:              steps,
-		Secrets:            secrets,
-		InitialResources:   initialResources,
-		SkipSecretDeletion: false,
+		Options:          NewCoreRPTestOptions(t),
+		Name:             name,
+		Description:      name,
+		Steps:            steps,
+		InitialResources: initialResources,
+	}
+}
+
+// TestSecretResource creates the secret resource for Initial Resource in NewCoreRPTest().
+func TestSecretResource(namespace, name string, data []byte) unstructured.Unstructured {
+	return unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "v1",
+			"kind":       "Secret",
+			"metadata": map[string]any{
+				"name":      name,
+				"namespace": namespace,
+			},
+			"data": map[string]any{
+				name: data,
+			},
+		},
 	}
 }
 
@@ -91,56 +97,6 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 	for _, r := range ct.InitialResources {
 		if err := ct.Options.Client.Create(ctx, &r); err != nil {
 			return fmt.Errorf("failed to create resource %#v:  %w", r, err)
-		}
-	}
-
-	return nil
-}
-
-func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
-	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
-	if err != nil {
-		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
-	}
-
-	for objectName := range ct.Secrets {
-		for key, value := range ct.Secrets[objectName] {
-			data := make(map[string][]byte)
-			data[key] = []byte(value)
-
-			_, err = ct.Options.K8sClient.CoreV1().
-				Secrets("default").
-				Create(ctx, &corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Name: objectName,
-					},
-					Data: data,
-				}, v1.CreateOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
-	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
-	if err != nil {
-		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
-	}
-
-	if ct.Secrets == nil {
-		return nil
-	}
-
-	for objectName := range ct.Secrets {
-		err = ct.Options.K8sClient.CoreV1().
-			Secrets("default").
-			Delete(ctx, objectName, v1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to delete secret %s", err.Error())
 		}
 	}
 
@@ -198,23 +154,12 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	}
 
-	t.Logf("Creating secrets if provided")
-	err := ct.CreateSecrets(ctx)
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			// Do not stop the test if the same secret exists
-			t.Logf("the secret already exists %v", err)
-		} else {
-			t.Errorf("failed to create secrets %v", err)
-		}
-	}
-
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
 	defer ct.CleanUpExtensionResources(ct.InitialResources)
-	err = ct.CreateInitialResources(ctx)
+	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
 	success := true
@@ -307,14 +252,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
-		}
-	}
-
-	if !ct.SkipSecretDeletion {
-		t.Logf("Deleting secrets")
-		err = ct.DeleteSecrets(ctx)
-		if err != nil {
-			t.Errorf("failed to delete secrets %v", err)
 		}
 	}
 
