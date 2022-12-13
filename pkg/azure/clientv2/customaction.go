@@ -7,30 +7,28 @@ package clientv2
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
-
-const (
-	DefaultBaseURI = "https://management.azure.com"
-)
-
-type BaseClient struct {
-	armresources.Client
-	BaseURI string
-}
 
 type CustomActionClient struct {
-	BaseClient
+	*BaseClient
 }
 
-func New(subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
-	client, err := NewWithBaseURI(DefaultBaseURI, subscriptionID, credential)
+// NewCustomActionClient creates an instance of the CustomActionClient with the default Base URI.
+func NewCustomActionClient(subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
+	client, err := NewCustomActionClientWithBaseURI(DefaultBaseURI, subscriptionID, credential)
 	if err != nil {
 		return nil, err
 	}
@@ -38,82 +36,108 @@ func New(subscriptionID string, credential azcore.TokenCredential) (*BaseClient,
 	return client, err
 }
 
-func NewWithBaseURI(baseURI string, subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
-	// FIXME: armresources.Client doesn't accept BaseURI. How can I use that?
-	client, err := armresources.NewClient(subscriptionID, credential, &arm.ClientOptions{})
+// NewCustomActionClientWithBaseURI creates an instance of the CustomActionClient with a Base URI.
+func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
+	options := &arm.ClientOptions{
+		ClientOptions: azcore.ClientOptions{
+			Cloud: cloud.Configuration{
+				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
+					cloud.ResourceManager: {
+						Endpoint: baseURI,
+					},
+				},
+			},
+		},
+	}
+
+	client, err := armresources.NewClient(subscriptionID, credential, options)
+	if err != nil {
+		return nil, err
+	}
+
+	pipeline, err := armruntime.NewPipeline(moduleName, moduleVersion, credential, runtime.PipelineOptions{}, options)
 	if err != nil {
 		return nil, err
 	}
 
 	return &BaseClient{
-		Client:  *client,
-		BaseURI: baseURI,
+		Client:   client,
+		Pipeline: &pipeline,
+		BaseURI:  baseURI,
 	}, nil
 }
 
-type CustomActionResponse struct {
-	Body     map[string]interface{}
-	Response autorest.Response
+type ClientCustomActionResponse struct {
+	armresources.GenericResource
 }
 
-func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id string, apiVersion string, action string, body interface{}) (result CustomActionResponse, err error) {
-	req, err := client.InvokeCustomActionPreparer(ctx, id, apiVersion, action, body)
+type ClientBeginCustomActionOptions struct {
+	resourceID string
+	action     string
+	apiVersion string
+}
+
+// New creates an instance of the CustomActionClient with the default Base URI.
+func NewCustomActionRequestOptions(resourceID, action, apiVersion string) *ClientBeginCustomActionOptions {
+	// FIXME: This is to validate the resourceID.
+	_, err := resources.ParseResource(resourceID)
 	if err != nil {
-		err = autorest.NewErrorWithError(err, "CustomActionClient", "InvokeCustomAction", nil, "Failure preparing request")
-		return
+		return nil
 	}
 
-	response, err := client.InvokeCustomActionSender(req)
+	return &ClientBeginCustomActionOptions{
+		resourceID: resourceID,
+		action:     action,
+		apiVersion: apiVersion,
+	}
+}
+
+func (client *CustomActionClient) BeginCustomAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*runtime.Poller[ClientCustomActionResponse], error) {
+	resp, err := client.customAction(ctx, opts)
 	if err != nil {
-		err = autorest.NewErrorWithError(err, "CustomActionClient", "InvokeCustomAction", nil, "Failure sending request")
-		return
+		return nil, err
 	}
 
-	result, err = client.InvokeCustomActionResponder(response)
+	// FIXME: Is this the right way?
+	return runtime.NewPoller[ClientCustomActionResponse](resp, *client.Pipeline, nil)
+}
+
+func (client *CustomActionClient) customAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*http.Response, error) {
+	req, err := client.customActionCreateRequest(ctx, opts)
 	if err != nil {
-		err = autorest.NewErrorWithError(err, "CustomActionClient", "InvokeCustomAction", nil, "Failure reading response")
-		return
+		return nil, err
 	}
 
-	return
+	resp, err := client.Pipeline.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
+		return nil, runtime.NewResponseError(resp)
+	}
+	return resp, nil
 }
 
-func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context, id string, apiVersion string, action string, body interface{}) (*http.Request, error) {
-	pathParameters := map[string]interface{}{
-		"id":     autorest.Encode("none", id),
-		"action": autorest.Encode("path", action),
+func (client *CustomActionClient) customActionCreateRequest(ctx context.Context, opts *ClientBeginCustomActionOptions) (*policy.Request, error) {
+	urlPath := "/{resourceID}/{action}"
+	if opts.resourceID == "" {
+		return nil, errors.New("resourceID cannot be empty")
 	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceID}", url.PathEscape(opts.resourceID))
 
-	queryParameters := map[string]interface{}{
-		"api-version": apiVersion,
+	if opts.action == "" {
+		return nil, errors.New("action cannot be empty")
 	}
+	urlPath = strings.ReplaceAll(urlPath, "{action}", url.PathEscape(opts.action))
 
-	preparer := autorest.CreatePreparer(
-		autorest.AsContentType("application/json; charset=utf-8"),
-		autorest.AsPost(),
-		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPathParameters("{id}/{action}", pathParameters),
-		autorest.WithQueryParameters(queryParameters))
-	if body != nil {
-		preparer = autorest.DecoratePreparer(preparer, autorest.WithJSON(body))
+	// FIXME: Is joining BaseURI and URLPath going to give us a wrong URL?
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.BaseURI, urlPath))
+	if err != nil {
+		return nil, err
 	}
-
-	return preparer.Prepare((&http.Request{}).WithContext(ctx))
-}
-
-func (client CustomActionClient) InvokeCustomActionSender(req *http.Request) (*http.Response, error) {
-	// return client.Send(req, azure.DoRetryWithRegistration(client.Client))
-	return nil, nil
-}
-
-func (client CustomActionClient) InvokeCustomActionResponder(resp *http.Response) (result CustomActionResponse, err error) {
-	body := map[string]interface{}{}
-	err = autorest.Respond(
-		resp,
-		azure.WithErrorUnlessStatusCode(http.StatusOK),
-		autorest.ByUnmarshallingJSON(&body),
-		autorest.ByClosing())
-	result.Body = body
-	result.Response = autorest.Response{Response: resp}
-	return
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", opts.apiVersion)
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, runtime.MarshalAsJSON(req, nil)
 }
