@@ -56,7 +56,7 @@ func TestValidateRequest(t *testing.T) {
 	})
 
 	// Create default Kubernetes fake client.
-	defaultFakeClient := rptesting.NewFakeKubeClient(nil)
+	defaultFakeClient := rptesting.NewFakeKubeClient(crdScheme)
 
 	type args struct {
 		ctx         context.Context
