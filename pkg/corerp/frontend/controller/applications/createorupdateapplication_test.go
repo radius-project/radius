@@ -11,53 +11,33 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+
+	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
+	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
+	"github.com/project-radius/radius/pkg/corerp/datamodel"
+	rptest "github.com/project-radius/radius/pkg/corerp/testing"
+	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
-	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
-	"github.com/project-radius/radius/pkg/corerp/datamodel"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
-	"github.com/project-radius/radius/pkg/ucp/dataprovider"
-	"github.com/project-radius/radius/pkg/ucp/store"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 
-func fakeStoreObject(dm conv.DataModelInterface) *store.Object {
-	b, err := json.Marshal(dm)
-	if err != nil {
-		return nil
-	}
-	var r any
-	err = json.Unmarshal(b, &r)
-	if err != nil {
-		return nil
-	}
-	return &store.Object{Data: r}
-}
+const (
+	testAppID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0"
+	testEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0"
+)
 
-func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
+func TestCreateOrUpdateApplicationRun_CreateNew_20220315PrivatePreview(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
 
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	mockSP := dataprovider.NewMockDataStorageProvider(mctrl)
-	ctx := context.Background()
-
-	envdm := &datamodel.Environment{
-		Properties: datamodel.EnvironmentProperties{
-			Compute: datamodel.EnvironmentCompute{
-				Kind: datamodel.KubernetesComputeKind,
-				KubernetesCompute: datamodel.KubernetesComputeProperties{
-					Namespace: "default",
-				},
-			},
-		},
-	}
-
-	createNewResourceCases := []struct {
+	ctrlTests := []struct {
 		desc               string
 		headerKey          string
 		headerValue        string
@@ -71,15 +51,15 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", 200, false},
 	}
 
-	for _, tt := range createNewResourceCases {
+	for _, tt := range ctrlTests {
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, appInput)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -87,12 +67,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				}).Times(1)
 
 			if !tt.shouldFail {
-				// Mocks for FindNamespaceByEnvID
-				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
-				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
-
 				// Environmment and application namespace queries
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -107,7 +83,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			expectedOutput.SystemData.CreatedByType = expectedOutput.SystemData.LastModifiedByType
 
 			if !tt.shouldFail {
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -118,8 +94,9 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				DataProvider:  mockSP,
+				StorageClient: tCtx.MockSC,
+				DataProvider:  tCtx.MockSP,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -137,8 +114,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
+}
 
-	updateExistingResourceCases := []struct {
+func TestCreateOrUpdateApplicationRun_Update_20220315PrivatePreview(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	ctrlTests := []struct {
 		desc               string
 		headerKey          string
 		headerValue        string
@@ -155,19 +136,19 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", 412, true},
 	}
 
-	for _, tt := range updateExistingResourceCases {
+	for _, tt := range ctrlTests {
 		t.Run(tt.desc, func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			if tt.inputFile != "" {
 				appInput = &v20220315privatepreview.ApplicationResource{}
-				_ = json.Unmarshal(radiustesting.ReadFixture(tt.inputFile), appInput)
+				_ = json.Unmarshal(rptest.ReadFixture(tt.inputFile), appInput)
 			}
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, appInput)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodGet, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -178,12 +159,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
-				// Mocks for FindNamespaceByEnvID
-				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
-				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
-
 				// Environmment and application namespace queries
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -192,7 +169,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						}, nil
 					}).Times(2)
 
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -203,8 +180,9 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				DataProvider:  mockSP,
+				StorageClient: tCtx.MockSC,
+				DataProvider:  tCtx.MockSP,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -223,8 +201,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
+}
 
-	patchNonExistingResourceCases := []struct {
+func TestCreateOrUpdateApplicationRun_PatchNonExisting_20220315PrivatePreview(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	ctrlTests := []struct {
 		desc               string
 		headerKey          string
 		headerValue        string
@@ -237,15 +219,15 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		{"patch-non-existing-resource-random-if-match", "If-Match", "randome-etag", "", 404, true},
 	}
 
-	for _, tt := range patchNonExistingResourceCases {
+	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, _, _ := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -253,12 +235,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
-				// Mocks for FindNamespaceByEnvID
-				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
-				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
-
 				// Environmment and application namespace queries
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -269,8 +247,9 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				DataProvider:  mockSP,
+				StorageClient: tCtx.MockSC,
+				DataProvider:  tCtx.MockSP,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -281,8 +260,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
 	}
+}
 
-	patchExistingResourceCases := []struct {
+func TestCreateOrUpdateApplicationRun_PatchExisting_20220315PrivatePreview(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	ctrlTests := []struct {
 		desc               string
 		headerKey          string
 		headerValue        string
@@ -296,15 +279,15 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		{"patch-existing-resource-not-matching-if-match", "If-Match", "not-matching-etag", "another-etag", 412, true},
 	}
 
-	for _, tt := range patchExistingResourceCases {
+	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, appDataModel, expectedOutput := getTestModels20220315privatepreview()
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -315,12 +298,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
-				// Mocks for FindNamespaceByEnvID
-				mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
-				mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
-
 				// Environmment and application namespace queries
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Query(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -329,7 +308,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 						}, nil
 					}).Times(2)
 
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -341,8 +320,9 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				DataProvider:  mockSP,
+				StorageClient: tCtx.MockSC,
+				DataProvider:  tCtx.MockSP,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -359,8 +339,12 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 		})
 	}
+}
 
-	existingResourceNamespaceCases := []struct {
+func TestCreateOrUpdateApplicationRun_CreateExisting_20220315PrivatePreview(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	ctrlTests := []struct {
 		desc                 string
 		headerKey            string
 		headerValue          string
@@ -373,7 +357,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 		{"create-existing-namespace-match-same-resource", "If-Match", "", "resource-etag", "app0", 200, false},
 	}
 
-	for _, tt := range existingResourceNamespaceCases {
+	for _, tt := range ctrlTests {
 		t.Run(fmt.Sprint(tt.desc), func(t *testing.T) {
 			appInput, appDataModel, _ := getTestModels20220315privatepreview()
 			_, conflictDataModel, _ := getTestModels20220315privatepreview()
@@ -381,11 +365,11 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			conflictDataModel.Name = "existing"
 			conflictDataModel.ID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/" + tt.existingResourceName
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodPatch, testHeaderfile, appInput)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodPatch, testHeaderfile, appInput)
 			req.Header.Set(tt.headerKey, tt.headerValue)
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -406,12 +390,8 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				},
 			}
 
-			// Mocks for FindNamespaceByEnvID
-			mockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(store.StorageClient(mStorageClient), nil).Times(1)
-			mStorageClient.EXPECT().Get(gomock.Any(), gomock.Any()).Return(fakeStoreObject(envdm), nil)
-
 			// Environment namespace query
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Query(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -421,7 +401,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			// Application namespace query
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Query(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
@@ -432,7 +412,7 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, opts ...store.SaveOptions) error {
@@ -444,8 +424,9 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				DataProvider:  mockSP,
+				StorageClient: tCtx.MockSC,
+				DataProvider:  tCtx.MockSP,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewCreateOrUpdateApplication(opts)
@@ -457,5 +438,300 @@ func TestCreateOrUpdateApplicationRun_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, tt.expectedStatusCode, w.Result().StatusCode)
 		})
 	}
+}
 
+func TestPopulateKubernetesNamespace_valid_namespace(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	opts := ctrl.Options{
+		StorageClient: tCtx.MockSC,
+		DataProvider:  tCtx.MockSP,
+		KubeClient:    rptest.NewFakeKubeClient(nil),
+	}
+
+	ctl, err := NewCreateOrUpdateApplication(opts)
+	require.NoError(t, err)
+	appCtrl := ctl.(*CreateOrUpdateApplication)
+
+	t.Run("override namespace", func(t *testing.T) {
+		old := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+					Status: rp.ResourceStatus{
+						Compute: &rp.EnvironmentCompute{
+							Kind: rp.KubernetesComputeKind,
+							KubernetesCompute: rp.KubernetesComputeProperties{
+								Namespace: "app-ns",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			}).Times(2)
+
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "app-ns"},
+					},
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, old, newResource)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		require.Equal(t, "app-ns", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
+	})
+
+	t.Run("generate namespace with environment", func(t *testing.T) {
+		tCtx.MockSC.
+			EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			}).Times(2)
+
+		tCtx.MockSP.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Return(tCtx.MockSC, nil).Times(1)
+
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
+						Namespace: "default",
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.
+			EXPECT().
+			Get(gomock.Any(), gomock.Any()).
+			Return(rptest.FakeStoreObject(envdm), nil)
+
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+
+		require.Equal(t, "default-app0", newResource.Properties.Status.Compute.KubernetesCompute.Namespace)
+	})
+}
+
+func TestPopulateKubernetesNamespace_invalid_property(t *testing.T) {
+	tCtx := rptest.NewTestContext(t)
+
+	opts := ctrl.Options{
+		StorageClient: tCtx.MockSC,
+		DataProvider:  tCtx.MockSP,
+		KubeClient:    rptest.NewFakeKubeClient(nil),
+	}
+
+	ctl, err := NewCreateOrUpdateApplication(opts)
+	require.NoError(t, err)
+	appCtrl := ctl.(*CreateOrUpdateApplication)
+
+	t.Run("invalid namespace", func(t *testing.T) {
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{},
+				}, nil
+			}).Times(2)
+
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: strings.Repeat("invalid-name", 6)},
+					},
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
+		require.NoError(t, err)
+		res := resp.(*rest.BadRequestResponse)
+		require.Equal(t, res.Body.Error.Message, "'invalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-nameinvalid-name' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.")
+	})
+
+	t.Run("conflicted namespace in environment resource", func(t *testing.T) {
+		envdm := &datamodel.Environment{
+			Properties: datamodel.EnvironmentProperties{
+				Compute: rp.EnvironmentCompute{
+					Kind: rp.KubernetesComputeKind,
+					KubernetesCompute: rp.KubernetesComputeProperties{
+						Namespace: "testns",
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			DoAndReturn(func(ctx context.Context, query store.Query, options ...store.QueryOptions) (*store.ObjectQueryResult, error) {
+				return &store.ObjectQueryResult{
+					Items: []store.Object{*rptest.FakeStoreObject(envdm)},
+				}, nil
+			}).Times(1)
+
+		newResource := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
+					},
+				},
+			},
+		}
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
+		require.NoError(t, err)
+		res := resp.(*rest.ConflictResponse)
+		require.Equal(t, res.Body.Error.Message, "Environment env0 with the same namespace (testns) already exists")
+	})
+
+	t.Run("conflicted namespace in the different application resource", func(t *testing.T) {
+		newResource := &datamodel.Application{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: testAppID,
+				},
+			},
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "testns"},
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			Return(&store.ObjectQueryResult{}, nil).Times(1)
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			Return(&store.ObjectQueryResult{Items: []store.Object{*rptest.FakeStoreObject(newResource)}}, nil).Times(1)
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, nil, newResource)
+		require.NoError(t, err)
+		res := resp.(*rest.ConflictResponse)
+		require.Equal(t, res.Body.Error.Message, "Application /subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/applications/app0 with the same namespace (testns) already exists")
+	})
+
+	t.Run("update application with the different namespace", func(t *testing.T) {
+		old := &datamodel.Application{
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+					Status: rp.ResourceStatus{
+						Compute: &rp.EnvironmentCompute{
+							Kind: rp.KubernetesComputeKind,
+							KubernetesCompute: rp.KubernetesComputeProperties{
+								Namespace: "default-app0",
+							},
+						},
+					},
+				},
+			},
+		}
+
+		newResource := &datamodel.Application{
+			BaseResource: v1.BaseResource{
+				TrackedResource: v1.TrackedResource{
+					ID: testAppID,
+				},
+			},
+			Properties: datamodel.ApplicationProperties{
+				BasicResourceProperties: rp.BasicResourceProperties{
+					Environment: testEnvID,
+				},
+				Extensions: []datamodel.Extension{
+					{
+						Kind:                datamodel.KubernetesNamespaceExtension,
+						KubernetesNamespace: &datamodel.KubeNamespaceExtension{Namespace: "differentname"},
+					},
+				},
+			},
+		}
+
+		tCtx.MockSC.EXPECT().
+			Query(gomock.Any(), gomock.Any()).
+			Return(&store.ObjectQueryResult{}, nil).Times(2)
+
+		id, err := resources.ParseResource(testAppID)
+		require.NoError(t, err)
+		armctx := &v1.ARMRequestContext{ResourceID: id}
+		ctx := v1.WithARMRequestContext(tCtx.Ctx, armctx)
+
+		resp, err := appCtrl.populateKubernetesNamespace(ctx, old, newResource)
+		require.NoError(t, err)
+		res := resp.(*rest.BadRequestResponse)
+		require.Equal(t, res.Body.Error.Message, "Updating an application's Kubernetes namespace from 'default-app0' to 'differentname' requires the application to be deleted and redeployed. Please delete your application and try again.")
+	})
 }

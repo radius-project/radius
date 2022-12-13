@@ -29,6 +29,12 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   location: 'global'
   properties: {
     environment: env.id
+    extensions: [
+      {
+          kind: 'kubernetesNamespace'
+          namespace: 'corerp-resources-mongodb-devrecipe-app'
+      }
+    ]
   }
 }
 

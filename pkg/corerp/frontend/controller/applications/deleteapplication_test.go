@@ -13,29 +13,26 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	rptest "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/store"
+
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 )
 
 func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
-
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	ctx := context.Background()
+	tCtx := rptest.NewTestContext(t)
 
 	t.Parallel()
 
 	t.Run("delete non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
+		ctx := rptest.ARMTestContextFromRequest(req)
 
-		mStorageClient.
+		tCtx.MockSC.
 			EXPECT().
 			Get(gomock.Any(), gomock.Any()).
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -43,7 +40,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 			})
 
 		opts := ctrl.Options{
-			StorageClient: mStorageClient,
+			StorageClient: tCtx.MockSC,
 		}
 
 		ctl, err := NewDeleteApplication(opts)
@@ -83,13 +80,13 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodDelete, testHeaderfile, nil)
+			req, _ := rptest.GetARMTestHTTPRequest(tCtx.Ctx, http.MethodDelete, testHeaderfile, nil)
 			req.Header.Set("If-Match", tt.ifMatchETag)
 
-			ctx := radiustesting.ARMTestContextFromRequest(req)
+			ctx := rptest.ARMTestContextFromRequest(req)
 			_, appDataModel, _ := getTestModels20220315privatepreview()
 
-			mStorageClient.
+			tCtx.MockSC.
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
@@ -104,7 +101,7 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 				})
 
 			if !tt.shouldFail {
-				mStorageClient.
+				tCtx.MockSC.
 					EXPECT().
 					Delete(gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, id string, _ ...store.DeleteOptions) error {
@@ -113,7 +110,8 @@ func TestDeleteApplicationRun_20220315PrivatePreview(t *testing.T) {
 			}
 
 			opts := ctrl.Options{
-				StorageClient: mStorageClient,
+				StorageClient: tCtx.MockSC,
+				KubeClient:    rptest.NewFakeKubeClient(nil),
 			}
 
 			ctl, err := NewDeleteApplication(opts)

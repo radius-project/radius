@@ -28,7 +28,7 @@
                   }
                 },
                 {
-                  "kind": "kubernetesNamespaceOverride",
+                  "kind": "kubernetesNamespace",
                   "namespace": "app-ns"
                 }
               ]

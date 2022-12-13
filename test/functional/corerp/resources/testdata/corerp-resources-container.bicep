@@ -17,6 +17,12 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
   location: location
   properties: {
     environment: environment
+    extensions: [
+      {
+          kind: 'kubernetesNamespace'
+          namespace: 'corerp-resources-container-app'
+      }
+    ]
   }
 }
 

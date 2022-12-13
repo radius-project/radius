@@ -30,9 +30,19 @@
         }
       },
       {
-        "kind": "kubernetesNamespaceOverride",
-        "namespace": "app0-ns"
+        "kind": "kubernetesNamespace",
+        "kubernetesNamespace": {
+          "namespace": "app0-ns"
+        }
       }
-    ]
+    ],
+    "status": {
+      "compute": {
+        "kind": "kubernetes",
+        "kubernetes": {
+          "namespace": "app0-ns"
+        }
+      }
+    }
   }
 }

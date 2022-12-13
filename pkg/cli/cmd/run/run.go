@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/fatih/color"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -114,17 +115,21 @@ func (r *Runner) Run(ctx context.Context) error {
 		return nil
 	}
 
-	// We don't expect an error here because we already deployed to the environment
-	environment, err := client.GetEnvDetails(ctx, r.EnvironmentName)
+	app, err := client.ShowApplication(ctx, r.ApplicationName)
 	if err != nil {
 		return err
 	}
 
 	namespace := ""
-	switch compute := environment.Properties.Compute.(type) {
-	case *v20220315privatepreview.KubernetesCompute:
-		namespace = *compute.Namespace
-	default:
+	appStatus := app.Properties.Status
+	if appStatus != nil && appStatus.Compute != nil {
+		kube, ok := appStatus.Compute.(*v20220315privatepreview.KubernetesCompute)
+		if ok && kube.Namespace != nil {
+			namespace = to.String(kube.Namespace)
+		}
+	}
+
+	if namespace == "" {
 		return &cli.FriendlyError{Message: "Only kubernetes runtimes are supported."}
 	}
 

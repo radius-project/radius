@@ -39,6 +39,15 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
+			Name:          "Valid Create Command with parameters passed as file",
+			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases", "--parameters", "@testdata/recipeparam.json"},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         configWithWorkspace,
+			},
+		},
+		{
 			Name:          "Create Command with fallback workspace",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,

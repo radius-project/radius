@@ -55,7 +55,7 @@ func (ucptest UCPTest) Test(t *testing.T) {
 
 	// Only start capturing controller logs once.
 	radiusControllerLogSync.Do(func() {
-		err := validation.SaveLogsForController(ctx, ucptest.Options.K8sClient, "radius-system", logPrefix)
+		_, err := validation.SaveContainerLogs(ctx, ucptest.Options.K8sClient, "radius-system", logPrefix)
 		if err != nil {
 			t.Errorf("failed to capture logs from radius controller: %v", err)
 		}

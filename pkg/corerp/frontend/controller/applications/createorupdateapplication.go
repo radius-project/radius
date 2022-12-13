@@ -17,16 +17,22 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	"github.com/project-radius/radius/pkg/rp"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
+	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 
-	rp_kube "github.com/project-radius/radius/pkg/rp/kube"
+	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
 
 const (
 	envNamespaceQuery = "properties.compute.kubernetes.namespace"
-	appNamespaceQuery = "appInternal.kubernetesNamespace"
+	appNamespaceQuery = "properties.status.compute.kubernetes.namespace"
 )
 
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
@@ -46,36 +52,25 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	}, nil
 }
 
-// Run executes CreateOrUpdateApplication operation.
-func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+// Radius uses Kubernetes namespace by following rules:
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+// | namespace       | namespace override | env-scoped resource namespace | app-scoped resource namespace |
+// | in Environments | in Applications    |                               |                               |
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+// | envNS           | UNDEFINED          | envNS                         | envNS-{appName}               |
+// | envNS           | appNS              | envNS                         | appNS                         |
+// +-----------------+--------------------+-------------------------------+-------------------------------+
+
+func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
+	logger := logr.FromContextOrDiscard(ctx)
+
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	newResource, err := a.GetResourceFromRequest(ctx, req)
-	if err != nil {
-		return nil, err
-	}
-
-	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
-	if err != nil {
-		return nil, err
-	}
-
-	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
-		return r, err
-	}
-
-	if old != nil {
-		oldProp := &old.Properties.BasicResourceProperties
-		newProp := &newResource.Properties.BasicResourceProperties
-		if !oldProp.EqualLinkedResource(newProp) {
-			return rest.NewLinkedResourceUpdateErrorResponse(serviceCtx.ResourceID, oldProp, newProp), nil
-		}
-	}
 
 	kubeNamespace := ""
-	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceOverride)
+	ext := datamodel.FindExtension(newResource.Properties.Extensions, datamodel.KubernetesNamespaceExtension)
 	if ext != nil {
 		// Override environment namespace.
-		kubeNamespace = ext.KubernetesNamespaceOverride.Namespace
+		kubeNamespace = ext.KubernetesNamespace.Namespace
 	} else {
 		// Construct namespace using the namespace specified by environment resource.
 		envNamespace, err := rp_kube.FindNamespaceByEnvID(ctx, a.DataProvider(), newResource.Properties.Environment)
@@ -117,8 +112,60 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	// Populate kubernetes namespace to internal metadata property.
-	newResource.AppInternal.KubernetesNamespace = kubeNamespace
+	if !kubernetes.IsValidObjectName(kubeNamespace) {
+		return rest.NewBadRequestResponse(fmt.Sprintf("'%s' is the invalid namespace. This must be at most 63 alphanumeric characters or '-'. Please specify a valid namespace using 'kubernetesNamespace' extension in '$.properties.extensions[*]'.", kubeNamespace)), nil
+	}
+
+	if old != nil {
+		c := old.Properties.Status.Compute
+		if c != nil && c.Kind == rp.KubernetesComputeKind && c.KubernetesCompute.Namespace != kubeNamespace {
+			return rest.NewBadRequestResponse(fmt.Sprintf("Updating an application's Kubernetes namespace from '%s' to '%s' requires the application to be deleted and redeployed. Please delete your application and try again.", c.KubernetesCompute.Namespace, kubeNamespace)), nil
+		}
+	}
+
+	// Populate kubernetes namespace to internal metadata property for query indexing.
+	newResource.Properties.Status.Compute = &rp.EnvironmentCompute{
+		Kind:              rp.KubernetesComputeKind,
+		KubernetesCompute: rp.KubernetesComputeProperties{Namespace: kubeNamespace},
+	}
+
+	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
+	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
+	if apierrors.IsAlreadyExists(err) {
+		logger.Info("Using existing namespace", "namespace", kubeNamespace)
+	} else if err != nil {
+		return nil, err
+	} else {
+		logger.Info("Created the namespace", "namespace", kubeNamespace)
+	}
+
+	return nil, nil
+}
+
+// Run executes CreateOrUpdateApplication operation.
+func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+	newResource, err := a.GetResourceFromRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	old, etag, err := a.GetResource(ctx, serviceCtx.ResourceID)
+	if err != nil {
+		return nil, err
+	}
+
+	if r, err := a.PrepareResource(ctx, req, newResource, old, etag); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+		return r, err
+	}
+
+	if r, err := a.populateKubernetesNamespace(ctx, old, newResource); r != nil || err != nil {
+		return r, err
+	}
 
 	newResource.SetProvisioningState(v1.ProvisioningStateSucceeded)
 	newEtag, err := a.SaveResource(ctx, serviceCtx.ResourceID.String(), newResource, etag)

@@ -26,8 +26,6 @@ func Test_NestedModules(t *testing.T) {
 	template := "testdata/corerp-mechanics-nestedmodules.bicep"
 	name := "corerp-mechanics-nestedmodules"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -45,16 +43,15 @@ func Test_NestedModules(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
 
 func Test_RedeployWithAnotherResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-with-another-resource"
+	appNamespace := "default-corerp-mechanics-redeploy-with-another-resource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withanotherresource.step%d.bicep"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -74,7 +71,7 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicsa"),
 					},
 				},
@@ -102,23 +99,22 @@ func Test_RedeployWithAnotherResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicsb"),
 						validation.NewK8sPodForResource(name, "mechanicsc"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
 
 func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withupdatedresource"
+	appNamespace := "default-corerp-mechanics-redeploy-withupdatedresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withupdatedresource.step%d.bicep"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -138,7 +134,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicsd"),
 					},
 				},
@@ -161,7 +157,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicsd"),
 					},
 				},
@@ -169,7 +165,7 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				labelset := kubernetes.MakeSelectorLabels(name, "mechanicsd")
 
-				deployments, err := test.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
+				deployments, err := test.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 
@@ -181,15 +177,14 @@ func Test_RedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 				require.Equal(t, "updated", envVar.Value, "expected env var to be updated")
 			},
 		},
-	}, requiredSecrets)
+	})
 	test.Test(t)
 }
 
 func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 	name := "corerp-mechanics-redeploy-withtwoseparateresource"
+	appNamespace := "default-corerp-mechanics-redeploy-withtwoseparateresource"
 	templateFmt := "testdata/corerp-mechanics-redeploy-withtwoseparateresource.step%d.bicep"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -209,7 +204,7 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicse"),
 					},
 				},
@@ -237,23 +232,22 @@ func Test_RedeployWithTwoSeparateResourcesKeepsResource(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicse"),
 						validation.NewK8sPodForResource(name, "mechanicsf"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
 
 func Test_CommunicationCycle(t *testing.T) {
 	name := "corerp-mechanics-communication-cycle"
+	appNamespace := "default-corerp-mechanics-communication-cycle"
 	template := "testdata/corerp-mechanics-communication-cycle.bicep"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -288,14 +282,14 @@ func Test_CommunicationCycle(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mechanicsg"),
 						validation.NewK8sPodForResource(name, "cyclea"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -303,8 +297,6 @@ func Test_CommunicationCycle(t *testing.T) {
 func Test_InvalidResourceIDs(t *testing.T) {
 	name := "corerp-mechanics-invalid-resourceids"
 	template := "testdata/corerp-mechanics-invalid-resourceids.bicep"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -319,7 +311,7 @@ func Test_InvalidResourceIDs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

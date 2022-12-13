@@ -41,9 +41,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: datamodel.EnvironmentCompute{
+					Compute: rp.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: datamodel.KubernetesComputeProperties{
+						KubernetesCompute: rp.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -85,9 +85,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: datamodel.EnvironmentCompute{
+					Compute: rp.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: datamodel.KubernetesComputeProperties{
+						KubernetesCompute: rp.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -100,7 +100,7 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
 							LinkType:     "Applications.Link/mongoDatabases",
-							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
 							Parameters: map[string]interface{}{
 								"throughput": float64(400),
 							},
@@ -128,9 +128,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: datamodel.EnvironmentCompute{
+					Compute: rp.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: datamodel.KubernetesComputeProperties{
+						KubernetesCompute: rp.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -168,9 +168,9 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					},
 				},
 				Properties: datamodel.EnvironmentProperties{
-					Compute: datamodel.EnvironmentCompute{
+					Compute: rp.EnvironmentCompute{
 						Kind: "kubernetes",
-						KubernetesCompute: datamodel.KubernetesComputeProperties{
+						KubernetesCompute: rp.KubernetesComputeProperties{
 							ResourceID: "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ContainerService/managedClusters/radiusTestCluster",
 							Namespace:  "default",
 						},
@@ -345,11 +345,11 @@ func TestConvertFromValidation(t *testing.T) {
 func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
 		versioned string
-		datamodel datamodel.EnvironmentComputeKind
+		datamodel rp.EnvironmentComputeKind
 		err       error
 	}{
-		{EnvironmentComputeKindKubernetes, datamodel.KubernetesComputeKind, nil},
-		{"", datamodel.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
+		{EnvironmentComputeKindKubernetes, rp.KubernetesComputeKind, nil},
+		{"", rp.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {
@@ -363,11 +363,11 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 
 func TestFromEnvironmentComputeKindDataModel(t *testing.T) {
 	kindTests := []struct {
-		datamodel datamodel.EnvironmentComputeKind
+		datamodel rp.EnvironmentComputeKind
 		versioned string
 	}{
-		{datamodel.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
-		{datamodel.UnknownComputeKind, EnvironmentComputeKindKubernetes},
+		{rp.KubernetesComputeKind, EnvironmentComputeKindKubernetes},
+		{rp.UnknownComputeKind, EnvironmentComputeKindKubernetes},
 	}
 
 	for _, tt := range kindTests {

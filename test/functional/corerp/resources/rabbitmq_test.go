@@ -17,8 +17,7 @@ import (
 func Test_RabbitMQ(t *testing.T) {
 	template := "testdata/corerp-resources-rabbitmq.bicep"
 	name := "corerp-resources-rabbitmq"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-rabbitmq"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -53,7 +52,7 @@ func Test_RabbitMQ(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "rmq-app-ctnr"),
 						validation.NewK8sPodForResource(name, "rmq-ctnr"),
 						validation.NewK8sServiceForResource(name, "rmq-rte"),
@@ -61,7 +60,7 @@ func Test_RabbitMQ(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

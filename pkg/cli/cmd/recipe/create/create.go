@@ -34,7 +34,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
 		
 		- A file containing a single value in JSON format
-	    - A key-value-pair passed in the command line
+		- A key-value-pair passed in the command line
 		`,
 		Example: `
 		# Add a link recipe to an environment

@@ -11,13 +11,13 @@ param magpieimage string
 param oidcIssuer string = 'https://radiusoidc.blob.core.windows.net/kubeoidc/'
 
 resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
-  name: 'test-env'
+  name: 'corerp-azure-workload-env'
   location: location
   properties: {
     compute: {
       kind: 'kubernetes'
       resourceId: 'self'
-      namespace: 'test-namespace'
+      namespace: 'corerp-azure-workload-env'
       identity: {
         kind: 'azure.com.workload'
         oidcIssuer: oidcIssuer
@@ -32,15 +32,21 @@ resource env 'Applications.Core/environments@2022-03-15-privatepreview' = {
 }
 
 resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
-  name: 'corerp-resources-container-wi'
+  name: 'corerp-resources-container-workload'
   location: location
   properties: {
     environment: env.id
+    extensions: [
+      {
+          kind: 'kubernetesNamespace'
+          namespace: 'azstorage-workload-app'
+      }
+    ]
   }
 }
 
 resource container 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'test-container-wi'
+  name: 'azstorage-ctnr'
   location: location
   properties: {
     application: app.id

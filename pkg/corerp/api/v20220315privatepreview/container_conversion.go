@@ -236,16 +236,15 @@ func (dst *ContainerResource) ConvertFrom(src conv.DataModelInterface) error {
 func toHealthProbePropertiesDataModel(h HealthProbePropertiesClassification) datamodel.HealthProbeProperties {
 	switch c := h.(type) {
 	case *ExecHealthProbeProperties:
-		converted := &datamodel.HealthProbeProperties{
+		return datamodel.HealthProbeProperties{
 			Kind: datamodel.ExecHealthProbe,
 			Exec: &datamodel.ExecHealthProbeProperties{
 				HealthProbeBase: toHealthProbeBase(*c.GetHealthProbeProperties()),
 				Command:         to.String(c.Command),
 			},
 		}
-		return *converted
 	case *HTTPGetHealthProbeProperties:
-		converted := &datamodel.HealthProbeProperties{
+		return datamodel.HealthProbeProperties{
 			Kind: datamodel.HTTPGetHealthProbe,
 			HTTPGet: &datamodel.HTTPGetHealthProbeProperties{
 				HealthProbeBase: toHealthProbeBase(*c.GetHealthProbeProperties()),
@@ -254,16 +253,14 @@ func toHealthProbePropertiesDataModel(h HealthProbePropertiesClassification) dat
 				Headers:         to.StringMap(c.Headers),
 			},
 		}
-		return *converted
 	case *TCPHealthProbeProperties:
-		converted := &datamodel.HealthProbeProperties{
+		return datamodel.HealthProbeProperties{
 			Kind: datamodel.TCPHealthProbe,
 			TCP: &datamodel.TCPHealthProbeProperties{
 				HealthProbeBase: toHealthProbeBase(*c.GetHealthProbeProperties()),
 				ContainerPort:   to.Int32(c.ContainerPort),
 			},
 		}
-		return *converted
 	}
 
 	return datamodel.HealthProbeProperties{}
@@ -272,7 +269,7 @@ func toHealthProbePropertiesDataModel(h HealthProbePropertiesClassification) dat
 func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) HealthProbePropertiesClassification {
 	switch h.Kind {
 	case datamodel.ExecHealthProbe:
-		converted := ExecHealthProbeProperties{
+		return &ExecHealthProbeProperties{
 			Kind:                (*string)(&h.Kind),
 			FailureThreshold:    h.Exec.FailureThreshold,
 			InitialDelaySeconds: h.Exec.InitialDelaySeconds,
@@ -280,9 +277,8 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			TimeoutSeconds:      h.Exec.TimeoutSeconds,
 			Command:             to.StringPtr(h.Exec.Command),
 		}
-		return &converted
 	case datamodel.HTTPGetHealthProbe:
-		converted := HTTPGetHealthProbeProperties{
+		return &HTTPGetHealthProbeProperties{
 			Kind:                (*string)(&h.Kind),
 			FailureThreshold:    h.HTTPGet.FailureThreshold,
 			InitialDelaySeconds: h.HTTPGet.InitialDelaySeconds,
@@ -292,9 +288,8 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			Path:                to.StringPtr(h.HTTPGet.Path),
 			Headers:             *to.StringMapPtr(h.HTTPGet.Headers),
 		}
-		return &converted
 	case datamodel.TCPHealthProbe:
-		converted := TCPHealthProbeProperties{
+		return &TCPHealthProbeProperties{
 			Kind:                (*string)(&h.Kind),
 			FailureThreshold:    h.TCP.FailureThreshold,
 			InitialDelaySeconds: h.TCP.InitialDelaySeconds,
@@ -302,7 +297,6 @@ func fromHealthProbePropertiesDataModel(h datamodel.HealthProbeProperties) Healt
 			TimeoutSeconds:      h.TCP.TimeoutSeconds,
 			ContainerPort:       to.Int32Ptr(h.TCP.ContainerPort),
 		}
-		return &converted
 	}
 
 	return nil
@@ -367,16 +361,15 @@ func fromProtocolDataModel(protocol datamodel.Protocol) *Protocol {
 func toVolumePropertiesDataModel(h VolumeClassification) datamodel.VolumeProperties {
 	switch c := h.(type) {
 	case *EphemeralVolume:
-		converted := &datamodel.VolumeProperties{
+		return datamodel.VolumeProperties{
 			Kind: datamodel.Ephemeral,
 			Ephemeral: &datamodel.EphemeralVolume{
 				VolumeBase:   toVolumeBaseDataModel(*c.GetVolume()),
 				ManagedStore: toManagedStoreDataModel(c.ManagedStore),
 			},
 		}
-		return *converted
 	case *PersistentVolume:
-		converted := &datamodel.VolumeProperties{
+		return datamodel.VolumeProperties{
 			Kind: datamodel.Persistent,
 			Persistent: &datamodel.PersistentVolume{
 				VolumeBase: toVolumeBaseDataModel(*c.GetVolume()),
@@ -384,7 +377,6 @@ func toVolumePropertiesDataModel(h VolumeClassification) datamodel.VolumePropert
 				Permission: toPermissionDataModel(c.Permission),
 			},
 		}
-		return *converted
 	}
 
 	return datamodel.VolumeProperties{}
@@ -393,20 +385,18 @@ func toVolumePropertiesDataModel(h VolumeClassification) datamodel.VolumePropert
 func fromVolumePropertiesDataModel(v datamodel.VolumeProperties) VolumeClassification {
 	switch v.Kind {
 	case datamodel.Ephemeral:
-		converted := EphemeralVolume{
+		return &EphemeralVolume{
 			Kind:         (*string)(&v.Kind),
 			MountPath:    &v.Ephemeral.MountPath,
 			ManagedStore: fromManagedStoreDataModel(v.Ephemeral.ManagedStore),
 		}
-		return converted.GetVolume()
 	case datamodel.Persistent:
-		converted := PersistentVolume{
+		return &PersistentVolume{
 			Kind:       (*string)(&v.Kind),
 			MountPath:  &v.Persistent.MountPath,
 			Source:     &v.Persistent.Source,
 			Permission: fromPermissionDataModel(v.Persistent.Permission),
 		}
-		return converted.GetVolume()
 	}
 
 	return nil
@@ -468,15 +458,14 @@ func fromPermissionDataModel(rbac datamodel.VolumePermission) *VolumePermission 
 func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extension {
 	switch c := e.(type) {
 	case *ManualScalingExtension:
-		converted := datamodel.Extension{
+		return datamodel.Extension{
 			Kind: datamodel.ManualScaling,
 			ManualScaling: &datamodel.ManualScalingExtension{
 				Replicas: c.Replicas,
 			},
 		}
-		return converted
 	case *DaprSidecarExtension:
-		converted := datamodel.Extension{
+		return datamodel.Extension{
 			Kind: datamodel.DaprSidecar,
 			DaprSidecar: &datamodel.DaprSidecarExtension{
 				AppID:    to.String(c.AppID),
@@ -486,16 +475,14 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 				Provides: to.String(c.Provides),
 			},
 		}
-		return converted
 	case *ContainerKubernetesMetadataExtension:
-		converted := datamodel.Extension{
+		return datamodel.Extension{
 			Kind: datamodel.KubernetesMetadata,
 			KubernetesMetadata: &datamodel.KubeMetadataExtension{
 				Annotations: to.StringMap(c.Annotations),
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-		return converted
 	}
 
 	return datamodel.Extension{}
@@ -505,13 +492,12 @@ func toExtensionDataModel(e ContainerExtensionClassification) datamodel.Extensio
 func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtensionClassification {
 	switch e.Kind {
 	case datamodel.ManualScaling:
-		converted := ManualScalingExtension{
+		return &ManualScalingExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			Replicas: e.ManualScaling.Replicas,
 		}
-		return converted.GetContainerExtension()
 	case datamodel.DaprSidecar:
-		converted := DaprSidecarExtension{
+		return &DaprSidecarExtension{
 			Kind:     to.StringPtr(string(e.Kind)),
 			AppID:    to.StringPtr(e.DaprSidecar.AppID),
 			AppPort:  to.Int32Ptr(e.DaprSidecar.AppPort),
@@ -519,15 +505,13 @@ func fromExtensionClassificationDataModel(e datamodel.Extension) ContainerExtens
 			Protocol: fromProtocolDataModel(e.DaprSidecar.Protocol),
 			Provides: to.StringPtr(e.DaprSidecar.Provides),
 		}
-		return converted.GetContainerExtension()
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
-		converted := ContainerKubernetesMetadataExtension{
+		var ann, lbl = fromExtensionClassificationFields(e)
+		return &ContainerKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
-		return converted.GetContainerExtension()
 	}
 
 	return nil
@@ -548,7 +532,7 @@ func toVolumeBaseDataModel(v Volume) datamodel.VolumeBase {
 	}
 }
 
-func getFromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
+func fromExtensionClassificationFields(e datamodel.Extension) (map[string]string, map[string]string) {
 	var ann map[string]string
 	var lbl map[string]string
 

@@ -17,8 +17,7 @@ import (
 func Test_DaprStateStoreGeneric(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-generic.bicep"
 	name := "corerp-resources-dapr-statestore-generic"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-dapr-statestore-generic"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -43,13 +42,13 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "gnrc-sts-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -57,8 +56,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 func Test_DaprStateStoreTableStorage(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-statestore-tablestorage.bicep"
 	name := "corerp-resources-dapr-statestore-tablestorage"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-dapr-statestore-tablestorage"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -83,13 +81,13 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ts-sts-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
