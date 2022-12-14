@@ -100,7 +100,10 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 					Recipes: map[string]datamodel.EnvironmentRecipeProperties{
 						"cosmos-recipe": {
 							LinkType:     "Applications.Link/mongoDatabases",
-							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb",
+							TemplatePath: "br:sampleregistry.azureacr.io/radius/recipes/mongodatabases",
+							Parameters: map[string]interface{}{
+								"throughput": float64(400),
+							},
 						},
 					},
 					Extensions: getTestKubernetesMetadataExtensions(t),
@@ -261,6 +264,7 @@ func TestConvertDataModelToVersioned(t *testing.T) {
 				require.Equal(t, 1, len(r.Properties.Recipes))
 				require.Equal(t, "Applications.Link/mongoDatabases", r.Properties.Recipes["cosmos-recipe"].LinkType)
 				require.Equal(t, "br:sampleregistry.azureacr.io/radius/recipes/cosmosdb", r.Properties.Recipes["cosmos-recipe"].TemplatePath)
+				require.Equal(t, map[string]interface{}{"throughput": float64(400)}, r.Properties.Recipes["cosmos-recipe"].Parameters)
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup", r.Properties.Providers.Azure.Scope)
 				require.Equal(t, "kubernetesMetadata", *versioned.Properties.Extensions[0].GetExtension().Kind)
 				require.Equal(t, 1, len(versioned.Properties.Extensions))

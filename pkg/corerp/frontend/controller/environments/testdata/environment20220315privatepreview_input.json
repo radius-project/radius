@@ -7,6 +7,15 @@
             "namespace": "default"
         },
         "useDevRecipes": false,
+        "recipes": {
+            "mongo-azure": {
+                "linkType": "Applications.Link/mongoDatabases",
+                "templatePath": "radiusdev.azurecr.io/recipes/mongodatabases/azure:1.0",
+                "parameters": {
+                    "throughput": 400
+                }
+            }
+        },
         "providers": {
             "azure": {
                 "scope": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg"

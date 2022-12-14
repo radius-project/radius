@@ -336,6 +336,7 @@
 ## EnvironmentRecipeProperties
 ### Properties
 * **linkType**: string (Required): Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'
+* **parameters**: any: Any object
 * **templatePath**: string (Required): Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.
 
 ## TrackedResourceTags
