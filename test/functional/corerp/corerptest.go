@@ -13,9 +13,12 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
@@ -30,6 +33,26 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
 	TestNamespace          = "kind-radius"
+
+	// Used to check required features
+	daprComponentCRD         = "components.dapr.io"
+	daprFeatureMessage       = "This test requires Dapr installed in your Kubernetes cluster. Please install Dapr by following the instructions at https://docs.dapr.io/operations/hosting/kubernetes/kubernetes-deploy/."
+	secretProviderClassesCRD = "secretproviderclasses.secrets-store.csi.x-k8s.io"
+	csiDriverMessage         = "This test requires secret store CSI driver. Please install it by following https://secrets-store-csi-driver.sigs.k8s.io/."
+)
+
+// RequiredFeature is used to specify an optional feature that is required
+// for the test to run.
+type RequiredFeature string
+
+const (
+	// FeatureDapr should used with required features to indicate a test dependency
+	// on Dapr.
+	FeatureDapr RequiredFeature = "Dapr"
+
+	// FeatureCSIDriver should be used with required features to indicate a test dependency
+	// on the CSI driver.
+	FeatureCSIDriver RequiredFeature = "CSIDriver"
 )
 
 type TestStep struct {
@@ -51,6 +74,10 @@ type CoreRPTest struct {
 	InitialResources []unstructured.Unstructured
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
+
+	// RequiredFeatures specifies the optional features that are required
+	// for this test to run.
+	RequiredFeatures []RequiredFeature
 }
 
 type TestOptions struct {
@@ -109,9 +136,35 @@ func (ct CoreRPTest) CleanUpExtensionResources(resources []unstructured.Unstruct
 	}
 }
 
+// CheckRequiredFeatures checks the test environment for the features that the test requires.
+func (ct CoreRPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
+	for _, feature := range ct.RequiredFeatures {
+		var crd, message string
+		switch feature {
+		case FeatureDapr:
+			crd = daprComponentCRD
+			message = daprFeatureMessage
+		case FeatureCSIDriver:
+			crd = secretProviderClassesCRD
+			message = csiDriverMessage
+		default:
+			panic(fmt.Sprintf("unsupported feature: %s", feature))
+		}
+
+		err := ct.Options.Client.Get(ctx, client.ObjectKey{Name: crd}, &apiextv1.CustomResourceDefinition{})
+		if apierrors.IsNotFound(err) {
+			t.Skip(message)
+		} else if err != nil {
+			require.NoError(t, err, "failed to check for required features")
+		}
+	}
+}
+
 func (ct CoreRPTest) Test(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
+
+	ct.CheckRequiredFeatures(ctx, t)
 
 	cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
 

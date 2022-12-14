@@ -49,6 +49,7 @@ func Test_DaprSecretStoreGeneric(t *testing.T) {
 			},
 		},
 	}, corerp.TestSecretResource(appNamespace, "mysecret", []byte("mysecret")))
-
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
+	
 	test.Test(t)
 }

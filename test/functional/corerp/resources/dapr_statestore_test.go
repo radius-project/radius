@@ -50,6 +50,7 @@ func Test_DaprStateStoreGeneric(t *testing.T) {
 			},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
@@ -91,6 +92,7 @@ func Test_DaprStateStoreTableStorage(t *testing.T) {
 			},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }

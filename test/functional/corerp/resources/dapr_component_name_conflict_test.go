@@ -32,6 +32,7 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
