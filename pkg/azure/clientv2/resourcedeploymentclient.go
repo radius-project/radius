@@ -111,6 +111,7 @@ func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscrip
 			Cloud: cloud.Configuration{
 				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
 					cloud.ResourceManager: {
+						Audience: "https://management.core.windows.net",
 						Endpoint: baseURI,
 					},
 				},

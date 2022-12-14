@@ -7,6 +7,7 @@ package clientv2
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
@@ -43,6 +44,7 @@ func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, cre
 			Cloud: cloud.Configuration{
 				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
 					cloud.ResourceManager: {
+						Audience: "https://management.core.windows.net",
 						Endpoint: baseURI,
 					},
 				},
@@ -70,8 +72,12 @@ func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, cre
 }
 
 type ClientCustomActionResponse struct {
-	Body     *map[string]any
-	Response *http.Response
+	CustomActionResponseBody
+}
+
+type CustomActionResponseBody struct {
+	Body     map[string]any
+	Response http.Response
 }
 
 type ClientBeginCustomActionOptions struct {
@@ -82,7 +88,6 @@ type ClientBeginCustomActionOptions struct {
 
 // NewClientCustomActionOptions creates an instance of the CustomActionClientOptions.
 func NewClientBeginCustomActionOptions(resourceID, action, apiVersion string) *ClientBeginCustomActionOptions {
-	// FIXME: This is to validate the resourceID.
 	_, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return nil
@@ -95,16 +100,16 @@ func NewClientBeginCustomActionOptions(resourceID, action, apiVersion string) *C
 	}
 }
 
-func (client *CustomActionClient) BeginCustomAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*runtime.Poller[ClientCustomActionResponse], error) {
+func (client *CustomActionClient) BeginCustomAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*ClientCustomActionResponse, error) {
 	resp, err := client.customAction(ctx, opts)
 	if err != nil {
 		return nil, err
 	}
 
-	return runtime.NewPoller[ClientCustomActionResponse](resp, *client.Pipeline, nil)
+	return resp, nil
 }
 
-func (client *CustomActionClient) customAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*http.Response, error) {
+func (client *CustomActionClient) customAction(ctx context.Context, opts *ClientBeginCustomActionOptions) (*ClientCustomActionResponse, error) {
 	req, err := client.customActionCreateRequest(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -114,14 +119,28 @@ func (client *CustomActionClient) customAction(ctx context.Context, opts *Client
 	if err != nil {
 		return nil, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusAccepted, http.StatusNoContent) {
+
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	return resp, nil
+
+	body := map[string]any{}
+	err = json.NewDecoder(resp.Body).Decode(&body)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ClientCustomActionResponse{
+		CustomActionResponseBody{
+			Body:     body,
+			Response: *resp,
+		},
+	}, nil
 }
 
 func (client *CustomActionClient) customActionCreateRequest(ctx context.Context, opts *ClientBeginCustomActionOptions) (*policy.Request, error) {
-	urlPath := "/{resourceID}/{action}"
+	urlPath := "{resourceID}/{action}"
+
 	if opts.resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
@@ -132,7 +151,6 @@ func (client *CustomActionClient) customActionCreateRequest(ctx context.Context,
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{action}", url.PathEscape(opts.action))
 
-	// FIXME: Is joining BaseURI and URLPath going to give us a wrong URL?
 	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.BaseURI, urlPath))
 	if err != nil {
 		return nil, err

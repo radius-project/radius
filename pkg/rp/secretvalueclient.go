@@ -9,7 +9,6 @@ import (
 	context "context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
@@ -46,14 +45,7 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 	}
 
 	options := clientv2.NewClientBeginCustomActionOptions(arm.ID, action, arm.APIVersion)
-	poller, err := client.BeginCustomAction(ctx, options)
-	if err != nil {
-		return nil, err
-	}
-
-	response, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{
-		Frequency: 0, // Pass zero to accept the default value (30s).
-	})
+	response, err := client.BeginCustomAction(ctx, options)
 	if err != nil {
 		return nil, err
 	}
