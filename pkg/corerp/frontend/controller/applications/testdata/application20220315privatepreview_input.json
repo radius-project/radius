@@ -3,9 +3,9 @@
     "properties": {
         "environment": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/applications.core/environments/env0",
         "provisioningState": "Succeeded",
-        "extension": [
+        "extensions": [
             {
-                "kind": "kubernetesNamespaceOverride",
+                "kind": "kubernetesNamespace",
                 "namespace": "app0-ns"
             }
         ]

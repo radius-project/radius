@@ -20,12 +20,16 @@ func Test_MicrosoftSQL(t *testing.T) {
 	name := "corerp-resources-microsoft-sql"
 
 	var adminUsername, adminPassword string
-	requiredSecrets := map[string]map[string]string{}
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("MSSQL_RESOURCE_ID")
-	if os.Getenv("MSSQL_USERNAME") != "" {
+
+	if os.Getenv("MSSQL_USERNAME") != "" && os.Getenv("MSSQL_PASSWORD") != "" {
 		adminUsername = "adminUsername=" + os.Getenv("MSSQL_USERNAME")
 		adminPassword = "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
+	} else {
+		t.Error("Username or password is missing")
 	}
+
+	appNamespace := "default-corerp-resources-microsoft-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -33,7 +37,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-microsoft-sql",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -45,13 +49,13 @@ func Test_MicrosoftSQL(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mssql-app-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

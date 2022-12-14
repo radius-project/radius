@@ -19,8 +19,7 @@ import (
 func Test_DaprPubSubGeneric(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-generic.bicep"
 	name := "corerp-resources-dapr-pubsub-generic"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-dapr-pubsub-generic"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -45,13 +44,13 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "gnrc-publisher"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -60,8 +59,9 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
-	requiredSecrets := map[string]map[string]string{}
 	namespaceresourceid := "namespaceresourceid=" + os.Getenv("SERVICEBUS_RESOURCE_ID")
+	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
+
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage(), namespaceresourceid),
@@ -85,13 +85,13 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "sb-publisher"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -99,8 +99,6 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 func Test_DaprPubSubServiceInvalid(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-pubsub-servicebus-invalid.bicep"
 	name := "corerp-resources-dapr-pubsub-servicebus-invalid"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -115,7 +113,7 @@ func Test_DaprPubSubServiceInvalid(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

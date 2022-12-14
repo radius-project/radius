@@ -63,8 +63,7 @@ func (a *ApplicationKubernetesMetadataExtension) GetExtension() *Extension {
 	}
 }
 
-// ApplicationKubernetesNamespaceExtension - Specifies the extension to override the Kubernetes namespace configured in Application.Core/Environments
-// resource.
+// ApplicationKubernetesNamespaceExtension - Specifies application-scoped namespace.
 type ApplicationKubernetesNamespaceExtension struct {
 	// REQUIRED; Specifies the extensions of a resource.
 	Kind *string `json:"kind,omitempty"`
@@ -97,6 +96,9 @@ type ApplicationProperties struct {
 
 	// READ-ONLY; Provisioning state of the application at the time the operation was called.
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of the resource
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // ApplicationResource - Radius Application.
@@ -1119,6 +1121,8 @@ type Resource struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// Compute resource used by application environment resource.
+	Compute EnvironmentComputeClassification `json:"compute,omitempty"`
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 

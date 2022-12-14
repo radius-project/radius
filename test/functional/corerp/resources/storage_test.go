@@ -16,10 +16,9 @@ import (
 
 // Test_Storage tests if a container can be created and then deleted by the magpiego with the workload identity.
 func Test_Storage(t *testing.T) {
-	template := "testdata/corerp-resources-container-wi.bicep"
-	name := "corerp-resources-container-wi"
-
-	requiredSecrets := map[string]map[string]string{}
+	template := "testdata/corerp-resources-container-workload.bicep"
+	name := "corerp-resources-container-workload"
+	appNamespace := "azstorage-workload-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -31,7 +30,7 @@ func Test_Storage(t *testing.T) {
 						Type: validation.ApplicationsResource,
 					},
 					{
-						Name: "test-container-wi",
+						Name: "azstorage-ctnr",
 						Type: validation.ContainersResource,
 						App:  name,
 					},
@@ -39,13 +38,13 @@ func Test_Storage(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"test-namespace": {
-						validation.NewK8sPodForResource(name, "test-container-wi"),
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "azstorage-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
