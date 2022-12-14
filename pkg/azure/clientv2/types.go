@@ -12,12 +12,11 @@ import (
 
 const (
 	DefaultBaseURI = "https://management.azure.com"
-
-	// FIXM: Any ideas for moduleName and moduleVersion?
-	moduleName    = "radius"
-	moduleVersion = "public-preview"
+	ModuleName     = "radius"
+	ModuleVersion  = "public-preview"
 )
 
+// BaseClient
 type BaseClient struct {
 	Client   *armresources.Client
 	Pipeline *runtime.Pipeline

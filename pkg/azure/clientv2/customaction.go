@@ -27,7 +27,7 @@ type CustomActionClient struct {
 }
 
 // NewCustomActionClient creates an instance of the CustomActionClient with the default Base URI.
-func NewCustomActionClient(subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
+func NewCustomActionClient(subscriptionID string, credential azcore.TokenCredential) (*CustomActionClient, error) {
 	client, err := NewCustomActionClientWithBaseURI(DefaultBaseURI, subscriptionID, credential)
 	if err != nil {
 		return nil, err
@@ -37,7 +37,7 @@ func NewCustomActionClient(subscriptionID string, credential azcore.TokenCredent
 }
 
 // NewCustomActionClientWithBaseURI creates an instance of the CustomActionClient with a Base URI.
-func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, credential azcore.TokenCredential) (*BaseClient, error) {
+func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, credential azcore.TokenCredential) (*CustomActionClient, error) {
 	options := &arm.ClientOptions{
 		ClientOptions: azcore.ClientOptions{
 			Cloud: cloud.Configuration{
@@ -55,20 +55,23 @@ func NewCustomActionClientWithBaseURI(baseURI string, subscriptionID string, cre
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(moduleName, moduleVersion, credential, runtime.PipelineOptions{}, options)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, credential, runtime.PipelineOptions{}, options)
 	if err != nil {
 		return nil, err
 	}
 
-	return &BaseClient{
-		Client:   client,
-		Pipeline: &pipeline,
-		BaseURI:  baseURI,
+	return &CustomActionClient{
+		&BaseClient{
+			Client:   client,
+			Pipeline: &pipeline,
+			BaseURI:  baseURI,
+		},
 	}, nil
 }
 
 type ClientCustomActionResponse struct {
-	armresources.GenericResource
+	Body     *map[string]any
+	Response *http.Response
 }
 
 type ClientBeginCustomActionOptions struct {
@@ -77,8 +80,8 @@ type ClientBeginCustomActionOptions struct {
 	apiVersion string
 }
 
-// New creates an instance of the CustomActionClient with the default Base URI.
-func NewCustomActionRequestOptions(resourceID, action, apiVersion string) *ClientBeginCustomActionOptions {
+// NewClientCustomActionOptions creates an instance of the CustomActionClientOptions.
+func NewClientBeginCustomActionOptions(resourceID, action, apiVersion string) *ClientBeginCustomActionOptions {
 	// FIXME: This is to validate the resourceID.
 	_, err := resources.ParseResource(resourceID)
 	if err != nil {
@@ -98,7 +101,6 @@ func (client *CustomActionClient) BeginCustomAction(ctx context.Context, opts *C
 		return nil, err
 	}
 
-	// FIXME: Is this the right way?
 	return runtime.NewPoller[ClientCustomActionResponse](resp, *client.Pipeline, nil)
 }
 

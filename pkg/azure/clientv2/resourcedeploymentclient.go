@@ -122,7 +122,7 @@ func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscrip
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(moduleName, moduleVersion, credential, runtime.PipelineOptions{}, options)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, credential, runtime.PipelineOptions{}, options)
 	if err != nil {
 		return nil, err
 	}

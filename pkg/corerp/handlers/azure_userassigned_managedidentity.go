@@ -64,7 +64,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 		return nil, err
 	}
 
-	rgLocation, err := clients.GetResourceGroupLocation(ctx, *handler.arm, subID, rgName)
+	rgLocation, err := clientv2.GetResourceGroupLocation(ctx, handler.arm.ClientOption.Cred, subID, rgName)
 	if err != nil {
 		return properties, err
 	}
