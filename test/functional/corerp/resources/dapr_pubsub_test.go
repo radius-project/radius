@@ -50,6 +50,7 @@ func Test_DaprPubSubGeneric(t *testing.T) {
 			},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
@@ -89,6 +90,7 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 			},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
@@ -111,6 +113,7 @@ func Test_DaprPubSubServiceInvalid(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
