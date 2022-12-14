@@ -55,6 +55,7 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 			},
 		},
 	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }
