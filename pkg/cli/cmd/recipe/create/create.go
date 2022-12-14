@@ -60,7 +60,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	_ = cmd.MarkFlagRequired("link-type")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
 	_ = cmd.MarkFlagRequired("name")
-	cmd.Flags().StringArrayP("parameters", "p", []string{}, "specify the parameters for the recipe")
+	commonflags.AddParameterFlag(cmd)
 
 	return cmd, runner
 }
@@ -159,7 +159,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
 		LinkType:     &r.LinkType,
 		TemplatePath: &r.TemplatePath,
-		Parameters:   convertToMapStringInterface(r.Parameters),
+		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
 	}
 
 	namespace := cmd.GetNamespace(envResource)
@@ -199,14 +199,4 @@ func requireRecipeName(cmd *cobra.Command) (string, error) {
 		return recipeName, err
 	}
 	return recipeName, nil
-}
-
-func convertToMapStringInterface(in map[string]map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
-	for k, v := range in {
-		for _, innerv := range v {
-			result[k] = innerv
-		}
-	}
-	return result
 }

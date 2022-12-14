@@ -65,7 +65,7 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]interface{}, error) {
 	return template, nil
 }
 
-func convertToMapStringInterface(in map[string]map[string]interface{}) map[string]interface{} {
+func ConvertToMapStringInterface(in map[string]map[string]interface{}) map[string]interface{} {
 	result := make(map[string]interface{})
 	for k, v := range in {
 		result[k] = v["value"]
