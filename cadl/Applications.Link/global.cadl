@@ -2,15 +2,22 @@ import "@cadl-lang/openapi";
 
 using OpenAPI;
 
+
 @doc("Basic properties of a Radius resource.")
 model BasicResourceProperties {
   @doc("Status of a resource.")
   @visibility("read")
   status: ResourceStatus;
+
+  @doc("Fully qualified resource ID for the environment that the link is linked to")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the link is consumed by")
+  application?: Application
 }
 
 @doc("Basic properties of a Dapr component object.")
-model BasicResourceProperties {
+model BasicDaprResourceProperties {
   @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
   @visibility("read")
   componentName: string;
@@ -27,11 +34,9 @@ model ResourceStatus {
 model OutputResource {}
 
 @doc("Fully qualified resource ID for the application that the link is consumed by")
-model Application is string;
+scalar Application extends string;
 
-@knownValues(ProvisioningStateKV)
-model ProvisioningState is string;
-enum ProvisioningStateKV {
+enum ProvisioningState {
   Succeeded,
   Failed,
   Canceled,
@@ -40,7 +45,6 @@ enum ProvisioningStateKV {
   Deleting,
   Accepted,
 }
-
 @doc("Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).")
 @error
 model ErrorResponse {
@@ -82,3 +86,13 @@ model ErrorAdditionalInfo {
   @visibility("read")
   info: string;
 }
+
+@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+model Recipe{
+  @doc("The name of the recipe within the environment to use")
+  name: string;
+  @doc("Key/value parameters to pass into the recipe at deployment")
+  parameters: Parameters;
+}
+@doc("Key/value parameters to pass into the recipe at deployment")
+model Parameters{}

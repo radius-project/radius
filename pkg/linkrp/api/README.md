@@ -47,6 +47,18 @@ modelerfour:
   treat-type-object-as-anything: false
 ```
 
+#### Tag: link-cadl-2022-03-15-privatepreview
+
+These settings apply only when `--tag=link-cadl-2022-03-15-privatepreview` is specified on the command line.
+
+```yaml $(tag) == 'link-cadl-2022-03-15-privatepreview'
+input-file:
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
+modelerfour: 
+  treat-type-object-as-anything: false
+  lenient-model-deduplication: true
+```
+
 ### Common
 
 The following configuration generates track2 go models and client.
@@ -68,4 +80,13 @@ These settings apply only when `--tag=link-2022-03-15-privatepreview` is specifi
 
 ```yaml $(tag) == 'link-2022-03-15-privatepreview'
 output-folder: ./v20220315privatepreview
+```
+### Output
+
+#### Tag: link-cadl-2022-03-15-privatepreview
+
+These settings apply only when `--tag=link-cadl-2022-03-15-privatepreview` is specified on the command line.
+
+```yaml $(tag) == 'link-cadl-2022-03-15-privatepreview'
+output-folder: ./v20220315privatepreviewCadl
 ```
