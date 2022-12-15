@@ -111,6 +111,7 @@ func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscrip
 			Cloud: cloud.Configuration{
 				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
 					cloud.ResourceManager: {
+						Audience: "https://management.core.windows.net",
 						Endpoint: baseURI,
 					},
 				},
@@ -122,7 +123,7 @@ func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscrip
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(moduleName, moduleVersion, credential, runtime.PipelineOptions{}, options)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, credential, runtime.PipelineOptions{}, options)
 	if err != nil {
 		return nil, err
 	}
@@ -135,22 +136,19 @@ func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscrip
 }
 
 type ClientBeginCreateOrUpdateOptions struct {
-	resourceID  string
-	resumeToken string
-	apiVersion  string
+	resourceID string
+	apiVersion string
 }
 
-func NewClientBeginCreateOrUpdateOptions(resourceID, resumeToken, apiVersion string) *ClientBeginCreateOrUpdateOptions {
-	// FIXME: This is to validate the resourceID.
+func NewClientBeginCreateOrUpdateOptions(resourceID, apiVersion string) *ClientBeginCreateOrUpdateOptions {
 	_, err := resources.ParseResource(resourceID)
 	if err != nil {
 		return nil
 	}
 
 	return &ClientBeginCreateOrUpdateOptions{
-		resourceID:  resourceID,
-		resumeToken: resumeToken,
-		apiVersion:  apiVersion,
+		resourceID: resourceID,
+		apiVersion: apiVersion,
 	}
 }
 
