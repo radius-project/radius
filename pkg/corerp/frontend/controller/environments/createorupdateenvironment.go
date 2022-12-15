@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -134,9 +135,27 @@ func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeP
 					default:
 						continue
 					}
-					recipes[name] = datamodel.EnvironmentRecipeProperties{
-						LinkType:     linkType,
-						TemplatePath: DevRecipesACRPath + "/" + repo + ":1.0",
+					repoPath := DevRecipesACRPath + "/" + repo
+					repoClient, err := remote.NewRepository(repoPath)
+					if err != nil {
+						return fmt.Errorf("failed to create client to repository %s -  %s", repoPath, err.Error())
+					}
+
+					// for a given repository, list the tags and identify what the latest version of the repo is
+					// for now, only the latest verision of the repo is linked to the environment
+					err = repoClient.Tags(ctx, "", func(tags []string) error {
+						version, err := findHighestVersion(tags)
+						if err != nil {
+							return fmt.Errorf("error occurred while finding highest version for repo %s - %s", repoPath, err.Error())
+						}
+						recipes[name] = datamodel.EnvironmentRecipeProperties{
+							LinkType:     linkType,
+							TemplatePath: repoPath + ":" + fmt.Sprintf("%.1f", version),
+						}
+						return nil
+					})
+					if err != nil {
+						return fmt.Errorf("failed to list tags for repository %s -  %s", repoPath, err.Error())
 					}
 				}
 			}
@@ -192,4 +211,19 @@ func ensureUserRecipesNamesAreNotReserved(userRecipes, devRecipes map[string]dat
 	}
 
 	return nil
+}
+
+func findHighestVersion(versions []string) (latest float64, err error) {
+	for _, version := range versions {
+		f, err := strconv.ParseFloat(version, 32)
+		if err != nil {
+			return 0.0, fmt.Errorf("Unable to convert tag %s into valid version.", version)
+		}
+
+		if f > latest {
+			latest = f
+		}
+	}
+
+	return latest, nil
 }

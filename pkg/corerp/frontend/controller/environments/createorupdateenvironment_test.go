@@ -756,3 +756,23 @@ func TestEnsureUserRecipesNamesAreNotReserved(t *testing.T) {
 			userRecipes["redis-azure"].TemplatePath))
 	})
 }
+
+func TestFindHighestVersion(t *testing.T) {
+	t.Run("Max version is returned when tags are int/float values with float max", func(t *testing.T) {
+		versions := []string{"1", "2", "3", "4.0"}
+		max, err := findHighestVersion(versions)
+		require.NoError(t, err)
+		require.Equal(t, max, 4.0)
+	})
+	t.Run("Max version is returned when tags are int/float values with int max", func(t *testing.T) {
+		versions := []string{"1.0", "2.0", "3.0", "4"}
+		max, err := findHighestVersion(versions)
+		require.NoError(t, err)
+		require.Equal(t, max, 4.0)
+	})
+	t.Run("Version tags are not all float values", func(t *testing.T) {
+		versions := []string{"1.0", "otherTag", "3.0", "4.0"}
+		_, err := findHighestVersion(versions)
+		require.ErrorContains(t, err, "Unable to convert tag otherTag into valid version.")
+	})
+}
