@@ -60,7 +60,7 @@ func checkResourceNameUniqueness(ctx context.Context, k8s client.Client, resourc
 
 	// Object with the same name exists, checking the labels to see if they are the same objects.
 	if label, ok := u.GetLabels()[kubernetes.LabelRadiusResourceType]; ok && kubernetes.ConvertLabelToResourceType(label) != strings.ToLower(resourceType) {
-		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again.", resourceName)
+		return fmt.Errorf("the Dapr component name '%q' is already in use by another resource. Dapr component and resource names must be unique across all Dapr types (eg: StateStores, PubSubBrokers, SecretStores, etc.). Please select a new name and try again", resourceName)
 	}
 
 	return nil
