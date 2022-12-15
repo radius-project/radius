@@ -71,6 +71,9 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Properties = &ApplicationProperties{
 		ProvisioningState: fromProvisioningStateDataModel(app.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(app.Properties.Environment),
+		Status: &ResourceStatus{
+			Compute: fromEnvironmentComputeDataModel(app.Properties.Status.Compute),
+		},
 	}
 
 	var extensions []ApplicationExtensionClassification
@@ -88,24 +91,17 @@ func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
 func fromAppExtensionClassificationDataModel(e datamodel.Extension) ApplicationExtensionClassification {
 	switch e.Kind {
 	case datamodel.KubernetesMetadata:
-		var ann, lbl = getFromExtensionClassificationFields(e)
-		converted := ApplicationKubernetesMetadataExtension{
+		var ann, lbl = fromExtensionClassificationFields(e)
+		return &ApplicationKubernetesMetadataExtension{
 			Kind:        to.StringPtr(string(e.Kind)),
 			Annotations: *to.StringMapPtr(ann),
 			Labels:      *to.StringMapPtr(lbl),
 		}
-
-		return converted.GetApplicationExtension()
-
-	case datamodel.KubernetesNamespaceOverride:
-		var namespace = getFromExtensionNamespace(e)
-		converted := ApplicationKubernetesNamespaceExtension{
+	case datamodel.KubernetesNamespaceExtension:
+		return &ApplicationKubernetesNamespaceExtension{
 			Kind:      to.StringPtr(string(e.Kind)),
-			Namespace: &namespace,
+			Namespace: to.StringPtr(e.KubernetesNamespace.Namespace),
 		}
-
-		return converted.GetApplicationExtension()
-
 	}
 
 	return nil
@@ -122,30 +118,17 @@ func toAppExtensionDataModel(e ApplicationExtensionClassification) *datamodel.Ex
 				Labels:      to.StringMap(c.Labels),
 			},
 		}
-
 	case *ApplicationKubernetesNamespaceExtension:
 		if c.Namespace == nil || *c.Namespace == "" {
 			return nil
 		}
 		return &datamodel.Extension{
-			Kind: datamodel.KubernetesNamespaceOverride,
-			KubernetesNamespaceOverride: &datamodel.KubeNamespaceOverrideExtension{
-				Namespace: *c.Namespace,
+			Kind: datamodel.KubernetesNamespaceExtension,
+			KubernetesNamespace: &datamodel.KubeNamespaceExtension{
+				Namespace: to.String(c.Namespace),
 			},
 		}
 	}
 
 	return nil
-}
-
-func getFromExtensionNamespace(e datamodel.Extension) string {
-	var namespace string
-
-	if e.KubernetesNamespaceOverride != nil {
-		if e.KubernetesNamespaceOverride.Namespace != "" {
-			namespace = e.KubernetesNamespaceOverride.Namespace
-		}
-	}
-
-	return namespace
 }

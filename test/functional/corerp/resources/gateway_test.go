@@ -32,8 +32,7 @@ const (
 func Test_Gateway(t *testing.T) {
 	template := "testdata/corerp-resources-gateway.bicep"
 	name := "corerp-resources-gateway"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-gateway"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -73,7 +72,7 @@ func Test_Gateway(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "http-gtwy-front-ctnr"),
 						validation.NewK8sPodForResource(name, "http-gtwy-back-ctnr"),
 						validation.NewK8sHTTPProxyForResource(name, "http-gtwy-gtwy"),
@@ -86,7 +85,7 @@ func Test_Gateway(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", name)
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
@@ -104,7 +103,7 @@ func Test_Gateway(t *testing.T) {
 				require.Fail(t, "Gateway tests failed")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -161,11 +160,9 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 }
 
 func Test_HTTPSGateway(t *testing.T) {
-
 	template := "testdata/corerp-resources-secure-gateway.bicep"
 	name := "corerp-resources-gateways"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-gateways"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -195,7 +192,7 @@ func Test_HTTPSGateway(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "gtwy-front-ctnr"),
 						validation.NewK8sHTTPProxyForResource(name, "gtwy-gtwy"),
 						validation.NewK8sHTTPProxyForResource(name, "gtwy-front-rte"),
@@ -205,7 +202,7 @@ func Test_HTTPSGateway(t *testing.T) {
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				// Get hostname from root HTTPProxy in 'default' namespace
-				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, "default", name)
+				hostname, err := functional.GetHostnameForHTTPProxy(ctx, ct.Options.Client, appNamespace, name)
 				require.NoError(t, err)
 				t.Logf("found root proxy with hostname: {%s}", hostname)
 
@@ -222,7 +219,7 @@ func Test_HTTPSGateway(t *testing.T) {
 				require.Fail(t, "Gateway tests failed")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

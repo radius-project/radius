@@ -21,7 +21,6 @@ import (
 
 const (
 	ContourChartDefaultVersion = "7.4.6"
-	DaprDefaultVersion         = "1.6.0"
 )
 
 type CLIClusterOptions struct {
@@ -29,7 +28,6 @@ type CLIClusterOptions struct {
 }
 
 type ClusterOptions struct {
-	Dapr    DaprOptions
 	Contour ContourOptions
 	Radius  RadiusOptions
 }
@@ -48,9 +46,6 @@ func NewDefaultClusterOptions() ClusterOptions {
 	}
 
 	return ClusterOptions{
-		Dapr: DaprOptions{
-			Version: DaprDefaultVersion,
-		},
 		Contour: ContourOptions{
 			ChartVersion: ContourChartDefaultVersion,
 		},
@@ -142,11 +137,6 @@ func InstallOnCluster(ctx context.Context, options ClusterOptions, kubeContext s
 		return false, err
 	}
 
-	err = ApplyDaprHelmChart(options.Dapr.Version, kubeContext)
-	if err != nil {
-		return false, err
-	}
-
 	return foundExisting, err
 }
 
@@ -162,11 +152,6 @@ func UninstallOnCluster(kubeContext string) error {
 	helmConf, err := HelmConfig(&helmOutput, &flags)
 	if err != nil {
 		return fmt.Errorf("failed to get helm config, err: %w, helm output: %s", err, helmOutput.String())
-	}
-
-	err = RunDaprHelmUninstall(helmConf)
-	if err != nil {
-		return err
 	}
 
 	err = RunContourHelmUninstall(helmConf)

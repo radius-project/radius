@@ -17,8 +17,6 @@ func Test_Environment(t *testing.T) {
 	template := "testdata/corerp-resources-environment.bicep"
 	name := "corerp-resources-environment"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -33,7 +31,7 @@ func Test_Environment(t *testing.T) {
 			// Environment should not render any K8s Objects directly
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

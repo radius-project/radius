@@ -17,8 +17,7 @@ import (
 func Test_DaprInvokeHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-httproute.bicep"
 	name := "dapr-invokehttproute"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-dapr-invokehttproute"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -48,14 +47,15 @@ func Test_DaprInvokeHttpRoute(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "dapr-frontend"),
 						validation.NewK8sPodForResource(name, "dapr-backend"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }

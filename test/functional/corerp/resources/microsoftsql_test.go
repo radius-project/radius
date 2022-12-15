@@ -17,8 +17,7 @@ import (
 func Test_MicrosoftSQL(t *testing.T) {
 	template := "testdata/corerp-resources-microsoft-sql.bicep"
 	name := "corerp-resources-microsoft-sql"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-microsoft-sql"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -26,7 +25,7 @@ func Test_MicrosoftSQL(t *testing.T) {
 			CoreRPResources: &validation.CoreRPResourceSet{
 				Resources: []validation.CoreRPResource{
 					{
-						Name: "corerp-resources-microsoft-sql",
+						Name: name,
 						Type: validation.ApplicationsResource,
 					},
 					{
@@ -38,13 +37,13 @@ func Test_MicrosoftSQL(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "mssql-app-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

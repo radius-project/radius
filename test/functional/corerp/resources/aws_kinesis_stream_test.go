@@ -24,8 +24,6 @@ func Test_AWS_KinesisStream(t *testing.T) {
 	template := "testdata/aws-kinesis.bicep"
 	name := "ms" + uuid.New().String()
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor:                               step.NewDeployExecutor(template, "streamName="+name),
@@ -41,7 +39,7 @@ func Test_AWS_KinesisStream(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -50,8 +48,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 	template := "testdata/aws-kinesis.bicep"
 	templateExisting := "testdata/aws-kinesis-existing.bicep"
 	name := "ms" + uuid.New().String()
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-aws-kinesis-existing-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -85,7 +82,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource("aws-kinesis-existing-app", "aws-ctnr"),
 					},
 				},
@@ -93,7 +90,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 			PostStepVerify: func(ctx context.Context, t *testing.T, ct corerp.CoreRPTest) {
 				labelset := kubernetes.MakeSelectorLabels("aws-kinesis-existing-app", "aws-ctnr")
 
-				deployments, err := ct.Options.K8sClient.AppsV1().Deployments("default").List(context.Background(), metav1.ListOptions{
+				deployments, err := ct.Options.K8sClient.AppsV1().Deployments(appNamespace).List(context.Background(), metav1.ListOptions{
 					LabelSelector: labels.SelectorFromSet(labelset).String(),
 				})
 				require.NoError(t, err, "failed to list deployments")
@@ -104,7 +101,7 @@ func Test_KinesisStreamExisting(t *testing.T) {
 				require.Equal(t, name, envVar.Value, "expected env var to be updated")
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 

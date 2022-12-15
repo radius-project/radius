@@ -136,19 +136,19 @@ func ValidateDeploymentsRunning(ctx context.Context, t *testing.T, k8s *kubernet
 }
 
 // SaveContainerLogs get container logs for all containers in a namespace and saves them to disk.
-func SaveLogsForController(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) error {
+func SaveContainerLogs(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, "")
 }
 
 // SaveAndWatchContainerLogsForApp watches for all containers in a namespace and saves them to disk.
-func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) error {
+func SaveLogsForApplication(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, appName string) (watchk8s.Interface, error) {
 	return watchForPods(ctx, k8s, namespace, logPrefix, fmt.Sprintf("%s=%s", kuberneteskeys.LabelRadiusApplication, appName))
 }
 
-func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) error {
+func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace string, logPrefix string, labelSelector string) (watchk8s.Interface, error) {
 	if err := os.MkdirAll(logPrefix, os.ModePerm); err != nil {
 		log.Printf("Failed to create output log directory '%s' Error was: '%q'. Container logs will be discarded", logPrefix, err)
-		return nil
+		return nil, nil
 	}
 
 	podClient := k8s.CoreV1().Pods(namespace)
@@ -159,7 +159,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	go func() {
@@ -177,6 +177,13 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 				continue
 			}
 
+			// Skip streaming log when Pod is in pending state.
+			if pod.Status.Phase == corev1.PodPending {
+				continue
+			}
+
+			log.Printf("Start streaming Kubernetes logs - Pod %s is in state: %s", pod.Name, pod.Status.Phase)
+
 			// Only start one log capture per pod
 			_, ok = pods[pod.Name]
 			if ok {
@@ -190,7 +197,7 @@ func watchForPods(ctx context.Context, k8s *kubernetes.Clientset, namespace stri
 		}
 	}()
 
-	return nil
+	return podList, nil
 }
 
 // See https://github.com/dapr/dapr/blob/22bb68bc89a86fc64c2c27dfd219ba68a38fb2ad/tests/platforms/kubernetes/appmanager.go#L706 for reference.

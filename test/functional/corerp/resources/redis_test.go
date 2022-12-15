@@ -17,8 +17,7 @@ import (
 func Test_Redis(t *testing.T) {
 	template := "testdata/corerp-resources-redis-user-secrets.bicep"
 	name := "corerp-resources-redis-user-secrets"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "default-corerp-resources-redis-user-secrets"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -53,7 +52,7 @@ func Test_Redis(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "rds-app-ctnr"),
 						validation.NewK8sPodForResource(name, "rds-ctnr"),
 						validation.NewK8sServiceForResource(name, "rds-rte"),
@@ -61,7 +60,7 @@ func Test_Redis(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -93,7 +92,7 @@ func Test_RedisAzure(t *testing.T) {
 			},
 			SkipObjectValidation: true,
 		},
-	}, nil)
+	})
 
 	test.Test(t)
 }

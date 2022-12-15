@@ -35,6 +35,14 @@ func NewCreateOrUpdateDaprSecretStore(opts ctrl.Options) (ctrl.Controller, error
 // Run executes CreateOrUpdateDaprSecretStore operation.
 func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	isSupported, err := datamodel.IsDaprInstalled(ctx, daprSecretStore.KubeClient())
+	if err != nil {
+		return nil, err
+	} else if !isSupported {
+		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
+	}
+
 	newResource, err := daprSecretStore.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err

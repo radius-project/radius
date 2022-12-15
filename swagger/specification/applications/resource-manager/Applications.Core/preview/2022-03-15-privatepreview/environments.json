@@ -291,47 +291,7 @@
         }
       }
     },
-    "EnvironmentCompute": {
-      "description": "Compute resource used by application environment resource.",
-      "type": "object",
-      "discriminator": "kind",
-      "properties": {
-        "kind": {
-          "type": "string",
-          "description": "Type of compute resource."
-        },
-        "resourceId": {
-          "type": "string",
-          "description": "The resource id of the compute resource for application environment."
-        },
-        "identity": {
-          "description": "Configuration for supported external identity providers",
-          "$ref": "global.json#/definitions/IdentitySettings"
-        }
-      },
-      "required": [
-        "kind"
-      ]
-    },
-    "KubernetesCompute": {
-      "description": "Specifies the properties for Kubernetes compute environment",
-      "allOf": [
-        {
-          "$ref": "#/definitions/EnvironmentCompute"
-        }
-      ],
-      "type": "object",
-      "properties": {
-        "namespace": {
-          "type": "string",
-          "description": "The namespace to use for the environment."
-        }
-      },
-      "required": [
-        "namespace"
-      ],
-      "x-ms-discriminator-value": "kubernetes"
-    },
+    
     "EnvironmentResource": {
       "description": "Application environment.",
       "type": "object",
@@ -400,7 +360,7 @@
           "description": "Provisioning state of the environment at the time the operation was called."
         },
         "compute": {
-          "$ref": "#/definitions/EnvironmentCompute"
+          "$ref": "global.json#/definitions/EnvironmentCompute"
         },
         "providers": {
           "$ref": "#/definitions/Providers",
@@ -451,6 +411,15 @@
         "templatePath": {
           "description": "Path to the template provided by the recipe. Currently only link to Azure Container Registry is supported.",
           "type": "string"
+        },
+        "parameters": {
+          "description": "Key/value parameters to pass into the recipe template at deployment",
+          "type": "object",
+          "example": [
+            {
+              "port": 6060
+            }
+          ]
         }
       },
       "required": [

@@ -14,6 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -37,8 +38,10 @@ func ValidateRequest(ctx context.Context, newResource *datamodel.VolumeResource,
 	if csiCRDValidationRequired {
 		crd := &apiextv1.CustomResourceDefinition{}
 		err := options.KubeClient.Get(ctx, client.ObjectKey{Name: secretProviderClassesCRD}, crd)
-		if err != nil {
+		if apierrors.IsNotFound(err) {
 			return rest.NewBadRequestResponse("Your volume requires secret store CSI driver. Please install it by following https://secrets-store-csi-driver.sigs.k8s.io/."), nil
+		} else if err != nil {
+			return nil, err
 		}
 	}
 

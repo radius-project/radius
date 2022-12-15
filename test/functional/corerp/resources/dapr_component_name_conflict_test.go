@@ -18,8 +18,6 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 	template := "testdata/corerp-resources-dapr-component-name-conflict.bicep"
 	name := "corerp-resources-dapr-component-name-conflict"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployErrorExecutor(template, v1.CodeInternal),
@@ -33,7 +31,8 @@ func Test_DaprComponentNameConflict(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{},
 		},
-	}, requiredSecrets)
+	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureDapr}
 
 	test.Test(t)
 }

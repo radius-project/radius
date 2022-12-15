@@ -98,7 +98,7 @@ resource gateway 'Applications.Core/gateways@2022-03-15-privatepreview' = {
   properties: {
     application: app.id
     tls :{ 
-      sslPassThrough:true 
+      sslPassthrough:true 
     } 
     routes: [
       {

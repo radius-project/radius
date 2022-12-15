@@ -23,6 +23,9 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.DeploymentOutput) {
@@ -42,11 +45,6 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 }
 
 func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
-	mctrl := gomock.NewController(t)
-	defer mctrl.Finish()
-
-	mStorageClient := store.NewMockStorageClient(mctrl)
-	mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
 	rendererOutput, deploymentOutput := getDeploymentProcessorOutputs()
 	ctx := context.Background()
 
@@ -55,13 +53,15 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 		headerKey          string
 		headerValue        string
 		resourceETag       string
+		daprMissing        bool
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"create-new-resource-no-if-match", "If-Match", "", "", http.StatusOK, false},
-		{"create-new-resource-*-if-match", "If-Match", "*", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", http.StatusPreconditionFailed, true},
-		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", http.StatusOK, false},
+		{"create-new-resource-no-if-match", "If-Match", "", "", false, http.StatusOK, false},
+		{"create-new-resource-*-if-match", "If-Match", "*", "", false, http.StatusPreconditionFailed, true},
+		{"create-new-resource-etag-if-match", "If-Match", "random-etag", "", false, http.StatusPreconditionFailed, true},
+		{"create-new-resource-*-if-none-match", "If-None-Match", "*", "", false, http.StatusOK, false},
+		{"create-new-resource-without-dapr-installed", "If-Match", "", "", true, http.StatusBadRequest, true},
 	}
 
 	for _, testcase := range createNewResourceTestCases {
@@ -72,12 +72,18 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return nil, &store.ErrNotFound{}
-				})
+			mctrl := gomock.NewController(t)
+			mStorageClient := store.NewMockStorageClient(mctrl)
+			mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+
+			if !testcase.daprMissing {
+				mStorageClient.
+					EXPECT().
+					Get(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+						return nil, &store.ErrNotFound{}
+					})
+			}
 
 			expectedOutput.SystemData.CreatedAt = expectedOutput.SystemData.LastModifiedAt
 			expectedOutput.SystemData.CreatedBy = expectedOutput.SystemData.LastModifiedBy
@@ -99,11 +105,30 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
+			// Most tests will cover the case where Dapr is installed.
+			crdScheme := runtime.NewScheme()
+			err := apiextv1.AddToScheme(crdScheme)
+			require.NoError(t, err)
+
+			kubeClient := radiustesting.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "components.dapr.io",
+				},
+			})
+			if testcase.daprMissing {
+				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+			}
+
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},
+				KubeClient: kubeClient,
 			}
 
 			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(opts)
@@ -129,15 +154,17 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 		headerValue        string
 		inputFile          string
 		resourceETag       string
+		daprMissing        bool
 		expectedStatusCode int
 		shouldFail         bool
 	}{
-		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-with-diff-appid", "If-Match", "", "20220315privatepreview_input_appid.json", "resource-etag", http.StatusBadRequest, true},
-		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", http.StatusOK, false},
-		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", http.StatusOK, false},
-		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", http.StatusPreconditionFailed, true},
-		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", http.StatusPreconditionFailed, true},
+		{"update-resource-no-if-match", "If-Match", "", "", "resource-etag", false, http.StatusOK, false},
+		{"update-resource-with-diff-appid", "If-Match", "", "20220315privatepreview_input_appid.json", "resource-etag", false, http.StatusBadRequest, true},
+		{"update-resource-without-dapr-installed", "If-Match", "", "", "resource-etag", true, http.StatusBadRequest, true},
+		{"update-resource-*-if-match", "If-Match", "*", "", "resource-etag", false, http.StatusOK, false},
+		{"update-resource-matching-if-match", "If-Match", "matching-etag", "", "matching-etag", false, http.StatusOK, false},
+		{"update-resource-not-matching-if-match", "If-Match", "not-matching-etag", "", "another-etag", false, http.StatusPreconditionFailed, true},
+		{"update-resource-*-if-none-match", "If-None-Match", "*", "", "another-etag", false, http.StatusPreconditionFailed, true},
 	}
 
 	for _, testcase := range updateExistingResourceTestCases {
@@ -152,15 +179,21 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 			req.Header.Set(testcase.headerKey, testcase.headerValue)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
-			mStorageClient.
-				EXPECT().
-				Get(gomock.Any(), gomock.Any()).
-				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
-					return &store.Object{
-						Metadata: store.Metadata{ID: id, ETag: testcase.resourceETag},
-						Data:     dataModel,
-					}, nil
-				})
+			mctrl := gomock.NewController(t)
+			mStorageClient := store.NewMockStorageClient(mctrl)
+			mDeploymentProcessor := deployment.NewMockDeploymentProcessor(mctrl)
+
+			if !testcase.daprMissing {
+				mStorageClient.
+					EXPECT().
+					Get(gomock.Any(), gomock.Any()).
+					DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+						return &store.Object{
+							Metadata: store.Metadata{ID: id, ETag: testcase.resourceETag},
+							Data:     dataModel,
+						}, nil
+					})
+			}
 
 			if !testcase.shouldFail {
 				deploymentOutput.RadiusResource = dataModel
@@ -179,11 +212,30 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 					})
 			}
 
+			// Most tests will cover the case where Dapr is installed.
+			crdScheme := runtime.NewScheme()
+			err := apiextv1.AddToScheme(crdScheme)
+			require.NoError(t, err)
+
+			kubeClient := radiustesting.NewFakeKubeClient(crdScheme, &apiextv1.CustomResourceDefinition{
+				TypeMeta: metav1.TypeMeta{
+					APIVersion: "apiextensions.k8s.io/v1",
+					Kind:       "CustomResourceDefinition",
+				},
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "components.dapr.io",
+				},
+			})
+			if testcase.daprMissing {
+				kubeClient = radiustesting.NewFakeKubeClient(crdScheme) // Will return 404 for missing CRD
+			}
+
 			opts := ctrl.Options{
 				StorageClient: mStorageClient,
 				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
 					return mDeploymentProcessor
 				},
+				KubeClient: kubeClient,
 			}
 
 			ctl, err := NewCreateOrUpdateDaprInvokeHttpRoute(opts)

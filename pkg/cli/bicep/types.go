@@ -64,3 +64,11 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]interface{}, error) {
 	output.CompleteStep(step)
 	return template, nil
 }
+
+func ConvertToMapStringInterface(in map[string]map[string]interface{}) map[string]interface{} {
+	result := make(map[string]interface{})
+	for k, v := range in {
+		result[k] = v["value"]
+	}
+	return result
+}

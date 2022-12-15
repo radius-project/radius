@@ -137,20 +137,16 @@ Do not start the release until the following scenarios are validated:
 
 5. Update the project-radius/docs repository
    
-   1. Create a new branch named `v0.12` from `edge`, using the release version number.
-   1. Within `.github/workflows/website.yaml`:
-      - Change `branches` to the new branch (`v0.12`) instead of `edge`
-      - Change `app-name` to `radius` instead of `radius-edge`
-      - Change `publish-profile` to `secrets.DOCS_SITE_PUBLISHPROFILE` instead of `EDGE_...`
-      - Change `ALGOLIA_INDEX_NAME` to `radapp-dev` instead of `radapp-dev-edge`
+   1. Create a new branch named `v0.16` from `edge`, substituting the new version number
    1. Within `docs/config.toml`:
       - Change `baseURL` to `https://radapp.dev/` instead of `https://edge.radapp.dev/`
-      - Change `version` to `v0.12` instead of `edge`
-      - Change `chart_version` (Helm chart) to `0.12.0`
+      - Change `version` to `v0.16` instead of `edge`, substituting the new version number
+      - Change `chart_version` (Helm chart) to `0.16.0`, substituting the new version number
    1. Within `docs/layouts/partials/hooks/body-end.html`:
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
    1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
-   1. Commit and push updates to be the new `v0.12` branch you created above.
+   1. Commit and push updates to be the new `v0.16` branch you created above.
+   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version.
    1. Verify https://radapp.dev now shows the new version.
 
 ### Post release verification

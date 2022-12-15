@@ -22,8 +22,6 @@ func Test_Kubernetes_Extensibility(t *testing.T) {
 	template := "testdata/k8s-extensibility/connection-string.bicep"
 	name := "corerp-mechanics-k8s-extensibility"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor:           step.NewDeployExecutor(template),
@@ -32,7 +30,7 @@ func Test_Kubernetes_Extensibility(t *testing.T) {
 			// No output resources are expected
 			SkipKubernetesOutputResourceValidation: true,
 		},
-	}, requiredSecrets, loadResources("testdata/k8s-extensibility", ".input.yaml")...)
+	}, loadResources("testdata/k8s-extensibility", ".input.yaml")...)
 
 	test.Test(t)
 }

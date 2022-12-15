@@ -175,23 +175,25 @@ func Test_Run(t *testing.T) {
 		}).
 		Times(1)
 
-	environment := v20220315privatepreview.EnvironmentResource{
-		Properties: &v20220315privatepreview.EnvironmentProperties{
-			Compute: &v20220315privatepreview.KubernetesCompute{
-				Kind:      to.Ptr(v20220315privatepreview.EnvironmentComputeKindKubernetes),
-				Namespace: to.Ptr("test-namespace"),
+	app := v20220315privatepreview.ApplicationResource{
+		Properties: &v20220315privatepreview.ApplicationProperties{
+			Status: &v20220315privatepreview.ResourceStatus{
+				Compute: &v20220315privatepreview.KubernetesCompute{
+					Kind:      to.Ptr("kubernetes"),
+					Namespace: to.Ptr("test-namespace-app"),
+				},
 			},
 		},
 	}
 
 	clientMock := clients.NewMockApplicationsManagementClient(ctrl)
 	clientMock.EXPECT().
-		GetEnvDetails(gomock.Any(), radcli.TestEnvironmentName).
-		Return(environment, nil).
-		Times(1)
-	clientMock.EXPECT().
 		CreateApplicationIfNotFound(gomock.Any(), "test-application", gomock.Any()).
 		Return(nil).
+		Times(1)
+	clientMock.EXPECT().
+		ShowApplication(gomock.Any(), "test-application").
+		Return(app, nil).
 		Times(1)
 
 	workspace := &workspaces.Workspace{
@@ -242,13 +244,13 @@ func Test_Run(t *testing.T) {
 	// Logstream is scoped to application and namespace
 	require.Equal(t, runner.ApplicationName, logStreamOptions.ApplicationName)
 	require.Equal(t, "kind-kind", logStreamOptions.KubeContext)
-	require.Equal(t, "test-namespace", logStreamOptions.Namespace)
+	require.Equal(t, "test-namespace-app", logStreamOptions.Namespace)
 
 	portforwardOptions := <-portforwardOptionsChan
 	// Port-forward is scoped to application and namespace
 	require.Equal(t, runner.ApplicationName, portforwardOptions.ApplicationName)
 	require.Equal(t, "kind-kind", portforwardOptions.KubeContext)
-	require.Equal(t, "test-namespace", portforwardOptions.Namespace)
+	require.Equal(t, "test-namespace-app", portforwardOptions.Namespace)
 
 	// Shut down the log stream and verify result
 	cancel()

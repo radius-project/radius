@@ -21,8 +21,7 @@ import (
 func Test_Container(t *testing.T) {
 	template := "testdata/corerp-resources-container.bicep"
 	name := "corerp-resources-container"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "corerp-resources-container-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -42,13 +41,13 @@ func Test_Container(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-ctnr"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -56,8 +55,7 @@ func Test_Container(t *testing.T) {
 func Test_ContainerHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "corerp-resources-container-httproute-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -82,14 +80,14 @@ func Test_ContainerHttpRoute(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-rte-ctnr"),
 						validation.NewK8sServiceForResource(name, "ctnr-rte-rte"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -97,8 +95,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "corerp-resources-container-live-ready-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -118,13 +115,13 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-live-ready"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -132,8 +129,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "corerp-resources-container-manualscale-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -153,13 +149,13 @@ func Test_ContainerManualScale(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-manualscale"),
 					},
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -167,8 +163,7 @@ func Test_ContainerManualScale(t *testing.T) {
 func Test_ContainerWithCommandAndArgs(t *testing.T) {
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
-
-	requiredSecrets := map[string]map[string]string{}
+	appNamespace := "corerp-resources-container-cmd-args-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -188,14 +183,14 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 			},
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
-					"default": {
+					appNamespace: {
 						validation.NewK8sPodForResource(name, "ctnr-cmd-args"),
 					},
 				},
 			},
 			PostStepVerify: func(ctx context.Context, t *testing.T, test corerp.CoreRPTest) {
 				label := fmt.Sprintf("radius.dev/application=%s", name)
-				pods, err := test.Options.K8sClient.CoreV1().Pods("default").List(ctx, metav1.ListOptions{
+				pods, err := test.Options.K8sClient.CoreV1().Pods(appNamespace).List(ctx, metav1.ListOptions{
 					LabelSelector: label,
 				})
 				require.NoError(t, err)
@@ -211,7 +206,7 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 				t.Logf("validated command and args of pod: %s", pod.Name)
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

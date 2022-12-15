@@ -100,28 +100,28 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 // MakeGateway creates the kubernetes gateway construct from the gateway corerp datamodel
 func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, resourceName string, applicationName string, hostname string) (outputresource.OutputResource, error) {
 	includes := []contourv1.Include{}
-	sslPassThrough := false
+	sslPassthrough := false
 
 	if len(gateway.Properties.Routes) < 1 {
 		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
 	if gateway.Properties.TLS != nil {
-		if !gateway.Properties.TLS.SSLPassThrough {
-			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only passthrough is supported for TLS currently")
+		if !gateway.Properties.TLS.SSLPassthrough {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
 		} else {
-			sslPassThrough = true
+			sslPassthrough = true
 		}
 	}
 
-	if sslPassThrough && len(gateway.Properties.Routes) > 1 {
-		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with SSLPassThrough set to true")
+	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
+		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}
 
-	var route datamodel.GatewayRoute //route will hold the one sslpassthrough route, if sslpassthrough is true
+	var route datamodel.GatewayRoute //route will hold the one sslPassthrough route, if sslPassthrough is true
 	for _, route = range gateway.Properties.Routes {
-		if sslPassThrough && (route.Path != "" || route.ReplacePrefix != "") {
-			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with SSLPassThrough set to true")
+		if sslPassthrough && (route.Path != "" || route.ReplacePrefix != "") {
+			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 		}
 		routeName, err := getRouteName(&route)
 		if err != nil {
@@ -130,7 +130,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 
 		routeResourceName := kubernetes.NormalizeResourceName(routeName)
 		prefix := route.Path
-		if sslPassThrough {
+		if sslPassthrough {
 			prefix = "/"
 		}
 		includes = append(includes, contourv1.Include{
@@ -155,7 +155,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 	}
 
 	var tcpProxy *contourv1.TCPProxy
-	if sslPassThrough {
+	if sslPassthrough {
 		virtualHost.TLS = &contourv1.TLS{
 			Passthrough: true,
 		}
@@ -198,7 +198,7 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 			Includes:    includes,
 		},
 	}
-	if sslPassThrough {
+	if sslPassthrough {
 		rootHTTPProxy.Spec.TCPProxy = tcpProxy
 	}
 

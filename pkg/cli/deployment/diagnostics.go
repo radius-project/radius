@@ -158,47 +158,37 @@ func (dc *ARMDiagnosticsClient) findNamespaceOfContainer(ctx context.Context, re
 		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
 	}
 
-	obj, ok = applicationResponse.Properties["environment"]
+	obj, ok = applicationResponse.Properties["status"]
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	environment, ok := obj.(string)
+	status, ok := obj.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	id, err = resources.ParseResource(environment)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
-
-	environmentResponse, err := dc.EnvironmentClient.Get(ctx, id.Name(), nil)
-	if err != nil {
-		return "", fmt.Errorf("could not namespace for container %q:%w", resourceName, err)
-	}
-
-	obj, ok = environmentResponse.Properties["compute"]
+	obj, ok = status["compute"]
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	compute, ok := obj.(map[string]interface{})
+	compute, ok := obj.(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	obj, ok = compute["namespace"]
-	if !ok {
+	kind, ok := compute["kind"].(string)
+	if !ok || !strings.EqualFold(kind, "kubernetes") {
 		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 	}
 
-	namespace, ok := obj.(string)
-	if !ok {
-		return "", fmt.Errorf("could not find namespace for container %q", resourceName)
+	namespace, ok := compute["namespace"].(string)
+	if ok {
+		return namespace, nil
 	}
 
-	return namespace, nil
+	return "", fmt.Errorf("could not find namespace for container %q", resourceName)
 }
 
 // Note: If an error is returned, any streams that were created before the error will also be returned.
