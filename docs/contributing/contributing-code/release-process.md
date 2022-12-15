@@ -8,45 +8,34 @@ Our release process for Project Radius is based on git tags. Pushing a new tag w
 - Determine the release version. This is in the form `v.<major>.<minor>.<patch>`
 - Determine the release channel This is in the form `<major>.<minor>`
 
-### Test tutorials and samples
 
-> This step is manual, however it could be automated in the future.
+### Creating an RC release
 
-Before a release can be started, all [tutorials](https://edge.radapp.dev/user-guides/tutorials/) and [samples](https://edge.radapp.dev/user-guides/samples/) must be validated across local (Windows and macOS), Kubernetes, and Azure.
+When starting the release process, we first kick it off by creating an RC release. This is a release candidate that we can test internally before releasing to the public which we can validate samples on.
 
-1. Install the latest edge rad CLI release
-1. Run through each tutorial, step by step, confirming each step works as expected on a local environment (make sure to be on the edge site)
-1. Run through each sample, step by step, confirming each step works as expected on a local environment (make sure to be on the edge site)
-1. Repeat on Windows local, Kubernetes, and Azure
+If we find issues in validation, we can create additional RC releases until we feel confident in the release.
 
-Do not start the release until the following scenarios are validated:
+Follow the steps below to create an RC release.
 
-| OS | WebApp Tutorial | Dapr Tutorial | eShop Sample | Container Apps Sample |
-|:--:|:---------------:|:-------------:|:------------:|:---------------------:|
-| macOS local   | ✅ | ✅ | ✅ | ✅ |
-| Windows local | ✅ | - | - | ✅ |
-| Kubernetes    | ✅ | ✅ | ✅ | ✅ |
-| Azure         | ✅ | ✅ | ✅ | ✅ |
+1. In the Bicep fork on the `bicep-extensibility`
 
-## Performing a release
-
-1. In the Bicep fork: `bicep-extensibility` branch at the time of writing
-
-   If doing release on release branch (release/0.12)
-   ```bash
-   git checkout -b release/0.12
-   git pull origin release/0.12 
-   git tag v0.12.0
-   git push --tags
-   ```
-
-   Else if on bicep-extensibility branch
    ```bash
    git checkout bicep-extensibility
    git pull origin bicep-extensibility
-   # replace v0.12.0 with the release version
-   git tag v0.12.0
-   git push --tags
+   git checkout -b release/0.17 # ensure branch is created
+   git pull origin release/0.17 # ensure branch is up to date
+   git tag v0.17.0-rc1 # Update to the next RC version if doing a new release
+   git push origin --tags # push the tag
+   git push origin release/0.17 # push the branch up to origin
+   ```
+   
+   Side note, in the bicep-extensibility branch, we have seen the build fail to trigger after pushing the tag once, but works after recreation. To delete and recreate:
+   
+   ```
+   git tag delete v0.17.0-rc1
+   git push origin --tags
+   git tag v0.17.0-rc1 # Update to the next RC version if doing a new release
+   git push origin --tags
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes.
@@ -57,85 +46,95 @@ Do not start the release until the following scenarios are validated:
    az storage blob directory list -c tools -d bicep-extensibility --account-name radiuspublic --output table
    az storage blob directory list -c tools -d vscode-extensibility --account-name radiuspublic --output table
    ```
+
 2. In the project-radius/deployment-engine repo:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
    
-   If doing release on release branch (release/0.12)
    ```bash
-   git checkout -b release/0.12
-   git pull origin release/0.12 
-   git tag v0.12.0
-   git push --tags
-   git push origin release/0.12
-   ```
-
-   Else if on main branch
-   ```bash
-   git checkout main 
+   git checkout main
    git pull origin main
-   # replace v0.12.0 with the release version
-   git tag v0.12.0
-   git push --tags
-   git push origin release/0.12
+   git checkout -b release/0.17
+   git pull origin release/0.17
+   git tag v0.17.0-rc1
+   git push origin --tags
+   git push origin release/0.17
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the Deployment Engine container to our container registry.
 
-
-2. In the project-radius/radius repo:
+3. In the project-radius/radius repo:
 
    Create a new branch from main based off the release version called `release/0.<VERSION>`. For example, `release/0.12`. This branch will be used for patching/servicing.
    
-   If doing release on release branch (release/0.12)
    ```bash
-   git checkout -b release/0.12
-   git pull origin release/0.12 
-   git tag v0.12.0
-   git push --tags
-   git push origin release/0.12
-   ```
-
-   Else if on main branch
-   ```bash
-   git checkout main 
+   git checkout main
    git pull origin main
-   # replace v0.12.0 with the release version
-   git tag v0.12.0
+   git checkout -b release/0.17
+   git pull origin release/0.17
+   git tag v0.17.0-rc1
    git push --tags
-   git push origin release/0.12
+   git push origin release/0.17
    ```
 
    Verify that GitHub actions triggers a build in response to the tag, and that the build completes. This will push the AppCore RP and UCP containers to our container registry.
 
 
-3. Updating Helm chart
+### Test tutorials and samples
 
-   Helm charts upload is automatic after v0.10.0. If the tools command mentioned in step 1 & 2 return the current version then skip the manual steps below:
+> This step is manual, however it could be automated in the future.
 
-   ```bash
-   cd deploy/Chart
-   # Replace version: 0.X.0 with this release version in Chart.yaml
-   # Replace tag: 0.X with this release version in values.yaml
-   helm package .
-   az acr helm push -n radius radius-0.12.0.tgz --force
-   # To verify upload worked
-   az acr helm list -n radius
-   ```
+Before a release can be finished, all [tutorials](https://edge.radapp.dev/user-guides/tutorials/) and [samples](https://edge.radapp.dev/user-guides/samples/) must be tested and validated. This is done by running through each tutorial and sample, step by step, confirming each step works as expected on a local environment. We strive to validate multiple OSs and Kubernetes cluster types. 
 
+1. Install the latest release candidate of the CLI
+For MacOS
+```
+curl -fsSL "https://radiuspublic.blob.core.windows.net/tools/rad/install.sh" | /bin/bash -s 0.17-rc1
+```
+
+For Windows
+```
+$script=iwr -useb  https://radiuspublic.blob.core.windows.net/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.17-rc1
+```
+
+Because we have not forked for samples and docs yet, please use the `edge` channel for validation. Specifically using `edge.radapp.dev` for the docs and following along.
+
+1. Run through each tutorial, step by step, confirming each step works as expected
+1. Run through each quickstart, step by step, confirming each step works as expected
+1. Run through each reference app, step by step, confirming each step works as expected
+
+These include eshop, container-apps, dapr quickstart, etc.
+
+Different environments/OSs to test on:
+- Unix/MacOS
+- Windows
+
+Different cluster types to test on:
+- AKS
+- KinD
+- k3d (codespace environment gives this for free)
+
+
+*If we encounter an issue with an RC release, please refer to "Patching" below.*
+
+
+### Creating the final release
+
+If sample validation passes, we can start the process of creating the final release.
+
+1. Go through steps 1-3 of "Creating an RC release" above, substituting the final release version instead of the RC version.
+
+   For example, if the RC version is `v0.17.0-rc1`, the final release version would be `v0.17.0`.
+   
 4. Check the stable version marker
 
-   If this is a patch release - you can stop here, you are done.
-   
-   If this is a rc release - you can stop here, you are done.
-   
-   If this is a new minor release - check the stable version marker.
-   
    The file https://get.radapp.dev/version/stable.txt should contain (in plain text) the channel you just created.
    
    You can find this file in the storage account under `version/stable.txt`.
 
 5. Update the project-radius/docs repository
+
+   Assuming that we are using v0.16.
    
    1. Create a new branch named `v0.16` from `edge`, substituting the new version number
    1. Within `docs/config.toml`:
@@ -146,22 +145,32 @@ Do not start the release until the following scenarios are validated:
       - Change `indexName` to `radapp-dev` instead of `radapp-dev-edge`
    1. In `docs/content/getting-started/_index.md` update the binary download links with the new version number
    1. Commit and push updates to be the new `v0.16` branch you created above.
-   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version.
+   1. Update the [latest](https://github.com/project-radius/docs/settings/environments/750240441/edit) environment to allow the new version to be deployed, and not the old version. This requires Admin/PM action and is restricted to that set of people.
    1. Verify https://radapp.dev now shows the new version.
 
-### Post release verification
+6. Update the project-radius/samples repository to point to latest release
+
+   ```
+   git checkout edge
+   git pull origin edge
+   git checkout -b v0.16
+   git pull origin v0.16
+   git push origin v0.16
+   ```
+
+### Post release sanity check
 
 After creating a release, it's good to sanity check that the release works in some small mainline scenarios and has the right versions for each container.
 
-1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.12.0-rc3), you can use the following URL format:
+1. Download the released version rad CLI. You can download the binary here: https://radapp.dev/getting-started/ if you just created a release. If you are doing a point release (ex 0.12), you can use the following URL format:
 
 
    ```sh
    Windows:
-   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12.0-rc3
+   $script=iwr -useb  https://get.radapp.dev/tools/rad/install.ps1; $block=[ScriptBlock]::Create($script); invoke-command -ScriptBlock $block -ArgumentList 0.12
 
    MacOS:
-   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.12.0-rc3
+   curl -fsSL "https://get.radapp.dev/tools/rad/install.sh" | /bin/bash -s 0.12
 
    Direct binary downloads
    https://get.radapp.dev/tools/rad/<version>/<macos-x64 or windows-x64 or linux-x64>/rad
@@ -198,7 +207,7 @@ After creating a release, it's good to sanity check that the release works in so
 5. Execute `rad deploy` to confirm a simple deployment works
 
    ```
-   rad env init kubernetes
+   rad env init kubernetes -i
    rad deploy <simple bicep>
    ```
 
@@ -227,7 +236,7 @@ Let's say we have a bug in a release which needs to be patched for an already cr
    git checkout release/0.<VERSION>
    git checkout -b <USERNAME>/<BRANCHNAME>
    ```
-3. Cherry-pick the commit that is on `main` onto the branch.
+3. Cherry-pick the commit that is on `main` onto the branch. PLEASE USE `-x` HERE TO ENSURE VERSION HISTORY IS PRESERVED.
    ```bash
    git cherry-pick -x <COMMIT HASH>
    ```
