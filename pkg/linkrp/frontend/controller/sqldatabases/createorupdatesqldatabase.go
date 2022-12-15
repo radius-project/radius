@@ -73,7 +73,7 @@ func (sql *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.ResponseWr
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := sql.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := sql.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput, newResource)
 	if err != nil {
 		return nil, err
 	}

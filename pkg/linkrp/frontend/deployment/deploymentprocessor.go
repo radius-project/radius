@@ -34,6 +34,7 @@ import (
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/store"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -41,7 +42,7 @@ import (
 
 type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
-	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
+	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, radiusResource conv.DataModelInterface) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
 }
@@ -143,8 +144,6 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		}
 	}
 
-	rendererOutput.RadiusResource = resource
-
 	return rendererOutput, nil
 }
 
@@ -160,7 +159,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
-func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
+func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput, radiusResource conv.DataModelInterface) (DeploymentOutput, error) {
 	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
@@ -220,9 +219,9 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			computedValues[k] = computedValue.Value
 		}
 	}
-         // Add computed values to resource properties.
+	// Add computed values to resource properties.
 	// Use reflection to pull the typed link object. Elem() here ensures we get the value and not just a pointer.
-	resourceValue := reflect.ValueOf(rendererOutput.RadiusResource).Elem()
+	resourceValue := reflect.ValueOf(radiusResource).Elem()
 	if (resourceValue == reflect.Value{}) {
 		return DeploymentOutput{}, fmt.Errorf("RadiusResource was nil in renderer output. resource type: %q with resource ID: %q", strings.ToLower(resourceID.Type()), resourceID.String())
 	}
@@ -247,7 +246,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 		ComputedValues: computedValues,
 		SecretValues:   rendererOutput.SecretValues,
 		RecipeData:     rendererOutput.RecipeData,
-		RadiusResource: rendererOutput.RadiusResource,
+		RadiusResource: radiusResource,
 	}, nil
 }
 

@@ -81,7 +81,7 @@ func (daprPubSub *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w htt
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := daprPubSub.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := daprPubSub.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput, newResource)
 	if err != nil {
 		return nil, err
 	}

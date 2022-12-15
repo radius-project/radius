@@ -81,7 +81,7 @@ func (daprSecretStore *CreateOrUpdateDaprSecretStore) Run(ctx context.Context, w
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := daprSecretStore.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := daprSecretStore.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput, newResource)
 	if err != nil {
 		return nil, err
 	}

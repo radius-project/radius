@@ -73,7 +73,7 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, w http.Response
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := extender.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := extender.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput, newResource)
 	if err != nil {
 		return nil, err
 	}

@@ -73,7 +73,7 @@ func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, w h
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := rabbitmq.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := rabbitmq.DeploymentProcessor().Deploy(ctx, serviceCtx.ResourceID, rendererOutput, newResource)
 	if err != nil {
 		return nil, err
 	}
