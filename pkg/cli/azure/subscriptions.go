@@ -9,9 +9,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/go-autorest/autorest"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/go-autorest/autorest/azure/cli"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 )
 
 // SubscriptionResult is the result of loading Azure subscriptions for the user.
@@ -61,39 +62,27 @@ func LoadSubscriptionsFromProfile() (SubscriptionResult, error) {
 }
 
 // LoadSubscriptionsFromAzure uses ARM to find subscription data.
-func LoadSubscriptionsFromAzure(ctx context.Context, authorizer autorest.Authorizer) (SubscriptionResult, error) {
-	subc := clients.NewSubscriptionClient(authorizer)
-
-	// ARM doesn't have the concept of a "default" subscription so we skip it here.
-	result := SubscriptionResult{}
-
-	res, err := subc.List(ctx)
+func LoadSubscriptionsFromAzure(ctx context.Context) (SubscriptionResult, error) {
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return SubscriptionResult{}, fmt.Errorf("cannot load subscriptions from Azure: %v", err)
+		return SubscriptionResult{}, err
 	}
 
-	// buffer subscriptions into a slice so we can do multiple passes
-	for {
-		for _, s := range res.Values() {
-			sub := Subscription{
-				DisplayName:    *s.DisplayName,
-				SubscriptionID: *s.SubscriptionID,
+	subscriptions, err := clientv2.GetSubscriptions(ctx, credential, &arm.ClientOptions{})
+	if err != nil {
+		return SubscriptionResult{}, err
+	}
 
-				// We don't get the tenant ID in this API call - we can do it later when its needed.
-				// This way we avoid doing an N+1 query for data we won't need for each sub.
-				TenantID: "",
-			}
-			result.Subscriptions = append(result.Subscriptions, sub)
-		}
+	result := SubscriptionResult{}
+	for _, s := range *subscriptions {
+		result.Subscriptions = append(result.Subscriptions, Subscription{
+			DisplayName:    *s.DisplayName,
+			SubscriptionID: *s.SubscriptionID,
 
-		if !res.NotDone() {
-			break
-		}
-
-		err = res.NextWithContext(ctx)
-		if err != nil {
-			return SubscriptionResult{}, fmt.Errorf("cannot load subscriptions from Azure: %v", err)
-		}
+			// We don't get the tenant ID in this API call - we can do it later when its needed.
+			// This way we avoid doing an N+1 query for data we won't need for each sub.
+			TenantID: "",
+		})
 	}
 
 	return result, nil

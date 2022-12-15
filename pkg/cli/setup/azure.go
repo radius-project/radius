@@ -13,16 +13,15 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
-	"github.com/Azure/azure-sdk-for-go/profiles/preview/preview/subscription/mgmt/subscription"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/Azure/go-autorest/autorest"
-	"github.com/Azure/go-autorest/autorest/azure/auth"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
 	"github.com/marstr/randname"
 	"github.com/spf13/cobra"
 	"golang.org/x/exp/slices"
 
-	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -54,20 +53,11 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 		return nil, nil
 	}
 
-	// NOTE: These functions interact with the Azure CLI. We only want to do this
-	// if the user opts in to doing azure.
-	//
-	// At this point we've already asked the user so we should be ok.
-	authorizer, err := auth.NewAuthorizerFromCLI()
+	subscription, err := selectSubscription(cmd.Context(), prompter)
 	if err != nil {
 		return nil, err
 	}
-
-	subscription, err := selectSubscription(cmd.Context(), authorizer, prompter)
-	if err != nil {
-		return nil, err
-	}
-	resourceGroup, err := selectResourceGroup(cmd.Context(), authorizer, subscription, prompter)
+	resourceGroup, err := selectResourceGroup(cmd.Context(), subscription, prompter)
 	if err != nil {
 		return nil, err
 	}
@@ -153,13 +143,8 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 		// so it should be safe to interact with the Azure CLI.
 		subs, err := azure.LoadSubscriptionsFromProfile()
 		if err != nil {
-			authorizer, err := auth.NewAuthorizerFromCLI()
-			if err != nil {
-				return nil, err
-			}
-
 			// Failed to load subscriptions from the user profile, fall back to online.
-			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context(), authorizer)
+			subs, err = azure.LoadSubscriptionsFromAzure(cmd.Context())
 			if err != nil {
 				return nil, err
 			}
@@ -198,11 +183,11 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 	}, nil
 }
 
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, prompter prompt.Interface) (azure.Subscription, error) {
+func selectSubscription(ctx context.Context, prompter prompt.Interface) (azure.Subscription, error) {
 	subs, err := azure.LoadSubscriptionsFromProfile()
 	if err != nil {
 		// Failed to load subscriptions from the user profile, fall back to online.
-		subs, err = azure.LoadSubscriptionsFromAzure(ctx, authorizer)
+		subs, err = azure.LoadSubscriptionsFromAzure(ctx)
 		if err != nil {
 			return azure.Subscription{}, err
 		}
@@ -238,28 +223,42 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, pro
 	return subs.Subscriptions[index], nil
 }
 
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (string, error) {
-	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
-	name, err := promptUserForRgName(ctx, rgc, prompter)
+func selectResourceGroup(ctx context.Context, sub azure.Subscription, prompter prompt.Interface) (string, error) {
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return "", err
 	}
-	resp, err := rgc.CheckExistence(ctx, name)
+
+	client, err := armresources.NewResourceGroupsClient(sub.SubscriptionID, credential, nil)
 	if err != nil {
 		return "", err
-	} else if !resp.HasHTTPStatus(404) {
-		// already exists
+	}
+
+	name, err := promptUserForRgName(ctx, client, prompter)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := client.CheckExistence(ctx, name, &armresources.ResourceGroupsClientCheckExistenceOptions{})
+	if err != nil {
+		return "", err
+	}
+
+	if !resp.Success {
+		// Resource Group already exists
 		return name, nil
 	}
+
 	output.LogInfo("Resource Group '%v' will be created...", name)
 
-	location, err := promptUserForLocation(ctx, authorizer, sub, prompter)
+	location, err := promptUserForLocation(ctx, sub, prompter)
 	if err != nil {
 		return "", err
 	}
-	_, err = rgc.CreateOrUpdate(ctx, name, resources.Group{
+
+	_, err = client.CreateOrUpdate(ctx, name, armresources.ResourceGroup{
 		Location: to.Ptr(*location.Name),
-	})
+	}, &armresources.ResourceGroupsClientCreateOrUpdateOptions{})
 	if err != nil {
 		return "", err
 	}
@@ -267,42 +266,57 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (subscription.Location, error) {
+func promptUserForLocation(ctx context.Context, sub azure.Subscription, prompter prompt.Interface) (*armsubscriptions.Location, error) {
 	// Use the display name for the prompt
 	// alphabetize so the list is stable and scannable
-	subc := clients.NewSubscriptionClient(authorizer)
-
-	locations, err := subc.ListLocations(ctx, sub.SubscriptionID)
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
-		return subscription.Location{}, fmt.Errorf("cannot list locations: %w", err)
+		return &armsubscriptions.Location{}, err
 	}
 
-	names := make([]string, 0, len(*locations.Value))
-	nameToLocation := map[string]subscription.Location{}
-	for _, loc := range *locations.Value {
+	client, err := armsubscriptions.NewClient(credential, &arm.ClientOptions{})
+	if err != nil {
+		return &armsubscriptions.Location{}, err
+	}
 
+	pager := client.NewListLocationsPager(sub.SubscriptionID, &armsubscriptions.ClientListLocationsOptions{})
+	locations := map[string]*armsubscriptions.Location{}
+	for pager.More() {
+		nextPage, err := pager.NextPage(ctx)
+		if err != nil {
+			return &armsubscriptions.Location{}, err
+		}
+
+		locationList := nextPage.LocationListResult.Value
+		for _, loc := range locationList {
+			locations[*loc.DisplayName] = loc
+		}
+	}
+
+	names := make([]string, 0, len(locations))
+	for _, loc := range locations {
 		names = append(names, *loc.DisplayName)
-		nameToLocation[*loc.DisplayName] = loc
 	}
 	sort.Strings(names)
+
 	index, _, err := prompter.RunSelect(prompt.SelectionPrompter(fmt.Sprintf("Select a location, Default: %s", names[0]), names))
 	if err != nil {
-		return subscription.Location{}, err
+		return &armsubscriptions.Location{}, err
 	}
-	selected := names[index]
-	return nameToLocation[selected], nil
+
+	return locations[names[index]], nil
 }
 
-func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompter prompt.Interface) (string, error) {
+func promptUserForRgName(ctx context.Context, client *armresources.ResourceGroupsClient, prompter prompt.Interface) (string, error) {
 	var name string
 	createNewRg, err := prompt.YesOrNoPrompter("Create a new Resource Group? [Y/n]", "Y", prompter)
 	if err != nil {
 		return "", err
 	}
-	if strings.ToLower(createNewRg) == "y" {
 
+	if strings.ToLower(createNewRg) == "y" {
 		defaultRgName := "radius-rg"
-		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
+		if resp, err := client.CheckExistence(ctx, defaultRgName, nil); !resp.Success || err != nil {
 			// only generate a random name if the default doesn't exist already or existence check fails
 			defaultRgName = generateRandomName("radius", "rg")
 		}
@@ -314,14 +328,28 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompt
 			return "", err
 		}
 	} else {
-		rgListResp, err := rgc.List(ctx, "", nil)
-		if err != nil {
-			return "", err
+		pager := client.NewListPager(&armresources.ResourceGroupsClientListOptions{
+			Filter: to.Ptr(""),
+		})
+		resourceGroups := make([]armresources.ResourceGroup, 0)
+		for pager.More() {
+			nextPage, err := pager.NextPage(ctx)
+			if err != nil {
+				return "", err
+			}
+
+			list := nextPage.ResourceGroupListResult.Value
+			for _, rg := range list {
+				resourceGroups = append(resourceGroups, *rg)
+			}
 		}
-		rgList := rgListResp.Values()
-		sort.Slice(rgList, func(i, j int) bool { return strings.ToLower(*rgList[i].Name) < strings.ToLower(*rgList[j].Name) })
-		names := make([]string, 0, len(rgList))
-		for _, s := range rgList {
+
+		sort.Slice(resourceGroups, func(i, j int) bool {
+			return strings.ToLower(*resourceGroups[i].Name) < strings.ToLower(*resourceGroups[j].Name)
+		})
+
+		names := make([]string, 0, len(resourceGroups))
+		for _, s := range resourceGroups {
 			names = append(names, *s.Name)
 		}
 
@@ -337,8 +365,9 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompt
 		if err != nil {
 			return "", err
 		}
-		name = *rgList[index].Name
+		name = *resourceGroups[index].Name
 	}
+
 	return name, nil
 }
 
