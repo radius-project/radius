@@ -56,7 +56,6 @@ input-file:
   - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
 modelerfour: 
   treat-type-object-as-anything: false
-  lenient-model-deduplication: true
 ```
 
 ### Common

@@ -8,3 +8,8 @@ import "./mongoDatabases.cadl";
 import "./sqlDatabases.cadl";
 import "./redisCaches.cadl";
 import "./rabbitMQMessageQueues.cadl";
+import "./daprInvokeHttpRoutes.cadl";
+import "./daprSecretStores.cadl";
+import "./daprStateStores.cadl";
+import "./daprPubSubBrokers.cadl";
+import "./extenders.cadl";
