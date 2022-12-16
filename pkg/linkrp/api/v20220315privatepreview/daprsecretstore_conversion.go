@@ -76,7 +76,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 	dst.Tags = *to.StringMapPtr(daprSecretStore.Tags)
 	switch daprSecretStore.Properties.Mode {
 	case datamodel.LinkModeValues:
-		mode := DaprSecretStorePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesDaprSecretStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprSecretStore.Properties.Status.OutputResources),
@@ -91,7 +91,7 @@ func (dst *DaprSecretStoreResource) ConvertFrom(src conv.DataModelInterface) err
 			ComponentName:     to.StringPtr(daprSecretStore.Properties.ComponentName),
 		}
 	case datamodel.LinkModeRecipe:
-		mode := DaprSecretStorePropertiesModeRecipe
+		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(daprSecretStore.Properties.Recipe)
 		dst.Properties = &RecipeDaprSecretStoreProperties{

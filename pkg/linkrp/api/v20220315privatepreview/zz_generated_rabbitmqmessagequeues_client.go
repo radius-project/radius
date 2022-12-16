@@ -20,22 +20,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
-// RabbitMQMessageQueuesClient contains the methods for the RabbitMQMessageQueues group.
-// Don't use this type directly, use NewRabbitMQMessageQueuesClient() instead.
-type RabbitMQMessageQueuesClient struct {
+// RabbitmqMessageQueuesClient contains the methods for the RabbitmqMessageQueues group.
+// Don't use this type directly, use NewRabbitmqMessageQueuesClient() instead.
+type RabbitmqMessageQueuesClient struct {
 	host string
 	rootScope string
 	pl runtime.Pipeline
 }
 
-// NewRabbitMQMessageQueuesClient creates a new instance of RabbitMQMessageQueuesClient with the specified values.
+// NewRabbitmqMessageQueuesClient creates a new instance of RabbitmqMessageQueuesClient with the specified values.
 // rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewRabbitMQMessageQueuesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*RabbitMQMessageQueuesClient, error) {
+func NewRabbitmqMessageQueuesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*RabbitmqMessageQueuesClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -47,7 +48,7 @@ func NewRabbitMQMessageQueuesClient(rootScope string, credential azcore.TokenCre
 	if err != nil {
 		return nil, err
 	}
-	client := &RabbitMQMessageQueuesClient{
+	client := &RabbitmqMessageQueuesClient{
 		rootScope: rootScope,
 		host: ep,
 pl: pl,
@@ -55,36 +56,36 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a RabbitMQMessageQueue resource
+// CreateOrUpdate - Creates or updates a RabbitmqMessageQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// rabbitMQMessageQueueName - The name of the RabbitMQMessageQueue link resource
-// rabbitMQMessageQueueParameters - rabbitMQMessageQueue create parameters
-// options - RabbitMQMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMQMessageQueuesClient.CreateOrUpdate
+// rabbitmqMessageQueueName - The name of the RabbitmqMessageQueue link resource
+// resource - Resource create parameters.
+// options - RabbitmqMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitmqMessageQueuesClient.CreateOrUpdate
 // method.
-func (client *RabbitMQMessageQueuesClient) CreateOrUpdate(ctx context.Context, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesClientCreateOrUpdateOptions) (RabbitMQMessageQueuesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, rabbitMQMessageQueueName, rabbitMQMessageQueueParameters, options)
+func (client *RabbitmqMessageQueuesClient) CreateOrUpdate(ctx context.Context, rabbitmqMessageQueueName string, resource RabbitmqMessageQueueResource, options *RabbitmqMessageQueuesClientCreateOrUpdateOptions) (RabbitmqMessageQueuesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, rabbitmqMessageQueueName, resource, options)
 	if err != nil {
-		return RabbitMQMessageQueuesClientCreateOrUpdateResponse{}, err
+		return RabbitmqMessageQueuesClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return RabbitMQMessageQueuesClientCreateOrUpdateResponse{}, err
+		return RabbitmqMessageQueuesClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return RabbitMQMessageQueuesClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return RabbitmqMessageQueuesClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, rabbitMQMessageQueueParameters RabbitMQMessageQueueResource, options *RabbitMQMessageQueuesClientCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+func (client *RabbitmqMessageQueuesClient) createOrUpdateCreateRequest(ctx context.Context, rabbitmqMessageQueueName string, resource RabbitmqMessageQueueResource, options *RabbitmqMessageQueuesClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if rabbitMQMessageQueueName == "" {
-		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
+	if rabbitmqMessageQueueName == "" {
+		return nil, errors.New("parameter rabbitmqMessageQueueName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitmqMessageQueueName}", url.PathEscape(rabbitmqMessageQueueName))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -93,47 +94,55 @@ func (client *RabbitMQMessageQueuesClient) createOrUpdateCreateRequest(ctx conte
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, rabbitMQMessageQueueParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *RabbitMQMessageQueuesClient) createOrUpdateHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientCreateOrUpdateResponse, error) {
-	result := RabbitMQMessageQueuesClientCreateOrUpdateResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
-		return RabbitMQMessageQueuesClientCreateOrUpdateResponse{}, err
+func (client *RabbitmqMessageQueuesClient) createOrUpdateHandleResponse(resp *http.Response) (RabbitmqMessageQueuesClientCreateOrUpdateResponse, error) {
+	result := RabbitmqMessageQueuesClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return RabbitmqMessageQueuesClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitmqMessageQueueResource); err != nil {
+		return RabbitmqMessageQueuesClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing rabbitMQMessageQueue resource
+// Delete - Deletes an existing RabbitmqMessageQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// rabbitMQMessageQueueName - The name of the RabbitMQMessageQueue link resource
-// options - RabbitMQMessageQueuesClientDeleteOptions contains the optional parameters for the RabbitMQMessageQueuesClient.Delete
+// rabbitmqMessageQueueName - The name of the RabbitmqMessageQueue link resource
+// options - RabbitmqMessageQueuesClientDeleteOptions contains the optional parameters for the RabbitmqMessageQueuesClient.Delete
 // method.
-func (client *RabbitMQMessageQueuesClient) Delete(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientDeleteOptions) (RabbitMQMessageQueuesClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, rabbitMQMessageQueueName, options)
+func (client *RabbitmqMessageQueuesClient) Delete(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientDeleteOptions) (RabbitmqMessageQueuesClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, rabbitmqMessageQueueName, options)
 	if err != nil {
-		return RabbitMQMessageQueuesClientDeleteResponse{}, err
+		return RabbitmqMessageQueuesClientDeleteResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return RabbitMQMessageQueuesClientDeleteResponse{}, err
+		return RabbitmqMessageQueuesClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return RabbitMQMessageQueuesClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return RabbitmqMessageQueuesClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return RabbitMQMessageQueuesClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+func (client *RabbitmqMessageQueuesClient) deleteCreateRequest(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if rabbitMQMessageQueueName == "" {
-		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
+	if rabbitmqMessageQueueName == "" {
+		return nil, errors.New("parameter rabbitmqMessageQueueName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitmqMessageQueueName}", url.PathEscape(rabbitmqMessageQueueName))
 	req, err := runtime.NewRequest(ctx, http.MethodDelete, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -145,35 +154,49 @@ func (client *RabbitMQMessageQueuesClient) deleteCreateRequest(ctx context.Conte
 	return req, nil
 }
 
-// Get - Retrieves information about a rabbitMQMessageQueue resource
+// deleteHandleResponse handles the Delete response.
+func (client *RabbitmqMessageQueuesClient) deleteHandleResponse(resp *http.Response) (RabbitmqMessageQueuesClientDeleteResponse, error) {
+	result := RabbitmqMessageQueuesClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return RabbitmqMessageQueuesClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a RabbitmqMessageQueueResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// rabbitMQMessageQueueName - The name of the RabbitMQMessageQueue link resource
-// options - RabbitMQMessageQueuesClientGetOptions contains the optional parameters for the RabbitMQMessageQueuesClient.Get
+// rabbitmqMessageQueueName - The name of the RabbitmqMessageQueue link resource
+// options - RabbitmqMessageQueuesClientGetOptions contains the optional parameters for the RabbitmqMessageQueuesClient.Get
 // method.
-func (client *RabbitMQMessageQueuesClient) Get(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientGetOptions) (RabbitMQMessageQueuesClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, rabbitMQMessageQueueName, options)
+func (client *RabbitmqMessageQueuesClient) Get(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientGetOptions) (RabbitmqMessageQueuesClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, rabbitmqMessageQueueName, options)
 	if err != nil {
-		return RabbitMQMessageQueuesClientGetResponse{}, err
+		return RabbitmqMessageQueuesClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return RabbitMQMessageQueuesClientGetResponse{}, err
+		return RabbitmqMessageQueuesClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return RabbitMQMessageQueuesClientGetResponse{}, runtime.NewResponseError(resp)
+		return RabbitmqMessageQueuesClientGetResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientGetOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}"
+func (client *RabbitmqMessageQueuesClient) getCreateRequest(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientGetOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if rabbitMQMessageQueueName == "" {
-		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
+	if rabbitmqMessageQueueName == "" {
+		return nil, errors.New("parameter rabbitmqMessageQueueName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitmqMessageQueueName}", url.PathEscape(rabbitmqMessageQueueName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
@@ -186,24 +209,24 @@ func (client *RabbitMQMessageQueuesClient) getCreateRequest(ctx context.Context,
 }
 
 // getHandleResponse handles the Get response.
-func (client *RabbitMQMessageQueuesClient) getHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientGetResponse, error) {
-	result := RabbitMQMessageQueuesClientGetResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueResource); err != nil {
-		return RabbitMQMessageQueuesClientGetResponse{}, err
+func (client *RabbitmqMessageQueuesClient) getHandleResponse(resp *http.Response) (RabbitmqMessageQueuesClientGetResponse, error) {
+	result := RabbitmqMessageQueuesClientGetResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitmqMessageQueueResource); err != nil {
+		return RabbitmqMessageQueuesClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all rabbitMQMessageQueue resources in the given root scope
+// NewListByRootScopePager - Lists information about all RabbitmqMessageQueueResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
-// options - RabbitMQMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitMQMessageQueuesClient.ListByRootScope
+// options - RabbitmqMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitmqMessageQueuesClient.ListByRootScope
 // method.
-func (client *RabbitMQMessageQueuesClient) NewListByRootScopePager(options *RabbitMQMessageQueuesClientListByRootScopeOptions) (*runtime.Pager[RabbitMQMessageQueuesClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[RabbitMQMessageQueuesClientListByRootScopeResponse]{
-		More: func(page RabbitMQMessageQueuesClientListByRootScopeResponse) bool {
+func (client *RabbitmqMessageQueuesClient) NewListByRootScopePager(options *RabbitmqMessageQueuesClientListByRootScopeOptions) (*runtime.Pager[RabbitmqMessageQueuesClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[RabbitmqMessageQueuesClientListByRootScopeResponse]{
+		More: func(page RabbitmqMessageQueuesClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *RabbitMQMessageQueuesClientListByRootScopeResponse) (RabbitMQMessageQueuesClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *RabbitmqMessageQueuesClientListByRootScopeResponse) (RabbitmqMessageQueuesClientListByRootScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -212,14 +235,14 @@ func (client *RabbitMQMessageQueuesClient) NewListByRootScopePager(options *Rabb
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return RabbitMQMessageQueuesClientListByRootScopeResponse{}, err
+				return RabbitmqMessageQueuesClientListByRootScopeResponse{}, err
 			}
 			resp, err := client.pl.Do(req)
 			if err != nil {
-				return RabbitMQMessageQueuesClientListByRootScopeResponse{}, err
+				return RabbitmqMessageQueuesClientListByRootScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return RabbitMQMessageQueuesClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return RabbitmqMessageQueuesClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listByRootScopeHandleResponse(resp)
 		},
@@ -227,8 +250,8 @@ func (client *RabbitMQMessageQueuesClient) NewListByRootScopePager(options *Rabb
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *RabbitMQMessageQueuesClient) listByRootScopeCreateRequest(ctx context.Context, options *RabbitMQMessageQueuesClientListByRootScopeOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues"
+func (client *RabbitmqMessageQueuesClient) listByRootScopeCreateRequest(ctx context.Context, options *RabbitmqMessageQueuesClientListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
@@ -242,44 +265,44 @@ func (client *RabbitMQMessageQueuesClient) listByRootScopeCreateRequest(ctx cont
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *RabbitMQMessageQueuesClient) listByRootScopeHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientListByRootScopeResponse, error) {
-	result := RabbitMQMessageQueuesClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQMessageQueueList); err != nil {
-		return RabbitMQMessageQueuesClientListByRootScopeResponse{}, err
+func (client *RabbitmqMessageQueuesClient) listByRootScopeHandleResponse(resp *http.Response) (RabbitmqMessageQueuesClientListByRootScopeResponse, error) {
+	result := RabbitmqMessageQueuesClientListByRootScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitmqMessageQueueResourceListResult); err != nil {
+		return RabbitmqMessageQueuesClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified RabbitMQMessageQueue resource
+// ListSecrets - Lists secrets values for the specified RabbitmqMessageQueue resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// rabbitMQMessageQueueName - The name of the RabbitMQMessageQueue link resource
-// options - RabbitMQMessageQueuesClientListSecretsOptions contains the optional parameters for the RabbitMQMessageQueuesClient.ListSecrets
+// rabbitmqMessageQueueName - The name of the RabbitmqMessageQueue link resource
+// options - RabbitmqMessageQueuesClientListSecretsOptions contains the optional parameters for the RabbitmqMessageQueuesClient.ListSecrets
 // method.
-func (client *RabbitMQMessageQueuesClient) ListSecrets(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientListSecretsOptions) (RabbitMQMessageQueuesClientListSecretsResponse, error) {
-	req, err := client.listSecretsCreateRequest(ctx, rabbitMQMessageQueueName, options)
+func (client *RabbitmqMessageQueuesClient) ListSecrets(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientListSecretsOptions) (RabbitmqMessageQueuesClientListSecretsResponse, error) {
+	req, err := client.listSecretsCreateRequest(ctx, rabbitmqMessageQueueName, options)
 	if err != nil {
-		return RabbitMQMessageQueuesClientListSecretsResponse{}, err
+		return RabbitmqMessageQueuesClientListSecretsResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return RabbitMQMessageQueuesClientListSecretsResponse{}, err
+		return RabbitmqMessageQueuesClientListSecretsResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return RabbitMQMessageQueuesClientListSecretsResponse{}, runtime.NewResponseError(resp)
+		return RabbitmqMessageQueuesClientListSecretsResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.listSecretsHandleResponse(resp)
 }
 
 // listSecretsCreateRequest creates the ListSecrets request.
-func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitMQMessageQueueName string, options *RabbitMQMessageQueuesClientListSecretsOptions) (*policy.Request, error) {
-	urlPath := "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets"
+func (client *RabbitmqMessageQueuesClient) listSecretsCreateRequest(ctx context.Context, rabbitmqMessageQueueName string, options *RabbitmqMessageQueuesClientListSecretsOptions) (*policy.Request, error) {
+	urlPath := "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}/listSecrets"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
-	if rabbitMQMessageQueueName == "" {
-		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
+	if rabbitmqMessageQueueName == "" {
+		return nil, errors.New("parameter rabbitmqMessageQueueName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	urlPath = strings.ReplaceAll(urlPath, "{rabbitmqMessageQueueName}", url.PathEscape(rabbitmqMessageQueueName))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -291,10 +314,10 @@ func (client *RabbitMQMessageQueuesClient) listSecretsCreateRequest(ctx context.
 }
 
 // listSecretsHandleResponse handles the ListSecrets response.
-func (client *RabbitMQMessageQueuesClient) listSecretsHandleResponse(resp *http.Response) (RabbitMQMessageQueuesClientListSecretsResponse, error) {
-	result := RabbitMQMessageQueuesClientListSecretsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitMQSecrets); err != nil {
-		return RabbitMQMessageQueuesClientListSecretsResponse{}, err
+func (client *RabbitmqMessageQueuesClient) listSecretsHandleResponse(resp *http.Response) (RabbitmqMessageQueuesClientListSecretsResponse, error) {
+	result := RabbitmqMessageQueuesClientListSecretsResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.RabbitmqListSecretsResult); err != nil {
+		return RabbitmqMessageQueuesClientListSecretsResponse{}, err
 	}
 	return result, nil
 }

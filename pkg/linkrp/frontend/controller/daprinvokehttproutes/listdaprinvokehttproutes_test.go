@@ -58,7 +58,7 @@ func TestListDaprInvokeHttpRoutesRun_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.DaprInvokeHTTPRouteList{}
+		actualOutput := &v20220315privatepreview.DaprInvokeHTTPRouteResourceListResult{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 		require.Equal(t, 0, len(actualOutput.Value))
 		require.Nil(t, actualOutput.NextLink)
@@ -125,7 +125,7 @@ func TestListDaprInvokeHttpRoutesRun_20220315PrivatePreview(t *testing.T) {
 			_ = resp.Apply(ctx, w, req)
 			require.Equal(t, http.StatusOK, w.Result().StatusCode)
 
-			actualOutput := &v20220315privatepreview.DaprInvokeHTTPRouteList{}
+			actualOutput := &v20220315privatepreview.DaprInvokeHTTPRouteResourceListResult{}
 			_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 			require.Equal(t, testCase.batchCount, len(actualOutput.Value))
 			require.Equal(t, expectedOutput, actualOutput.Value[0])

@@ -7,6 +7,18 @@
 
 .PHONY: generate
 generate: generate-genericcliclient generate-rad-corerp-client generate-rad-linkrp-client generate-rad-ucp-client generate-go generate-bicep-types generate-ucp-crd ## Generates all targets.
+	
+.PHONY: generate-cadl-installed
+generate-cadl-installed:
+	@echo "$(ARROW) Detecting cadl..."
+	@which cadl > /dev/null || { echo "cadl is a required dependency"; exit 1; }
+	@echo "$(ARROW) OK"
+
+.PHONY: generate-openapi-spec
+generate-openapi-spec: generate-cadl-installed
+	@echo  "Generating openapi specs for link resources from cadl models."
+	cd cadl/Applications.Link/
+	cadl compile cadl/Applications.Link/ --emit @azure-tools/cadl-autorest --option @azure-tools/cadl-autorest.emitter-output-dir={cwd}/swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/
 
 .PHONY: generate-node-installed
 generate-node-installed:
@@ -43,7 +55,7 @@ generate-rad-corerp-client: generate-node-installed generate-autorest-installed 
 	autorest pkg/corerp/api/README.md --tag=core-2022-03-15-privatepreview
 
 .PHONY: generate-rad-linkrp-client
-generate-rad-linkrp-client: generate-node-installed generate-autorest-installed ## Generates the linkrp client SDK (Autorest).
+generate-rad-linkrp-client: generate-node-installed generate-autorest-installed generate-openapi-spec ## Generates the linkrp client SDK (Autorest).
 	@echo "$(AUTOREST_MODULE_VERSION) is module version"
 	autorest pkg/linkrp/api/README.md --tag=link-2022-03-15-privatepreview
 

@@ -714,6 +714,7 @@ func (e *ErrorResponse) UnmarshalJSON(data []byte) error {
 // MarshalJSON implements the json.Marshaller interface for type ExtenderProperties.
 func (e ExtenderProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
+	populate(objectMap, "additionalProperties", e.AdditionalProperties)
 	populate(objectMap, "application", e.Application)
 	populate(objectMap, "environment", e.Environment)
 	populate(objectMap, "provisioningState", e.ProvisioningState)
@@ -731,6 +732,9 @@ func (e *ExtenderProperties) UnmarshalJSON(data []byte) error {
 	for key, val := range rawMsg {
 		var err error
 		switch key {
+		case "additionalProperties":
+				err = unpopulate(val, "AdditionalProperties", &e.AdditionalProperties)
+				delete(rawMsg, key)
 		case "application":
 				err = unpopulate(val, "Application", &e.Application)
 				delete(rawMsg, key)
@@ -1562,7 +1566,7 @@ func (r RecipeMongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", r.Database)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "RecipeMongoDatabaseProperties"
+	objectMap["mode"] = "recipe"
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
@@ -1623,7 +1627,7 @@ func (r RecipeRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
-	objectMap["mode"] = "RecipeRabbitmqMessageQueueProperties"
+	objectMap["mode"] = "recipe"
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "queue", r.Queue)
 	populate(objectMap, "recipe", r.Recipe)
@@ -1679,7 +1683,7 @@ func (r RecipeRedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "RecipeRedisCacheProperties"
+	objectMap["mode"] = "recipe"
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
@@ -1742,7 +1746,7 @@ func (r RecipeSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "database", r.Database)
 	populate(objectMap, "environment", r.Environment)
-	objectMap["mode"] = "RecipeSqlDatabaseProperties"
+	objectMap["mode"] = "recipe"
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "recipe", r.Recipe)
 	populate(objectMap, "server", r.Server)
@@ -2158,7 +2162,7 @@ func (r ResourceMongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", r.Database)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "ResourceMongoDatabaseProperties"
+	objectMap["mode"] = "resource"
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
@@ -2220,7 +2224,7 @@ func (r ResourceRedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
 	populate(objectMap, "host", r.Host)
-	objectMap["mode"] = "ResourceRedisCacheProperties"
+	objectMap["mode"] = "resource"
 	populate(objectMap, "port", r.Port)
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
@@ -2283,7 +2287,7 @@ func (r ResourceSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "database", r.Database)
 	populate(objectMap, "environment", r.Environment)
-	objectMap["mode"] = "ResourceSqlDatabaseProperties"
+	objectMap["mode"] = "resource"
 	populate(objectMap, "provisioningState", r.ProvisioningState)
 	populate(objectMap, "resource", r.Resource)
 	populate(objectMap, "server", r.Server)
@@ -2647,7 +2651,7 @@ func (v ValuesDaprSecretStoreProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "componentName", v.ComponentName)
 	populate(objectMap, "environment", v.Environment)
-	populate(objectMap, "metaadata", v.Metaadata)
+	populate(objectMap, "metadata", v.Metadata)
 	objectMap["mode"] = "values"
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "status", v.Status)
@@ -2674,8 +2678,8 @@ func (v *ValuesDaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 		case "environment":
 				err = unpopulate(val, "Environment", &v.Environment)
 				delete(rawMsg, key)
-		case "metaadata":
-				err = unpopulate(val, "Metaadata", &v.Metaadata)
+		case "metadata":
+				err = unpopulate(val, "Metadata", &v.Metadata)
 				delete(rawMsg, key)
 		case "mode":
 				err = unpopulate(val, "Mode", &v.Mode)
@@ -2766,7 +2770,7 @@ func (v ValuesMongoDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "database", v.Database)
 	populate(objectMap, "environment", v.Environment)
 	populate(objectMap, "host", v.Host)
-	objectMap["mode"] = "ValuesMongoDatabaseProperties"
+	objectMap["mode"] = "values"
 	populate(objectMap, "port", v.Port)
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "secrets", v.Secrets)
@@ -2823,7 +2827,7 @@ func (v ValuesRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "environment", v.Environment)
-	objectMap["mode"] = "ValuesRabbitmqMessageQueueProperties"
+	objectMap["mode"] = "values"
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "queue", v.Queue)
 	populate(objectMap, "secrets", v.Secrets)
@@ -2875,7 +2879,7 @@ func (v ValuesRedisCacheProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "environment", v.Environment)
 	populate(objectMap, "host", v.Host)
-	objectMap["mode"] = "ValuesRedisCacheProperties"
+	objectMap["mode"] = "values"
 	populate(objectMap, "port", v.Port)
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "secrets", v.Secrets)
@@ -2934,7 +2938,7 @@ func (v ValuesSQLDatabaseProperties) MarshalJSON() ([]byte, error) {
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "database", v.Database)
 	populate(objectMap, "environment", v.Environment)
-	objectMap["mode"] = "ValuesSqlDatabaseProperties"
+	objectMap["mode"] = "values"
 	populate(objectMap, "provisioningState", v.ProvisioningState)
 	populate(objectMap, "server", v.Server)
 	populate(objectMap, "status", v.Status)

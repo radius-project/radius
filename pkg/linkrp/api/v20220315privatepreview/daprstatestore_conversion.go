@@ -84,7 +84,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 
 	switch daprStateStore.Properties.Mode {
 	case datamodel.LinkModeRecipe:
-		mode := DaprStateStorePropertiesModeRecipe
+		mode := "recipe"
 		dst.Properties = &RecipeDaprStateStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -100,7 +100,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	case datamodel.LinkModeResource:
-		mode := DaprStateStorePropertiesModeResource
+		mode := "resource"
 		dst.Properties = &ResourceDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
@@ -114,7 +114,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 			Metadata:          daprStateStore.Properties.Metadata,
 		}
 	case datamodel.LinkModeValues:
-		mode := DaprStateStorePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesDaprStateStoreResourceProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),

@@ -43,11 +43,6 @@ model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   name: string;
 }
 
-enum MongoDatabaseMode {
-  resource,
-  values,
-  recipe,
-}
 @doc("The secret values for the given MongoDatabase resource")
 model MongoDatabaseListSecretsResult is MongoDatabaseSecrets;
 
@@ -79,7 +74,7 @@ model ResourceMongoDatabaseProperties extends MongoDatabaseProperties{
   database?: string;
 
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: MongoDatabaseMode.resource;
+  mode: "resource";
 }
 @doc("MongoDatabase Properties for Mode Values")
 model ValuesMongoDatabaseProperties extends MongoDatabaseProperties{
@@ -94,7 +89,7 @@ model ValuesMongoDatabaseProperties extends MongoDatabaseProperties{
   database?: string; 
 
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: MongoDatabaseMode.values;
+  mode: "values";
 }
 @doc("MongoDatabase Properties for Mode Recipe")
 model RecipeMongoDatabaseProperties extends MongoDatabaseProperties{
@@ -112,7 +107,7 @@ model RecipeMongoDatabaseProperties extends MongoDatabaseProperties{
   recipe: Recipe;
 
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: MongoDatabaseMode.recipe;
+  mode: "recipe";
 }
 @doc("MongoDatabase link properties")
 @discriminator("mode")

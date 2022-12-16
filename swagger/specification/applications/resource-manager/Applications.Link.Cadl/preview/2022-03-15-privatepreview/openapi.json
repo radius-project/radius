@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Link Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Link Extender Resource",
+    "description": "REST APIs for Applications.Link/daprPubSubBrokers",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -65,9 +65,6 @@
     },
     {
       "name": "DaprPubSubBroker"
-    },
-    {
-      "name": "Extenders"
     }
   ],
   "paths": {
@@ -801,229 +798,6 @@
           },
           "204": {
             "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/extenders": {
-      "get": {
-        "tags": [
-          "Extenders"
-        ],
-        "operationId": "Extenders_ListByRootScope",
-        "description": "Lists information about all ExtenderResources in the given root scope",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ExtenderResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/extenders/{extenderName}": {
-      "get": {
-        "tags": [
-          "Extenders"
-        ],
-        "operationId": "Extenders_Get",
-        "description": "Retrieves information about a ExtenderResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "extenderName",
-            "in": "path",
-            "required": true,
-            "description": "Extender name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ExtenderResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "Extenders"
-        ],
-        "operationId": "Extenders_CreateOrUpdate",
-        "description": "Creates or updates a ExtenderResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "extenderName",
-            "in": "path",
-            "required": true,
-            "description": "Extender name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/ExtenderResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ExtenderResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/ExtenderResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Extenders"
-        ],
-        "operationId": "Extenders_Delete",
-        "description": "Deletes an existing ExtenderResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "extenderName",
-            "in": "path",
-            "required": true,
-            "description": "Extender name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/extenders/{extenderName}/listSecrets": {
-      "get": {
-        "operationId": "Extenders_ListSecrets",
-        "description": "Lists secrets values for the specified Extender resource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "extenderName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Extender link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/ExtenderListSecretsResult"
-            }
           },
           "default": {
             "description": "An unexpected error response.",
@@ -2235,79 +2009,6 @@
         "value"
       ]
     },
-    "ExtenderListSecretsResult": {
-      "type": "object",
-      "properties": {},
-      "description": "The secret values for the given Extender resource"
-    },
-    "ExtenderProperties": {
-      "type": "object",
-      "properties": {
-        "provisioningState": {
-          "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the extender link at the time the operation was called",
-          "readOnly": true
-        },
-        "secrets": {
-          "$ref": "#/definitions/ExtenderSecrets",
-          "description": "The secrets value for the resource"
-        }
-      },
-      "description": "Extender link properties",
-      "allOf": [
-        {
-          "$ref": "#/definitions/BasicResourceProperties"
-        }
-      ]
-    },
-    "ExtenderResource": {
-      "type": "object",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/ExtenderProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
-        }
-      },
-      "description": "Extender link",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
-        }
-      ]
-    },
-    "ExtenderResourceListResult": {
-      "type": "object",
-      "properties": {
-        "value": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/ExtenderResource"
-          },
-          "x-cadl-name": "ExtenderResource[]",
-          "description": "The ExtenderResource items on this page"
-        },
-        "nextLink": {
-          "type": "string",
-          "format": "uri",
-          "description": "The link to the next page of items",
-          "x-cadl-name": "Rest.ResourceLocation"
-        }
-      },
-      "description": "The response of a ExtenderResource list operation.",
-      "required": [
-        "value"
-      ]
-    },
-    "ExtenderSecrets": {
-      "type": "object",
-      "properties": {},
-      "description": "The secret values for the given Extender resource"
-    },
     "MongoDatabaseListSecretsResult": {
       "type": "object",
       "properties": {
@@ -2325,18 +2026,6 @@
         }
       },
       "description": "The secret values for the given MongoDatabase resource"
-    },
-    "MongoDatabaseMode": {
-      "type": "string",
-      "enum": [
-        "resource",
-        "values",
-        "recipe"
-      ],
-      "x-ms-enum": {
-        "name": "MongoDatabaseMode",
-        "modelAsString": true
-      }
     },
     "MongoDatabaseProperties": {
       "type": "object",
@@ -2535,17 +2224,6 @@
         "value"
       ]
     },
-    "RabbitmqMode": {
-      "type": "string",
-      "enum": [
-        "values",
-        "recipe"
-      ],
-      "x-ms-enum": {
-        "name": "RabbitmqMode",
-        "modelAsString": true
-      }
-    },
     "RabbitmqSecrets": {
       "type": "object",
       "properties": {
@@ -2697,7 +2375,8 @@
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "recipe"
     },
     "RecipeRabbitmqMessageQueueProperties": {
       "type": "object",
@@ -2719,7 +2398,8 @@
         {
           "$ref": "#/definitions/RabbitmqMessageQueueProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "recipe"
     },
     "RecipeRedisCacheProperties": {
       "type": "object",
@@ -2750,7 +2430,8 @@
         {
           "$ref": "#/definitions/RedisCacheProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "recipe"
     },
     "RecipeSqlDatabaseProperties": {
       "type": "object",
@@ -2776,7 +2457,8 @@
         {
           "$ref": "#/definitions/SqlDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "recipe"
     },
     "RedisCacheListSecretsResult": {
       "type": "object",
@@ -2791,18 +2473,6 @@
         }
       },
       "description": "The secret values for the given RedisCache resource"
-    },
-    "RedisCacheMode": {
-      "type": "string",
-      "enum": [
-        "resource",
-        "values",
-        "recipe"
-      ],
-      "x-ms-enum": {
-        "name": "RedisCacheMode",
-        "modelAsString": true
-      }
     },
     "RedisCacheProperties": {
       "type": "object",
@@ -2981,7 +2651,8 @@
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "resource"
     },
     "ResourceRedisCacheProperties": {
       "type": "object",
@@ -3012,7 +2683,8 @@
         {
           "$ref": "#/definitions/RedisCacheProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "resource"
     },
     "ResourceSqlDatabaseProperties": {
       "type": "object",
@@ -3038,7 +2710,8 @@
         {
           "$ref": "#/definitions/SqlDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "resource"
     },
     "ResourceStatus": {
       "type": "object",
@@ -3057,18 +2730,6 @@
       "required": [
         "outputResources"
       ]
-    },
-    "SqlDatabaseMode": {
-      "type": "string",
-      "enum": [
-        "resource",
-        "values",
-        "recipe"
-      ],
-      "x-ms-enum": {
-        "name": "SqlDatabaseMode",
-        "modelAsString": true
-      }
     },
     "SqlDatabaseProperties": {
       "type": "object",
@@ -3177,7 +2838,7 @@
           "type": "string",
           "description": "Dapr component version"
         },
-        "metaadata": {
+        "metadata": {
           "$ref": "#/definitions/object",
           "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
         }
@@ -3186,7 +2847,7 @@
       "required": [
         "type",
         "version",
-        "metaadata"
+        "metadata"
       ],
       "allOf": [
         {
@@ -3251,7 +2912,8 @@
         {
           "$ref": "#/definitions/MongoDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "values"
     },
     "ValuesRabbitmqMessageQueueProperties": {
       "type": "object",
@@ -3269,7 +2931,8 @@
         {
           "$ref": "#/definitions/RabbitmqMessageQueueProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "values"
     },
     "ValuesRedisCacheProperties": {
       "type": "object",
@@ -3297,7 +2960,8 @@
         {
           "$ref": "#/definitions/RedisCacheProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "values"
     },
     "ValuesSqlDatabaseProperties": {
       "type": "object",
@@ -3320,7 +2984,8 @@
         {
           "$ref": "#/definitions/SqlDatabaseProperties"
         }
-      ]
+      ],
+      "x-ms-discriminator-value": "values"
     },
     "object": {
       "type": "object",

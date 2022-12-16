@@ -96,7 +96,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RabbitMQSecrets{}
+		actualOutput := &v20220315privatepreview.RabbitmqSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets[renderers.ConnectionStringValue], *actualOutput.ConnectionString)
@@ -134,7 +134,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &v20220315privatepreview.RabbitMQSecrets{}
+		actualOutput := &v20220315privatepreview.RabbitmqSecrets{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, "", *actualOutput.ConnectionString)

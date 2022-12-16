@@ -34,16 +34,10 @@ namespace Applications.Link;
 
 interface Operations extends Azure.ResourceManager.Operations {}
 
-enum SqlDatabaseMode {
-  resource,
-  values,
-  recipe,
-}
-
 @doc("SqlDatabase Properties for Mode Resource")
 model ResourceSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: SqlDatabaseMode.resource;
+  mode: "resource";
 
   @doc("Fully qualified resource ID of a supported resource with Sql API to use for this link")
   resource: string;
@@ -57,7 +51,7 @@ model ResourceSqlDatabaseProperties extends SqlDatabaseProperties{
 @doc("SqlDatabase Properties for Mode Values")
 model ValuesSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: SqlDatabaseMode.values;
+  mode: "values";
   
   @doc("The name of the Sql database.")
   database: string;
@@ -68,7 +62,7 @@ model ValuesSqlDatabaseProperties extends SqlDatabaseProperties{
 @doc("SqlDatabase Properties for Mode Recipe")
 model RecipeSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: SqlDatabaseMode.recipe;
+  mode: "recipe";
 
   @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases link")
   recipe: Recipe;

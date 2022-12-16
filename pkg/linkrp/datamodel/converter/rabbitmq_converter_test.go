@@ -27,7 +27,7 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/rabbitmqresourcedatamodel.json",
 			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQMessageQueueResource{},
+			&v20220315privatepreview.RabbitmqMessageQueueResource{},
 			nil,
 		},
 		{
@@ -101,7 +101,7 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 		{
 			"../../api/v20220315privatepreview/testdata/rabbitmqsecretsdatamodel.json",
 			"2022-03-15-privatepreview",
-			&v20220315privatepreview.RabbitMQSecrets{},
+			&v20220315privatepreview.RabbitmqSecrets{},
 			nil,
 		},
 		{

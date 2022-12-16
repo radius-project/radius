@@ -85,11 +85,11 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	}
 	var b MongoDatabasePropertiesClassification
 	switch m["mode"] {
-	case "RecipeMongoDatabaseProperties":
+	case "recipe":
 		b = &RecipeMongoDatabaseProperties{}
-	case "ResourceMongoDatabaseProperties":
+	case "resource":
 		b = &ResourceMongoDatabaseProperties{}
-	case "ValuesMongoDatabaseProperties":
+	case "values":
 		b = &ValuesMongoDatabaseProperties{}
 	default:
 		b = &MongoDatabaseProperties{}
@@ -107,9 +107,9 @@ func unmarshalRabbitmqMessageQueuePropertiesClassification(rawMsg json.RawMessag
 	}
 	var b RabbitmqMessageQueuePropertiesClassification
 	switch m["mode"] {
-	case "RecipeRabbitmqMessageQueueProperties":
+	case "recipe":
 		b = &RecipeRabbitmqMessageQueueProperties{}
-	case "ValuesRabbitmqMessageQueueProperties":
+	case "values":
 		b = &ValuesRabbitmqMessageQueueProperties{}
 	default:
 		b = &RabbitmqMessageQueueProperties{}
@@ -127,11 +127,11 @@ func unmarshalRedisCachePropertiesClassification(rawMsg json.RawMessage) (RedisC
 	}
 	var b RedisCachePropertiesClassification
 	switch m["mode"] {
-	case "RecipeRedisCacheProperties":
+	case "recipe":
 		b = &RecipeRedisCacheProperties{}
-	case "ResourceRedisCacheProperties":
+	case "resource":
 		b = &ResourceRedisCacheProperties{}
-	case "ValuesRedisCacheProperties":
+	case "values":
 		b = &ValuesRedisCacheProperties{}
 	default:
 		b = &RedisCacheProperties{}
@@ -149,11 +149,11 @@ func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDa
 	}
 	var b SQLDatabasePropertiesClassification
 	switch m["mode"] {
-	case "RecipeSqlDatabaseProperties":
+	case "recipe":
 		b = &RecipeSQLDatabaseProperties{}
-	case "ResourceSqlDatabaseProperties":
+	case "resource":
 		b = &ResourceSQLDatabaseProperties{}
-	case "ValuesSqlDatabaseProperties":
+	case "values":
 		b = &ValuesSQLDatabaseProperties{}
 	default:
 		b = &SQLDatabaseProperties{}

@@ -31,11 +31,6 @@ using OpenAPI;
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
-enum RedisCacheMode {
-  resource,
-  values,
-  recipe,
-}
 @doc("RedisCache connecter")
 model RedisCacheResource
   is TrackedResource<RedisCacheProperties> {
@@ -63,7 +58,7 @@ model RedisCacheSecrets {
 @doc("RedisCache Properties for Mode Resource")
 model ResourceRedisCacheProperties extends RedisCacheProperties {
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: RedisCacheMode.resource;
+  mode: "resource";
 
   @doc("Fully qualified resource ID of a supported resource with Redis API to use for this link")
   resource: string;
@@ -80,7 +75,7 @@ model ResourceRedisCacheProperties extends RedisCacheProperties {
 @doc("RedisCache Properties for Mode Values")
 model ValuesRedisCacheProperties extends RedisCacheProperties {
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: RedisCacheMode.values;
+  mode: "values";
 
   @doc("The host name of the target redis cache")
   host: string;
@@ -94,7 +89,7 @@ model ValuesRedisCacheProperties extends RedisCacheProperties {
 @doc("RedisCache Properties for Mode Recipe")
 model RecipeRedisCacheProperties extends RedisCacheProperties {
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: RedisCacheMode.recipe;
+  mode: "recipe";
 
   @doc("The host name of the target redis cache")
   host?: string;

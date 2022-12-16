@@ -428,6 +428,9 @@ type ExtenderProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
+	// AdditionalProperties for the resource
+	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
+
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -1627,7 +1630,7 @@ type ValuesDaprSecretStoreProperties struct {
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
-	Metaadata map[string]interface{} `json:"metaadata,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
 	// REQUIRED; Discriminator property for DaprSecretStoreProperties.
 	Mode *string `json:"mode,omitempty"`

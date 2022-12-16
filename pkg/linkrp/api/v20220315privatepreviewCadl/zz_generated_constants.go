@@ -48,23 +48,6 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
-type MongoDatabaseMode string
-
-const (
-	MongoDatabaseModeRecipe MongoDatabaseMode = "recipe"
-	MongoDatabaseModeResource MongoDatabaseMode = "resource"
-	MongoDatabaseModeValues MongoDatabaseMode = "values"
-)
-
-// PossibleMongoDatabaseModeValues returns the possible values for the MongoDatabaseMode const type.
-func PossibleMongoDatabaseModeValues() []MongoDatabaseMode {
-	return []MongoDatabaseMode{	
-		MongoDatabaseModeRecipe,
-		MongoDatabaseModeResource,
-		MongoDatabaseModeValues,
-	}
-}
-
 // Origin - The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
 // value is "user,system"
 type Origin string
@@ -107,55 +90,6 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
-	}
-}
-
-type RabbitmqMode string
-
-const (
-	RabbitmqModeRecipe RabbitmqMode = "recipe"
-	RabbitmqModeValues RabbitmqMode = "values"
-)
-
-// PossibleRabbitmqModeValues returns the possible values for the RabbitmqMode const type.
-func PossibleRabbitmqModeValues() []RabbitmqMode {
-	return []RabbitmqMode{	
-		RabbitmqModeRecipe,
-		RabbitmqModeValues,
-	}
-}
-
-type RedisCacheMode string
-
-const (
-	RedisCacheModeRecipe RedisCacheMode = "recipe"
-	RedisCacheModeResource RedisCacheMode = "resource"
-	RedisCacheModeValues RedisCacheMode = "values"
-)
-
-// PossibleRedisCacheModeValues returns the possible values for the RedisCacheMode const type.
-func PossibleRedisCacheModeValues() []RedisCacheMode {
-	return []RedisCacheMode{	
-		RedisCacheModeRecipe,
-		RedisCacheModeResource,
-		RedisCacheModeValues,
-	}
-}
-
-type SQLDatabaseMode string
-
-const (
-	SQLDatabaseModeRecipe SQLDatabaseMode = "recipe"
-	SQLDatabaseModeResource SQLDatabaseMode = "resource"
-	SQLDatabaseModeValues SQLDatabaseMode = "values"
-)
-
-// PossibleSQLDatabaseModeValues returns the possible values for the SQLDatabaseMode const type.
-func PossibleSQLDatabaseModeValues() []SQLDatabaseMode {
-	return []SQLDatabaseMode{	
-		SQLDatabaseModeRecipe,
-		SQLDatabaseModeResource,
-		SQLDatabaseModeValues,
 	}
 }
 

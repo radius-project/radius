@@ -31,10 +31,6 @@ using OpenAPI;
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
-enum RabbitmqMode {
-  values,
-  recipe,
-}
 @doc("RabbitmqMessageQueue link")
 model RabbitmqMessageQueueResource
   is TrackedResource<RabbitmqMessageQueueProperties> {
@@ -58,7 +54,7 @@ model RabbitmqSecrets {
 @doc("MongoDatabase Properties for Mode Values")
 model ValuesRabbitmqMessageQueueProperties extends RabbitmqMessageQueueProperties {
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: RabbitmqMode.values;
+  mode: "values";
 
   @doc("The name of the queue")
   queue: string;
@@ -66,7 +62,7 @@ model ValuesRabbitmqMessageQueueProperties extends RabbitmqMessageQueuePropertie
 @doc("MongoDatabase Properties for Mode Recipe")
 model RecipeRabbitmqMessageQueueProperties extends RabbitmqMessageQueueProperties {
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
-  mode: RabbitmqMode.recipe;
+  mode: "recipe";
 
   @doc("The name of the queue")
   queue?: string;
