@@ -28,7 +28,7 @@ using OpenAPI;
   title: "Applications.Link Management APIs",
   version: "2022-03-15-privatepreview",
 })
-@doc("REST API for Applications.Link SqlDatabase Resource")
+@doc("REST APIs for Applications.Link/sqlDatabases")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
@@ -51,7 +51,7 @@ model ResourceSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("The name of the Sql database.")
   database?: string;
 
-  @doc("Metadata for the Secret Store resource. This should match the values specified in Dapr component spec")
+  @doc("The fully qualified domain name of the Sql database.")
   server?: string;
 }
 @doc("SqlDatabase Properties for Mode Values")
@@ -62,7 +62,7 @@ model ValuesSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("The name of the Sql database.")
   database: string;
 
-  @doc("Metadata for the Secret Store resource. This should match the values specified in Dapr component spec")
+  @doc("The fully qualified domain name of the Sql database.")
   server: string;
 }
 @doc("SqlDatabase Properties for Mode Recipe")
@@ -70,13 +70,13 @@ model RecipeSqlDatabaseProperties extends SqlDatabaseProperties{
   @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: SqlDatabaseMode.recipe;
 
-  @doc("The recipe used to automatically deploy underlying infrastructure for the mongodatabase link")
+  @doc("The recipe used to automatically deploy underlying infrastructure for the sqldatabases link")
   recipe: Recipe;
 
   @doc("The name of the Sql database.")
   database?: string;
 
-  @doc("Metadata for the Secret Store resource. This should match the values specified in Dapr component spec")
+  @doc("The fully qualified domain name of the Sql database.")
   server?: string;
 }
 @doc("SqlDatabase properties")
@@ -99,7 +99,7 @@ model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
 }
 
 @armResourceOperations
-interface SqlDatabase
+interface SqlDatabases
   extends Radius.RootScopeResourceOperations<
       SqlDatabaseResource,
       SqlDatabaseProperties,

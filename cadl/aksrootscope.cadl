@@ -20,6 +20,7 @@ model RootScopeParam {
   @minLength(1)
   @path
   @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "client")
   rootScope: string;
 }
 

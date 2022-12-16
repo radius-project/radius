@@ -7,7 +7,7 @@ using OpenAPI;
 model BasicResourceProperties {
   @doc("Status of a resource.")
   @visibility("read")
-  status: ResourceStatus;
+  status?: ResourceStatus;
 
   @doc("Fully qualified resource ID for the environment that the link is linked to")
   environment: string;
@@ -36,6 +36,7 @@ model OutputResource {}
 @doc("Fully qualified resource ID for the application that the link is consumed by")
 scalar Application extends string;
 
+@doc("Provisioning state of the link at the time the operation was called")
 enum ProvisioningState {
   Succeeded,
   Failed,

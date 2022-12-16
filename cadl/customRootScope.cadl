@@ -40,7 +40,7 @@ model RootScopeResourceInstanceParameters<TResource, TRootParams> {
 
 interface ResourceRead<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Get a {name}", TResource)
+  @doc("Retrieves information about a {name}", TResource)
   @get
   @armResourceRead(TResource)
   Get(...TRootParams): ArmResponse<TResource> | ErrorResponse;
@@ -48,7 +48,7 @@ interface ResourceRead<TResource extends ArmResource, TRootParams> {
 
 interface ResourceCreate<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Create a {name}", TResource)
+  @doc("Creates or updates a {name}", TResource)
   //@extension("x-ms-long-running-operation", true)
   //@asyncOperationOptions("azure-async-operation")
   @armResourceCreateOrUpdate(TResource)
@@ -62,24 +62,24 @@ interface ResourceCreate<TResource extends ArmResource, TRootParams> {
   ): ArmResponse<TResource> | ArmCreatedResponse<TResource> | ErrorResponse;
 }
 
-@doc("Update model for resource tags")
-interface ResourceUpdate<TResource extends ArmResource, TProperties extends object, TRootParams> {
-  @autoRoute
-  @doc("Update a {name}", TResource)
-  @armResourceUpdate(TResource)
-  @patch
-  Update(
-    ...TRootParams,
+// @doc("Update model for resource tags")
+// interface ResourceUpdate<TResource extends ArmResource, TProperties extends object, TRootParams> {
+//   @autoRoute
+//   @doc("Update a {name}", TResource)
+//   @armResourceUpdate(TResource)
+//   @patch
+//   Update(
+//     ...TRootParams,
 
-    @doc("The resource properties to be updated.")
-    @body
-    properties: ResourceUpdateModel<TResource, TProperties>
-  ): ArmResponse<TResource> | ErrorResponse;
-}
+//     @doc("The resource properties to be updated.")
+//     @body
+//     properties: ResourceUpdateModel<TResource, TProperties>
+//   ): ArmResponse<TResource> | ErrorResponse;
+// }
 
 interface ResourceDelete<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Delete a {name}", TResource)
+  @doc("Deletes an existing {name}", TResource)
   //@extension("x-ms-long-running-operation", true)
   //@asyncOperationOptions("azure-async-operation")
   @armResourceDelete(TResource)
@@ -94,12 +94,13 @@ interface ResourceDelete<TResource extends ArmResource, TRootParams> {
 interface ResourceListByParent<TResource extends ArmResource, TRootParams> {
   @get
   //@pageable
+  @doc("Lists information about all {name}s in the given root scope", TResource)
   @autoRoute
   @list(TResource)
   @segmentOf(TResource)
-  @armRenameListByOperation(TResource) // This must come before @armResourceList!
+  //@armRenameListByOperation(TResource) // This must come before @armResourceList!
   @armResourceList(TResource)
-  ListByParent(
+  ListByRootScope(
     ...RootScopeParentScope<TResource, TRootParams>,
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
@@ -113,11 +114,11 @@ interface RootScopeResourceOperations<TResource extends ArmResource, TProperties
       TResource,
       RootScopeResourceInstanceParameters<TResource, TRootParams>
     >,
-    ResourceUpdate<
-      TResource,
-      TProperties,
-      RootScopeResourceInstanceParameters<TResource, TRootParams>
-    >,
+    // ResourceUpdate<
+    //   TResource,
+    //   TProperties,
+    //   RootScopeResourceInstanceParameters<TResource, TRootParams>
+    // >,
     ResourceDelete<
       TResource,
       RootScopeResourceInstanceParameters<TResource, TRootParams>

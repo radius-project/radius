@@ -16,11 +16,11 @@ type BasicResourceProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
@@ -120,9 +120,6 @@ type MongoDatabaseProperties struct {
 	// REQUIRED; Discriminator property for MongoDatabaseProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -131,6 +128,9 @@ type MongoDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type MongoDatabaseProperties.
@@ -169,27 +169,6 @@ type MongoDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// MongoDatabaseResourceUpdate - The type used for update operations of the MongoDatabaseResource.
-type MongoDatabaseResourceUpdate struct {
-	// The updatable properties of the MongoDatabaseResource.
-	Properties *MongoDatabaseResourceUpdateProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-}
-
-// MongoDatabaseResourceUpdateProperties - The updatable properties of the MongoDatabaseResource.
-type MongoDatabaseResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Secrets values provided for the resource
-	Secrets *MongoDatabaseSecrets `json:"secrets,omitempty"`
-}
-
 // MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
@@ -218,19 +197,14 @@ type MongoDatabasesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabasesClientListByResourceGroupOptions contains the optional parameters for the MongoDatabasesClient.ListByResourceGroup
+// MongoDatabasesClientListByRootScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByRootScope
 // method.
-type MongoDatabasesClientListByResourceGroupOptions struct {
+type MongoDatabasesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // MongoDatabasesClientListSecretsOptions contains the optional parameters for the MongoDatabasesClient.ListSecrets method.
 type MongoDatabasesClientListSecretsOptions struct {
-	// placeholder for future optional parameters
-}
-
-// MongoDatabasesClientUpdateOptions contains the optional parameters for the MongoDatabasesClient.Update method.
-type MongoDatabasesClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -311,9 +285,6 @@ type RabbitmqMessageQueueProperties struct {
 	// REQUIRED; Discriminator property for RabbitmqMessageQueueProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -322,6 +293,9 @@ type RabbitmqMessageQueueProperties struct {
 
 	// READ-ONLY; Provisioning state of the rabbitmq message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRabbitmqMessageQueueProperties implements the RabbitmqMessageQueuePropertiesClassification interface for type RabbitmqMessageQueueProperties.
@@ -360,27 +334,6 @@ type RabbitmqMessageQueueResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RabbitmqMessageQueueResourceUpdate - The type used for update operations of the RabbitmqMessageQueueResource.
-type RabbitmqMessageQueueResourceUpdate struct {
-	// The updatable properties of the RabbitmqMessageQueueResource.
-	Properties *RabbitmqMessageQueueResourceUpdateProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-}
-
-// RabbitmqMessageQueueResourceUpdateProperties - The updatable properties of the RabbitmqMessageQueueResource.
-type RabbitmqMessageQueueResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Secrets provided by resources,
-	Secrets *RabbitmqSecrets `json:"secrets,omitempty"`
-}
-
 // RabbitmqMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitmqMessageQueuesClient.CreateOrUpdate
 // method.
 type RabbitmqMessageQueuesClientCreateOrUpdateOptions struct {
@@ -397,20 +350,15 @@ type RabbitmqMessageQueuesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitmqMessageQueuesClientListByResourceGroupOptions contains the optional parameters for the RabbitmqMessageQueuesClient.ListByResourceGroup
+// RabbitmqMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitmqMessageQueuesClient.ListByRootScope
 // method.
-type RabbitmqMessageQueuesClientListByResourceGroupOptions struct {
+type RabbitmqMessageQueuesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // RabbitmqMessageQueuesClientListSecretsOptions contains the optional parameters for the RabbitmqMessageQueuesClient.ListSecrets
 // method.
 type RabbitmqMessageQueuesClientListSecretsOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RabbitmqMessageQueuesClientUpdateOptions contains the optional parameters for the RabbitmqMessageQueuesClient.Update method.
-type RabbitmqMessageQueuesClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -437,11 +385,8 @@ type RecipeMongoDatabaseProperties struct {
 	// REQUIRED; Discriminator property for MongoDatabaseProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -460,6 +405,9 @@ type RecipeMongoDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
@@ -482,11 +430,8 @@ type RecipeRabbitmqMessageQueueProperties struct {
 	// REQUIRED; Discriminator property for RabbitmqMessageQueueProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitmq link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -499,6 +444,9 @@ type RecipeRabbitmqMessageQueueProperties struct {
 
 	// READ-ONLY; Provisioning state of the rabbitmq message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRabbitmqMessageQueueProperties implements the RabbitmqMessageQueuePropertiesClassification interface for type RecipeRabbitmqMessageQueueProperties.
@@ -521,11 +469,8 @@ type RecipeRedisCacheProperties struct {
 	// REQUIRED; Discriminator property for RedisCacheProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -544,6 +489,9 @@ type RecipeRedisCacheProperties struct {
 
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RecipeRedisCacheProperties.
@@ -566,11 +514,8 @@ type RecipeSQLDatabaseProperties struct {
 	// REQUIRED; Discriminator property for SqlDatabaseProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the sqldatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -578,11 +523,14 @@ type RecipeSQLDatabaseProperties struct {
 	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
-	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type RecipeSQLDatabaseProperties.
@@ -622,9 +570,6 @@ type RedisCacheProperties struct {
 	// REQUIRED; Discriminator property for RedisCacheProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -633,6 +578,9 @@ type RedisCacheProperties struct {
 
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RedisCacheProperties.
@@ -671,27 +619,6 @@ type RedisCacheResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// RedisCacheResourceUpdate - The type used for update operations of the RedisCacheResource.
-type RedisCacheResourceUpdate struct {
-	// The updatable properties of the RedisCacheResource.
-	Properties *RedisCacheResourceUpdateProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-}
-
-// RedisCacheResourceUpdateProperties - The updatable properties of the RedisCacheResource.
-type RedisCacheResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
-	// Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
-
-	// Secrets provided by resource
-	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
-}
-
 // RedisCacheSecrets - The secret values for the given RedisCache resource
 type RedisCacheSecrets struct {
 	// The connection string used to connect to the redis cache
@@ -716,19 +643,13 @@ type RedisCachesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RedisCachesClientListByResourceGroupOptions contains the optional parameters for the RedisCachesClient.ListByResourceGroup
-// method.
-type RedisCachesClientListByResourceGroupOptions struct {
+// RedisCachesClientListByRootScopeOptions contains the optional parameters for the RedisCachesClient.ListByRootScope method.
+type RedisCachesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
 // RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
 type RedisCachesClientListSecretsOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RedisCachesClientUpdateOptions contains the optional parameters for the RedisCachesClient.Update method.
-type RedisCachesClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -758,9 +679,6 @@ type ResourceMongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
 	Resource *string `json:"resource,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -778,6 +696,9 @@ type ResourceMongoDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
@@ -803,9 +724,6 @@ type ResourceRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID of a supported resource with Redis API to use for this link
 	Resource *string `json:"resource,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -823,6 +741,9 @@ type ResourceRedisCacheProperties struct {
 
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ResourceRedisCacheProperties.
@@ -848,20 +769,20 @@ type ResourceSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID of a supported resource with Sql API to use for this link
 	Resource *string `json:"resource,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
-	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ResourceSQLDatabaseProperties.
@@ -881,32 +802,6 @@ type ResourceStatus struct {
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
 }
 
-// SQLDatabaseClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabaseClient.CreateOrUpdate method.
-type SQLDatabaseClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabaseClientDeleteOptions contains the optional parameters for the SQLDatabaseClient.Delete method.
-type SQLDatabaseClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabaseClientGetOptions contains the optional parameters for the SQLDatabaseClient.Get method.
-type SQLDatabaseClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabaseClientListByResourceGroupOptions contains the optional parameters for the SQLDatabaseClient.ListByResourceGroup
-// method.
-type SQLDatabaseClientListByResourceGroupOptions struct {
-	// placeholder for future optional parameters
-}
-
-// SQLDatabaseClientUpdateOptions contains the optional parameters for the SQLDatabaseClient.Update method.
-type SQLDatabaseClientUpdateOptions struct {
-	// placeholder for future optional parameters
-}
-
 // SQLDatabasePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetSQLDatabaseProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
@@ -924,14 +819,14 @@ type SQLDatabaseProperties struct {
 	// REQUIRED; Discriminator property for SqlDatabaseProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
@@ -970,22 +865,24 @@ type SQLDatabaseResourceListResult struct {
 	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// SQLDatabaseResourceUpdate - The type used for update operations of the SqlDatabaseResource.
-type SQLDatabaseResourceUpdate struct {
-	// The updatable properties of the SqlDatabaseResource.
-	Properties *SQLDatabaseResourceUpdateProperties `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
+// SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
+type SQLDatabasesClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
 }
 
-// SQLDatabaseResourceUpdateProperties - The updatable properties of the SqlDatabaseResource.
-type SQLDatabaseResourceUpdateProperties struct {
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
+// SQLDatabasesClientDeleteOptions contains the optional parameters for the SQLDatabasesClient.Delete method.
+type SQLDatabasesClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
 
-	// Fully qualified resource ID for the environment that the link is linked to
-	Environment *string `json:"environment,omitempty"`
+// SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
+type SQLDatabasesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope method.
+type SQLDatabasesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
 }
 
 // SystemData - Metadata pertaining to creation and last modification of the resource.
@@ -1045,9 +942,6 @@ type ValuesMongoDatabaseProperties struct {
 	// REQUIRED; Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -1059,6 +953,9 @@ type ValuesMongoDatabaseProperties struct {
 
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
@@ -1084,9 +981,6 @@ type ValuesRabbitmqMessageQueueProperties struct {
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
 
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
@@ -1095,6 +989,9 @@ type ValuesRabbitmqMessageQueueProperties struct {
 
 	// READ-ONLY; Provisioning state of the rabbitmq message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRabbitmqMessageQueueProperties implements the RabbitmqMessageQueuePropertiesClassification interface for type ValuesRabbitmqMessageQueueProperties.
@@ -1123,20 +1020,20 @@ type ValuesRedisCacheProperties struct {
 	// REQUIRED; The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The username for redis
-	Username *string `json:"username,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
+	// The username for redis
+	Username *string `json:"username,omitempty"`
+
 	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ValuesRedisCacheProperties.
@@ -1162,17 +1059,17 @@ type ValuesSQLDatabaseProperties struct {
 	// REQUIRED; Discriminator property for SqlDatabaseProperties.
 	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
+	// REQUIRED; The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
-
-	// READ-ONLY; Status of a resource.
-	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
 	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ValuesSQLDatabaseProperties.

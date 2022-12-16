@@ -3,7 +3,7 @@
   "info": {
     "title": "Applications.Link Management APIs",
     "version": "2022-03-15-privatepreview",
-    "description": "REST API for Applications.Link RabbitmqMessageQueue Resource",
+    "description": "REST APIs for Applications.Link/rabbitMQMessageQueues",
     "x-cadl-generated": [
       {
         "emitter": "@azure-tools/cadl-autorest"
@@ -46,7 +46,7 @@
       "name": "Operations"
     },
     {
-      "name": "SqlDatabase"
+      "name": "SqlDatabases"
     },
     {
       "name": "RedisCaches"
@@ -61,8 +61,8 @@
         "tags": [
           "MongoDatabases"
         ],
-        "operationId": "MongoDatabases_ListByResourceGroup",
-        "description": "List MongoDatabaseResource resources by resource group",
+        "operationId": "MongoDatabases_ListByRootScope",
+        "description": "Lists information about all MongoDatabaseResources in the given root scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -96,7 +96,7 @@
           "MongoDatabases"
         ],
         "operationId": "MongoDatabases_Get",
-        "description": "Get a MongoDatabaseResource",
+        "description": "Retrieves information about a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -135,7 +135,7 @@
           "MongoDatabases"
         ],
         "operationId": "MongoDatabases_CreateOrUpdate",
-        "description": "Create a MongoDatabaseResource",
+        "description": "Creates or updates a MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -191,60 +191,12 @@
           }
         }
       },
-      "patch": {
-        "tags": [
-          "MongoDatabases"
-        ],
-        "operationId": "MongoDatabases_Update",
-        "description": "Update a MongoDatabaseResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "mongoDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "properties",
-            "in": "body",
-            "required": true,
-            "description": "The resource properties to be updated.",
-            "schema": {
-              "$ref": "#/definitions/MongoDatabaseResourceUpdate"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/MongoDatabaseResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
           "MongoDatabases"
         ],
         "operationId": "MongoDatabases_Delete",
-        "description": "Delete a MongoDatabaseResource",
+        "description": "Deletes an existing MongoDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -332,8 +284,8 @@
         "tags": [
           "RabbitmqMessageQueues"
         ],
-        "operationId": "RabbitmqMessageQueues_ListByResourceGroup",
-        "description": "List RabbitmqMessageQueueResource resources by resource group",
+        "operationId": "RabbitmqMessageQueues_ListByRootScope",
+        "description": "Lists information about all RabbitmqMessageQueueResources in the given root scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -367,7 +319,7 @@
           "RabbitmqMessageQueues"
         ],
         "operationId": "RabbitmqMessageQueues_Get",
-        "description": "Get a RabbitmqMessageQueueResource",
+        "description": "Retrieves information about a RabbitmqMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -405,7 +357,7 @@
           "RabbitmqMessageQueues"
         ],
         "operationId": "RabbitmqMessageQueues_CreateOrUpdate",
-        "description": "Create a RabbitmqMessageQueueResource",
+        "description": "Creates or updates a RabbitmqMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -460,59 +412,12 @@
           }
         }
       },
-      "patch": {
-        "tags": [
-          "RabbitmqMessageQueues"
-        ],
-        "operationId": "RabbitmqMessageQueues_Update",
-        "description": "Update a RabbitmqMessageQueueResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "rabbitmqMessageQueueName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RabbitmqMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          },
-          {
-            "name": "properties",
-            "in": "body",
-            "required": true,
-            "description": "The resource properties to be updated.",
-            "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResourceUpdate"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
           "RabbitmqMessageQueues"
         ],
         "operationId": "RabbitmqMessageQueues_Delete",
-        "description": "Delete a RabbitmqMessageQueueResource",
+        "description": "Deletes an existing RabbitmqMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -599,8 +504,8 @@
         "tags": [
           "RedisCaches"
         ],
-        "operationId": "RedisCaches_ListByResourceGroup",
-        "description": "List RedisCacheResource resources by resource group",
+        "operationId": "RedisCaches_ListByRootScope",
+        "description": "Lists information about all RedisCacheResources in the given root scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -634,7 +539,7 @@
           "RedisCaches"
         ],
         "operationId": "RedisCaches_Get",
-        "description": "Get a RedisCacheResource",
+        "description": "Retrieves information about a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -672,7 +577,7 @@
           "RedisCaches"
         ],
         "operationId": "RedisCaches_CreateOrUpdate",
-        "description": "Create a RedisCacheResource",
+        "description": "Creates or updates a RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -727,59 +632,12 @@
           }
         }
       },
-      "patch": {
-        "tags": [
-          "RedisCaches"
-        ],
-        "operationId": "RedisCaches_Update",
-        "description": "Update a RedisCacheResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "redisCacheName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          },
-          {
-            "name": "properties",
-            "in": "body",
-            "required": true,
-            "description": "The resource properties to be updated.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResourceUpdate"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
           "RedisCaches"
         ],
         "operationId": "RedisCaches_Delete",
-        "description": "Delete a RedisCacheResource",
+        "description": "Deletes an existing RedisCacheResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -864,10 +722,10 @@
     "/{rootScope}/providers/Applications.Link/sqlDatabases": {
       "get": {
         "tags": [
-          "SqlDatabase"
+          "SqlDatabases"
         ],
-        "operationId": "SqlDatabase_ListByResourceGroup",
-        "description": "List SqlDatabaseResource resources by resource group",
+        "operationId": "SqlDatabases_ListByRootScope",
+        "description": "Lists information about all SqlDatabaseResources in the given root scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -898,10 +756,10 @@
     "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}": {
       "get": {
         "tags": [
-          "SqlDatabase"
+          "SqlDatabases"
         ],
-        "operationId": "SqlDatabase_Get",
-        "description": "Get a SqlDatabaseResource",
+        "operationId": "SqlDatabases_Get",
+        "description": "Retrieves information about a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -937,10 +795,10 @@
       },
       "put": {
         "tags": [
-          "SqlDatabase"
+          "SqlDatabases"
         ],
-        "operationId": "SqlDatabase_CreateOrUpdate",
-        "description": "Create a SqlDatabaseResource",
+        "operationId": "SqlDatabases_CreateOrUpdate",
+        "description": "Creates or updates a SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -996,60 +854,12 @@
           }
         }
       },
-      "patch": {
-        "tags": [
-          "SqlDatabase"
-        ],
-        "operationId": "SqlDatabase_Update",
-        "description": "Update a SqlDatabaseResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "sqlDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "properties",
-            "in": "body",
-            "required": true,
-            "description": "The resource properties to be updated.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResourceUpdate"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
       "delete": {
         "tags": [
-          "SqlDatabase"
+          "SqlDatabases"
         ],
-        "operationId": "SqlDatabase_Delete",
-        "description": "Delete a SqlDatabaseResource",
+        "operationId": "SqlDatabases_Delete",
+        "description": "Deletes an existing SqlDatabaseResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1150,7 +960,6 @@
       },
       "description": "Basic properties of a Radius resource.",
       "required": [
-        "status",
         "environment"
       ]
     },
@@ -1334,42 +1143,6 @@
         "value"
       ]
     },
-    "MongoDatabaseResourceUpdate": {
-      "type": "object",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "x-cadl-name": "Record<string>",
-          "description": "Resource tags."
-        },
-        "properties": {
-          "$ref": "#/definitions/MongoDatabaseResourceUpdateProperties",
-          "x-ms-client-flatten": true
-        }
-      },
-      "description": "The type used for update operations of the MongoDatabaseResource."
-    },
-    "MongoDatabaseResourceUpdateProperties": {
-      "type": "object",
-      "properties": {
-        "secrets": {
-          "$ref": "#/definitions/MongoDatabaseSecrets",
-          "description": "Secrets values provided for the resource"
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "The updatable properties of the MongoDatabaseResource."
-    },
     "MongoDatabaseSecrets": {
       "type": "object",
       "properties": {
@@ -1400,6 +1173,7 @@
     },
     "ProvisioningState": {
       "type": "string",
+      "description": "Provisioning state of the link at the time the operation was called",
       "enum": [
         "Succeeded",
         "Failed",
@@ -1495,42 +1269,6 @@
         "value"
       ]
     },
-    "RabbitmqMessageQueueResourceUpdate": {
-      "type": "object",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "x-cadl-name": "Record<string>",
-          "description": "Resource tags."
-        },
-        "properties": {
-          "$ref": "#/definitions/RabbitmqMessageQueueResourceUpdateProperties",
-          "x-ms-client-flatten": true
-        }
-      },
-      "description": "The type used for update operations of the RabbitmqMessageQueueResource."
-    },
-    "RabbitmqMessageQueueResourceUpdateProperties": {
-      "type": "object",
-      "properties": {
-        "secrets": {
-          "$ref": "#/definitions/RabbitmqSecrets",
-          "description": "Secrets provided by resources,"
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "The updatable properties of the RabbitmqMessageQueueResource."
-    },
     "RabbitmqMode": {
       "type": "string",
       "enum": [
@@ -1589,7 +1327,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabases link"
         }
       },
       "description": "MongoDatabase Properties for Mode Recipe",
@@ -1611,7 +1349,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq link"
         }
       },
       "description": "MongoDatabase Properties for Mode Recipe",
@@ -1642,7 +1380,7 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rediscaches link"
         }
       },
       "description": "RedisCache Properties for Mode Recipe",
@@ -1660,7 +1398,7 @@
       "properties": {
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the mongodatabase link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the sqldatabases link"
         },
         "database": {
           "type": "string",
@@ -1668,7 +1406,7 @@
         },
         "server": {
           "type": "string",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "description": "The fully qualified domain name of the Sql database."
         }
       },
       "description": "SqlDatabase Properties for Mode Recipe",
@@ -1778,42 +1516,6 @@
         "value"
       ]
     },
-    "RedisCacheResourceUpdate": {
-      "type": "object",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "x-cadl-name": "Record<string>",
-          "description": "Resource tags."
-        },
-        "properties": {
-          "$ref": "#/definitions/RedisCacheResourceUpdateProperties",
-          "x-ms-client-flatten": true
-        }
-      },
-      "description": "The type used for update operations of the RedisCacheResource."
-    },
-    "RedisCacheResourceUpdateProperties": {
-      "type": "object",
-      "properties": {
-        "secrets": {
-          "$ref": "#/definitions/RedisCacheSecrets",
-          "description": "Secrets provided by resource"
-        },
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "The updatable properties of the RedisCacheResource."
-    },
     "RedisCacheSecrets": {
       "type": "object",
       "properties": {
@@ -1904,7 +1606,7 @@
         },
         "server": {
           "type": "string",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "description": "The fully qualified domain name of the Sql database."
         }
       },
       "description": "SqlDatabase Properties for Mode Resource",
@@ -2014,38 +1716,6 @@
         "value"
       ]
     },
-    "SqlDatabaseResourceUpdate": {
-      "type": "object",
-      "properties": {
-        "tags": {
-          "type": "object",
-          "additionalProperties": {
-            "type": "string"
-          },
-          "x-cadl-name": "Record<string>",
-          "description": "Resource tags."
-        },
-        "properties": {
-          "$ref": "#/definitions/SqlDatabaseResourceUpdateProperties",
-          "x-ms-client-flatten": true
-        }
-      },
-      "description": "The type used for update operations of the SqlDatabaseResource."
-    },
-    "SqlDatabaseResourceUpdateProperties": {
-      "type": "object",
-      "properties": {
-        "environment": {
-          "type": "string",
-          "description": "Fully qualified resource ID for the environment that the link is linked to"
-        },
-        "application": {
-          "$ref": "#/definitions/Application",
-          "description": "Fully qualified resource ID for the application that the link is consumed by"
-        }
-      },
-      "description": "The updatable properties of the SqlDatabaseResource."
-    },
     "ValuesMongoDatabaseProperties": {
       "type": "object",
       "properties": {
@@ -2130,7 +1800,7 @@
         },
         "server": {
           "type": "string",
-          "description": "Metadata for the Secret Store resource. This should match the values specified in Dapr component spec"
+          "description": "The fully qualified domain name of the Sql database."
         }
       },
       "description": "SqlDatabase Properties for Mode Values",
@@ -2152,9 +1822,9 @@
       "required": true,
       "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
       "minLength": 1,
+      "x-ms-parameter-location": "client",
       "x-ms-skip-url-encoding": true,
-      "type": "string",
-      "x-ms-parameter-location": "method"
+      "type": "string"
     }
   }
 }

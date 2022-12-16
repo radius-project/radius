@@ -27,19 +27,14 @@ type MongoDatabasesClientGetResponse struct {
 	MongoDatabaseResource
 }
 
-// MongoDatabasesClientListByResourceGroupResponse contains the response from method MongoDatabasesClient.ListByResourceGroup.
-type MongoDatabasesClientListByResourceGroupResponse struct {
+// MongoDatabasesClientListByRootScopeResponse contains the response from method MongoDatabasesClient.ListByRootScope.
+type MongoDatabasesClientListByRootScopeResponse struct {
 	MongoDatabaseResourceListResult
 }
 
 // MongoDatabasesClientListSecretsResponse contains the response from method MongoDatabasesClient.ListSecrets.
 type MongoDatabasesClientListSecretsResponse struct {
 	MongoDatabaseListSecretsResult
-}
-
-// MongoDatabasesClientUpdateResponse contains the response from method MongoDatabasesClient.Update.
-type MongoDatabasesClientUpdateResponse struct {
-	MongoDatabaseResource
 }
 
 // OperationsClientListResponse contains the response from method OperationsClient.List.
@@ -65,19 +60,14 @@ type RabbitmqMessageQueuesClientGetResponse struct {
 	RabbitmqMessageQueueResource
 }
 
-// RabbitmqMessageQueuesClientListByResourceGroupResponse contains the response from method RabbitmqMessageQueuesClient.ListByResourceGroup.
-type RabbitmqMessageQueuesClientListByResourceGroupResponse struct {
+// RabbitmqMessageQueuesClientListByRootScopeResponse contains the response from method RabbitmqMessageQueuesClient.ListByRootScope.
+type RabbitmqMessageQueuesClientListByRootScopeResponse struct {
 	RabbitmqMessageQueueResourceListResult
 }
 
 // RabbitmqMessageQueuesClientListSecretsResponse contains the response from method RabbitmqMessageQueuesClient.ListSecrets.
 type RabbitmqMessageQueuesClientListSecretsResponse struct {
 	RabbitmqListSecretsResult
-}
-
-// RabbitmqMessageQueuesClientUpdateResponse contains the response from method RabbitmqMessageQueuesClient.Update.
-type RabbitmqMessageQueuesClientUpdateResponse struct {
-	RabbitmqMessageQueueResource
 }
 
 // RedisCachesClientCreateOrUpdateResponse contains the response from method RedisCachesClient.CreateOrUpdate.
@@ -98,8 +88,8 @@ type RedisCachesClientGetResponse struct {
 	RedisCacheResource
 }
 
-// RedisCachesClientListByResourceGroupResponse contains the response from method RedisCachesClient.ListByResourceGroup.
-type RedisCachesClientListByResourceGroupResponse struct {
+// RedisCachesClientListByRootScopeResponse contains the response from method RedisCachesClient.ListByRootScope.
+type RedisCachesClientListByRootScopeResponse struct {
 	RedisCacheResourceListResult
 }
 
@@ -108,36 +98,26 @@ type RedisCachesClientListSecretsResponse struct {
 	RedisCacheListSecretsResult
 }
 
-// RedisCachesClientUpdateResponse contains the response from method RedisCachesClient.Update.
-type RedisCachesClientUpdateResponse struct {
-	RedisCacheResource
-}
-
-// SQLDatabaseClientCreateOrUpdateResponse contains the response from method SQLDatabaseClient.CreateOrUpdate.
-type SQLDatabaseClientCreateOrUpdateResponse struct {
+// SQLDatabasesClientCreateOrUpdateResponse contains the response from method SQLDatabasesClient.CreateOrUpdate.
+type SQLDatabasesClientCreateOrUpdateResponse struct {
 	SQLDatabaseResource
 	// RetryAfter contains the information returned from the Retry-After header response.
 	RetryAfter *int32
 }
 
-// SQLDatabaseClientDeleteResponse contains the response from method SQLDatabaseClient.Delete.
-type SQLDatabaseClientDeleteResponse struct {
+// SQLDatabasesClientDeleteResponse contains the response from method SQLDatabasesClient.Delete.
+type SQLDatabasesClientDeleteResponse struct {
 	// RetryAfter contains the information returned from the Retry-After header response.
 	RetryAfter *int32
 }
 
-// SQLDatabaseClientGetResponse contains the response from method SQLDatabaseClient.Get.
-type SQLDatabaseClientGetResponse struct {
+// SQLDatabasesClientGetResponse contains the response from method SQLDatabasesClient.Get.
+type SQLDatabasesClientGetResponse struct {
 	SQLDatabaseResource
 }
 
-// SQLDatabaseClientListByResourceGroupResponse contains the response from method SQLDatabaseClient.ListByResourceGroup.
-type SQLDatabaseClientListByResourceGroupResponse struct {
+// SQLDatabasesClientListByRootScopeResponse contains the response from method SQLDatabasesClient.ListByRootScope.
+type SQLDatabasesClientListByRootScopeResponse struct {
 	SQLDatabaseResourceListResult
-}
-
-// SQLDatabaseClientUpdateResponse contains the response from method SQLDatabaseClient.Update.
-type SQLDatabaseClientUpdateResponse struct {
-	SQLDatabaseResource
 }
 
