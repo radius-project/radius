@@ -34,32 +34,11 @@ These settings apply only when `--tag=link-2022-03-15-privatepreview` is specifi
 
 ```yaml $(tag) == 'link-2022-03-15-privatepreview'
 input-file:
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprSecretStores.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/sqlDatabases.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/redisCaches.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprStateStores.json
-  # - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/extenders.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
   - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/extenders.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
-
-#### Tag: link-cadl-2022-03-15-privatepreview
-
-These settings apply only when `--tag=link-cadl-2022-03-15-privatepreview` is specified on the command line.
-
-```yaml $(tag) == 'link-cadl-2022-03-15-privatepreview'
-input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
-modelerfour: 
-  treat-type-object-as-anything: false
-```
-
 ### Common
 
 The following configuration generates track2 go models and client.
@@ -82,19 +61,3 @@ These settings apply only when `--tag=link-2022-03-15-privatepreview` is specifi
 ```yaml $(tag) == 'link-2022-03-15-privatepreview'
 output-folder: ./v20220315privatepreview
 ```
-### Output
-
-#### Tag: link-cadl-2022-03-15-privatepreview
-
-These settings apply only when `--tag=link-cadl-2022-03-15-privatepreview` is specified on the command line.
-
-```yaml $(tag) == 'link-cadl-2022-03-15-privatepreview'
-output-folder: ./v20220315privatepreviewCadl
-```
-
-### Directive renaming "getVirtualMachine"'s parameter "id" to "identifier".
-directive:
-  from: swagger-document
-  where: '$.paths["/vm"].get.parameters[0]'
-  transform: >
-    $["x-ms-client-name"] = "identifier";
