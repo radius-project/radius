@@ -8,6 +8,8 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -136,6 +138,16 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						Name: "mongo-recipe-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+							},
+						},
 					},
 				},
 			},
