@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -45,8 +47,21 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 
 	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
-	if err != nil {
+	if errors.Is(err, v1.ErrUnsupportedAPIVersion) || errors.Is(err, conv.ErrInvalidModelConversion) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
+	}
+	if err != nil {
+		errors.Is(err, &conv.ErrModelConversion{})
+		switch err.(type) {
+		case *conv.ErrModelConversion:
+			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
+		default:
+			return nil, err
+		}
+	}
+
+	if newResource.Properties.Kind != datamodel.AzureCredentialKind {
+		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
 
 	id, err := resources.Parse(path)
@@ -55,20 +70,16 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
-	ctx = ucplog.WrapLogContext(ctx)
 	logger := ucplog.GetLogger(ctx)
 
 	// Check if the credential already exists in database
 	credentialExists := true
 	existingResource := datamodel.Credential{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
-	if err != nil {
-		if errors.Is(err, &store.ErrNotFound{}) {
-			credentialExists = false
-			logger.Info(fmt.Sprintf("No existing credential %s found in db", newResource.TrackedResource.ID))
-		} else {
-			return nil, err
-		}
+	if errors.Is(err, &store.ErrNotFound{}) {
+		credentialExists = false
+	} else if err != nil {
+		return nil, err
 	}
 
 	secretName := credentials.GetSecretName(id)
