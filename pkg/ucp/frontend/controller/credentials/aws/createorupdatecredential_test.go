@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-package credentials
+package aws
 
 import (
 	"bytes"
@@ -39,33 +39,32 @@ func Test_Credential(t *testing.T) {
 	require.NoError(t, err)
 
 	body := []byte(`{
-		"id": "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+		"id": "/planes/aws/awscloud/providers/System.AWS/credentials/default",
 		"name": "default",
-		"type": "System.Azure/credentials",
+		"type": "System.AWS/credentials",
 		"location": "west-us-2",
 		"properties": {
-			"tenantId": "00000000-0000-0000-0000-000000000000",
-			"clientId": "00000000-0000-0000-0000-000000000000",
-			"secret":   "secret",
-			"kind":     "azure.com.serviceprincipal",
+			"accessKeyId": "00000000-0000-0000-0000-000000000000",
+			"secretAccessKey": "00000000-0000-0000-0000-000000000000",
+			"kind": "aws.com.iam",
 			"storage": {
 				"kind": "Internal"
 			}
 		}
 	}`)
-	url := "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview"
+	url := "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview"
 	versionedCredential := v20220901privatepreview.CredentialResource{
 		Location: to.Ptr("west-us-2"),
-		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
+		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
-		Type:     to.Ptr("System.Azure/credentials"),
-		Properties: &v20220901privatepreview.AzureServicePrincipalProperties{
-			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("azure.com.serviceprincipal"),
+		Type:     to.Ptr("System.AWS/credentials"),
+		Properties: &v20220901privatepreview.AWSCredentialProperties{
+			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
+			Kind:            to.Ptr("aws.com.iam"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
-				SecretName: to.Ptr("azure_azurecloud_default"),
+				SecretName: to.Ptr("aws_awscloud_default"),
 			},
 		},
 	}
@@ -112,6 +111,7 @@ func Test_Credential(t *testing.T) {
 			}
 		})
 	}
+
 }
 
 func setupCredentialSuccessMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {

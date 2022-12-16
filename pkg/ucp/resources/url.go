@@ -47,21 +47,3 @@ func ExtractPlanesPrefixFromURLPath(path string) (string, string, string, error)
 
 	return segments[1], segments[2], remainder, nil
 }
-
-func ExtractSecretNameFromPath(path string) (string, error) {
-	planeTypeIndex := 1
-	planeNameIndex := 2
-	resourceNameIndex := 6
-	minimumSegmentCount := 7
-	segments := strings.Split(path, SegmentSeparator)
-	// If we had a leading / then the first segment will be empty
-	if segments[0] == "" {
-		segments = segments[1:]
-	}
-	if len(segments) < minimumSegmentCount {
-		return "", errors.New("URL path is not a valid UCP path")
-	}
-	secretName := fmt.Sprintf("%s_%s_%s", segments[planeTypeIndex], segments[planeNameIndex], segments[resourceNameIndex])
-	return secretName, nil
-
-}

@@ -27,7 +27,6 @@ const (
 	LogFieldRequestURL    string = "RequestURL"
 	LogFieldContentLength string = "ContentLength"
 	LogFieldUCPHost       string = "UCPHost"
-	LogFieldCredential    string = "Credential"
 )
 
 func NewLogger() logr.Logger {

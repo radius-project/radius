@@ -13,7 +13,8 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
-	credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials"
+	aws_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/aws"
+	azure_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/azure"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -35,7 +36,8 @@ const (
 	putPath                   = "put"
 	getPath                   = "get"
 	deletePath                = "delete"
-	credentialResourcePath    = "/planes/{planeType}/{planeName}/providers/{Provider}/{ResourceType}"
+	azureScopedResourceType   = "/planes/azure/{planeName}/providers/{Provider}/{ResourceType}"
+	awsScopedResourceType     = "/planes/aws/{planeName}/providers/{Provider}/{ResourceType}"
 )
 
 // Register registers the routes for UCP
@@ -96,7 +98,8 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsGetResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, getPath)).Subrouter()
 	awsDeleteResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, deletePath)).Subrouter()
 
-	credentialResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, credentialResourcePath)).Subrouter()
+	azureCredentialResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, azureScopedResourceType)).Subrouter()
+	awsCredentialResourcesSubRouter := router.PathPrefix(fmt.Sprintf("%s%s", baseURL, awsScopedResourceType)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -196,9 +199,14 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 
 		// Credential Handler
 		{
-			ParentRouter:   credentialResourcesSubRouter,
+			ParentRouter:   azureCredentialResourcesSubRouter,
 			Method:         v1.OperationPut,
-			HandlerFactory: credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+		},
+		{
+			ParentRouter:   awsCredentialResourcesSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
 		},
 
 		// Proxy request should take the least priority in routing and should therefore be last
