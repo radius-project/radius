@@ -26,8 +26,6 @@ func Test_ContainerVersioning(t *testing.T) {
 	name := "corerp-resources-container-versioning"
 	appNamespace := "default-corerp-resources-container-versioning"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(containerV1, functional.GetMagpieImage()),
@@ -92,7 +90,7 @@ func Test_ContainerVersioning(t *testing.T) {
 				require.Len(t, secrets.Items, 0)
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

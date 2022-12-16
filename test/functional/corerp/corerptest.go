@@ -13,20 +13,18 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/project-radius/radius/pkg/cli/kubernetes"
 	"github.com/project-radius/radius/test"
 	"github.com/project-radius/radius/test/radcli"
 	"github.com/project-radius/radius/test/step"
 	"github.com/project-radius/radius/test/validation"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 var radiusControllerLogSync sync.Once
@@ -35,6 +33,26 @@ const (
 	ContainerLogPathEnvVar = "RADIUS_CONTAINER_LOG_PATH"
 	APIVersion             = "2022-03-15-privatepreview"
 	TestNamespace          = "kind-radius"
+
+	// Used to check required features
+	daprComponentCRD         = "components.dapr.io"
+	daprFeatureMessage       = "This test requires Dapr installed in your Kubernetes cluster. Please install Dapr by following the instructions at https://docs.dapr.io/operations/hosting/kubernetes/kubernetes-deploy/."
+	secretProviderClassesCRD = "secretproviderclasses.secrets-store.csi.x-k8s.io"
+	csiDriverMessage         = "This test requires secret store CSI driver. Please install it by following https://secrets-store-csi-driver.sigs.k8s.io/."
+)
+
+// RequiredFeature is used to specify an optional feature that is required
+// for the test to run.
+type RequiredFeature string
+
+const (
+	// FeatureDapr should used with required features to indicate a test dependency
+	// on Dapr.
+	FeatureDapr RequiredFeature = "Dapr"
+
+	// FeatureCSIDriver should be used with required features to indicate a test dependency
+	// on the CSI driver.
+	FeatureCSIDriver RequiredFeature = "CSIDriver"
 )
 
 type TestStep struct {
@@ -57,9 +75,9 @@ type CoreRPTest struct {
 	Steps            []TestStep
 	PostDeleteVerify func(ctx context.Context, t *testing.T, ct CoreRPTest)
 
-	// Object Name => map of secret keys and values
-	Secrets            map[string]map[string]string
-	SkipSecretDeletion bool
+	// RequiredFeatures specifies the optional features that are required
+	// for this test to run.
+	RequiredFeatures []RequiredFeature
 }
 
 type TestOptions struct {
@@ -71,15 +89,30 @@ func NewTestOptions(t *testing.T) TestOptions {
 	return TestOptions{TestOptions: test.NewTestOptions(t)}
 }
 
-func NewCoreRPTest(t *testing.T, name string, steps []TestStep, secrets map[string]map[string]string, initialResources ...unstructured.Unstructured) CoreRPTest {
+func NewCoreRPTest(t *testing.T, name string, steps []TestStep, initialResources ...unstructured.Unstructured) CoreRPTest {
 	return CoreRPTest{
-		Options:            NewCoreRPTestOptions(t),
-		Name:               name,
-		Description:        name,
-		Steps:              steps,
-		Secrets:            secrets,
-		InitialResources:   initialResources,
-		SkipSecretDeletion: false,
+		Options:          NewCoreRPTestOptions(t),
+		Name:             name,
+		Description:      name,
+		Steps:            steps,
+		InitialResources: initialResources,
+	}
+}
+
+// TestSecretResource creates the secret resource for Initial Resource in NewCoreRPTest().
+func TestSecretResource(namespace, name string, data []byte) unstructured.Unstructured {
+	return unstructured.Unstructured{
+		Object: map[string]any{
+			"apiVersion": "v1",
+			"kind":       "Secret",
+			"metadata": map[string]any{
+				"name":      name,
+				"namespace": namespace,
+			},
+			"data": map[string]any{
+				name: data,
+			},
+		},
 	}
 }
 
@@ -97,65 +130,41 @@ func (ct CoreRPTest) CreateInitialResources(ctx context.Context) error {
 	return nil
 }
 
-func (ct CoreRPTest) CreateSecrets(ctx context.Context) error {
-	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
-	if err != nil {
-		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
-	}
-
-	for objectName := range ct.Secrets {
-		for key, value := range ct.Secrets[objectName] {
-			data := make(map[string][]byte)
-			data[key] = []byte(value)
-
-			_, err = ct.Options.K8sClient.CoreV1().
-				Secrets("default").
-				Create(ctx, &corev1.Secret{
-					ObjectMeta: v1.ObjectMeta{
-						Name: objectName,
-					},
-					Data: data,
-				}, v1.CreateOptions{})
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (ct CoreRPTest) DeleteSecrets(ctx context.Context) error {
-	err := kubernetes.EnsureNamespace(ctx, ct.Options.K8sClient, ct.Name)
-	if err != nil {
-		return fmt.Errorf("failed to create namespace %s: %w", ct.Name, err)
-	}
-
-	if ct.Secrets == nil {
-		return nil
-	}
-
-	for objectName := range ct.Secrets {
-		err = ct.Options.K8sClient.CoreV1().
-			Secrets("default").
-			Delete(ctx, objectName, v1.DeleteOptions{})
-		if err != nil {
-			return fmt.Errorf("failed to delete secret %s", err.Error())
-		}
-	}
-
-	return nil
-}
-
 func (ct CoreRPTest) CleanUpExtensionResources(resources []unstructured.Unstructured) {
 	for i := len(resources) - 1; i >= 0; i-- {
 		_ = ct.Options.Client.Delete(context.TODO(), &resources[i])
 	}
 }
 
+// CheckRequiredFeatures checks the test environment for the features that the test requires.
+func (ct CoreRPTest) CheckRequiredFeatures(ctx context.Context, t *testing.T) {
+	for _, feature := range ct.RequiredFeatures {
+		var crd, message string
+		switch feature {
+		case FeatureDapr:
+			crd = daprComponentCRD
+			message = daprFeatureMessage
+		case FeatureCSIDriver:
+			crd = secretProviderClassesCRD
+			message = csiDriverMessage
+		default:
+			panic(fmt.Sprintf("unsupported feature: %s", feature))
+		}
+
+		err := ct.Options.Client.Get(ctx, client.ObjectKey{Name: crd}, &apiextv1.CustomResourceDefinition{})
+		if apierrors.IsNotFound(err) {
+			t.Skip(message)
+		} else if err != nil {
+			require.NoError(t, err, "failed to check for required features")
+		}
+	}
+}
+
 func (ct CoreRPTest) Test(t *testing.T) {
 	ctx, cancel := test.GetContext(t)
 	defer cancel()
+
+	ct.CheckRequiredFeatures(ctx, t)
 
 	cli := radcli.NewCLI(t, ct.Options.ConfigFilePath)
 
@@ -198,23 +207,12 @@ func (ct CoreRPTest) Test(t *testing.T) {
 		}
 	}
 
-	t.Logf("Creating secrets if provided")
-	err := ct.CreateSecrets(ctx)
-	if err != nil {
-		if errors.IsAlreadyExists(err) {
-			// Do not stop the test if the same secret exists
-			t.Logf("the secret already exists %v", err)
-		} else {
-			t.Errorf("failed to create secrets %v", err)
-		}
-	}
-
 	// Inside the integration test code we rely on the context for timeout/cancellation functionality.
 	// We expect the caller to wire this out to the test timeout system, or a stricter timeout if desired.
 
 	require.GreaterOrEqual(t, len(ct.Steps), 1, "at least one step is required")
 	defer ct.CleanUpExtensionResources(ct.InitialResources)
-	err = ct.CreateInitialResources(ctx)
+	err := ct.CreateInitialResources(ctx)
 	require.NoError(t, err, "failed to create initial resources")
 
 	success := true
@@ -307,14 +305,6 @@ func (ct CoreRPTest) Test(t *testing.T) {
 				validation.ValidateNoPodsInApplication(ctx, t, ct.Options.K8sClient, TestNamespace, ct.Name)
 				t.Logf("finished validation of deletion of pods for %s", ct.Description)
 			}
-		}
-	}
-
-	if !ct.SkipSecretDeletion {
-		t.Logf("Deleting secrets")
-		err = ct.DeleteSecrets(ctx)
-		if err != nil {
-			t.Errorf("failed to delete secrets %v", err)
 		}
 	}
 

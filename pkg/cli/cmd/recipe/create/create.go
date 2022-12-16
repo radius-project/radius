@@ -12,6 +12,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli"
+	"github.com/project-radius/radius/pkg/cli/bicep"
 	"github.com/project-radius/radius/pkg/cli/cmd"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
 	"github.com/project-radius/radius/pkg/cli/connections"
@@ -27,12 +28,26 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:     "create",
-		Short:   "Add a link recipe to an environment.",
-		Long:    `Add a link recipe to an environment.`,
-		Example: `rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases`,
-		Args:    cobra.ExactArgs(0),
-		RunE:    framework.RunCommand(runner),
+		Use:   "create",
+		Short: "Add a link recipe to an environment.",
+		Long: `Add a link recipe to an environment.
+		You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
+		
+		- A file containing a single value in JSON format
+		- A key-value-pair passed in the command line
+		`,
+		Example: `
+		# Add a link recipe to an environment
+		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+		
+		# Specify a parameter
+		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+		
+		# specify many parameters using a JSON parameter file
+		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+		`,
+		Args: cobra.ExactArgs(0),
+		RunE: framework.RunCommand(runner),
 	}
 
 	commonflags.AddOutputFlag(cmd)
@@ -45,6 +60,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	_ = cmd.MarkFlagRequired("link-type")
 	cmd.Flags().String("name", "", "specify the name of the recipe")
 	_ = cmd.MarkFlagRequired("name")
+	commonflags.AddParameterFlag(cmd)
 
 	return cmd, runner
 }
@@ -58,6 +74,7 @@ type Runner struct {
 	TemplatePath      string
 	LinkType          string
 	RecipeName        string
+	Parameters        map[string]map[string]interface{}
 }
 
 // NewRunner creates a new instance of the `rad recipe create` runner.
@@ -106,6 +123,17 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	r.RecipeName = recipeName
+
+	parameterArgs, err := cmd.Flags().GetStringArray("parameters")
+	if err != nil {
+		return err
+	}
+
+	parser := bicep.ParameterParser{FileSystem: bicep.OSFileSystem{}}
+	r.Parameters, err = parser.Parse(parameterArgs...)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -124,19 +152,16 @@ func (r *Runner) Run(ctx context.Context) error {
 	if recipeProperties[r.RecipeName] != nil {
 		return &cli.FriendlyError{Message: fmt.Sprintf("recipe with name %q alredy exists in the environment %q", r.RecipeName, r.Workspace.Environment)}
 	}
-	if recipeProperties != nil {
-		recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
-			LinkType:     &r.LinkType,
-			TemplatePath: &r.TemplatePath,
-		}
-	} else {
-		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{
-			r.RecipeName: {
-				LinkType:     &r.LinkType,
-				TemplatePath: &r.TemplatePath,
-			},
-		}
+	if recipeProperties == nil {
+		recipeProperties = map[string]*corerpapps.EnvironmentRecipeProperties{}
 	}
+
+	recipeProperties[r.RecipeName] = &corerpapps.EnvironmentRecipeProperties{
+		LinkType:     &r.LinkType,
+		TemplatePath: &r.TemplatePath,
+		Parameters:   bicep.ConvertToMapStringInterface(r.Parameters),
+	}
+
 	namespace := cmd.GetNamespace(envResource)
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)

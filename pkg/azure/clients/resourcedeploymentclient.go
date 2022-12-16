@@ -111,47 +111,8 @@ func (client ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, resou
 	return
 }
 
-// CreateOrUpdate creates a deployment
-// resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
-func (client ResourceDeploymentClient) CreateOrUpdateLegacy(ctx context.Context, resourceID string, parameters resources.Deployment) (result resources.DeploymentsCreateOrUpdateFuture, err error) {
-	if !strings.HasPrefix(resourceID, "/") {
-		err = errors.New("resourceID must contain starting slash")
-		return
-	}
-
-	req, err := client.ResourceCreateOrUpdatePreparerLegacy(ctx, resourceID, parameters)
-	if err != nil {
-		err = autorest.NewErrorWithError(err, "ResourceDeploymentClient", "CreateOrUpdate", nil, "Failure preparing request")
-		return
-	}
-
-	result, err = client.CreateOrUpdateSender(req)
-	if err != nil {
-		err = autorest.NewErrorWithError(err, "ResourceDeploymentClient", "CreateOrUpdate", nil, "Failure sending request")
-		return
-	}
-	return
-}
-
 // CreateOrUpdatePreparer prepares the CreateOrUpdate request.
 func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparer(ctx context.Context, resourceID string, parameters Deployment) (*http.Request, error) {
-	const APIVersion = "2020-10-01"
-	queryParameters := map[string]interface{}{
-		"api-version": APIVersion,
-	}
-
-	preparer := autorest.CreatePreparer(
-		autorest.AsContentType("application/json; charset=utf-8"),
-		autorest.AsPut(),
-		autorest.WithBaseURL(client.BaseURI),
-		autorest.WithPath(resourceID),
-		autorest.WithJSON(parameters),
-		autorest.WithQueryParameters(queryParameters))
-	return preparer.Prepare((&http.Request{}).WithContext(ctx))
-}
-
-// CreateOrUpdatePreparer prepares the CreateOrUpdate request.
-func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparerLegacy(ctx context.Context, resourceID string, parameters resources.Deployment) (*http.Request, error) {
 	const APIVersion = "2020-10-01"
 	queryParameters := map[string]interface{}{
 		"api-version": APIVersion,

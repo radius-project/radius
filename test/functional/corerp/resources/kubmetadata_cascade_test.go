@@ -24,8 +24,6 @@ func Test_KubeMetadataCascade(t *testing.T) {
 	name := "corerp-kmd-cascade-app"
 	appNamespace := "corerp-kmd-cascade-ns-corerp-kmd-cascade-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	expectedAnnotations := map[string]string{
 		"user.env.ann.1":          "user.env.ann.val.1",
 		"user.env.ann.2":          "user.env.ann.val.2",
@@ -115,7 +113,7 @@ func Test_KubeMetadataCascade(t *testing.T) {
 				require.True(t, isMapNonIntersecting(notExpectedLabels, pod.Labels))
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

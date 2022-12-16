@@ -22,8 +22,6 @@ func Test_Application(t *testing.T) {
 	name := "corerp-resources-application"
 	appNamespace := "corerp-resources-application-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template),
@@ -42,6 +40,6 @@ func Test_Application(t *testing.T) {
 				require.NoErrorf(t, err, "%s must be created", appNamespace)
 			},
 		},
-	}, requiredSecrets)
+	})
 	test.Test(t)
 }

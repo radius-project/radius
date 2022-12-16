@@ -23,8 +23,6 @@ func Test_Container(t *testing.T) {
 	name := "corerp-resources-container"
 	appNamespace := "corerp-resources-container-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
 			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
@@ -49,7 +47,7 @@ func Test_Container(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -58,8 +56,6 @@ func Test_ContainerHttpRoute(t *testing.T) {
 	template := "testdata/corerp-resources-container-httproute.bicep"
 	name := "corerp-resources-container-httproute"
 	appNamespace := "corerp-resources-container-httproute-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -91,7 +87,7 @@ func Test_ContainerHttpRoute(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -100,8 +96,6 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 	template := "testdata/corerp-resources-container-liveness-readiness.bicep"
 	name := "corerp-resources-container-live-ready"
 	appNamespace := "corerp-resources-container-live-ready-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -127,7 +121,7 @@ func Test_ContainerReadinessLiveness(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -136,8 +130,6 @@ func Test_ContainerManualScale(t *testing.T) {
 	template := "testdata/corerp-azure-container-manualscale.bicep"
 	name := "corerp-resources-container-manualscale"
 	appNamespace := "corerp-resources-container-manualscale-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -163,7 +155,7 @@ func Test_ContainerManualScale(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -172,8 +164,6 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 	container := "testdata/corerp-resources-container-cmd-args.bicep"
 	name := "corerp-resources-container-cmd-args"
 	appNamespace := "corerp-resources-container-cmd-args-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -216,7 +206,7 @@ func Test_ContainerWithCommandAndArgs(t *testing.T) {
 				t.Logf("validated command and args of pod: %s", pod.Name)
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

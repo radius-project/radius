@@ -36,6 +36,14 @@ func NewCreateOrUpdateDaprInvokeHttpRoute(opts ctrl.Options) (ctrl.Controller, e
 // Run executes CreateOrUpdateDaprInvokeHttpRoute operation.
 func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
+	isSupported, err := datamodel.IsDaprInstalled(ctx, daprHttpRoute.KubeClient())
+	if err != nil {
+		return nil, err
+	} else if !isSupported {
+		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
+	}
+
 	newResource, err := daprHttpRoute.Validate(ctx, req, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
@@ -112,6 +120,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 // Validate extracts versioned resource from request and validates the properties.
 func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Validate(ctx context.Context, req *http.Request, apiVersion string) (*datamodel.DaprInvokeHttpRoute, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
+
 	content, err := ctrl.ReadJSONBody(req)
 	if err != nil {
 		return nil, err

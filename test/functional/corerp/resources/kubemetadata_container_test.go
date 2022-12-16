@@ -23,8 +23,6 @@ func Test_KubeMetadataContainer(t *testing.T) {
 	name := "corerp-kmd-app"
 	appNamespace := "corerp-kmd-ns-corerp-kmd-app"
 
-	requiredSecrets := map[string]map[string]string{}
-
 	expectedAnnotations := map[string]string{
 		"user.cntr.ann.1": "user.cntr.ann.val.1",
 		"user.cntr.ann.2": "user.cntr.ann.val.2",
@@ -86,7 +84,7 @@ func Test_KubeMetadataContainer(t *testing.T) {
 				require.True(t, isMapSubSet(expectedLabels, deployment.Labels))
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

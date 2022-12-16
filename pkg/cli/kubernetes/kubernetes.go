@@ -21,6 +21,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	contourv1 "github.com/projectcontour/contour/apis/projectcontour/v1"
+	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,6 +69,7 @@ func init() {
 	// Any time we add a new type to to radius,
 	// we need to add it here.
 	// TODO centralize these calls.
+	_ = apiextv1.AddToScheme(Scheme)
 	_ = clientgoscheme.AddToScheme(Scheme)
 	_ = contourv1.AddToScheme(Scheme)
 }

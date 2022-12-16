@@ -8,6 +8,8 @@ package resource_test
 import (
 	"testing"
 
+	"github.com/project-radius/radius/pkg/resourcemodel"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/test/functional"
 	"github.com/project-radius/radius/test/functional/corerp"
 	"github.com/project-radius/radius/test/step"
@@ -19,8 +21,6 @@ func Test_MongoDB(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb.bicep"
 	name := "corerp-resources-mongodb"
 	appNamespace := "default-corerp-resources-mongodb"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -51,7 +51,7 @@ func Test_MongoDB(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -60,8 +60,6 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-user-secrets.bicep"
 	name := "corerp-resources-mongodb-user-secrets"
 	appNamespace := "default-corerp-resources-mongodb-user-secrets"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -104,7 +102,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -116,8 +114,6 @@ func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
 	appNamespace := "corerp-resources-mongodb-recipe-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -142,6 +138,16 @@ func Test_MongoDB_Recipe(t *testing.T) {
 						Name: "mongo-recipe-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+							},
+						},
 					},
 				},
 			},
@@ -153,7 +159,7 @@ func Test_MongoDB_Recipe(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }
@@ -166,8 +172,6 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
 	appNamespace := "corerp-resources-mongodb-devrecipe-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -203,7 +207,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
 
 	test.Test(t)
 }

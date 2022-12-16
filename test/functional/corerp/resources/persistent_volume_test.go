@@ -15,11 +15,10 @@ import (
 )
 
 func Test_PersistentVolume(t *testing.T) {
+
 	template := "testdata/corerp-resources-volume-azure-keyvault.bicep"
 	name := "corerp-resources-volume-azure-keyvault"
 	appNamespace := "corerp-resources-volume-azure-keyvault-app"
-
-	requiredSecrets := map[string]map[string]string{}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -54,7 +53,8 @@ func Test_PersistentVolume(t *testing.T) {
 				},
 			},
 		},
-	}, requiredSecrets)
+	})
+	test.RequiredFeatures = []corerp.RequiredFeature{corerp.FeatureCSIDriver}
 
 	test.Test(t)
 }
