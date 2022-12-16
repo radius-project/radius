@@ -14,6 +14,7 @@ import (
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
@@ -113,7 +114,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 
 func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
 	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
-
+	DevRecipesACRPath := hostoptions.FromContext(ctx).Env.DevRecipesACRPath
 	logger := radlogger.GetLogger(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {

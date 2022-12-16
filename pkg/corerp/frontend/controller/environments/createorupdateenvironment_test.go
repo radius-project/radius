@@ -16,6 +16,7 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/google/uuid"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -405,7 +406,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsWithDevRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		ctx := CreateContextForDevRecipes(radiustesting.ARMTestContextFromRequest(req))
 
 		mStorageClient.
 			EXPECT().
@@ -453,7 +454,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipes20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		ctx := CreateContextForDevRecipes(radiustesting.ARMTestContextFromRequest(req))
 
 		mStorageClient.
 			EXPECT().
@@ -501,7 +502,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		envExistingDataModel, envInput, envDataModel, expectedOutput := getTestModelsAppendDevRecipesToExisting20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		ctx := CreateContextForDevRecipes(radiustesting.ARMTestContextFromRequest(req))
 
 		mStorageClient.
 			EXPECT().
@@ -548,7 +549,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		envInput := getTestModelsUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		ctx := CreateContextForDevRecipes(radiustesting.ARMTestContextFromRequest(req))
 
 		mStorageClient.
 			EXPECT().
@@ -574,7 +575,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 		envExistingDataModel, envInput := getTestModelsExistingUserRecipesConflictWithReservedNames20220315privatepreview()
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, envInput)
-		ctx := radiustesting.ARMTestContextFromRequest(req)
+		ctx := CreateContextForDevRecipes(radiustesting.ARMTestContextFromRequest(req))
 
 		mStorageClient.
 			EXPECT().
@@ -602,8 +603,7 @@ func TestCreateOrUpdateRunDevRecipes(t *testing.T) {
 
 func TestGetDevRecipes(t *testing.T) {
 	t.Run("Successfully returns dev recipes", func(t *testing.T) {
-		ctx := context.Background()
-		devRecipes, err := getDevRecipes(ctx)
+		devRecipes, err := getDevRecipes(CreateContextForDevRecipes(context.Background()))
 		require.NoError(t, err)
 		expectedRecipes := map[string]datamodel.EnvironmentRecipeProperties{
 			"mongo-azure": {
@@ -774,5 +774,11 @@ func TestFindHighestVersion(t *testing.T) {
 		versions := []string{"1.0", "otherTag", "3.0", "4.0"}
 		_, err := findHighestVersion(versions)
 		require.ErrorContains(t, err, "Unable to convert tag otherTag into valid version.")
+	})
+}
+
+func CreateContextForDevRecipes(input context.Context) (ctx context.Context) {
+	return hostoptions.WithContext(input, &hostoptions.ProviderConfig{
+		Env: hostoptions.EnvironmentOptions{DevRecipesACRPath: "radiusdev.azurecr.io"},
 	})
 }

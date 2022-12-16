@@ -26,8 +26,9 @@ const (
 
 // EnvironmentOptions represents the environment.
 type EnvironmentOptions struct {
-	Name         EnvironmentType `yaml:"name"`
-	RoleLocation string          `yaml:"roleLocation"`
+	Name              EnvironmentType `yaml:"name"`
+	RoleLocation      string          `yaml:"roleLocation"`
+	DevRecipesACRPath string          `yaml:"devRecipesACRPath"`
 }
 
 // IdentityOptions includes authentication options to issue JWT from Azure AD.

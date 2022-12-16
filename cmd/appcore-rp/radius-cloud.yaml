@@ -2,6 +2,7 @@
 environment:
   name: AzureCloud
   roleLocation: West US
+  devRecipesACRPath: "radiusdev.azurecr.io/recipes/"
 identity: # 1P AAD APP authentication
   clientId: "PLACEHOLDER"
   instance: "https://login.windows.net"
