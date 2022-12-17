@@ -46,47 +46,6 @@ enum ProvisioningState {
   Deleting,
   Accepted,
 }
-// @doc("Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).")
-// @error
-// model ErrorResponse {
-//   @doc("The error object.")
-//   error: ErrorDetail;
-// }
-
-// @doc("The error detail")
-// model ErrorDetail {
-//   @doc("The error code")
-//   @visibility("read")
-//   code: string;
-
-//   @doc("The error message")
-//   @visibility("read")
-//   message: string;
-
-//   @doc("The error target")
-//   @visibility("read")
-//   target: string;
-
-//   @doc("The error details")
-//   @visibility("read")
-//   @extension("x-ms-identifiers", ["target", "message"])
-//   details: ErrorDetail[];
-
-//   @doc("The error additional info")
-//   @visibility("read")
-//   additionalInfo: ErrorAdditionalInfo;
-// }
-
-// @doc("The resource management error additional info.")
-// model ErrorAdditionalInfo {
-//   @doc("The additional info type")
-//   @visibility("read")
-//   type: string;
-
-//   @doc("The additional info")
-//   @visibility("read")
-//   info: string;
-// }
 
 @doc("The recipe used to automatically deploy underlying infrastructure for a link")
 model Recipe{
