@@ -10,7 +10,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -145,20 +144,9 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Host = deploymentOutput.ComputedValues[renderers.Host].(string)
 
-				port := deploymentOutput.ComputedValues[renderers.Port]
-				if port != nil {
-					switch p := port.(type) {
-					case float64:
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = int32(p)
-					case int32:
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = p
-					case string:
-						converted, _ := strconv.Atoi(p)
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = int32(converted)
-					default:
-						panic("unhandled type for the property portx")
-					}
-				}
+				port, err := renderers.MustParseInt32(deploymentOutput.ComputedValues[renderers.Port])
+				require.NoError(t, err)
+				deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = port
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 
@@ -240,20 +228,9 @@ func TestCreateOrUpdateRedisCache_20220315PrivatePreview(t *testing.T) {
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Host = deploymentOutput.ComputedValues[renderers.Host].(string)
 
-				port := deploymentOutput.ComputedValues[renderers.Port]
-				if port != nil {
-					switch p := port.(type) {
-					case float64:
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = int32(p)
-					case int32:
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = p
-					case string:
-						converted, _ := strconv.Atoi(p)
-						deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = int32(converted)
-					default:
-						panic("unhandled type for the property portx")
-					}
-				}
+				port, err := renderers.MustParseInt32(deploymentOutput.ComputedValues[renderers.Port])
+				require.NoError(t, err)
+				deploymentOutput.RadiusResource.(*datamodel.RedisCache).Properties.Port = port
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
 				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)

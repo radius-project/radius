@@ -7,6 +7,7 @@ package renderers
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
@@ -27,4 +28,21 @@ func ValidateApplicationID(application string) (resources.ID, error) {
 		return appId, nil
 	}
 	return resources.ID{}, nil
+}
+
+func MustParseInt32(inp interface{}) (int32, error) {
+	if inp != nil {
+		switch val := inp.(type) {
+		case float64:
+			return int32(val), nil
+		case int32:
+			return val, nil
+		case string:
+			converted, _ := strconv.Atoi(val)
+			return int32(converted), nil
+		default:
+			return 0, fmt.Errorf("unhandled type for the input %s", val)
+		}
+	}
+	return 0, fmt.Errorf("input must not be nil")
 }
