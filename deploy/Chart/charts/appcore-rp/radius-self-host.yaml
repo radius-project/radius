@@ -2,7 +2,7 @@
 environment:
   name: self-hosted
   roleLocation: "global"
-  devRecipesACRPath: "radiusdev.azurecr.io/recipes/"
+  devRecipesACRPath: "radiusdev.azurecr.io"
 storageProvider:
   # Kubernetes APIServer store.
   # This supports two modes:
