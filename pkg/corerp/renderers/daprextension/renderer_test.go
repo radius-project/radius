@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
+	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -117,8 +118,10 @@ func Test_Render_Success_AppID_FromRoute(t *testing.T) {
 
 	dependencies := map[string]renderers.RendererDependency{
 		"test-route-id": {
-			Definition: map[string]interface{}{
-				"appId": "routeappId",
+			Resource: &link.DaprInvokeHttpRoute{
+				Properties: link.DaprInvokeHttpRouteProperties{
+					AppId: "routeappId",
+				},
 			},
 		},
 	}
@@ -166,8 +169,10 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	dependencies := map[string]renderers.RendererDependency{
 		"test-route-id": {
-			Definition: map[string]interface{}{
-				"appId": "routeappId",
+			Resource: &link.DaprInvokeHttpRoute{
+				Properties: link.DaprInvokeHttpRouteProperties{
+					AppId: "routeappId",
+				},
 			},
 		},
 	}

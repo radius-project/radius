@@ -356,7 +356,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
 			default:
-				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", properties.Definition["kind"], volumeName, GetSupportedKinds()))
+				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", vol.Properties.Kind, volumeName, GetSupportedKinds()))
 			}
 
 			// Add the volume mount to the Container spec

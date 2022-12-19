@@ -41,9 +41,6 @@ type RendererDependency struct {
 	// ResourceID is the resource ID of the Radius resource that is the dependency.
 	ResourceID resources.ID
 
-	// Definition is the definition (`properties` node) of the dependency.
-	Definition map[string]interface{}
-
 	// Resource is the datamodel of depedency resource.
 	Resource conv.DataModelInterface
 
