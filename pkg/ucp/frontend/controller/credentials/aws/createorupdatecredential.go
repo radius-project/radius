@@ -15,6 +15,7 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
+	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -47,17 +48,13 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 
 	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
-	if errors.Is(err, v1.ErrUnsupportedAPIVersion) || errors.Is(err, conv.ErrInvalidModelConversion) {
+	if errors.Is(v1.ErrUnsupportedAPIVersion, err) ||
+		errors.Is(conv.ErrInvalidModelConversion, err) ||
+		errors.Is(ucp.ErrEmptyCredentialProperties, err) ||
+		errors.Is(ucp.ErrEmptyCredentialStorage, err) ||
+		errors.Is(ucp.ErrEmptyStorageKind, err) ||
+		errors.Is(ucp.ErrInvalidStorageKind, err) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-	}
-	if err != nil {
-		errors.Is(err, &conv.ErrModelConversion{})
-		switch err.(type) {
-		case *conv.ErrModelConversion:
-			return armrpc_rest.NewBadRequestResponse(err.Error()), nil
-		default:
-			return nil, err
-		}
 	}
 
 	if newResource.Properties.Kind != datamodel.AWSCredentialKind {
@@ -73,12 +70,9 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	logger := ucplog.GetLogger(ctx)
 
 	// Check if the credential already exists in database
-	credentialExists := true
 	existingResource := datamodel.Credential{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
-	if errors.Is(err, &store.ErrNotFound{}) {
-		credentialExists = false
-	} else if err != nil {
+	if err != nil && !errors.Is(err, &store.ErrNotFound{}) {
 		return nil, err
 	}
 
@@ -106,10 +100,6 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	restResp := armrpc_rest.NewOKResponse(versioned)
-	if credentialExists {
-		logger.Info(fmt.Sprintf("Updated credential %s successfully", newResource.TrackedResource.ID))
-	} else {
-		logger.Info(fmt.Sprintf("Created credential %s successfully", newResource.TrackedResource.ID))
-	}
+	logger.Info(fmt.Sprintf("Created credential %s successfully", newResource.TrackedResource.ID))
 	return restResp, nil
 }

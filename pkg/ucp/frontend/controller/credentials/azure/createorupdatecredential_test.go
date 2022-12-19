@@ -90,6 +90,13 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
+			name:     "test_credential_notFound_error",
+			filename: "azure-credential.json",
+			url:      "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
+			fn:       setupCredentialNotFoundErrorMocks,
+			err:      errors.New("Error"),
+		},
+		{
 			name:     "test_credential_get_failure",
 			filename: "azure-credential.json",
 			url:      "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
@@ -161,6 +168,13 @@ func setupCredentialNotFoundMocks(mockStorageClient store.MockStorageClient, moc
 		}).Times(1)
 	mockSecretClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 	mockStorageClient.EXPECT().Save(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+}
+
+func setupCredentialNotFoundErrorMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
+	mockStorageClient.EXPECT().Get(gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(ctx context.Context, id string, options ...store.GetOptions) (*store.Object, error) {
+			return nil, errors.New("Error")
+		}).Times(1)
 }
 
 func setupCredentialGetFailMocks(mockStorageClient store.MockStorageClient, mockSecretClient secret.MockClient) {
