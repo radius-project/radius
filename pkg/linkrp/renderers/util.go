@@ -32,7 +32,7 @@ func ValidateApplicationID(application string) (resources.ID, error) {
 
 func MustParseInt32(inp interface{}) (int32, error) {
 	if inp != nil {
-		switch val := inp.(type) {
+		switch t := inp.(type) {
 		case float64:
 			return int32(val), nil
 		case int32:
