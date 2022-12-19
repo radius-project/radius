@@ -52,18 +52,18 @@ func (mr *MockDeploymentProcessorMockRecorder) Delete(arg0, arg1 interface{}) *g
 }
 
 // Deploy mocks base method.
-func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput, radiusResource conv.DataModelInterface) (DeploymentOutput, error) {
+func (m *MockDeploymentProcessor) Deploy(arg0 context.Context, arg1 resources.ID, arg2 renderers.RendererOutput, arg3 conv.DataModelInterface) (DeploymentOutput, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Deploy", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(DeploymentOutput)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Deploy indicates an expected call of Deploy.
-func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockDeploymentProcessorMockRecorder) Deploy(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Deploy", reflect.TypeOf((*MockDeploymentProcessor)(nil).Deploy), arg0, arg1, arg2, arg3)
 }
 
 // FetchSecrets mocks base method.

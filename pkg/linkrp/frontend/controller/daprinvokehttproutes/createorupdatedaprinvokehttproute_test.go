@@ -93,7 +93,7 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute).Properties.AppId = rendererOutput.ComputedValues[daprinvokehttproutes.AppIDKey].Value.(string)
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 
 				mStorageClient.
 					EXPECT().
@@ -199,7 +199,7 @@ func TestCreateOrUpdateDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) 
 				deploymentOutput.RadiusResource = dataModel
 				deploymentOutput.RadiusResource.(*datamodel.DaprInvokeHttpRoute).Properties.AppId = rendererOutput.ComputedValues[daprinvokehttproutes.AppIDKey].Value.(string)
 				mDeploymentProcessor.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(rendererOutput, nil)
-				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
+				mDeploymentProcessor.EXPECT().Deploy(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(deploymentOutput, nil)
 				mDeploymentProcessor.EXPECT().Delete(gomock.Any(), gomock.Any()).Times(1).Return(nil)
 
 				mStorageClient.
