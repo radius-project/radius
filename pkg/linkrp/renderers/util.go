@@ -44,5 +44,5 @@ func MustParseInt32(inp interface{}) (int32, error) {
 			return 0, fmt.Errorf("unhandled type for the input %s", val)
 		}
 	}
-	return 0, fmt.Errorf("input must not be nil")
+	return 0, errors.New("input must not be nil")
 }
