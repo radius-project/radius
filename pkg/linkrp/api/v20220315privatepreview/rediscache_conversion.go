@@ -19,12 +19,17 @@ import (
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
 func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -32,9 +37,6 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 	switch v := src.Properties.(type) {

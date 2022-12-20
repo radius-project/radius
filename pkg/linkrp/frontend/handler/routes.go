@@ -11,10 +11,13 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
+	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprsecretstores"
@@ -237,16 +240,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: daprStateStore_ctrl.NewDeleteDaprStateStore,
 		},
 		{
-			ParentRouter:   redisRTSubrouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: redis_ctrl.NewListRedisCaches,
+			ParentRouter: redisRTSubrouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: redis_ctrl.NewGetRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   redisResourceRouter,

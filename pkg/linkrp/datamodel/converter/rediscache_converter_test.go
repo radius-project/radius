@@ -43,7 +43,7 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.RedisCache{}
 			_ = json.Unmarshal(c, dm)
-			am, err := RedisCacheDataModelToVersioned(dm, tc.apiVersion, true)
+			am, err := RedisCacheDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {
