@@ -20,6 +20,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -490,6 +491,13 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					Annotations: map[string]string{},
 				},
 				Spec: corev1.PodSpec{
+					// See: https://github.com/kubernetes/kubernetes/issues/92226 and
+					// 		https://github.com/project-radius/radius/issues/3002
+					//
+					// Service links are a flawed and Kubernetes-only feature that we don't
+					// want to leak into Radius containers.
+					EnableServiceLinks: to.Ptr(false),
+
 					ServiceAccountName: serviceAccountName,
 					Containers:         []corev1.Container{container},
 					Volumes:            volumes,

@@ -271,6 +271,12 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
+		// See https://github.com/project-radius/radius/issues/3002
+		//
+		// We disable service links and rely on Radius' connections feature instead.
+		require.NotNil(t, deployment.Spec.Template.Spec.EnableServiceLinks)
+		require.False(t, *deployment.Spec.Template.Spec.EnableServiceLinks)
+
 		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 
 		container := deployment.Spec.Template.Spec.Containers[0]
