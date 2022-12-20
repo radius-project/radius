@@ -84,9 +84,10 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	}
 
 	ctrlOpts := ctrl.Options{
-		BasePath: s.options.BasePath,
-		DB:       s.options.DBClient,
-		Address:  s.options.Address,
+		BasePath:     s.options.BasePath,
+		DB:           s.options.DBClient,
+		SecretClient: s.options.SecretClient,
+		Address:      s.options.Address,
 	}
 
 	err := Register(ctx, r, ctrlOpts)

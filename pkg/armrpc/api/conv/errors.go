@@ -28,12 +28,8 @@ func (e *ErrModelConversion) Error() string {
 }
 
 func (e *ErrModelConversion) Is(target error) bool {
-	t, ok := target.(*ErrModelConversion)
-	if !ok {
-		return false
-	}
-
-	return (e.PropertyName == t.PropertyName && e.ValidValue == t.ValidValue)
+	_, ok := target.(*ErrModelConversion)
+	return ok
 }
 
 type ErrClientRP struct {
