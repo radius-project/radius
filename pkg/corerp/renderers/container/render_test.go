@@ -486,7 +486,6 @@ func Test_Render_Connections(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -584,7 +583,6 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -637,7 +635,6 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -692,7 +689,6 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -956,7 +952,6 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID:     makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition:     map[string]interface{}{},
 			ComputedValues: map[string]interface{}{},
 		},
 	}
@@ -1032,9 +1027,6 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
-			Definition: map[string]interface{}{
-				"kind": "azure.com.fileshare",
-			},
 			ComputedValues: map[string]interface{}{
 				"azurestorageaccountname": "accountname",
 				"azurestorageaccountkey":  "storagekey",
@@ -1219,7 +1211,6 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1296,7 +1287,6 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1366,7 +1356,6 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1426,7 +1415,6 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
