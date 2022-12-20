@@ -12,6 +12,10 @@ import (
 const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
 	InternalStorageKind = CredentialStorageKind("Internal")
+	// AzureCredentialKind represents ucp credential kind for azure credentials.
+	AzureCredentialKind = "azure.com.serviceprincipal"
+	// AWSCredentialKind represents ucp credential kind for aws credentials.
+	AWSCredentialKind = "aws.com.iam"
 )
 
 // Credential represents UCP Credential.
