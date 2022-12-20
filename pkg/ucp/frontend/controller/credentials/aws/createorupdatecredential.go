@@ -47,9 +47,9 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 
 	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
-	if errors.Is(v1.ErrUnsupportedAPIVersion, err) ||
-		errors.Is(conv.ErrInvalidModelConversion, err) ||
-		errors.Is(&conv.ErrModelConversion{}, err) {
+	if errors.Is(err, v1.ErrUnsupportedAPIVersion) ||
+		errors.Is(err, conv.ErrInvalidModelConversion) ||
+		errors.Is(err, &conv.ErrModelConversion{}) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
