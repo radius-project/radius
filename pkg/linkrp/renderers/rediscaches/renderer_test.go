@@ -32,10 +32,12 @@ func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -106,10 +108,12 @@ func Test_Render_UserSpecifiedValuesAndSecrets(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -154,10 +158,12 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -201,10 +207,12 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -229,10 +237,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -257,10 +267,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.RedisCache{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
-			Name: "redis0",
-			Type: "Applications.Link/redisCaches",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/redisCaches/redis0",
+				Name: "redis0",
+				Type: "Applications.Link/redisCaches",
+			},
 		},
 		Properties: datamodel.RedisCacheProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
