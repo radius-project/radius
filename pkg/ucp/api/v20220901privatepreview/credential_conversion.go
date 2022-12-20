@@ -21,17 +21,6 @@ const (
 	AWSCredentialType = "System.AWS/credentials"
 )
 
-var (
-	// ErrEmptyCredentialProperties represents error for nil credential properties
-	ErrEmptyCredentialProperties = &conv.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
-	// ErrEmptyCredentialStorage represents error for nil credential storage properties
-	ErrEmptyCredentialStorage = &conv.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
-	// ErrEmptyStorageKind represents error for nil storage kind
-	ErrEmptyStorageKind = &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"}
-	// ErrInvalidStorageKind represents error for invalid storage kind value
-	ErrInvalidStorageKind = &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())}
-)
-
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
 func (cr *CredentialResource) ConvertTo() (conv.DataModelInterface, error) {
 	crendentialProperties, err := cr.getDataModelCredentialProperties()
@@ -54,17 +43,17 @@ func (cr *CredentialResource) ConvertTo() (conv.DataModelInterface, error) {
 
 func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.CredentialResourceProperties, error) {
 	if cr.Properties == nil {
-		return nil, ErrEmptyCredentialProperties
+		return nil, &conv.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
 	}
 	crendentialProperties := cr.Properties.GetCredentialResourceProperties()
 
 	if crendentialProperties.Storage == nil {
-		return nil, ErrEmptyCredentialStorage
+		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
 	}
 
 	storageProperties := crendentialProperties.Storage.GetCredentialStorageProperties()
 	if storageProperties.GetCredentialStorageProperties().Kind == nil {
-		return nil, ErrEmptyStorageKind
+		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"}
 	}
 	// Check for storage type value
 	var found bool
@@ -75,7 +64,7 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 		}
 	}
 	if !found {
-		return nil, ErrInvalidStorageKind
+		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())}
 	}
 	storage, err := cr.getCredentialStorageProperties()
 	if err != nil {

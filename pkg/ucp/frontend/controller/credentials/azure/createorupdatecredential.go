@@ -15,7 +15,6 @@ import (
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
-	ucp "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -50,10 +49,7 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
 	if errors.Is(v1.ErrUnsupportedAPIVersion, err) ||
 		errors.Is(conv.ErrInvalidModelConversion, err) ||
-		errors.Is(ucp.ErrEmptyCredentialProperties, err) ||
-		errors.Is(ucp.ErrEmptyCredentialStorage, err) ||
-		errors.Is(ucp.ErrEmptyStorageKind, err) ||
-		errors.Is(ucp.ErrInvalidStorageKind, err) {
+		errors.Is(&conv.ErrModelConversion{}, err) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
