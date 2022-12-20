@@ -7,7 +7,6 @@ package daprextension
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -148,15 +147,13 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 	if extension.Provides != "" {
 		routeDependency, ok := dependencies[extension.Provides]
 		if !ok {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to find depenendency with id %q", extension.Provides))
+			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to find dependency with id %q", extension.Provides))
 		}
-
-		route := link.DaprInvokeHttpRouteProperties{}
-		err := convertDefinition(&route, routeDependency)
-		if err != nil {
-			return "", err
+		route, ok := routeDependency.Resource.(*link.DaprInvokeHttpRoute)
+		if !ok {
+			return "", errors.New("failed to get Applications.Link/DaprInvokeHTTPRoutes resource")
 		}
-		routeAppID = route.AppId
+		routeAppID = route.Properties.AppId
 	}
 
 	appID := extension.AppID
@@ -198,18 +195,4 @@ func (r *Renderer) setAnnotations(o runtime.Object, annotations map[string]strin
 	if ok {
 		un.SetAnnotations(annotations)
 	}
-}
-
-func convertDefinition(properties interface{}, r renderers.RendererDependency) error {
-	b, err := json.Marshal(r.Definition)
-	if err != nil {
-		return fmt.Errorf("failed to marshal resource definition: %w", err)
-	}
-
-	err = json.Unmarshal(b, properties)
-	if err != nil {
-		return fmt.Errorf("failed to unmarshal resource definition: %w", err)
-	}
-
-	return nil
 }
