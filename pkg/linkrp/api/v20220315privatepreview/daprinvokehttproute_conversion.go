@@ -17,12 +17,17 @@ import (
 // ConvertTo converts from the versioned DaprInvokeHttpRoute resource to version-agnostic datamodel.
 func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.DaprInvokeHttpRoute{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -31,9 +36,6 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			AppId:             to.String(src.Properties.AppID),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 
