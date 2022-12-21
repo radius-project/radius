@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
@@ -28,6 +29,7 @@ import (
 type Options struct {
 	BasePath                string
 	DB                      store.StorageClient
+	SecretClient            secret.Client
 	Address                 string
 	AWSCloudControlClient   aws.AWSCloudControlClient
 	AWSCloudFormationClient aws.AWSCloudFormationClient

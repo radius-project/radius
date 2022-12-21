@@ -15,18 +15,16 @@ import (
 )
 
 // ExtenderDataModelFromVersioned converts version agnostic Extender datamodel to versioned model.
-func ExtenderDataModelToVersioned(model conv.DataModelInterface, version string, includeSecrets bool) (conv.VersionedModelInterface, error) {
+func ExtenderDataModelToVersioned(model *datamodel.Extender, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		if includeSecrets {
-			versioned := &v20220315privatepreview.ExtenderResource{}
-			err := versioned.ConvertFrom(model.(*datamodel.Extender))
-			return versioned, err
-		} else {
-			versioned := &v20220315privatepreview.ExtenderResponseResource{}
-			err := versioned.ConvertFrom(model.(*datamodel.ExtenderResponse))
-			return versioned, err
+		versioned := &v20220315privatepreview.ExtenderResource{}
+		err := versioned.ConvertFrom(model)
+		if err != nil {
+			return nil, err
 		}
+
+		return versioned, nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

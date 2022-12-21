@@ -12,15 +12,10 @@ import (
 
 // DaprStateStore represents DaprStateStore link resource.
 type DaprStateStore struct {
-	v1.TrackedResource
+	v1.BaseResource
 
-	// SystemData is the systemdata which includes creation/modified dates.
-	SystemData v1.SystemData `json:"systemData,omitempty"`
 	// Properties is the properties of the resource.
 	Properties DaprStateStoreProperties `json:"properties"`
-
-	// InternalMetadata is the internal metadata which is used for conversion.
-	v1.InternalMetadata
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
 	LinkMetadata

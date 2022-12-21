@@ -31,20 +31,20 @@ func createContext(t *testing.T) context.Context {
 func Test_Render_Success(t *testing.T) {
 	ctx := createContext(t)
 	resource := datamodel.Extender{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
-			Type: "Applications.Link/daprSecretStores",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
+				Name: "test-secret-store",
+				Type: "Applications.Link/daprSecretStores",
+			},
 		},
 		Properties: datamodel.ExtenderProperties{
-			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
-				AdditionalProperties: map[string]interface{}{
-					"foo": "bar",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			AdditionalProperties: map[string]interface{}{
+				"foo": "bar",
 			},
 			Secrets: map[string]interface{}{
 				"secretname": "secretvalue",
@@ -73,20 +73,20 @@ func Test_Render_Success(t *testing.T) {
 func Test_Render_InvalidApplicationID(t *testing.T) {
 	ctx := createContext(t)
 	resource := datamodel.Extender{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
-			Name: "test-secret-store",
-			Type: "Applications.Link/daprSecretStores",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprSecretStores/test-secret-store",
+				Name: "test-secret-store",
+				Type: "Applications.Link/daprSecretStores",
+			},
 		},
 		Properties: datamodel.ExtenderProperties{
-			ExtenderResponseProperties: datamodel.ExtenderResponseProperties{
-				BasicResourceProperties: rp.BasicResourceProperties{
-					Application: "invalid-app-id",
-					Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
-				},
-				AdditionalProperties: map[string]interface{}{
-					"foo": "bar",
-				},
+			BasicResourceProperties: rp.BasicResourceProperties{
+				Application: "invalid-app-id",
+				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+			},
+			AdditionalProperties: map[string]interface{}{
+				"foo": "bar",
 			},
 			Secrets: map[string]interface{}{
 				"secretname": "secretvalue",
