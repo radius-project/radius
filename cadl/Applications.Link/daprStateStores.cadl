@@ -33,7 +33,7 @@ namespace Applications.Link;
 
 
 @doc("DaprStateStore Properties for Mode Resource")
-model ResourceDaprStateStoreResourceProperties extends DaprStateStoreProperties {
+model ResourceDaprStateStoreProperties extends DaprStateStoreProperties {
   @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "resource";
 
@@ -51,7 +51,7 @@ model ResourceDaprStateStoreResourceProperties extends DaprStateStoreProperties 
 
 }
 @doc("DaprStateStore Properties for Mode Values")
-model ValuesDaprStateStoreResourceProperties extends DaprStateStoreProperties {
+model ValuesDaprStateStoreProperties extends DaprStateStoreProperties {
   @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 

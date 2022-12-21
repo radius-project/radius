@@ -2390,7 +2390,7 @@
           "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq link"
         }
       },
-      "description": "MongoDatabase Properties for Mode Recipe",
+      "description": "RabbitmqMessageQueue Properties for Mode Recipe",
       "required": [
         "recipe"
       ],
@@ -2923,7 +2923,7 @@
           "description": "The name of the queue"
         }
       },
-      "description": "MongoDatabase Properties for Mode Values",
+      "description": "RabbitmqMessageQueue Properties for Mode Values",
       "required": [
         "queue"
       ],
