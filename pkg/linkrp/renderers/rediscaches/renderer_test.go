@@ -183,10 +183,12 @@ func Test_Render_InvalidResourceModel(t *testing.T) {
 	renderer := Renderer{}
 
 	redisResource := datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
-			Name: "mongo0",
-			Type: "Applications.Link/mongoDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/mongoDatabases/mongo0",
+				Name: "mongo0",
+				Type: "Applications.Link/mongoDatabases",
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

@@ -33,10 +33,12 @@ func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.DaprInvokeHttpRoute{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
-			Name: "test-http-route",
-			Type: "Applications.Link/daprInvokeHttpRoutes",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
+				Name: "test-http-route",
+				Type: "Applications.Link/daprInvokeHttpRoutes",
+			},
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -67,10 +69,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.DaprInvokeHttpRoute{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
-			Name: "test-http-route",
-			Type: "Applications.Link/daprInvokeHttpRoutes",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/daprInvokeHttpRoutes/test-http-route",
+				Name: "test-http-route",
+				Type: "Applications.Link/daprInvokeHttpRoutes",
+			},
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
