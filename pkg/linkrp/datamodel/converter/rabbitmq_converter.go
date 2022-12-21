@@ -15,11 +15,11 @@ import (
 )
 
 // RabbitMQMessageQueueDataModelFromVersioned converts version agnostic RabbitMQMessageQueue datamodel to versioned model.
-func RabbitMQMessageQueueDataModelToVersioned(model conv.DataModelInterface, version string) (conv.VersionedModelInterface, error) {
+func RabbitMQMessageQueueDataModelToVersioned(model *datamodel.RabbitMQMessageQueue, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.RabbitMQMessageQueueResource{}
-		err := versioned.ConvertFrom(model.(*datamodel.RabbitMQMessageQueue))
+		err := versioned.ConvertFrom(model)
 		return versioned, err
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion

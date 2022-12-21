@@ -38,10 +38,12 @@ func Test_Render_Success(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
-			Name: "sql0",
-			Type: "Applications.Link/sqlDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
+				Name: "sql0",
+				Type: "Applications.Link/sqlDatabases",
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -98,10 +100,12 @@ func Test_Render_MissingResource(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
-			Name: "sql0",
-			Type: "Applications.Link/sqlDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
+				Name: "sql0",
+				Type: "Applications.Link/sqlDatabases",
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -121,10 +125,12 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 	resource := datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
-			Name: "sql0",
-			Type: "Applications.Link/sqlDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
+				Name: "sql0",
+				Type: "Applications.Link/sqlDatabases",
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -145,10 +151,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	ctx := createContext(t)
 	renderer := Renderer{}
 	resource := datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
-			Name: "sql0",
-			Type: "Applications.Link/sqlDatabases",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/sqlDatabases/sql0",
+				Name: "sql0",
+				Type: "Applications.Link/sqlDatabases",
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

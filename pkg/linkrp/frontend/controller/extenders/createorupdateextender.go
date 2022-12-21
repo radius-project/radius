@@ -95,13 +95,13 @@ func (extender *CreateOrUpdateExtender) Run(ctx context.Context, w http.Response
 		return nil, err
 	}
 
-	extenderResponse := &datamodel.ExtenderResponse{}
+	extenderResponse := &datamodel.Extender{}
 	err = savedResource.As(extenderResponse)
 	if err != nil {
 		return nil, err
 	}
 
-	versioned, err := converter.ExtenderDataModelToVersioned(extenderResponse, serviceCtx.APIVersion, false)
+	versioned, err := converter.ExtenderDataModelToVersioned(extenderResponse, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}

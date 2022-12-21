@@ -42,10 +42,12 @@ const (
 func Test_Render_Generic_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -97,10 +99,12 @@ func Test_Render_Generic_Success(t *testing.T) {
 func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -122,10 +126,12 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -149,10 +155,12 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -219,10 +227,12 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -262,10 +272,12 @@ func Test_Render_DaprPubSubAzureServiceBus_Success(t *testing.T) {
 func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -304,10 +316,12 @@ func Test_Render_DaprPubSubMissingTopicName_Success(t *testing.T) {
 func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -328,10 +342,12 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 func Test_Render_UnsupportedMode(t *testing.T) {
 	renderer := Renderer{SupportedPubSubModes}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -352,10 +368,12 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -380,10 +398,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 func Test_Render_EmptyApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	resource := datamodel.DaprPubSubBroker{
-		TrackedResource: v1.TrackedResource{
-			ID:   resourceID,
-			Name: resourceName,
-			Type: ResourceType,
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   resourceID,
+				Name: resourceName,
+				Type: ResourceType,
+			},
 		},
 		Properties: datamodel.DaprPubSubBrokerProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

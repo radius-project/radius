@@ -19,12 +19,17 @@ import (
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
 func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.SqlDatabaseProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -32,9 +37,6 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Application: to.String(src.Properties.GetSQLDatabaseProperties().Application),
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetSQLDatabaseProperties().ProvisioningState),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 

@@ -43,44 +43,7 @@ func TestExtenderDataModelToVersioned(t *testing.T) {
 			c := loadTestData(tc.dataModelFile)
 			dm := &datamodel.Extender{}
 			_ = json.Unmarshal(c, dm)
-			am, err := ExtenderDataModelToVersioned(dm, tc.apiVersion, true)
-			if tc.err != nil {
-				require.ErrorAs(t, tc.err, &err)
-			} else {
-				require.NoError(t, err)
-				require.IsType(t, tc.apiModelType, am)
-			}
-		})
-	}
-}
-
-func TestExtenderResponseDataModelToVersioned(t *testing.T) {
-	testset := []struct {
-		dataModelFile string
-		apiVersion    string
-		apiModelType  interface{}
-		err           error
-	}{
-		{
-			"../../api/v20220315privatepreview/testdata/extenderresponseresourcedatamodel.json",
-			"2022-03-15-privatepreview",
-			&v20220315privatepreview.ExtenderResponseResource{},
-			nil,
-		},
-		{
-			"",
-			"unsupported",
-			nil,
-			v1.ErrUnsupportedAPIVersion,
-		},
-	}
-
-	for _, tc := range testset {
-		t.Run(tc.apiVersion, func(t *testing.T) {
-			c := loadTestData(tc.dataModelFile)
-			dm := &datamodel.ExtenderResponse{}
-			_ = json.Unmarshal(c, dm)
-			am, err := ExtenderDataModelToVersioned(dm, tc.apiVersion, false)
+			am, err := ExtenderDataModelToVersioned(dm, tc.apiVersion)
 			if tc.err != nil {
 				require.ErrorAs(t, tc.err, &err)
 			} else {

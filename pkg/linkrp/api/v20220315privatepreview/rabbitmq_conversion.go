@@ -19,12 +19,17 @@ import (
 // ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQMessageQueue{
-		TrackedResource: v1.TrackedResource{
-			ID:       to.String(src.ID),
-			Name:     to.String(src.Name),
-			Type:     to.String(src.Type),
-			Location: to.String(src.Location),
-			Tags:     to.StringMap(src.Tags),
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:       to.String(src.ID),
+				Name:     to.String(src.Name),
+				Type:     to.String(src.Type),
+				Location: to.String(src.Location),
+				Tags:     to.StringMap(src.Tags),
+			},
+			InternalMetadata: v1.InternalMetadata{
+				UpdatedAPIVersion: Version,
+			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -32,9 +37,6 @@ func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 				Application: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Application),
 			},
 			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitMQMessageQueueProperties().ProvisioningState),
-		},
-		InternalMetadata: v1.InternalMetadata{
-			UpdatedAPIVersion: Version,
 		},
 	}
 	switch v := src.Properties.(type) {

@@ -84,16 +84,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 
 	handlerOptions := []server.HandlerOptions{
 		{
-			ParentRouter:   mongoRTSubrouter,
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: mongo_ctrl.NewListMongoDatabases,
+			ParentRouter: mongoRTSubrouter,
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   mongoResourceRouter,
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: mongo_ctrl.NewGetMongoDatabase,
+			ParentRouter: mongoResourceRouter,
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.MongoDatabase]{
+						RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   mongoResourceRouter,
@@ -120,16 +132,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
 		},
 		{
-			ParentRouter:   daprHttpRouteRTSubrouter,
-			ResourceType:   daprHttpRoute_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: daprHttpRoute_ctrl.NewListDaprInvokeHttpRoutes,
+			ParentRouter: daprHttpRouteRTSubrouter,
+			ResourceType: daprHttpRoute_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
+						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
+						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   daprHttpRouteResourceRouter,
-			ResourceType:   daprHttpRoute_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: daprHttpRoute_ctrl.NewGetDaprInvokeHttpRoute,
+			ParentRouter: daprHttpRouteResourceRouter,
+			ResourceType: daprHttpRoute_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
+						RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
+						ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   daprHttpRouteResourceRouter,
@@ -150,16 +174,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute,
 		},
 		{
-			ParentRouter:   daprPubSubRTSubrouter,
-			ResourceType:   daprPubSub_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: daprPubSub_ctrl.NewListDaprPubSubBrokers,
+			ParentRouter: daprPubSubRTSubrouter,
+			ResourceType: daprPubSub_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   daprPubSubResourceRouter,
-			ResourceType:   daprPubSub_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: daprPubSub_ctrl.NewGetDaprPubSubBroker,
+			ParentRouter: daprPubSubResourceRouter,
+			ResourceType: daprPubSub_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+						RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
+						ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   daprPubSubResourceRouter,
@@ -180,16 +216,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: daprPubSub_ctrl.NewDeleteDaprPubSubBroker,
 		},
 		{
-			ParentRouter:   daprSecretStoreRTSubrouter,
-			ResourceType:   daprSecretStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: daprSecretStore_ctrl.NewListDaprSecretStores,
+			ParentRouter: daprSecretStoreRTSubrouter,
+			ResourceType: daprSecretStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   daprSecretStoreResourceRouter,
-			ResourceType:   daprSecretStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: daprSecretStore_ctrl.NewGetDaprSecretStore,
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: daprSecretStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprSecretStore]{
+						RequestConverter:  converter.DaprSecretStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprSecretStoreDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   daprSecretStoreResourceRouter,
@@ -210,16 +258,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: daprSecretStore_ctrl.NewDeleteDaprSecretStore,
 		},
 		{
-			ParentRouter:   daprStateStoreRTSubrouter,
-			ResourceType:   daprStateStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: daprStateStore_ctrl.NewListDaprStateStores,
+			ParentRouter: daprStateStoreRTSubrouter,
+			ResourceType: daprStateStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   daprStateStoreResourceRouter,
-			ResourceType:   daprStateStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: daprStateStore_ctrl.NewGetDaprStateStore,
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: daprStateStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.DaprStateStore]{
+						RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
+						ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   daprStateStoreResourceRouter,
@@ -288,16 +348,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
 		},
 		{
-			ParentRouter:   rabbitmqRTSubrouter,
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: rabbitmq_ctrl.NewListRabbitMQMessageQueues,
+			ParentRouter: rabbitmqRTSubrouter,
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter,
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: rabbitmq_ctrl.NewGetRabbitMQMessageQueue,
+			ParentRouter: rabbitmqResourceRouter,
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+						RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+						ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   rabbitmqResourceRouter,
@@ -323,16 +395,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			Method:         rabbitmq_ctrl.OperationListSecret,
 			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
 		}, {
-			ParentRouter:   sqlRTSubrouter,
-			ResourceType:   sql_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: sql_ctrl.NewListSqlDatabases,
+			ParentRouter: sqlRTSubrouter,
+			ResourceType: sql_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   sqlResourceRouter,
-			ResourceType:   sql_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: sql_ctrl.NewGetSqlDatabase,
+			ParentRouter: sqlResourceRouter,
+			ResourceType: sql_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.SqlDatabase]{
+						RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
+						ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   sqlResourceRouter,
@@ -353,16 +437,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
 		},
 		{
-			ParentRouter:   extenderRTSubrouter,
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         v1.OperationList,
-			HandlerFactory: extender_ctrl.NewListExtenders,
+			ParentRouter: extenderRTSubrouter,
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         v1.OperationGet,
-			HandlerFactory: extender_ctrl.NewGetExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt,
+					frontend_ctrl.ResourceOptions[datamodel.Extender]{
+						RequestConverter:  converter.ExtenderDataModelFromVersioned,
+						ResponseConverter: converter.ExtenderDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   extenderResourceRouter,
