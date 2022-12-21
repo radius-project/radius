@@ -51,6 +51,8 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 		errors.Is(err, conv.ErrInvalidModelConversion) ||
 		errors.Is(err, &conv.ErrModelConversion{}) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
+	} else if err != nil {
+		return nil, err
 	}
 
 	if newResource.Properties.Kind != datamodel.AzureCredentialKind {
