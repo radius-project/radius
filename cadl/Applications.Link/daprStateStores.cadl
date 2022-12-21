@@ -34,7 +34,7 @@ namespace Applications.Link;
 
 @doc("DaprStateStore Properties for Mode Resource")
 model ResourceDaprStateStoreResourceProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprSecretStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "resource";
 
   @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
@@ -52,7 +52,7 @@ model ResourceDaprStateStoreResourceProperties extends DaprStateStoreProperties 
 }
 @doc("DaprStateStore Properties for Mode Values")
 model ValuesDaprStateStoreResourceProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprSecretStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 
   @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")
@@ -66,7 +66,7 @@ model ValuesDaprStateStoreResourceProperties extends DaprStateStoreProperties {
 }
 @doc("DaprStateStore Properties for Mode Recipe")
 model RecipeDaprStateStoreProperties extends DaprStateStoreProperties {
-  @doc("How to build the DaprSecretStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprStateStore link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
   @doc("Metadata for the state store resource. This should match the values specified in Dapr component spec")

@@ -33,7 +33,7 @@ namespace Applications.Link;
 
 @doc("DaprPubSubBroker Properties for Mode Resource")
 model ResourceDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprPubSubBroker link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "resource";
 
   @doc("Metadata for the pub sub resource. This should match the values specified in Dapr component spec")
@@ -51,7 +51,7 @@ model ResourceDaprPubSubProperties extends DaprPubSubBrokerProperties{
 
 @doc("DaprPubSubBroker Properties for Mode Values")
 model ValuesDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprPubSubBroker link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 
   @doc("Metadata for the pub sub resource. This should match the values specified in Dapr component spec")
@@ -66,7 +66,7 @@ model ValuesDaprPubSubProperties extends DaprPubSubBrokerProperties{
 
 @doc("DaprPubSubBroker Properties for Mode Recipe")
 model RecipeDaprPubSubProperties extends DaprPubSubBrokerProperties{
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the DaprPubSubBroker link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
   @doc("Metadata for the pub sub resource. This should match the values specified in Dapr component spec")

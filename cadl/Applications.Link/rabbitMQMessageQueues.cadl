@@ -51,17 +51,17 @@ model RabbitmqSecrets {
   @doc("The connection string used to connect to this Rabbitmq instance")
   connectionString?: string;
 }
-@doc("MongoDatabase Properties for Mode Values")
+@doc("RabbitmqMessageQueue Properties for Mode Values")
 model ValuesRabbitmqMessageQueueProperties extends RabbitmqMessageQueueProperties {
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the RabbitmqMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 
   @doc("The name of the queue")
   queue: string;
 }
-@doc("MongoDatabase Properties for Mode Recipe")
+@doc("RabbitmqMessageQueue Properties for Mode Recipe")
 model RecipeRabbitmqMessageQueueProperties extends RabbitmqMessageQueueProperties {
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the RabbitmqMessageQueue link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
   @doc("The name of the queue")

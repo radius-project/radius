@@ -57,7 +57,7 @@ model RedisCacheSecrets {
 
 @doc("RedisCache Properties for Mode Resource")
 model ResourceRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "resource";
 
   @doc("Fully qualified resource ID of a supported resource with Redis API to use for this link")
@@ -74,7 +74,7 @@ model ResourceRedisCacheProperties extends RedisCacheProperties {
 }
 @doc("RedisCache Properties for Mode Values")
 model ValuesRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "values";
 
   @doc("The host name of the target redis cache")
@@ -88,7 +88,7 @@ model ValuesRedisCacheProperties extends RedisCacheProperties {
 }
 @doc("RedisCache Properties for Mode Recipe")
 model RecipeRedisCacheProperties extends RedisCacheProperties {
-  @doc("How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
+  @doc("How to build the RedisCache link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.")
   mode: "recipe";
 
   @doc("The host name of the target redis cache")
