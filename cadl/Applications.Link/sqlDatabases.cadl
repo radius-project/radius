@@ -81,6 +81,7 @@ model SqlDatabaseProperties extends BasicResourceProperties {
   provisioningState?: ProvisioningState;
 }
 
+@doc("SqlDatabase link")
 model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
   @doc("The name of the SqlDatabase link resource")
   @maxLength(63)

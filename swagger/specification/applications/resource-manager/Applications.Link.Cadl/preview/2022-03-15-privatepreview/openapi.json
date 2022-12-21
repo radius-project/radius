@@ -1774,7 +1774,7 @@
           ]
         }
       },
-      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "description": "DaprInvokeHttpRoute link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1845,7 +1845,7 @@
           ]
         }
       },
-      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "description": "DaprPubSubBroker link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1912,7 +1912,7 @@
           ]
         }
       },
-      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "description": "DaprSecretStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -1979,7 +1979,7 @@
           ]
         }
       },
-      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "description": "DaprStateStore link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2515,7 +2515,7 @@
           ]
         }
       },
-      "description": "RedisCache connecter",
+      "description": "RedisCache link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2590,7 +2590,7 @@
       ],
       "x-ms-discriminator-value": "resource"
     },
-    "ResourceDaprStateStoreResourceProperties": {
+    "ResourceDaprStateStoreProperties": {
       "type": "object",
       "properties": {
         "metadata": {
@@ -2768,7 +2768,7 @@
           ]
         }
       },
-      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "description": "SqlDatabase link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
@@ -2856,7 +2856,7 @@
       ],
       "x-ms-discriminator-value": "values"
     },
-    "ValuesDaprStateStoreResourceProperties": {
+    "ValuesDaprStateStoreProperties": {
       "type": "object",
       "properties": {
         "metadata": {

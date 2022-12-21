@@ -82,8 +82,7 @@ type DaprInvokeHTTPRouteProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprInvokeHTTPRouteResource - Concrete tracked resource types can be created by aliasing this type using a specific property
-// type.
+// DaprInvokeHTTPRouteResource - DaprInvokeHttpRoute link
 type DaprInvokeHTTPRouteResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -175,8 +174,7 @@ type DaprPubSubBrokerProperties struct {
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type DaprPubSubBrokerProperties.
 func (d *DaprPubSubBrokerProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties { return d }
 
-// DaprPubSubBrokerResource - Concrete tracked resource types can be created by aliasing this type using a specific property
-// type.
+// DaprPubSubBrokerResource - DaprPubSubBroker link
 type DaprPubSubBrokerResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -265,8 +263,7 @@ type DaprSecretStoreProperties struct {
 // GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type DaprSecretStoreProperties.
 func (d *DaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties { return d }
 
-// DaprSecretStoreResource - Concrete tracked resource types can be created by aliasing this type using a specific property
-// type.
+// DaprSecretStoreResource - DaprSecretStore link
 type DaprSecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -324,7 +321,7 @@ type DaprStateStoreClientListByRootScopeOptions struct {
 // DaprStateStorePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreResourceProperties, *ValuesDaprStateStoreResourceProperties
+// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreProperties, *ValuesDaprStateStoreProperties
 type DaprStateStorePropertiesClassification interface {
 	// GetDaprStateStoreProperties returns the DaprStateStoreProperties content of the underlying type.
 	GetDaprStateStoreProperties() *DaprStateStoreProperties
@@ -355,8 +352,7 @@ type DaprStateStoreProperties struct {
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type DaprStateStoreProperties.
 func (d *DaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties { return d }
 
-// DaprStateStoreResource - Concrete tracked resource types can be created by aliasing this type using a specific property
-// type.
+// DaprStateStoreResource - DaprStateStore link
 type DaprStateStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -1017,7 +1013,7 @@ func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatab
 	}
 }
 
-// RecipeRabbitmqMessageQueueProperties - MongoDatabase Properties for Mode Recipe
+// RecipeRabbitmqMessageQueueProperties - RabbitmqMessageQueue Properties for Mode Recipe
 type RecipeRabbitmqMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1181,7 +1177,7 @@ type RedisCacheProperties struct {
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RedisCacheProperties.
 func (r *RedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties { return r }
 
-// RedisCacheResource - RedisCache connecter
+// RedisCacheResource - RedisCache link
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -1313,8 +1309,8 @@ func (r *ResourceDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubS
 	}
 }
 
-// ResourceDaprStateStoreResourceProperties - DaprStateStore Properties for Mode Resource
-type ResourceDaprStateStoreResourceProperties struct {
+// ResourceDaprStateStoreProperties - DaprStateStore Properties for Mode Resource
+type ResourceDaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
@@ -1347,8 +1343,8 @@ type ResourceDaprStateStoreResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreResourceProperties.
-func (r *ResourceDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreProperties.
+func (r *ResourceDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
 		Mode: r.Mode,
 		ProvisioningState: r.ProvisioningState,
@@ -1523,7 +1519,7 @@ type SQLDatabaseProperties struct {
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
 func (s *SQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties { return s }
 
-// SQLDatabaseResource - Concrete tracked resource types can be created by aliasing this type using a specific property type.
+// SQLDatabaseResource - SqlDatabase link
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
@@ -1709,8 +1705,8 @@ func (v *ValuesDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSe
 	}
 }
 
-// ValuesDaprStateStoreResourceProperties - DaprStateStore Properties for Mode Values
-type ValuesDaprStateStoreResourceProperties struct {
+// ValuesDaprStateStoreProperties - DaprStateStore Properties for Mode Values
+type ValuesDaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
@@ -1740,8 +1736,8 @@ type ValuesDaprStateStoreResourceProperties struct {
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreResourceProperties.
-func (v *ValuesDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreProperties.
+func (v *ValuesDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
 		Mode: v.Mode,
 		ProvisioningState: v.ProvisioningState,
@@ -1794,7 +1790,7 @@ func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatab
 	}
 }
 
-// ValuesRabbitmqMessageQueueProperties - MongoDatabase Properties for Mode Values
+// ValuesRabbitmqMessageQueueProperties - RabbitmqMessageQueue Properties for Mode Values
 type ValuesRabbitmqMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`

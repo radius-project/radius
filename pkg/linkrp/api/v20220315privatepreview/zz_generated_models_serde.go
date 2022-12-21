@@ -2208,8 +2208,8 @@ func (r *ResourceDaprPubSubProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ResourceDaprStateStoreResourceProperties.
-func (r ResourceDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ResourceDaprStateStoreProperties.
+func (r ResourceDaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "componentName", r.ComponentName)
@@ -2224,8 +2224,8 @@ func (r ResourceDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) 
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceDaprStateStoreResourceProperties.
-func (r *ResourceDaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ResourceDaprStateStoreProperties.
+func (r *ResourceDaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -2820,8 +2820,8 @@ func (v *ValuesDaprSecretStoreProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ValuesDaprStateStoreResourceProperties.
-func (v ValuesDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ValuesDaprStateStoreProperties.
+func (v ValuesDaprStateStoreProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "componentName", v.ComponentName)
@@ -2835,8 +2835,8 @@ func (v ValuesDaprStateStoreResourceProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesDaprStateStoreResourceProperties.
-func (v *ValuesDaprStateStoreResourceProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesDaprStateStoreProperties.
+func (v *ValuesDaprStateStoreProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", v, err)

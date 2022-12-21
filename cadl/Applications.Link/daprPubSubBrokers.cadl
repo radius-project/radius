@@ -91,7 +91,7 @@ model DaprPubSubBrokerProperties extends BasicDaprResourceProperties {
   @doc("Topic name of the Azure ServiceBus resource")
   topic?: string;
 }
-
+@doc("DaprPubSubBroker link")
 model DaprPubSubBrokerResource is TrackedResource<DaprPubSubBrokerProperties> {
   @doc("DaprPubSubBroker name")
   @maxLength(63)

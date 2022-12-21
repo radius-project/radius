@@ -45,7 +45,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Type = to.String(v.Type)
 		converted.Properties.Version = to.String(v.Version)
-	case *ResourceDaprStateStoreResourceProperties:
+	case *ResourceDaprStateStoreProperties:
 		if v.Resource == nil {
 			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
@@ -54,7 +54,7 @@ func (src *DaprStateStoreResource) ConvertTo() (conv.DataModelInterface, error) 
 		converted.Properties.Version = to.String(v.Version)
 		converted.Properties.Metadata = v.Metadata
 		converted.Properties.Resource = to.String(v.Resource)
-	case *ValuesDaprStateStoreResourceProperties:
+	case *ValuesDaprStateStoreProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
 			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
@@ -101,7 +101,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 		}
 	case datamodel.LinkModeResource:
 		mode := "resource"
-		dst.Properties = &ResourceDaprStateStoreResourceProperties{
+		dst.Properties = &ResourceDaprStateStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},
@@ -115,7 +115,7 @@ func (dst *DaprStateStoreResource) ConvertFrom(src conv.DataModelInterface) erro
 		}
 	case datamodel.LinkModeValues:
 		mode := "values"
-		dst.Properties = &ValuesDaprStateStoreResourceProperties{
+		dst.Properties = &ValuesDaprStateStoreProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprStateStore.Properties.Status.OutputResources),
 			},

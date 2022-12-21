@@ -31,7 +31,7 @@ using OpenAPI;
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
 
-@doc("RedisCache connecter")
+@doc("RedisCache link")
 model RedisCacheResource
   is TrackedResource<RedisCacheProperties> {
   @doc("The name of the RedisCache link resource")

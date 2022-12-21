@@ -44,6 +44,7 @@ model DaprInvokeHttpRouteProperties extends BasicResourceProperties {
   recipe?: Recipe;
 }
 
+@doc("DaprInvokeHttpRoute link")
 model DaprInvokeHttpRouteResource is TrackedResource<DaprInvokeHttpRouteProperties> {
   @doc("The name of the DaprInvokeHttpRoute link resource")
   @maxLength(63)

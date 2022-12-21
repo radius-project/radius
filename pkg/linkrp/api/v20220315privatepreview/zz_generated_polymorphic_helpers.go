@@ -66,9 +66,9 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 	case "recipe":
 		b = &RecipeDaprStateStoreProperties{}
 	case "resource":
-		b = &ResourceDaprStateStoreResourceProperties{}
+		b = &ResourceDaprStateStoreProperties{}
 	case "values":
-		b = &ValuesDaprStateStoreResourceProperties{}
+		b = &ValuesDaprStateStoreProperties{}
 	default:
 		b = &DaprStateStoreProperties{}
 	}
