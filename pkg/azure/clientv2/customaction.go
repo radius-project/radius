@@ -11,7 +11,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strings"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -66,19 +65,16 @@ func (client *CustomActionClient) customActionCreateRequest(ctx context.Context,
 		return nil, err
 	}
 
-	urlPath := "{resourceID}/{action}"
-
 	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceID}", url.PathEscape(resourceID))
 
 	if action == "" {
 		return nil, errors.New("action cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{action}", url.PathEscape(action))
 
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.baseURI, urlPath))
+	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(resourceID), url.PathEscape(action))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, urlPath)
 	if err != nil {
 		return nil, err
 	}
