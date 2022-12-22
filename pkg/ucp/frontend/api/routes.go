@@ -279,7 +279,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 		{
 			ParentRouter:   awsCredentialResourceSubRouter,
 			Method:         v1.OperationDelete,
-			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
 		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
