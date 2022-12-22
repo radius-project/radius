@@ -129,7 +129,7 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	subID := rID.FindScope(resources.SubscriptionsSegment)
 	rgName := rID.FindScope(resources.ResourceGroupsSegment)
 
-	client, err := clientv2.NewFederatedIdentityClient(subID, &handler.arm.ClientOption)
+	client, err := clientv2.NewFederatedIdentityClient(subID, &handler.arm.ClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +179,9 @@ func (handler *azureFederatedIdentityHandler) Delete(ctx context.Context, option
 		return err
 	}
 
-	client, err := clientv2.NewFederatedIdentityClient(rID.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOption)
+	subscriptionID := rID.FindScope(resources.SubscriptionsSegment)
+
+	client, err := clientv2.NewFederatedIdentityClient(subscriptionID, &handler.arm.ClientOptions)
 	if err != nil {
 		return err
 	}
