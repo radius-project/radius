@@ -22,8 +22,10 @@ import (
 	"github.com/gorilla/mux"
 	armrpc_v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -133,6 +135,11 @@ func Test_ProxyToRP(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
@@ -140,6 +147,9 @@ func Test_ProxyToRP(t *testing.T) {
 	err = api.Register(ctx, router, controller.Options{
 		DB:       db,
 		BasePath: basePath,
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: provider,
+		},
 	})
 	require.NoError(t, err)
 
@@ -175,6 +185,11 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
@@ -182,6 +197,9 @@ func Test_ProxyToRP_NonNativePlane(t *testing.T) {
 	err = api.Register(ctx, router, controller.Options{
 		DB:       db,
 		BasePath: basePath,
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: provider,
+		},
 	})
 	require.NoError(t, err)
 
@@ -260,6 +278,11 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 
 	ctrl := gomock.NewController(t)
 	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
 
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
@@ -267,6 +290,9 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 	err = api.Register(ctx, router, controller.Options{
 		DB:       db,
 		BasePath: basePath,
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: provider,
+		},
 	})
 	require.NoError(t, err)
 
@@ -434,13 +460,20 @@ func sendProxyRequest_ResourceGroupDoesNotExist(t *testing.T, ucp *httptest.Serv
 func Test_RequestWithBadAPIVersion(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	db := store.NewMockStorageClient(ctrl)
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(db, nil).
+		AnyTimes()
 
 	router := mux.NewRouter()
-	// ucp := httptest.NewServer(router)
 	ctx := context.Background()
 	err := api.Register(ctx, router, controller.Options{
 		DB:       db,
 		BasePath: basePath,
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: provider,
+		},
 	})
 	require.NoError(t, err)
 

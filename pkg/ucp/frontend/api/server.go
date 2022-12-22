@@ -15,6 +15,8 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/servicecontext"
 	"github.com/project-radius/radius/pkg/middleware"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
@@ -36,8 +38,6 @@ type ServiceOptions struct {
 	Address                 string
 	ClientConfigSource      *hosting.AsyncValue
 	Configure               func(*mux.Router)
-	DBClient                store.StorageClient
-	SecretClient            secret.Client
 	TLSCertDir              string
 	DefaultPlanesConfigFile string
 	UCPConfigFile           string
@@ -48,7 +48,9 @@ type ServiceOptions struct {
 }
 
 type Service struct {
-	options ServiceOptions
+	options         ServiceOptions
+	storageProvider dataprovider.DataStorageProvider
+	secretClient    secret.Client
 }
 
 var _ hosting.Service = (*Service)(nil)
@@ -67,30 +69,41 @@ func (s *Service) Name() string {
 func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	r := mux.NewRouter()
 
-	if s.options.DBClient == nil {
-		dbClient, err := s.InitializeStorageClient(ctx)
-		if err != nil {
-			return nil, err
-		}
-		s.options.DBClient = dbClient
+	s.storageProvider = s.initializeStorageProvider(ctx)
+
+	// TODO: this is used EVERYWHERE right now. We'd like to pass
+	// around storage provider instead but will have to refactor
+	// tons of stuff.
+	db, err := s.storageProvider.GetStorageClient(ctx, "ucp")
+	if err != nil {
+		return nil, err
 	}
 
-	if s.options.SecretClient == nil {
-		secretClient, err := s.InitializeSecretClient(ctx)
-		if err != nil {
-			return nil, err
-		}
-		s.options.SecretClient = secretClient
+	secretClient, err := s.initializeSecretClient(ctx)
+	if err != nil {
+		return nil, err
 	}
+	s.secretClient = secretClient
 
 	ctrlOpts := ctrl.Options{
 		BasePath:     s.options.BasePath,
-		DB:           s.options.DBClient,
-		SecretClient: s.options.SecretClient,
+		DB:           db,
+		SecretClient: s.secretClient,
 		Address:      s.options.Address,
+
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: s.storageProvider,
+
+			// TODO: These fields are not used in UCP. We'd like to unify these
+			// options types eventually, but that will take some time.
+			SecretClient:           nil,
+			KubeClient:             nil,
+			GetDeploymentProcessor: nil,
+			StatusManager:          nil,
+		},
 	}
 
-	err := Register(ctx, r, ctrlOpts)
+	err = Register(ctx, r, ctrlOpts)
 	if err != nil {
 		return nil, err
 	}
@@ -99,13 +112,14 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err = s.ConfigureDefaultPlanes(ctx, s.options.DBClient, s.options.InitialPlanes)
+	err = s.ConfigureDefaultPlanes(ctx, db, s.options.InitialPlanes)
 	if err != nil {
 		return nil, err
 	}
 
 	app := http.Handler(r)
 	app = middleware.UseLogValues(app, s.options.BasePath)
+	app = servicecontext.ARMRequestCtx(s.options.BasePath, "global")(app)
 
 	server := &http.Server{
 		Addr: s.options.Address,
@@ -121,25 +135,16 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 	return server, nil
 }
 
-func (s *Service) InitializeStorageClient(ctx context.Context) (store.StorageClient, error) {
-	var storageClient store.StorageClient
-
+func (s *Service) initializeStorageProvider(ctx context.Context) dataprovider.DataStorageProvider {
 	if s.options.StorageProviderOptions.Provider == dataprovider.TypeETCD {
 		s.options.StorageProviderOptions.ETCD.Client = s.options.ClientConfigSource
 	}
 
-	storageProvider := dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
-	storageClient, err := storageProvider.GetStorageClient(ctx, string(s.options.StorageProviderOptions.Provider))
-
-	if err != nil {
-		return nil, err
-	}
-
-	return storageClient, nil
+	return dataprovider.NewStorageProvider(s.options.StorageProviderOptions)
 }
 
-// InitializeSecretClient initializes secret client on server startup.
-func (s *Service) InitializeSecretClient(ctx context.Context) (secret.Client, error) {
+// initializeSecretClient initializes secret client on server startup.
+func (s *Service) initializeSecretClient(ctx context.Context) (secret.Client, error) {
 	var secretClient secret.Client
 	if s.options.SecretProviderOptions.Provider == provider.TypeETCDSecret {
 		s.options.SecretProviderOptions.ETCD.Client = s.options.ClientConfigSource

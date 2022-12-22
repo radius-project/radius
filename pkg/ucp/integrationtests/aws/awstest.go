@@ -15,7 +15,9 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/gorilla/mux"
+	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/aws"
+	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/frontend/api"
 	"github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/stretchr/testify/require"
@@ -47,6 +49,12 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 	cloudControlClient := aws.NewMockAWSCloudControlClient(ctrl)
 	cloudFormationClient := aws.NewMockAWSCloudFormationClient(ctrl)
 
+	provider := dataprovider.NewMockDataStorageProvider(ctrl)
+	provider.EXPECT().
+		GetStorageClient(gomock.Any(), gomock.Any()).
+		Return(nil, nil).
+		AnyTimes()
+
 	router := mux.NewRouter()
 	ucp := httptest.NewServer(router)
 	ctx := context.Background()
@@ -54,6 +62,9 @@ func initializeTest(t *testing.T) (*httptest.Server, Client, *aws.MockAWSCloudCo
 		BasePath:                basePath,
 		AWSCloudControlClient:   cloudControlClient,
 		AWSCloudFormationClient: cloudFormationClient,
+		CommonControllerOptions: armrpc_controller.Options{
+			DataProvider: provider,
+		},
 	})
 	require.NoError(t, err)
 

@@ -33,6 +33,11 @@ type Options struct {
 	Address                 string
 	AWSCloudControlClient   aws.AWSCloudControlClient
 	AWSCloudFormationClient aws.AWSCloudFormationClient
+
+	// CommonControllerOptions is the set of options used by most of our controllers.
+	//
+	// TODO: over time we should replace Options with CommonControllerOptions.
+	CommonControllerOptions armrpc_controller.Options
 }
 
 type ControllerFunc func(Options) (armrpc_controller.Controller, error)
@@ -58,6 +63,13 @@ func NewBaseController(options Options) BaseController {
 }
 
 func RegisterHandler(ctx context.Context, opts HandlerOptions, ctrlOpts Options) error {
+	storageClient, err := ctrlOpts.CommonControllerOptions.DataProvider.GetStorageClient(ctx, opts.ResourceType)
+	if err != nil {
+		return err
+	}
+	ctrlOpts.CommonControllerOptions.StorageClient = storageClient
+	ctrlOpts.CommonControllerOptions.ResourceType = opts.ResourceType
+
 	ctrl, err := opts.HandlerFactory(ctrlOpts)
 	if err != nil {
 		return err

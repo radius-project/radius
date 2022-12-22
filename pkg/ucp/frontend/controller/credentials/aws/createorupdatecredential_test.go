@@ -82,7 +82,7 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
-			name:     "test_credential_notFound",
+			name:     "test_credential_created",
 			filename: "aws-credential.json",
 			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			expected: getAwsResponse(),
@@ -90,7 +90,7 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
-			name:     "test_credential_notFound",
+			name:     "test_credential_notFoundError",
 			filename: "aws-credential.json",
 			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
 			fn:       setupCredentialNotFoundErrorMocks,
@@ -119,7 +119,7 @@ func Test_Credential(t *testing.T) {
 			request, err := http.NewRequest(http.MethodPut, tt.url, bytes.NewBuffer(body))
 			require.NoError(t, err)
 			response, err := credentialCtrl.Run(ctx, nil, request)
-			if err != nil {
+			if tt.err != nil {
 				require.Equal(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
@@ -136,6 +136,9 @@ func getAwsResponse() armrpc_rest.Response {
 		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.AWS/credentials"),
+		Tags: map[string]*string{
+			"env": to.Ptr("dev"),
+		},
 		Properties: &v20220901privatepreview.AWSCredentialProperties{
 			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
 			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),

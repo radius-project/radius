@@ -82,7 +82,7 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
-			name:     "test_credential_notFound",
+			name:     "test_credential_created",
 			filename: "azure-credential.json",
 			url:      "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
 			expected: getAzureCredentialResponse(),
@@ -119,7 +119,7 @@ func Test_Credential(t *testing.T) {
 			request, err := http.NewRequest(http.MethodPut, tt.url, bytes.NewBuffer(body))
 			require.NoError(t, err)
 			response, err := credentialCtrl.Run(ctx, nil, request)
-			if err != nil {
+			if tt.err != nil {
 				require.Equal(t, err, tt.err)
 			} else {
 				require.NoError(t, err)
@@ -135,6 +135,9 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
 		Type:     to.Ptr("System.Azure/credentials"),
+		Tags: map[string]*string{
+			"env": to.Ptr("dev"),
+		},
 		Properties: &v20220901privatepreview.AzureServicePrincipalProperties{
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
