@@ -13,10 +13,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/cloud"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
@@ -88,70 +85,33 @@ type ProviderConfig struct {
 // DeploymentsClient is a deployments client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
 type DeploymentsClient struct {
-	*armresources.DeploymentsClient
-	Pipeline *runtime.Pipeline
-	BaseURI  string
+	client   *armresources.DeploymentsClient
+	pipeline *runtime.Pipeline
+	baseURI  string
 }
 
-// NewDeploymentsClient creates an instance of the DeploymentsClient using the default endpoint.
-func NewDeploymentsClient(cred azcore.TokenCredential, subscriptionID string) (*DeploymentsClient, error) {
-	client, err := NewDeploymentsClientWithBaseURI(cred, subscriptionID, DefaultBaseURI)
+// NewDeploymentsClient creates an instance of the DeploymentsClient.
+func NewDeploymentsClient(subscriptionID string, options *Options) (*DeploymentsClient, error) {
+	baseURI := DefaultBaseURI
+	if options.BaseURI != "" {
+		baseURI = options.BaseURI
+	}
+
+	client, err := armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	return client, err
-}
-
-// NewDeploymentsClientWithBaseURI creates an instance of the DeploymentsClient using a custom endpoint.
-// Use this when interacting with UCP or Azure resources that uses a non-standard base URI.
-func NewDeploymentsClientWithBaseURI(credential azcore.TokenCredential, subscriptionID string, baseURI string) (*DeploymentsClient, error) {
-	options := &arm.ClientOptions{
-		ClientOptions: azcore.ClientOptions{
-			Cloud: cloud.Configuration{
-				Services: map[cloud.ServiceName]cloud.ServiceConfiguration{
-					cloud.ResourceManager: {
-						Endpoint: baseURI,
-					},
-				},
-			},
-		},
-	}
-	client, err := armresources.NewDeploymentsClient(subscriptionID, credential, options)
-	if err != nil {
-		return nil, err
-	}
-
-	pipeline, err := armruntime.NewPipeline(moduleName, moduleVersion, credential, runtime.PipelineOptions{}, options)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
 	return &DeploymentsClient{
-		DeploymentsClient: client,
-		Pipeline:          &pipeline,
-		BaseURI:           baseURI,
+		client:   client,
+		pipeline: &pipeline,
+		baseURI:  baseURI,
 	}, nil
-}
-
-type ClientBeginCreateOrUpdateOptions struct {
-	resourceID  string
-	resumeToken string
-	apiVersion  string
-}
-
-func NewClientBeginCreateOrUpdateOptions(resourceID, resumeToken, apiVersion string) *ClientBeginCreateOrUpdateOptions {
-	// FIXME: This is to validate the resourceID.
-	_, err := resources.ParseResource(resourceID)
-	if err != nil {
-		return nil
-	}
-
-	return &ClientBeginCreateOrUpdateOptions{
-		resourceID:  resourceID,
-		resumeToken: resumeToken,
-		apiVersion:  apiVersion,
-	}
 }
 
 // ClientCreateOrUpdateResponse contains the response from method Client.CreateOrUpdate.
@@ -160,56 +120,45 @@ type ClientCreateOrUpdateResponse struct {
 }
 
 // CreateOrUpdate creates a deployment or updates the existing deployment.
-func (client *DeploymentsClient) BeginCreateOrUpdate(ctx context.Context, parameters Deployment, options *ClientBeginCreateOrUpdateOptions) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
-	// TODO: resourceID needs to be parsed to see if it is valid
-	if !strings.HasPrefix(options.resourceID, "/") {
+func (client *DeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
 
-	_, err := resources.ParseResource(options.resourceID)
+	_, err := resources.ParseResource(resourceID)
 	if err != nil {
-		return nil, fmt.Errorf("invalid resourceID: %v", options.resourceID)
+		return nil, fmt.Errorf("invalid resourceID: %v", resourceID)
 	}
 
-	resp, err := client.createOrUpdate(ctx, parameters, options)
+	req, err := client.createOrUpdateCreateRequest(ctx, resourceID, apiVersion, parameters)
 	if err != nil {
 		return nil, err
 	}
-	return runtime.NewPoller[ClientCreateOrUpdateResponse](resp, *client.Pipeline, nil)
-}
 
-// CreateOrUpdate - Creates a resource.
-// If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2021-04-01
-func (client *DeploymentsClient) createOrUpdate(ctx context.Context, parameters Deployment, options *ClientBeginCreateOrUpdateOptions) (*http.Response, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, parameters, options)
-	if err != nil {
-		return nil, err
-	}
-	resp, err := client.Pipeline.Do(req)
+	resp, err := client.pipeline.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated, http.StatusAccepted) {
 		return nil, runtime.NewResponseError(resp)
 	}
-	return resp, nil
+
+	return runtime.NewPoller[ClientCreateOrUpdateResponse](resp, *client.pipeline, nil)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DeploymentsClient) createOrUpdateCreateRequest(ctx context.Context, parameters Deployment, options *ClientBeginCreateOrUpdateOptions) (*policy.Request, error) {
-	urlPath := "/{resourceID}"
-	if options.resourceID == "" {
+func (client *DeploymentsClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
+	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{resourceID}", url.PathEscape(options.resourceID))
 
-	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.BaseURI, urlPath))
+	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(resourceID))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, urlPath)
 	if err != nil {
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", options.apiVersion)
+	reqQP.Set("api-version", apiVersion)
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, runtime.MarshalAsJSON(req, parameters)

@@ -5,21 +5,8 @@
 
 package clientv2
 
-import (
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
-	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
-)
-
 const (
 	DefaultBaseURI = "https://management.azure.com"
-
-	// FIXM: Any ideas for moduleName and moduleVersion?
-	moduleName    = "radius"
-	moduleVersion = "public-preview"
+	ModuleName     = "radius"
+	ModuleVersion  = "public-preview"
 )
-
-type BaseClient struct {
-	Client   *armresources.Client
-	Pipeline *runtime.Pipeline
-	BaseURI  string
-}

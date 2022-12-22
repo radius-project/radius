@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -38,8 +38,12 @@ func (c *client) FetchSecret(ctx context.Context, identity resourcemodel.Resourc
 		return nil, err
 	}
 
-	custom := clients.NewCustomActionClient(parsed.FindScope(resources.SubscriptionsSegment), c.ARM.Auth)
-	response, err := custom.InvokeCustomAction(ctx, arm.ID, arm.APIVersion, action, nil)
+	client, err := clientv2.NewCustomActionClient(parsed.FindScope(resources.SubscriptionsSegment), &c.ARM.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.InvokeCustomAction(ctx, arm.ID, arm.APIVersion, action)
 	if err != nil {
 		return nil, err
 	}

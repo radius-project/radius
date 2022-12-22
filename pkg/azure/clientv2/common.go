@@ -9,18 +9,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 )
 
 // GetResourceGroupLocation returns the location of the resource group.
-func GetResourceGroupLocation(ctx context.Context, credential azcore.TokenCredential, subscriptionID string, resourceGroupName string) (*string, error) {
-	client, err := armresources.NewResourceGroupsClient(subscriptionID, credential, &arm.ClientOptions{})
-	if err != nil {
-		return nil, err
-	}
-
+func GetResourceGroupLocation(ctx context.Context, subscriptionID string, resourceGroupName string, options *Options) (*string, error) {
+	client, err := armresources.NewResourceGroupsClient(subscriptionID, options.Cred, &arm.ClientOptions{})
 	if err != nil {
 		return nil, err
 	}
