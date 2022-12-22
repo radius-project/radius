@@ -28,11 +28,19 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-aws.json",
 			expected: &datamodel.Credential{
-				TrackedResource: v1.TrackedResource{
-					ID:       "/planes/aws/awscloud/providers/System.AWS/credentials/default",
-					Name:     "default",
-					Type:     "System.AWS/credentials",
-					Location: "west-us-2",
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/planes/aws/awscloud/providers/System.AWS/credentials/default",
+						Name:     "default",
+						Type:     "System.AWS/credentials",
+						Location: "west-us-2",
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						UpdatedAPIVersion: Version,
+					},
 				},
 				Properties: &datamodel.CredentialResourceProperties{
 					Kind: "aws.com.iam",
@@ -50,11 +58,19 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 		{
 			filename: "credentialresource-azure.json",
 			expected: &datamodel.Credential{
-				TrackedResource: v1.TrackedResource{
-					ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
-					Name:     "default",
-					Type:     "System.Azure/credentials",
-					Location: "west-us-2",
+				BaseResource: v1.BaseResource{
+					TrackedResource: v1.TrackedResource{
+						ID:       "/planes/azure/azurecloud/providers/System.Azure/credentials/default",
+						Name:     "default",
+						Type:     "System.Azure/credentials",
+						Location: "west-us-2",
+						Tags: map[string]string{
+							"env": "dev",
+						},
+					},
+					InternalMetadata: v1.InternalMetadata{
+						UpdatedAPIVersion: Version,
+					},
 				},
 				Properties: &datamodel.CredentialResourceProperties{
 					Kind: "azure.com.serviceprincipal",
@@ -124,6 +140,9 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.AWS/credentials"),
 				Location: to.Ptr("west-us-2"),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
 				Properties: &AWSCredentialProperties{
 					Kind:            to.Ptr("aws.com.credential"),
 					AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
@@ -142,6 +161,9 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.Azure/credentials"),
 				Location: to.Ptr("west-us-2"),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
 				Properties: &AzureServicePrincipalProperties{
 					Kind:     to.Ptr("azure.com.credential"),
 					ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
@@ -160,6 +182,9 @@ func TestCredentialConvertDataModelToVersioned(t *testing.T) {
 				Name:     to.Ptr("default"),
 				Type:     to.Ptr("System.Other/credentials"),
 				Location: to.Ptr("west-us-2"),
+				Tags: map[string]*string{
+					"env": to.Ptr("dev"),
+				},
 				Properties: &CredentialResourceProperties{
 					Kind: to.Ptr("other.com.credential"),
 					Storage: &InternalCredentialStorageProperties{

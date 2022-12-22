@@ -5,9 +5,7 @@
 
 package datamodel
 
-import (
-	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-)
+import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
 const (
 	// InternalStorageKind represents ucp credential storage type for internal credential type
@@ -20,7 +18,7 @@ const (
 
 // Credential represents UCP Credential.
 type Credential struct {
-	v1.TrackedResource
+	v1.BaseResource
 
 	Properties *CredentialResourceProperties `json:"properties,omitempty"`
 }
