@@ -238,6 +238,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:         v1.OperationPut,
 			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
 		},
+		{
+			ParentRouter:   azureCredentialResourceSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+		},
 
 		// AWS Credential Handlers
 		{
@@ -271,7 +276,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:         v1.OperationPut,
 			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
 		},
-
+		{
+			ParentRouter:   awsCredentialResourceSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
 			// Note that the API validation is not applied to the router used for proxying
