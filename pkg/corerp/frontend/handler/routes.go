@@ -328,7 +328,9 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
-						RequestValidator:  vol_ctrl.ValidateRequest,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.VolumeResource]{
+							vol_ctrl.ValidateRequest,
+						},
 					},
 				)
 			},
@@ -342,7 +344,9 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
-						RequestValidator:  vol_ctrl.ValidateRequest,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.VolumeResource]{
+							vol_ctrl.ValidateRequest,
+						},
 					},
 				)
 			},
