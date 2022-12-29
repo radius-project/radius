@@ -16,7 +16,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
-// ConvertTo converts from the versioned RabbitmqMessageQueue resource to version-agnostic datamodel.
+// ConvertTo converts from the versioned RabbitMQMessageQueue resource to version-agnostic datamodel.
 func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQMessageQueue{
 		BaseResource: v1.BaseResource{
@@ -122,7 +122,7 @@ func (dst *RabbitMQSecrets) ConvertFrom(src conv.DataModelInterface) error {
 	return nil
 }
 
-// ConvertTo converts from the versioned RabbitmqSecrets instance to version-agnostic datamodel.
+// ConvertTo converts from the versioned RabbitMQSecrets instance to version-agnostic datamodel.
 func (src *RabbitMQSecrets) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),
