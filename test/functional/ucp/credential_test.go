@@ -67,7 +67,7 @@ func credentialOperations(t *testing.T, resourceUrl string, collectionUrl string
 	// Delete non-existent credential
 	statusCode, err = deleteCredential(t, roundTripper, resourceUrl)
 	require.NoError(t, err)
-	require.Equal(t, http.StatusNotFound, statusCode)
+	require.Equal(t, http.StatusNoContent, statusCode)
 }
 
 func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.CredentialResource) {
