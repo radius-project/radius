@@ -21,7 +21,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 
 		// arrange
 		rawPayload := loadTestData(payload)
-		versionedResource := &RabbitmqMessageQueueResource{}
+		versionedResource := &RabbitMQMessageQueueResource{}
 		err := json.Unmarshal(rawPayload, versionedResource)
 		require.NoError(t, err)
 
@@ -38,11 +38,11 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		require.Equal(t, "2022-03-15-privatepreview", convertedResource.InternalMetadata.UpdatedAPIVersion)
 		switch versionedResource.Properties.(type) {
-		case *ValuesRabbitmqMessageQueueProperties:
+		case *ValuesRabbitMQMessageQueueProperties:
 			require.Equal(t, "values", string(convertedResource.Properties.Mode))
 			require.Equal(t, "testQueue", string(convertedResource.Properties.Queue))
 			require.Equal(t, "connection://string", convertedResource.Properties.Secrets.ConnectionString)
-		case *RecipeRabbitmqMessageQueueProperties:
+		case *RecipeRabbitMQMessageQueueProperties:
 			require.Equal(t, "recipe", string(convertedResource.Properties.Mode))
 			require.Equal(t, "rabbitmq", convertedResource.Properties.Recipe.Name)
 			require.Equal(t, "bar", convertedResource.Properties.Recipe.Parameters["foo"])
@@ -61,7 +61,7 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		require.NoError(t, err)
 
 		// act
-		versionedResource := &RabbitmqMessageQueueResource{}
+		versionedResource := &RabbitMQMessageQueueResource{}
 		err = versionedResource.ConvertFrom(resource)
 
 		// assert
@@ -69,13 +69,13 @@ func TestRabbitMQMessageQueue_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Link/rabbitMQMessageQueues/rabbitmq0", *versionedResource.ID)
 		require.Equal(t, "rabbitmq0", *versionedResource.Name)
 		require.Equal(t, "Applications.Link/rabbitMQMessageQueues", *versionedResource.Type)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetRabbitmqMessageQueueProperties().Application)
-		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetRabbitmqMessageQueueProperties().Environment)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Application)
+		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.GetRabbitMQMessageQueueProperties().Environment)
 		switch v := versionedResource.Properties.(type) {
-		case *ValuesRabbitmqMessageQueueProperties:
+		case *ValuesRabbitMQMessageQueueProperties:
 			require.Equal(t, "values", string(*v.Mode))
 			require.Equal(t, "testQueue", *v.Queue)
-		case *RecipeRabbitmqMessageQueueProperties:
+		case *RecipeRabbitMQMessageQueueProperties:
 			require.Equal(t, "recipe", string(*v.Mode))
 			require.Equal(t, "Deployment", v.Status.OutputResources[0]["LocalID"])
 			require.Equal(t, "rabbitmqProvider", v.Status.OutputResources[0]["Provider"])
@@ -90,7 +90,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 	err := json.Unmarshal(rawPayload, &testset)
 	require.NoError(t, err)
 	for _, testData := range testset {
-		versionedResource := &RabbitmqMessageQueueResource{}
+		versionedResource := &RabbitMQMessageQueueResource{}
 		err := json.Unmarshal(testData.Payload, versionedResource)
 		require.NoError(t, err)
 		var expectedErr conv.ErrClientRP
@@ -122,7 +122,7 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 	}
 
 	for _, tc := range validationTests {
-		versioned := &RabbitmqMessageQueueResource{}
+		versioned := &RabbitMQMessageQueueResource{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}
@@ -131,7 +131,7 @@ func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 func TestRabbitMQSecrets_ConvertVersionedToDataModel(t *testing.T) {
 	// arrange
 	rawPayload := loadTestData("rabbitmqsecrets.json")
-	versioned := &RabbitmqSecrets{}
+	versioned := &RabbitMQSecrets{}
 	err := json.Unmarshal(rawPayload, versioned)
 	require.NoError(t, err)
 
@@ -152,7 +152,7 @@ func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 	require.NoError(t, err)
 
 	// act
-	versionedResource := &RabbitmqSecrets{}
+	versionedResource := &RabbitMQSecrets{}
 	err = versionedResource.ConvertFrom(secrets)
 
 	// assert
@@ -170,7 +170,7 @@ func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 	}
 
 	for _, tc := range validationTests {
-		versioned := &RabbitmqSecrets{}
+		versioned := &RabbitMQSecrets{}
 		err := versioned.ConvertFrom(tc.src)
 		require.ErrorAs(t, tc.err, &err)
 	}

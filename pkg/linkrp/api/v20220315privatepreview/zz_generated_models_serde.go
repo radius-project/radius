@@ -1268,15 +1268,15 @@ func (o *OperationListResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitmqListSecretsResult.
-func (r RabbitmqListSecretsResult) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQListSecretsResult.
+func (r RabbitMQListSecretsResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", r.ConnectionString)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitmqListSecretsResult.
-func (r *RabbitmqListSecretsResult) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQListSecretsResult.
+func (r *RabbitMQListSecretsResult) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1295,8 +1295,8 @@ func (r *RabbitmqListSecretsResult) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitmqMessageQueueProperties.
-func (r RabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueProperties.
+func (r RabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
@@ -1307,8 +1307,8 @@ func (r RabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitmqMessageQueueProperties.
-func (r *RabbitmqMessageQueueProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueProperties.
+func (r *RabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1342,8 +1342,8 @@ func (r *RabbitmqMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitmqMessageQueueResource.
-func (r RabbitmqMessageQueueResource) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResource.
+func (r RabbitMQMessageQueueResource) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "id", r.ID)
 	populate(objectMap, "location", r.Location)
@@ -1355,8 +1355,8 @@ func (r RabbitmqMessageQueueResource) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitmqMessageQueueResource.
-func (r *RabbitmqMessageQueueResource) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResource.
+func (r *RabbitMQMessageQueueResource) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1374,7 +1374,7 @@ func (r *RabbitmqMessageQueueResource) UnmarshalJSON(data []byte) error {
 				err = unpopulate(val, "Name", &r.Name)
 				delete(rawMsg, key)
 		case "properties":
-				r.Properties, err = unmarshalRabbitmqMessageQueuePropertiesClassification(val)
+				r.Properties, err = unmarshalRabbitMQMessageQueuePropertiesClassification(val)
 				delete(rawMsg, key)
 		case "systemData":
 				err = unpopulate(val, "SystemData", &r.SystemData)
@@ -1393,16 +1393,16 @@ func (r *RabbitmqMessageQueueResource) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitmqMessageQueueResourceListResult.
-func (r RabbitmqMessageQueueResourceListResult) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQMessageQueueResourceListResult.
+func (r RabbitMQMessageQueueResourceListResult) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "nextLink", r.NextLink)
 	populate(objectMap, "value", r.Value)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitmqMessageQueueResourceListResult.
-func (r *RabbitmqMessageQueueResourceListResult) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQMessageQueueResourceListResult.
+func (r *RabbitMQMessageQueueResourceListResult) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1424,15 +1424,15 @@ func (r *RabbitmqMessageQueueResourceListResult) UnmarshalJSON(data []byte) erro
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RabbitmqSecrets.
-func (r RabbitmqSecrets) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RabbitMQSecrets.
+func (r RabbitMQSecrets) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", r.ConnectionString)
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitmqSecrets.
-func (r *RabbitmqSecrets) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RabbitMQSecrets.
+func (r *RabbitMQSecrets) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -1738,8 +1738,8 @@ func (r *RecipeMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type RecipeRabbitmqMessageQueueProperties.
-func (r RecipeRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type RecipeRabbitMQMessageQueueProperties.
+func (r RecipeRabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", r.Application)
 	populate(objectMap, "environment", r.Environment)
@@ -1752,8 +1752,8 @@ func (r RecipeRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeRabbitmqMessageQueueProperties.
-func (r *RecipeRabbitmqMessageQueueProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type RecipeRabbitMQMessageQueueProperties.
+func (r *RecipeRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", r, err)
@@ -2938,8 +2938,8 @@ func (v *ValuesMongoDatabaseProperties) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// MarshalJSON implements the json.Marshaller interface for type ValuesRabbitmqMessageQueueProperties.
-func (v ValuesRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
+// MarshalJSON implements the json.Marshaller interface for type ValuesRabbitMQMessageQueueProperties.
+func (v ValuesRabbitMQMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "application", v.Application)
 	populate(objectMap, "environment", v.Environment)
@@ -2951,8 +2951,8 @@ func (v ValuesRabbitmqMessageQueueProperties) MarshalJSON() ([]byte, error) {
 	return json.Marshal(objectMap)
 }
 
-// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesRabbitmqMessageQueueProperties.
-func (v *ValuesRabbitmqMessageQueueProperties) UnmarshalJSON(data []byte) error {
+// UnmarshalJSON implements the json.Unmarshaller interface for type ValuesRabbitMQMessageQueueProperties.
+func (v *ValuesRabbitMQMessageQueueProperties) UnmarshalJSON(data []byte) error {
 	var rawMsg map[string]json.RawMessage
 	if err := json.Unmarshal(data, &rawMsg); err != nil {
 		return fmt.Errorf("unmarshalling type %T: %v", v, err)

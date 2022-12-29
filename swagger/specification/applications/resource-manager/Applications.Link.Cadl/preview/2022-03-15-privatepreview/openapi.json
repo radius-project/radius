@@ -52,7 +52,7 @@
       "name": "RedisCaches"
     },
     {
-      "name": "RabbitmqMessageQueues"
+      "name": "RabbitMQMessageQueues"
     },
     {
       "name": "DaprInvokeHttpRoute"
@@ -1031,13 +1031,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues": {
       "get": {
         "tags": [
-          "RabbitmqMessageQueues"
+          "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitmqMessageQueues_ListByRootScope",
-        "description": "Lists information about all RabbitmqMessageQueueResources in the given root scope",
+        "operationId": "RabbitMqMessageQueues_ListByRootScope",
+        "description": "Lists information about all RabbitMQMessageQueueResources in the given root scope",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1050,7 +1050,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResourceListResult"
+              "$ref": "#/definitions/RabbitMQMessageQueueResourceListResult"
             }
           },
           "default": {
@@ -1065,13 +1065,13 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
       "get": {
         "tags": [
-          "RabbitmqMessageQueues"
+          "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitmqMessageQueues_Get",
-        "description": "Retrieves information about a RabbitmqMessageQueueResource",
+        "operationId": "RabbitMqMessageQueues_Get",
+        "description": "Retrieves information about a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1080,10 +1080,10 @@
             "$ref": "#/parameters/RootScopeParam"
           },
           {
-            "name": "rabbitmqMessageQueueName",
+            "name": "rabbitMQMessageQueueName",
             "in": "path",
             "required": true,
-            "description": "The name of the RabbitmqMessageQueue link resource",
+            "description": "The name of the RabbitMQMessageQueue link resource",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -1093,7 +1093,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -1106,10 +1106,10 @@
       },
       "put": {
         "tags": [
-          "RabbitmqMessageQueues"
+          "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitmqMessageQueues_CreateOrUpdate",
-        "description": "Creates or updates a RabbitmqMessageQueueResource",
+        "operationId": "RabbitMqMessageQueues_CreateOrUpdate",
+        "description": "Creates or updates a RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1118,10 +1118,10 @@
             "$ref": "#/parameters/RootScopeParam"
           },
           {
-            "name": "rabbitmqMessageQueueName",
+            "name": "rabbitMQMessageQueueName",
             "in": "path",
             "required": true,
-            "description": "The name of the RabbitmqMessageQueue link resource",
+            "description": "The name of the RabbitMQMessageQueue link resource",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -1132,7 +1132,7 @@
             "required": true,
             "description": "Resource create parameters.",
             "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           }
         ],
@@ -1140,7 +1140,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "201": {
@@ -1153,7 +1153,7 @@
               }
             },
             "schema": {
-              "$ref": "#/definitions/RabbitmqMessageQueueResource"
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
             }
           },
           "default": {
@@ -1166,10 +1166,10 @@
       },
       "delete": {
         "tags": [
-          "RabbitmqMessageQueues"
+          "RabbitMQMessageQueues"
         ],
-        "operationId": "RabbitmqMessageQueues_Delete",
-        "description": "Deletes an existing RabbitmqMessageQueueResource",
+        "operationId": "RabbitMqMessageQueues_Delete",
+        "description": "Deletes an existing RabbitMQMessageQueueResource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1178,10 +1178,10 @@
             "$ref": "#/parameters/RootScopeParam"
           },
           {
-            "name": "rabbitmqMessageQueueName",
+            "name": "rabbitMQMessageQueueName",
             "in": "path",
             "required": true,
-            "description": "The name of the RabbitmqMessageQueue link resource",
+            "description": "The name of the RabbitMQMessageQueue link resource",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "type": "string"
@@ -1213,10 +1213,10 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/rabbitmqMessageQueues/{rabbitmqMessageQueueName}/listSecrets": {
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
       "get": {
-        "operationId": "RabbitmqMessageQueues_ListSecrets",
-        "description": "Lists secrets values for the specified RabbitmqMessageQueue resource",
+        "operationId": "RabbitMqMessageQueues_ListSecrets",
+        "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
@@ -1225,10 +1225,10 @@
             "$ref": "#/parameters/RootScopeParam"
           },
           {
-            "name": "rabbitmqMessageQueueName",
+            "name": "rabbitMQMessageQueueName",
             "in": "path",
             "required": true,
-            "description": "The name of the RabbitmqMessageQueue link resource",
+            "description": "The name of the RabbitMQMessageQueue link resource",
             "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
@@ -1239,7 +1239,7 @@
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/RabbitmqListSecretsResult"
+              "$ref": "#/definitions/RabbitMQListSecretsResult"
             }
           },
           "default": {
@@ -2143,34 +2143,34 @@
         "modelAsString": true
       }
     },
-    "RabbitmqListSecretsResult": {
+    "RabbitMQListSecretsResult": {
       "type": "object",
       "properties": {
         "connectionString": {
           "type": "string",
-          "description": "The connection string used to connect to this Rabbitmq instance"
+          "description": "The connection string used to connect to this RabbitMQ instance"
         }
       },
-      "description": "The secret values for the given RabbitmqMessageQueue resource"
+      "description": "The secret values for the given RabbitMQMessageQueue resource"
     },
-    "RabbitmqMessageQueueProperties": {
+    "RabbitMQMessageQueueProperties": {
       "type": "object",
       "properties": {
         "mode": {
           "type": "string",
-          "description": "Discriminator property for RabbitmqMessageQueueProperties."
+          "description": "Discriminator property for RabbitMQMessageQueueProperties."
         },
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
-          "description": "Provisioning state of the rabbitmq message queue link at the time the operation was called",
+          "description": "Provisioning state of the rabbitMQ message queue link at the time the operation was called",
           "readOnly": true
         },
         "secrets": {
-          "$ref": "#/definitions/RabbitmqSecrets",
+          "$ref": "#/definitions/RabbitMQSecrets",
           "description": "Secrets provided by resources,"
         }
       },
-      "description": "RabbitmqMessageQueue link response properties",
+      "description": "RabbitMQMessageQueue link properties",
       "discriminator": "mode",
       "required": [
         "mode"
@@ -2181,11 +2181,11 @@
         }
       ]
     },
-    "RabbitmqMessageQueueResource": {
+    "RabbitMQMessageQueueResource": {
       "type": "object",
       "properties": {
         "properties": {
-          "$ref": "#/definitions/RabbitmqMessageQueueProperties",
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties",
           "description": "The resource-specific properties for this resource.",
           "x-ms-client-flatten": true,
           "x-ms-mutability": [
@@ -2194,23 +2194,23 @@
           ]
         }
       },
-      "description": "RabbitmqMessageQueue link",
+      "description": "RabbitMQMessageQueue link",
       "allOf": [
         {
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
         }
       ]
     },
-    "RabbitmqMessageQueueResourceListResult": {
+    "RabbitMQMessageQueueResourceListResult": {
       "type": "object",
       "properties": {
         "value": {
           "type": "array",
           "items": {
-            "$ref": "#/definitions/RabbitmqMessageQueueResource"
+            "$ref": "#/definitions/RabbitMQMessageQueueResource"
           },
-          "x-cadl-name": "RabbitmqMessageQueueResource[]",
-          "description": "The RabbitmqMessageQueueResource items on this page"
+          "x-cadl-name": "RabbitMQMessageQueueResource[]",
+          "description": "The RabbitMQMessageQueueResource items on this page"
         },
         "nextLink": {
           "type": "string",
@@ -2219,20 +2219,20 @@
           "x-cadl-name": "Rest.ResourceLocation"
         }
       },
-      "description": "The response of a RabbitmqMessageQueueResource list operation.",
+      "description": "The response of a RabbitMQMessageQueueResource list operation.",
       "required": [
         "value"
       ]
     },
-    "RabbitmqSecrets": {
+    "RabbitMQSecrets": {
       "type": "object",
       "properties": {
         "connectionString": {
           "type": "string",
-          "description": "The connection string used to connect to this Rabbitmq instance"
+          "description": "The connection string used to connect to this RabbitMQ instance"
         }
       },
-      "description": "The secret values for the given RabbitmqMessageQueue resource"
+      "description": "The secret values for the given RabbitMQMessageQueue resource"
     },
     "Recipe": {
       "type": "object",
@@ -2378,7 +2378,7 @@
       ],
       "x-ms-discriminator-value": "recipe"
     },
-    "RecipeRabbitmqMessageQueueProperties": {
+    "RecipeRabbitMQMessageQueueProperties": {
       "type": "object",
       "properties": {
         "queue": {
@@ -2387,16 +2387,16 @@
         },
         "recipe": {
           "$ref": "#/definitions/Recipe",
-          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitmq link"
+          "description": "The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link"
         }
       },
-      "description": "RabbitmqMessageQueue Properties for Mode Recipe",
+      "description": "RabbitMQMessageQueue Properties for Mode Recipe",
       "required": [
         "recipe"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/RabbitmqMessageQueueProperties"
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
         }
       ],
       "x-ms-discriminator-value": "recipe"
@@ -2915,7 +2915,7 @@
       ],
       "x-ms-discriminator-value": "values"
     },
-    "ValuesRabbitmqMessageQueueProperties": {
+    "ValuesRabbitMQMessageQueueProperties": {
       "type": "object",
       "properties": {
         "queue": {
@@ -2923,13 +2923,13 @@
           "description": "The name of the queue"
         }
       },
-      "description": "RabbitmqMessageQueue Properties for Mode Values",
+      "description": "RabbitMQMessageQueue Properties for Mode Values",
       "required": [
         "queue"
       ],
       "allOf": [
         {
-          "$ref": "#/definitions/RabbitmqMessageQueueProperties"
+          "$ref": "#/definitions/RabbitMQMessageQueueProperties"
         }
       ],
       "x-ms-discriminator-value": "values"

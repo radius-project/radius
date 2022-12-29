@@ -17,7 +17,7 @@ import (
 )
 
 // ConvertTo converts from the versioned RabbitmqMessageQueue resource to version-agnostic datamodel.
-func (src *RabbitmqMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *RabbitMQMessageQueueResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQMessageQueue{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -33,20 +33,20 @@ func (src *RabbitmqMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
-				Environment: to.String(src.Properties.GetRabbitmqMessageQueueProperties().Environment),
-				Application: to.String(src.Properties.GetRabbitmqMessageQueueProperties().Application),
+				Environment: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Environment),
+				Application: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitmqMessageQueueProperties().ProvisioningState),
+			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRabbitMQMessageQueueProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
-	case *ValuesRabbitmqMessageQueueProperties:
+	case *ValuesRabbitMQMessageQueueProperties:
 		if v.Queue == nil {
 			return nil, conv.NewClientErrInvalidRequest("queue is a required property for mode 'values'")
 		}
 		converted.Properties.Queue = to.String(v.Queue)
 		converted.Properties.Mode = datamodel.LinkModeValues
-	case *RecipeRabbitmqMessageQueueProperties:
+	case *RecipeRabbitMQMessageQueueProperties:
 		if v.Recipe == nil {
 			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
@@ -54,18 +54,18 @@ func (src *RabbitmqMessageQueueResource) ConvertTo() (conv.DataModelInterface, e
 		converted.Properties.Queue = to.String(v.Queue)
 		converted.Properties.Mode = datamodel.LinkModeRecipe
 	default:
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRabbitmqMessageQueueProperties().Mode))
+		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRabbitMQMessageQueueProperties().Mode))
 	}
-	if src.Properties.GetRabbitmqMessageQueueProperties().Secrets != nil {
+	if src.Properties.GetRabbitMQMessageQueueProperties().Secrets != nil {
 		converted.Properties.Secrets = datamodel.RabbitMQSecrets{
-			ConnectionString: to.String(src.Properties.GetRabbitmqMessageQueueProperties().Secrets.ConnectionString),
+			ConnectionString: to.String(src.Properties.GetRabbitMQMessageQueueProperties().Secrets.ConnectionString),
 		}
 	}
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQMessageQueue resource.
-func (dst *RabbitmqMessageQueueResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface) error {
 	rabbitmq, ok := src.(*datamodel.RabbitMQMessageQueue)
 	if !ok {
 		return conv.ErrInvalidModelConversion
@@ -80,7 +80,7 @@ func (dst *RabbitmqMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	switch rabbitmq.Properties.Mode {
 	case datamodel.LinkModeValues:
 		mode := "values"
-		dst.Properties = &ValuesRabbitmqMessageQueueProperties{
+		dst.Properties = &ValuesRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
@@ -94,7 +94,7 @@ func (dst *RabbitmqMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
-		dst.Properties = &RecipeRabbitmqMessageQueueProperties{
+		dst.Properties = &RecipeRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
 			},
@@ -112,7 +112,7 @@ func (dst *RabbitmqMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance.
-func (dst *RabbitmqSecrets) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *RabbitMQSecrets) ConvertFrom(src conv.DataModelInterface) error {
 	rabbitMQSecrets, ok := src.(*datamodel.RabbitMQSecrets)
 	if !ok {
 		return conv.ErrInvalidModelConversion
@@ -123,7 +123,7 @@ func (dst *RabbitmqSecrets) ConvertFrom(src conv.DataModelInterface) error {
 }
 
 // ConvertTo converts from the versioned RabbitmqSecrets instance to version-agnostic datamodel.
-func (src *RabbitmqSecrets) ConvertTo() (conv.DataModelInterface, error) {
+func (src *RabbitMQSecrets) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RabbitMQSecrets{
 		ConnectionString: to.String(src.ConnectionString),
 	}

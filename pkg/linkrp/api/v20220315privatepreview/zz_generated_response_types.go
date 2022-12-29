@@ -160,32 +160,32 @@ type OperationsClientListResponse struct {
 	OperationListResult
 }
 
-// RabbitmqMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitmqMessageQueuesClient.CreateOrUpdate.
-type RabbitmqMessageQueuesClientCreateOrUpdateResponse struct {
-	RabbitmqMessageQueueResource
+// RabbitMqMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitMqMessageQueuesClient.CreateOrUpdate.
+type RabbitMqMessageQueuesClientCreateOrUpdateResponse struct {
+	RabbitMQMessageQueueResource
 	// RetryAfter contains the information returned from the Retry-After header response.
 	RetryAfter *int32
 }
 
-// RabbitmqMessageQueuesClientDeleteResponse contains the response from method RabbitmqMessageQueuesClient.Delete.
-type RabbitmqMessageQueuesClientDeleteResponse struct {
+// RabbitMqMessageQueuesClientDeleteResponse contains the response from method RabbitMqMessageQueuesClient.Delete.
+type RabbitMqMessageQueuesClientDeleteResponse struct {
 	// RetryAfter contains the information returned from the Retry-After header response.
 	RetryAfter *int32
 }
 
-// RabbitmqMessageQueuesClientGetResponse contains the response from method RabbitmqMessageQueuesClient.Get.
-type RabbitmqMessageQueuesClientGetResponse struct {
-	RabbitmqMessageQueueResource
+// RabbitMqMessageQueuesClientGetResponse contains the response from method RabbitMqMessageQueuesClient.Get.
+type RabbitMqMessageQueuesClientGetResponse struct {
+	RabbitMQMessageQueueResource
 }
 
-// RabbitmqMessageQueuesClientListByRootScopeResponse contains the response from method RabbitmqMessageQueuesClient.ListByRootScope.
-type RabbitmqMessageQueuesClientListByRootScopeResponse struct {
-	RabbitmqMessageQueueResourceListResult
+// RabbitMqMessageQueuesClientListByRootScopeResponse contains the response from method RabbitMqMessageQueuesClient.ListByRootScope.
+type RabbitMqMessageQueuesClientListByRootScopeResponse struct {
+	RabbitMQMessageQueueResourceListResult
 }
 
-// RabbitmqMessageQueuesClientListSecretsResponse contains the response from method RabbitmqMessageQueuesClient.ListSecrets.
-type RabbitmqMessageQueuesClientListSecretsResponse struct {
-	RabbitmqListSecretsResult
+// RabbitMqMessageQueuesClientListSecretsResponse contains the response from method RabbitMqMessageQueuesClient.ListSecrets.
+type RabbitMqMessageQueuesClientListSecretsResponse struct {
+	RabbitMQListSecretsResult
 }
 
 // RedisCachesClientCreateOrUpdateResponse contains the response from method RedisCachesClient.CreateOrUpdate.

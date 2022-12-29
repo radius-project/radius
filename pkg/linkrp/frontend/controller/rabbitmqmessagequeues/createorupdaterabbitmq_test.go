@@ -118,7 +118,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitmqMessageQueueResource{}
+				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 
@@ -148,7 +148,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 		t.Run(testcase.desc, func(t *testing.T) {
 			input, dataModel, expectedOutput := getTestModelsForGetAndListApis20220315privatepreview()
 			if testcase.inputFile != "" {
-				input = &v20220315privatepreview.RabbitmqMessageQueueResource{}
+				input = &v20220315privatepreview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(radiustesting.ReadFixture(testcase.inputFile), input)
 			}
 			w := httptest.NewRecorder()
@@ -196,7 +196,7 @@ func TestCreateOrUpdateRabbitMQ_20220315PrivatePreview(t *testing.T) {
 			require.Equal(t, testcase.expectedStatusCode, w.Result().StatusCode)
 
 			if !testcase.shouldFail {
-				actualOutput := &v20220315privatepreview.RabbitmqMessageQueueResource{}
+				actualOutput := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 				_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 				require.Equal(t, expectedOutput, actualOutput)
 

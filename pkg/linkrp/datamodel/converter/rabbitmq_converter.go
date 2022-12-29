@@ -18,7 +18,7 @@ import (
 func RabbitMQMessageQueueDataModelToVersioned(model *datamodel.RabbitMQMessageQueue, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitmqMessageQueueResource{}
+		versioned := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 	default:
@@ -30,7 +30,7 @@ func RabbitMQMessageQueueDataModelToVersioned(model *datamodel.RabbitMQMessageQu
 func RabbitMQMessageQueueDataModelFromVersioned(content []byte, version string) (*datamodel.RabbitMQMessageQueue, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitmqMessageQueueResource{}
+		versioned := &v20220315privatepreview.RabbitMQMessageQueueResource{}
 		if err := json.Unmarshal(content, versioned); err != nil {
 			return nil, err
 		}
@@ -46,7 +46,7 @@ func RabbitMQMessageQueueDataModelFromVersioned(content []byte, version string) 
 func RabbitMQSecretsDataModelToVersioned(model *datamodel.RabbitMQSecrets, version string) (conv.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
-		versioned := &v20220315privatepreview.RabbitmqSecrets{}
+		versioned := &v20220315privatepreview.RabbitMQSecrets{}
 		err := versioned.ConvertFrom(model)
 		return versioned, err
 
