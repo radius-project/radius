@@ -20,9 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hosting"
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
-	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 const (
@@ -31,8 +29,6 @@ const (
 
 type Options struct {
 	Port                   string
-	DBClient               store.StorageClient
-	SecretClient           secret.Client
 	StorageProviderOptions dataprovider.StorageProviderOptions
 	SecretProviderOptions  provider.SecretProviderOptions
 	MetricsProviderOptions metricsprovider.MetricsProviderOptions
@@ -81,7 +77,6 @@ func NewServer(options Options) (*hosting.Host, error) {
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
 			Address:                ":" + options.Port,
-			DBClient:               options.DBClient,
 			ClientConfigSource:     clientconfigSource,
 			TLSCertDir:             options.TLSCertDir,
 			BasePath:               options.BasePath,

@@ -29,8 +29,8 @@ type ArmConfig struct {
 	// TODO: Migrate authenticator and clients to new azure sdk - https://github.com/project-radius/radius/issues/4268
 	Auth autorest.Authorizer
 
-	// ClientOption is the client v2 option including new client credentials.
-	ClientOption clientv2.AzureClientOption
+	// ClientOptions is the client v2 options including new client credentials.
+	ClientOptions clientv2.Options
 }
 
 // GetArmConfig gets the configuration we use for managing ARM resources
@@ -47,8 +47,8 @@ func GetArmConfig() (*ArmConfig, error) {
 	}
 
 	return &ArmConfig{
-		Auth:         auth,
-		ClientOption: clientv2.AzureClientOption{Cred: cred},
+		Auth:          auth,
+		ClientOptions: clientv2.Options{Cred: cred},
 	}, nil
 }
 
