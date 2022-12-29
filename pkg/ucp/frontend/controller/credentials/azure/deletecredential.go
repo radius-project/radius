@@ -39,7 +39,7 @@ func (p *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
 	logger := ucplog.GetLogger(ctx)
 
-	resourceID, err := resources.Parse(path)
+	resourceID, err := resources.ParseResource(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
