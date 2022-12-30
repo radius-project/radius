@@ -107,8 +107,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(redis.Tags)
 	switch redis.Properties.Mode {
 	case datamodel.LinkModeResource:
-		var mode RedisCachePropertiesMode
-		mode = RedisCachePropertiesModeResource
+		mode := "resource"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
 			Resource: to.StringPtr(redis.Properties.RedisResourceProperties.Resource),
@@ -123,8 +122,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
 	case datamodel.LinkModeValues:
-		var mode RedisCachePropertiesMode
-		mode = RedisCachePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ResourceRedisCacheProperties{
 			Mode:     &mode,
 			Host:     to.StringPtr(redis.Properties.Host),
@@ -138,8 +136,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
 	case datamodel.LinkModeRecipe:
-		var mode RedisCachePropertiesMode
-		mode = RedisCachePropertiesModeRecipe
+		mode := "recipe"
 		dst.Properties = &RecipeRedisCacheProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(redis.Properties.Recipe),

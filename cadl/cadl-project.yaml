@@ -1,2 +1,5 @@
-emitters:
- "@azure-tools/cadl-autorest": true
+emit:
+  - "@azure-tools/cadl-autorest"
+options:
+  "@azure-tools/cadl-autorest":
+    emitter-output-dir: "{project-root}/../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/"

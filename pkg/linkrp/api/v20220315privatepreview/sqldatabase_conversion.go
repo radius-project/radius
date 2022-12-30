@@ -85,7 +85,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 	dst.Tags = *to.StringMapPtr(sql.Tags)
 	switch sql.Properties.Mode {
 	case datamodel.LinkModeResource:
-		mode := SQLDatabasePropertiesModeResource
+		mode := "resource"
 		dst.Properties = &ResourceSQLDatabaseProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
@@ -99,7 +99,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 			Server:            to.StringPtr(sql.Properties.Server),
 		}
 	case datamodel.LinkModeValues:
-		mode := SQLDatabasePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesSQLDatabaseProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(sql.Properties.Status.OutputResources),
@@ -112,7 +112,7 @@ func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
 			Server:            to.StringPtr(sql.Properties.Server),
 		}
 	case datamodel.LinkModeRecipe:
-		mode := SQLDatabasePropertiesModeRecipe
+		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(sql.Properties.Recipe)
 		dst.Properties = &RecipeSQLDatabaseProperties{

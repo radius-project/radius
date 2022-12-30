@@ -43,14 +43,14 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
 		switch versionedResource.Properties.(type) {
-		case *ResourceDaprStateStoreResourceProperties:
+		case *ResourceDaprStateStoreProperties:
 			if payload == "daprstatestoresqlserverresource.json" {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", convertedResource.Properties.Resource)
 				require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 			} else {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", convertedResource.Properties.Resource)
 			}
-		case *ValuesDaprStateStoreResourceProperties:
+		case *ValuesDaprStateStoreProperties:
 			require.Equal(t, "state.zookeeper", convertedResource.Properties.Type)
 			require.Equal(t, "v1", convertedResource.Properties.Version)
 			require.Equal(t, "bar", convertedResource.Properties.Metadata["foo"])
@@ -94,7 +94,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", resource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", resource.Properties.Environment)
 		switch v := versionedResource.Properties.(type) {
-		case *ResourceDaprStateStoreResourceProperties:
+		case *ResourceDaprStateStoreProperties:
 			if payload == "daprstatestoreazuretablestorageresourcedatamodel.json" {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Storage/storageAccounts/tableServices/tables/testTable", resource.Properties.Resource)
 				require.Equal(t, "Deployment", versionedResource.Properties.GetDaprStateStoreProperties().Status.OutputResources[0]["LocalID"])
@@ -102,7 +102,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			} else {
 				require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.Sql/servers/testServer/databases/testDatabase", resource.Properties.Resource)
 			}
-		case *ValuesDaprStateStoreResourceProperties:
+		case *ValuesDaprStateStoreProperties:
 			require.Equal(t, "state.zookeeper", *v.Type)
 			require.Equal(t, "v1", *v.Version)
 			require.Equal(t, "bar", v.Metadata["foo"])
