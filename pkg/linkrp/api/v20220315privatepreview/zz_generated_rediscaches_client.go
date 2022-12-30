@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -55,15 +56,15 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a Redis cache resource
+// CreateOrUpdate - Creates or updates a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the Redis cache link resource
-// redisCacheParameters - Redis cache create parameters
+// redisCacheName - The name of the RedisCache link resource
+// resource - Resource create parameters.
 // options - RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate
 // method.
-func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesClientCreateOrUpdateOptions) (RedisCachesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, redisCacheName, redisCacheParameters, options)
+func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, redisCacheName string, resource RedisCacheResource, options *RedisCachesClientCreateOrUpdateOptions) (RedisCachesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, redisCacheName, resource, options)
 	if err != nil {
 		return RedisCachesClientCreateOrUpdateResponse{}, err
 	}
@@ -78,7 +79,7 @@ func (client *RedisCachesClient) CreateOrUpdate(ctx context.Context, redisCacheN
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, redisCacheName string, redisCacheParameters RedisCacheResource, options *RedisCachesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context, redisCacheName string, resource RedisCacheResource, options *RedisCachesClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if redisCacheName == "" {
@@ -93,22 +94,30 @@ func (client *RedisCachesClient) createOrUpdateCreateRequest(ctx context.Context
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, redisCacheParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *RedisCachesClient) createOrUpdateHandleResponse(resp *http.Response) (RedisCachesClientCreateOrUpdateResponse, error) {
 	result := RedisCachesClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return RedisCachesClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResource); err != nil {
 		return RedisCachesClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing redisCache resource
+// Delete - Deletes an existing RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the Redis cache link resource
+// redisCacheName - The name of the RedisCache link resource
 // options - RedisCachesClientDeleteOptions contains the optional parameters for the RedisCachesClient.Delete method.
 func (client *RedisCachesClient) Delete(ctx context.Context, redisCacheName string, options *RedisCachesClientDeleteOptions) (RedisCachesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, redisCacheName, options)
@@ -122,7 +131,7 @@ func (client *RedisCachesClient) Delete(ctx context.Context, redisCacheName stri
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return RedisCachesClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return RedisCachesClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -144,10 +153,24 @@ func (client *RedisCachesClient) deleteCreateRequest(ctx context.Context, redisC
 	return req, nil
 }
 
-// Get - Retrieves information about a Redis cache resource
+// deleteHandleResponse handles the Delete response.
+func (client *RedisCachesClient) deleteHandleResponse(resp *http.Response) (RedisCachesClientDeleteResponse, error) {
+	result := RedisCachesClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return RedisCachesClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a RedisCacheResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the Redis cache link resource
+// redisCacheName - The name of the RedisCache link resource
 // options - RedisCachesClientGetOptions contains the optional parameters for the RedisCachesClient.Get method.
 func (client *RedisCachesClient) Get(ctx context.Context, redisCacheName string, options *RedisCachesClientGetOptions) (RedisCachesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, redisCacheName, options)
@@ -192,7 +215,7 @@ func (client *RedisCachesClient) getHandleResponse(resp *http.Response) (RedisCa
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all Redis cache resources in the given root scope
+// NewListByRootScopePager - Lists information about all RedisCacheResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
 // options - RedisCachesClientListByRootScopeOptions contains the optional parameters for the RedisCachesClient.ListByRootScope
 // method.
@@ -242,16 +265,16 @@ func (client *RedisCachesClient) listByRootScopeCreateRequest(ctx context.Contex
 // listByRootScopeHandleResponse handles the ListByRootScope response.
 func (client *RedisCachesClient) listByRootScopeHandleResponse(resp *http.Response) (RedisCachesClientListByRootScopeResponse, error) {
 	result := RedisCachesClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheResourceListResult); err != nil {
 		return RedisCachesClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified Redis cache resource
+// ListSecrets - Lists secrets values for the specified RedisCache resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// redisCacheName - The name of the Redis cache link resource
+// redisCacheName - The name of the RedisCache link resource
 // options - RedisCachesClientListSecretsOptions contains the optional parameters for the RedisCachesClient.ListSecrets method.
 func (client *RedisCachesClient) ListSecrets(ctx context.Context, redisCacheName string, options *RedisCachesClientListSecretsOptions) (RedisCachesClientListSecretsResponse, error) {
 	req, err := client.listSecretsCreateRequest(ctx, redisCacheName, options)
@@ -276,7 +299,7 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -290,7 +313,7 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 // listSecretsHandleResponse handles the ListSecrets response.
 func (client *RedisCachesClient) listSecretsHandleResponse(resp *http.Response) (RedisCachesClientListSecretsResponse, error) {
 	result := RedisCachesClientListSecretsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheSecrets); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.RedisCacheListSecretsResult); err != nil {
 		return RedisCachesClientListSecretsResponse{}, err
 	}
 	return result, nil

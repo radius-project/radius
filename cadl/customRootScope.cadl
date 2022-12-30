@@ -20,6 +20,7 @@ using Cadl.Rest;
 using OpenAPI;
 using Autorest;
 using Azure.Core;
+using Azure.ResourceManager.Foundations;
 
 model RootScopeParentScope<TResource, TRootParams> {
   ...RootScopeResourceCommonParameters<TResource, TRootParams>;
@@ -37,19 +38,17 @@ model RootScopeResourceInstanceParameters<TResource, TRootParams> {
   ...KeysOf<TResource>;
 }
 
-interface ResourceRead<TResource, TRootParams> {
+interface ResourceRead<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Get a {name}", TResource)
+  @doc("Retrieves information about a {name}", TResource)
   @get
   @armResourceRead(TResource)
   Get(...TRootParams): ArmResponse<TResource> | ErrorResponse;
 }
 
-interface ResourceCreate<TResource, TRootParams> {
+interface ResourceCreate<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Create a {name}", TResource)
-  @extension("x-ms-long-running-operation", true)
-  @asyncOperationOptions("azure-async-operation")
+  @doc("Creates or updates a {name}", TResource)
   @armResourceCreateOrUpdate(TResource)
   @put
   CreateOrUpdate(
@@ -60,27 +59,9 @@ interface ResourceCreate<TResource, TRootParams> {
     resource: TResource
   ): ArmResponse<TResource> | ArmCreatedResponse<TResource> | ErrorResponse;
 }
-
-@doc("Update model for resource tags")
-interface ResourceUpdate<TResource, TProperties, TRootParams> {
+interface ResourceDelete<TResource extends ArmResource, TRootParams> {
   @autoRoute
-  @doc("Update a {name}", TResource)
-  @armResourceUpdate(TResource)
-  @patch
-  Update(
-    ...TRootParams,
-
-    @doc("The resource properties to be updated.")
-    @body
-    properties: ResourceUpdateModel<TResource, TProperties>
-  ): ArmResponse<TResource> | ErrorResponse;
-}
-
-interface ResourceDelete<TResource, TRootParams> {
-  @autoRoute
-  @doc("Delete a {name}", TResource)
-  @extension("x-ms-long-running-operation", true)
-  @asyncOperationOptions("azure-async-operation")
+  @doc("Deletes an existing {name}", TResource)
   @armResourceDelete(TResource)
   @delete
   Delete(...TRootParams):
@@ -90,31 +71,26 @@ interface ResourceDelete<TResource, TRootParams> {
     | ErrorResponse;
 }
 
-interface ResourceListByParent<TResource, TRootParams> {
+interface ResourceListByParent<TResource extends ArmResource, TRootParams> {
   @get
-  @pageable
+  //@pageable
+  @doc("Lists information about all {name}s in the given root scope", TResource)
   @autoRoute
   @list(TResource)
   @segmentOf(TResource)
-  @armRenameListByOperation(TResource) // This must come before @armResourceList!
   @armResourceList(TResource)
-  ListByParent(
-    ...RootScopeParentScope<TResource, TRootParams>
+  ListByRootScope(
+    ...RootScopeParentScope<TResource, TRootParams>,
   ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
 }
 
-interface RootScopeResourceOperations<TResource, TProperties, TRootParams>
+interface RootScopeResourceOperations<TResource extends ArmResource, TProperties extends object, TRootParams>
   extends ResourceRead<
       TResource,
       RootScopeResourceInstanceParameters<TResource, TRootParams>
     >,
     ResourceCreate<
       TResource,
-      RootScopeResourceInstanceParameters<TResource, TRootParams>
-    >,
-    ResourceUpdate<
-      TResource,
-      TProperties,
       RootScopeResourceInstanceParameters<TResource, TRootParams>
     >,
     ResourceDelete<

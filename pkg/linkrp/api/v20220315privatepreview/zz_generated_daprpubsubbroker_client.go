@@ -20,22 +20,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
-// DaprPubSubBrokersClient contains the methods for the DaprPubSubBrokers group.
-// Don't use this type directly, use NewDaprPubSubBrokersClient() instead.
-type DaprPubSubBrokersClient struct {
+// DaprPubSubBrokerClient contains the methods for the DaprPubSubBroker group.
+// Don't use this type directly, use NewDaprPubSubBrokerClient() instead.
+type DaprPubSubBrokerClient struct {
 	host string
 	rootScope string
 	pl runtime.Pipeline
 }
 
-// NewDaprPubSubBrokersClient creates a new instance of DaprPubSubBrokersClient with the specified values.
+// NewDaprPubSubBrokerClient creates a new instance of DaprPubSubBrokerClient with the specified values.
 // rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewDaprPubSubBrokersClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprPubSubBrokersClient, error) {
+func NewDaprPubSubBrokerClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprPubSubBrokerClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -47,7 +48,7 @@ func NewDaprPubSubBrokersClient(rootScope string, credential azcore.TokenCredent
 	if err != nil {
 		return nil, err
 	}
-	client := &DaprPubSubBrokersClient{
+	client := &DaprPubSubBrokerClient{
 		rootScope: rootScope,
 		host: ep,
 pl: pl,
@@ -55,30 +56,30 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a DaprPubSubBroker resource
+// CreateOrUpdate - Creates or updates a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - The name of the DaprPubSubBroker link resource
-// daprPubSubBrokerParameters - daprPubSubBroker create parameters
-// options - DaprPubSubBrokersClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokersClient.CreateOrUpdate
+// daprPubSubBrokerName - DaprPubSubBroker name
+// resource - Resource create parameters.
+// options - DaprPubSubBrokerClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.CreateOrUpdate
 // method.
-func (client *DaprPubSubBrokersClient) CreateOrUpdate(ctx context.Context, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersClientCreateOrUpdateOptions) (DaprPubSubBrokersClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, daprPubSubBrokerName, daprPubSubBrokerParameters, options)
+func (client *DaprPubSubBrokerClient) CreateOrUpdate(ctx context.Context, daprPubSubBrokerName string, resource DaprPubSubBrokerResource, options *DaprPubSubBrokerClientCreateOrUpdateOptions) (DaprPubSubBrokerClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprPubSubBrokerName, resource, options)
 	if err != nil {
-		return DaprPubSubBrokersClientCreateOrUpdateResponse{}, err
+		return DaprPubSubBrokerClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprPubSubBrokersClientCreateOrUpdateResponse{}, err
+		return DaprPubSubBrokerClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return DaprPubSubBrokersClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return DaprPubSubBrokerClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.Context, daprPubSubBrokerName string, daprPubSubBrokerParameters DaprPubSubBrokerResource, options *DaprPubSubBrokersClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *DaprPubSubBrokerClient) createOrUpdateCreateRequest(ctx context.Context, daprPubSubBrokerName string, resource DaprPubSubBrokerResource, options *DaprPubSubBrokerClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
@@ -93,41 +94,48 @@ func (client *DaprPubSubBrokersClient) createOrUpdateCreateRequest(ctx context.C
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, daprPubSubBrokerParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprPubSubBrokersClient) createOrUpdateHandleResponse(resp *http.Response) (DaprPubSubBrokersClientCreateOrUpdateResponse, error) {
-	result := DaprPubSubBrokersClientCreateOrUpdateResponse{}
+func (client *DaprPubSubBrokerClient) createOrUpdateHandleResponse(resp *http.Response) (DaprPubSubBrokerClientCreateOrUpdateResponse, error) {
+	result := DaprPubSubBrokerClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprPubSubBrokerClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerResource); err != nil {
-		return DaprPubSubBrokersClientCreateOrUpdateResponse{}, err
+		return DaprPubSubBrokerClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing daprPubSubBroker resource
+// Delete - Deletes an existing DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - The name of the DaprPubSubBroker link resource
-// options - DaprPubSubBrokersClientDeleteOptions contains the optional parameters for the DaprPubSubBrokersClient.Delete
-// method.
-func (client *DaprPubSubBrokersClient) Delete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersClientDeleteOptions) (DaprPubSubBrokersClientDeleteResponse, error) {
+// daprPubSubBrokerName - DaprPubSubBroker name
+// options - DaprPubSubBrokerClientDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.Delete method.
+func (client *DaprPubSubBrokerClient) Delete(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientDeleteOptions) (DaprPubSubBrokerClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, daprPubSubBrokerName, options)
 	if err != nil {
-		return DaprPubSubBrokersClientDeleteResponse{}, err
+		return DaprPubSubBrokerClientDeleteResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprPubSubBrokersClientDeleteResponse{}, err
+		return DaprPubSubBrokerClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return DaprPubSubBrokersClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return DaprPubSubBrokerClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return DaprPubSubBrokersClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersClientDeleteOptions) (*policy.Request, error) {
+func (client *DaprPubSubBrokerClient) deleteCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
@@ -145,28 +153,42 @@ func (client *DaprPubSubBrokersClient) deleteCreateRequest(ctx context.Context, 
 	return req, nil
 }
 
-// Get - Retrieves information about a daprPubSubBroker resource
+// deleteHandleResponse handles the Delete response.
+func (client *DaprPubSubBrokerClient) deleteHandleResponse(resp *http.Response) (DaprPubSubBrokerClientDeleteResponse, error) {
+	result := DaprPubSubBrokerClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprPubSubBrokerClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a DaprPubSubBrokerResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprPubSubBrokerName - The name of the DaprPubSubBroker link resource
-// options - DaprPubSubBrokersClientGetOptions contains the optional parameters for the DaprPubSubBrokersClient.Get method.
-func (client *DaprPubSubBrokersClient) Get(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersClientGetOptions) (DaprPubSubBrokersClientGetResponse, error) {
+// daprPubSubBrokerName - DaprPubSubBroker name
+// options - DaprPubSubBrokerClientGetOptions contains the optional parameters for the DaprPubSubBrokerClient.Get method.
+func (client *DaprPubSubBrokerClient) Get(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientGetOptions) (DaprPubSubBrokerClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprPubSubBrokerName, options)
 	if err != nil {
-		return DaprPubSubBrokersClientGetResponse{}, err
+		return DaprPubSubBrokerClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprPubSubBrokersClientGetResponse{}, err
+		return DaprPubSubBrokerClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return DaprPubSubBrokersClientGetResponse{}, runtime.NewResponseError(resp)
+		return DaprPubSubBrokerClientGetResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokersClientGetOptions) (*policy.Request, error) {
+func (client *DaprPubSubBrokerClient) getCreateRequest(ctx context.Context, daprPubSubBrokerName string, options *DaprPubSubBrokerClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprPubSubBrokerName == "" {
@@ -185,24 +207,24 @@ func (client *DaprPubSubBrokersClient) getCreateRequest(ctx context.Context, dap
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprPubSubBrokersClient) getHandleResponse(resp *http.Response) (DaprPubSubBrokersClientGetResponse, error) {
-	result := DaprPubSubBrokersClientGetResponse{}
+func (client *DaprPubSubBrokerClient) getHandleResponse(resp *http.Response) (DaprPubSubBrokerClientGetResponse, error) {
+	result := DaprPubSubBrokerClientGetResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerResource); err != nil {
-		return DaprPubSubBrokersClientGetResponse{}, err
+		return DaprPubSubBrokerClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all daprPubSubBroker resources in the given root scope
+// NewListByRootScopePager - Lists information about all DaprPubSubBrokerResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
-// options - DaprPubSubBrokersClientListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokersClient.ListByRootScope
+// options - DaprPubSubBrokerClientListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokerClient.ListByRootScope
 // method.
-func (client *DaprPubSubBrokersClient) NewListByRootScopePager(options *DaprPubSubBrokersClientListByRootScopeOptions) (*runtime.Pager[DaprPubSubBrokersClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[DaprPubSubBrokersClientListByRootScopeResponse]{
-		More: func(page DaprPubSubBrokersClientListByRootScopeResponse) bool {
+func (client *DaprPubSubBrokerClient) NewListByRootScopePager(options *DaprPubSubBrokerClientListByRootScopeOptions) (*runtime.Pager[DaprPubSubBrokerClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[DaprPubSubBrokerClientListByRootScopeResponse]{
+		More: func(page DaprPubSubBrokerClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *DaprPubSubBrokersClientListByRootScopeResponse) (DaprPubSubBrokersClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *DaprPubSubBrokerClientListByRootScopeResponse) (DaprPubSubBrokerClientListByRootScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -211,14 +233,14 @@ func (client *DaprPubSubBrokersClient) NewListByRootScopePager(options *DaprPubS
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return DaprPubSubBrokersClientListByRootScopeResponse{}, err
+				return DaprPubSubBrokerClientListByRootScopeResponse{}, err
 			}
 			resp, err := client.pl.Do(req)
 			if err != nil {
-				return DaprPubSubBrokersClientListByRootScopeResponse{}, err
+				return DaprPubSubBrokerClientListByRootScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return DaprPubSubBrokersClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return DaprPubSubBrokerClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listByRootScopeHandleResponse(resp)
 		},
@@ -226,7 +248,7 @@ func (client *DaprPubSubBrokersClient) NewListByRootScopePager(options *DaprPubS
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *DaprPubSubBrokersClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprPubSubBrokersClientListByRootScopeOptions) (*policy.Request, error) {
+func (client *DaprPubSubBrokerClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprPubSubBrokerClientListByRootScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprPubSubBrokers"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
@@ -241,10 +263,10 @@ func (client *DaprPubSubBrokersClient) listByRootScopeCreateRequest(ctx context.
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *DaprPubSubBrokersClient) listByRootScopeHandleResponse(resp *http.Response) (DaprPubSubBrokersClientListByRootScopeResponse, error) {
-	result := DaprPubSubBrokersClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerList); err != nil {
-		return DaprPubSubBrokersClientListByRootScopeResponse{}, err
+func (client *DaprPubSubBrokerClient) listByRootScopeHandleResponse(resp *http.Response) (DaprPubSubBrokerClientListByRootScopeResponse, error) {
+	result := DaprPubSubBrokerClientListByRootScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprPubSubBrokerResourceListResult); err != nil {
+		return DaprPubSubBrokerClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }

@@ -20,22 +20,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
-// DaprInvokeHTTPRoutesClient contains the methods for the DaprInvokeHTTPRoutes group.
-// Don't use this type directly, use NewDaprInvokeHTTPRoutesClient() instead.
-type DaprInvokeHTTPRoutesClient struct {
+// DaprInvokeHTTPRouteClient contains the methods for the DaprInvokeHTTPRoute group.
+// Don't use this type directly, use NewDaprInvokeHTTPRouteClient() instead.
+type DaprInvokeHTTPRouteClient struct {
 	host string
 	rootScope string
 	pl runtime.Pipeline
 }
 
-// NewDaprInvokeHTTPRoutesClient creates a new instance of DaprInvokeHTTPRoutesClient with the specified values.
+// NewDaprInvokeHTTPRouteClient creates a new instance of DaprInvokeHTTPRouteClient with the specified values.
 // rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewDaprInvokeHTTPRoutesClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprInvokeHTTPRoutesClient, error) {
+func NewDaprInvokeHTTPRouteClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprInvokeHTTPRouteClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -47,7 +48,7 @@ func NewDaprInvokeHTTPRoutesClient(rootScope string, credential azcore.TokenCred
 	if err != nil {
 		return nil, err
 	}
-	client := &DaprInvokeHTTPRoutesClient{
+	client := &DaprInvokeHTTPRouteClient{
 		rootScope: rootScope,
 		host: ep,
 pl: pl,
@@ -55,30 +56,30 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a DaprInvokeHttpRoute resource
+// CreateOrUpdate - Creates or updates a DaprInvokeHttpRouteResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprInvokeHTTPRouteName - The name of the DaprInvokeHttpRoute link resource
-// daprInvokeHTTPRouteParameters - daprInvokeHttpRoute create parameters
-// options - DaprInvokeHTTPRoutesClientCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.CreateOrUpdate
+// resource - Resource create parameters.
+// options - DaprInvokeHTTPRouteClientCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.CreateOrUpdate
 // method.
-func (client *DaprInvokeHTTPRoutesClient) CreateOrUpdate(ctx context.Context, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesClientCreateOrUpdateOptions) (DaprInvokeHTTPRoutesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, daprInvokeHTTPRouteName, daprInvokeHTTPRouteParameters, options)
+func (client *DaprInvokeHTTPRouteClient) CreateOrUpdate(ctx context.Context, daprInvokeHTTPRouteName string, resource DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRouteClientCreateOrUpdateOptions) (DaprInvokeHTTPRouteClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprInvokeHTTPRouteName, resource, options)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientCreateOrUpdateResponse{}, err
+		return DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientCreateOrUpdateResponse{}, err
+		return DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return DaprInvokeHTTPRoutesClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, daprInvokeHTTPRouteParameters DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRoutesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *DaprInvokeHTTPRouteClient) createOrUpdateCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, resource DaprInvokeHTTPRouteResource, options *DaprInvokeHTTPRouteClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
@@ -93,41 +94,49 @@ func (client *DaprInvokeHTTPRoutesClient) createOrUpdateCreateRequest(ctx contex
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, daprInvokeHTTPRouteParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprInvokeHTTPRoutesClient) createOrUpdateHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesClientCreateOrUpdateResponse, error) {
-	result := DaprInvokeHTTPRoutesClientCreateOrUpdateResponse{}
+func (client *DaprInvokeHTTPRouteClient) createOrUpdateHandleResponse(resp *http.Response) (DaprInvokeHTTPRouteClientCreateOrUpdateResponse, error) {
+	result := DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteResource); err != nil {
-		return DaprInvokeHTTPRoutesClientCreateOrUpdateResponse{}, err
+		return DaprInvokeHTTPRouteClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing daprInvokeHttpRoute resource
+// Delete - Deletes an existing DaprInvokeHttpRouteResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprInvokeHTTPRouteName - The name of the DaprInvokeHttpRoute link resource
-// options - DaprInvokeHTTPRoutesClientDeleteOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.Delete
+// options - DaprInvokeHTTPRouteClientDeleteOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Delete
 // method.
-func (client *DaprInvokeHTTPRoutesClient) Delete(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientDeleteOptions) (DaprInvokeHTTPRoutesClientDeleteResponse, error) {
+func (client *DaprInvokeHTTPRouteClient) Delete(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRouteClientDeleteOptions) (DaprInvokeHTTPRouteClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, daprInvokeHTTPRouteName, options)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientDeleteResponse{}, err
+		return DaprInvokeHTTPRouteClientDeleteResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientDeleteResponse{}, err
+		return DaprInvokeHTTPRouteClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return DaprInvokeHTTPRoutesClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return DaprInvokeHTTPRouteClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return DaprInvokeHTTPRoutesClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientDeleteOptions) (*policy.Request, error) {
+func (client *DaprInvokeHTTPRouteClient) deleteCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRouteClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
@@ -145,29 +154,42 @@ func (client *DaprInvokeHTTPRoutesClient) deleteCreateRequest(ctx context.Contex
 	return req, nil
 }
 
-// Get - Retrieves information about a daprInvokeHttpRoute resource
+// deleteHandleResponse handles the Delete response.
+func (client *DaprInvokeHTTPRouteClient) deleteHandleResponse(resp *http.Response) (DaprInvokeHTTPRouteClientDeleteResponse, error) {
+	result := DaprInvokeHTTPRouteClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprInvokeHTTPRouteClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a DaprInvokeHttpRouteResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
 // daprInvokeHTTPRouteName - The name of the DaprInvokeHttpRoute link resource
-// options - DaprInvokeHTTPRoutesClientGetOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.Get
-// method.
-func (client *DaprInvokeHTTPRoutesClient) Get(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientGetOptions) (DaprInvokeHTTPRoutesClientGetResponse, error) {
+// options - DaprInvokeHTTPRouteClientGetOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Get method.
+func (client *DaprInvokeHTTPRouteClient) Get(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRouteClientGetOptions) (DaprInvokeHTTPRouteClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprInvokeHTTPRouteName, options)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientGetResponse{}, err
+		return DaprInvokeHTTPRouteClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprInvokeHTTPRoutesClientGetResponse{}, err
+		return DaprInvokeHTTPRouteClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return DaprInvokeHTTPRoutesClientGetResponse{}, runtime.NewResponseError(resp)
+		return DaprInvokeHTTPRouteClientGetResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRoutesClientGetOptions) (*policy.Request, error) {
+func (client *DaprInvokeHTTPRouteClient) getCreateRequest(ctx context.Context, daprInvokeHTTPRouteName string, options *DaprInvokeHTTPRouteClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprInvokeHTTPRouteName == "" {
@@ -186,24 +208,24 @@ func (client *DaprInvokeHTTPRoutesClient) getCreateRequest(ctx context.Context, 
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprInvokeHTTPRoutesClient) getHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesClientGetResponse, error) {
-	result := DaprInvokeHTTPRoutesClientGetResponse{}
+func (client *DaprInvokeHTTPRouteClient) getHandleResponse(resp *http.Response) (DaprInvokeHTTPRouteClientGetResponse, error) {
+	result := DaprInvokeHTTPRouteClientGetResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteResource); err != nil {
-		return DaprInvokeHTTPRoutesClientGetResponse{}, err
+		return DaprInvokeHTTPRouteClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all daprInvokeHttpRoute resources in the given root scope
+// NewListByRootScopePager - Lists information about all DaprInvokeHttpRouteResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
-// options - DaprInvokeHTTPRoutesClientListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.ListByRootScope
+// options - DaprInvokeHTTPRouteClientListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.ListByRootScope
 // method.
-func (client *DaprInvokeHTTPRoutesClient) NewListByRootScopePager(options *DaprInvokeHTTPRoutesClientListByRootScopeOptions) (*runtime.Pager[DaprInvokeHTTPRoutesClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[DaprInvokeHTTPRoutesClientListByRootScopeResponse]{
-		More: func(page DaprInvokeHTTPRoutesClientListByRootScopeResponse) bool {
+func (client *DaprInvokeHTTPRouteClient) NewListByRootScopePager(options *DaprInvokeHTTPRouteClientListByRootScopeOptions) (*runtime.Pager[DaprInvokeHTTPRouteClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[DaprInvokeHTTPRouteClientListByRootScopeResponse]{
+		More: func(page DaprInvokeHTTPRouteClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *DaprInvokeHTTPRoutesClientListByRootScopeResponse) (DaprInvokeHTTPRoutesClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *DaprInvokeHTTPRouteClientListByRootScopeResponse) (DaprInvokeHTTPRouteClientListByRootScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -212,14 +234,14 @@ func (client *DaprInvokeHTTPRoutesClient) NewListByRootScopePager(options *DaprI
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return DaprInvokeHTTPRoutesClientListByRootScopeResponse{}, err
+				return DaprInvokeHTTPRouteClientListByRootScopeResponse{}, err
 			}
 			resp, err := client.pl.Do(req)
 			if err != nil {
-				return DaprInvokeHTTPRoutesClientListByRootScopeResponse{}, err
+				return DaprInvokeHTTPRouteClientListByRootScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return DaprInvokeHTTPRoutesClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return DaprInvokeHTTPRouteClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listByRootScopeHandleResponse(resp)
 		},
@@ -227,7 +249,7 @@ func (client *DaprInvokeHTTPRoutesClient) NewListByRootScopePager(options *DaprI
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *DaprInvokeHTTPRoutesClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprInvokeHTTPRoutesClientListByRootScopeOptions) (*policy.Request, error) {
+func (client *DaprInvokeHTTPRouteClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprInvokeHTTPRouteClientListByRootScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
@@ -242,10 +264,10 @@ func (client *DaprInvokeHTTPRoutesClient) listByRootScopeCreateRequest(ctx conte
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *DaprInvokeHTTPRoutesClient) listByRootScopeHandleResponse(resp *http.Response) (DaprInvokeHTTPRoutesClientListByRootScopeResponse, error) {
-	result := DaprInvokeHTTPRoutesClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteList); err != nil {
-		return DaprInvokeHTTPRoutesClientListByRootScopeResponse{}, err
+func (client *DaprInvokeHTTPRouteClient) listByRootScopeHandleResponse(resp *http.Response) (DaprInvokeHTTPRouteClientListByRootScopeResponse, error) {
+	result := DaprInvokeHTTPRouteClientListByRootScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprInvokeHTTPRouteResourceListResult); err != nil {
+		return DaprInvokeHTTPRouteClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }

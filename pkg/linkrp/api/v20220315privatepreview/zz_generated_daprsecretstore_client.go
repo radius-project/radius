@@ -20,22 +20,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
-// DaprSecretStoresClient contains the methods for the DaprSecretStores group.
-// Don't use this type directly, use NewDaprSecretStoresClient() instead.
-type DaprSecretStoresClient struct {
+// DaprSecretStoreClient contains the methods for the DaprSecretStore group.
+// Don't use this type directly, use NewDaprSecretStoreClient() instead.
+type DaprSecretStoreClient struct {
 	host string
 	rootScope string
 	pl runtime.Pipeline
 }
 
-// NewDaprSecretStoresClient creates a new instance of DaprSecretStoresClient with the specified values.
+// NewDaprSecretStoreClient creates a new instance of DaprSecretStoreClient with the specified values.
 // rootScope - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewDaprSecretStoresClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprSecretStoresClient, error) {
+func NewDaprSecretStoreClient(rootScope string, credential azcore.TokenCredential, options *arm.ClientOptions) (*DaprSecretStoreClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -47,7 +48,7 @@ func NewDaprSecretStoresClient(rootScope string, credential azcore.TokenCredenti
 	if err != nil {
 		return nil, err
 	}
-	client := &DaprSecretStoresClient{
+	client := &DaprSecretStoreClient{
 		rootScope: rootScope,
 		host: ep,
 pl: pl,
@@ -55,30 +56,30 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a DaprSecretStore resource
+// CreateOrUpdate - Creates or updates a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - The name of the DaprSecretStore link resource
-// daprSecretStoreParameters - daprSecretStore create parameters
-// options - DaprSecretStoresClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoresClient.CreateOrUpdate
+// daprSecretStoreName - DaprSecretStore name
+// resource - Resource create parameters.
+// options - DaprSecretStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoreClient.CreateOrUpdate
 // method.
-func (client *DaprSecretStoresClient) CreateOrUpdate(ctx context.Context, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresClientCreateOrUpdateOptions) (DaprSecretStoresClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, daprSecretStoreName, daprSecretStoreParameters, options)
+func (client *DaprSecretStoreClient) CreateOrUpdate(ctx context.Context, daprSecretStoreName string, resource DaprSecretStoreResource, options *DaprSecretStoreClientCreateOrUpdateOptions) (DaprSecretStoreClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, daprSecretStoreName, resource, options)
 	if err != nil {
-		return DaprSecretStoresClientCreateOrUpdateResponse{}, err
+		return DaprSecretStoreClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprSecretStoresClientCreateOrUpdateResponse{}, err
+		return DaprSecretStoreClientCreateOrUpdateResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
-		return DaprSecretStoresClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
+		return DaprSecretStoreClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.createOrUpdateHandleResponse(resp)
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DaprSecretStoresClient) createOrUpdateCreateRequest(ctx context.Context, daprSecretStoreName string, daprSecretStoreParameters DaprSecretStoreResource, options *DaprSecretStoresClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *DaprSecretStoreClient) createOrUpdateCreateRequest(ctx context.Context, daprSecretStoreName string, resource DaprSecretStoreResource, options *DaprSecretStoreClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
@@ -93,40 +94,48 @@ func (client *DaprSecretStoresClient) createOrUpdateCreateRequest(ctx context.Co
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, daprSecretStoreParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
-func (client *DaprSecretStoresClient) createOrUpdateHandleResponse(resp *http.Response) (DaprSecretStoresClientCreateOrUpdateResponse, error) {
-	result := DaprSecretStoresClientCreateOrUpdateResponse{}
+func (client *DaprSecretStoreClient) createOrUpdateHandleResponse(resp *http.Response) (DaprSecretStoreClientCreateOrUpdateResponse, error) {
+	result := DaprSecretStoreClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprSecretStoreClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreResource); err != nil {
-		return DaprSecretStoresClientCreateOrUpdateResponse{}, err
+		return DaprSecretStoreClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing daprSecretStore resource
+// Delete - Deletes an existing DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - The name of the DaprSecretStore link resource
-// options - DaprSecretStoresClientDeleteOptions contains the optional parameters for the DaprSecretStoresClient.Delete method.
-func (client *DaprSecretStoresClient) Delete(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresClientDeleteOptions) (DaprSecretStoresClientDeleteResponse, error) {
+// daprSecretStoreName - DaprSecretStore name
+// options - DaprSecretStoreClientDeleteOptions contains the optional parameters for the DaprSecretStoreClient.Delete method.
+func (client *DaprSecretStoreClient) Delete(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientDeleteOptions) (DaprSecretStoreClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, daprSecretStoreName, options)
 	if err != nil {
-		return DaprSecretStoresClientDeleteResponse{}, err
+		return DaprSecretStoreClientDeleteResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprSecretStoresClientDeleteResponse{}, err
+		return DaprSecretStoreClientDeleteResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
-		return DaprSecretStoresClientDeleteResponse{}, runtime.NewResponseError(resp)
+		return DaprSecretStoreClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return DaprSecretStoresClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
-func (client *DaprSecretStoresClient) deleteCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresClientDeleteOptions) (*policy.Request, error) {
+func (client *DaprSecretStoreClient) deleteCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientDeleteOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
@@ -144,28 +153,42 @@ func (client *DaprSecretStoresClient) deleteCreateRequest(ctx context.Context, d
 	return req, nil
 }
 
-// Get - Retrieves information about a daprSecretStore resource
+// deleteHandleResponse handles the Delete response.
+func (client *DaprSecretStoreClient) deleteHandleResponse(resp *http.Response) (DaprSecretStoreClientDeleteResponse, error) {
+	result := DaprSecretStoreClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return DaprSecretStoreClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a DaprSecretStoreResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// daprSecretStoreName - The name of the DaprSecretStore link resource
-// options - DaprSecretStoresClientGetOptions contains the optional parameters for the DaprSecretStoresClient.Get method.
-func (client *DaprSecretStoresClient) Get(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresClientGetOptions) (DaprSecretStoresClientGetResponse, error) {
+// daprSecretStoreName - DaprSecretStore name
+// options - DaprSecretStoreClientGetOptions contains the optional parameters for the DaprSecretStoreClient.Get method.
+func (client *DaprSecretStoreClient) Get(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientGetOptions) (DaprSecretStoreClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, daprSecretStoreName, options)
 	if err != nil {
-		return DaprSecretStoresClientGetResponse{}, err
+		return DaprSecretStoreClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return DaprSecretStoresClientGetResponse{}, err
+		return DaprSecretStoreClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return DaprSecretStoresClientGetResponse{}, runtime.NewResponseError(resp)
+		return DaprSecretStoreClientGetResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *DaprSecretStoresClient) getCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoresClientGetOptions) (*policy.Request, error) {
+func (client *DaprSecretStoreClient) getCreateRequest(ctx context.Context, daprSecretStoreName string, options *DaprSecretStoreClientGetOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if daprSecretStoreName == "" {
@@ -184,24 +207,24 @@ func (client *DaprSecretStoresClient) getCreateRequest(ctx context.Context, dapr
 }
 
 // getHandleResponse handles the Get response.
-func (client *DaprSecretStoresClient) getHandleResponse(resp *http.Response) (DaprSecretStoresClientGetResponse, error) {
-	result := DaprSecretStoresClientGetResponse{}
+func (client *DaprSecretStoreClient) getHandleResponse(resp *http.Response) (DaprSecretStoreClientGetResponse, error) {
+	result := DaprSecretStoreClientGetResponse{}
 	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreResource); err != nil {
-		return DaprSecretStoresClientGetResponse{}, err
+		return DaprSecretStoreClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all daprSecretStore resources in the given root scope
+// NewListByRootScopePager - Lists information about all DaprSecretStoreResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
-// options - DaprSecretStoresClientListByRootScopeOptions contains the optional parameters for the DaprSecretStoresClient.ListByRootScope
+// options - DaprSecretStoreClientListByRootScopeOptions contains the optional parameters for the DaprSecretStoreClient.ListByRootScope
 // method.
-func (client *DaprSecretStoresClient) NewListByRootScopePager(options *DaprSecretStoresClientListByRootScopeOptions) (*runtime.Pager[DaprSecretStoresClientListByRootScopeResponse]) {
-	return runtime.NewPager(runtime.PagingHandler[DaprSecretStoresClientListByRootScopeResponse]{
-		More: func(page DaprSecretStoresClientListByRootScopeResponse) bool {
+func (client *DaprSecretStoreClient) NewListByRootScopePager(options *DaprSecretStoreClientListByRootScopeOptions) (*runtime.Pager[DaprSecretStoreClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[DaprSecretStoreClientListByRootScopeResponse]{
+		More: func(page DaprSecretStoreClientListByRootScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
 		},
-		Fetcher: func(ctx context.Context, page *DaprSecretStoresClientListByRootScopeResponse) (DaprSecretStoresClientListByRootScopeResponse, error) {
+		Fetcher: func(ctx context.Context, page *DaprSecretStoreClientListByRootScopeResponse) (DaprSecretStoreClientListByRootScopeResponse, error) {
 			var req *policy.Request
 			var err error
 			if page == nil {
@@ -210,14 +233,14 @@ func (client *DaprSecretStoresClient) NewListByRootScopePager(options *DaprSecre
 				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
 			}
 			if err != nil {
-				return DaprSecretStoresClientListByRootScopeResponse{}, err
+				return DaprSecretStoreClientListByRootScopeResponse{}, err
 			}
 			resp, err := client.pl.Do(req)
 			if err != nil {
-				return DaprSecretStoresClientListByRootScopeResponse{}, err
+				return DaprSecretStoreClientListByRootScopeResponse{}, err
 			}
 			if !runtime.HasStatusCode(resp, http.StatusOK) {
-				return DaprSecretStoresClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+				return DaprSecretStoreClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
 			}
 			return client.listByRootScopeHandleResponse(resp)
 		},
@@ -225,7 +248,7 @@ func (client *DaprSecretStoresClient) NewListByRootScopePager(options *DaprSecre
 }
 
 // listByRootScopeCreateRequest creates the ListByRootScope request.
-func (client *DaprSecretStoresClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprSecretStoresClientListByRootScopeOptions) (*policy.Request, error) {
+func (client *DaprSecretStoreClient) listByRootScopeCreateRequest(ctx context.Context, options *DaprSecretStoreClientListByRootScopeOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/daprSecretStores"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
@@ -240,10 +263,10 @@ func (client *DaprSecretStoresClient) listByRootScopeCreateRequest(ctx context.C
 }
 
 // listByRootScopeHandleResponse handles the ListByRootScope response.
-func (client *DaprSecretStoresClient) listByRootScopeHandleResponse(resp *http.Response) (DaprSecretStoresClientListByRootScopeResponse, error) {
-	result := DaprSecretStoresClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreList); err != nil {
-		return DaprSecretStoresClientListByRootScopeResponse{}, err
+func (client *DaprSecretStoreClient) listByRootScopeHandleResponse(resp *http.Response) (DaprSecretStoreClientListByRootScopeResponse, error) {
+	result := DaprSecretStoreClientListByRootScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.DaprSecretStoreResourceListResult); err != nil {
+		return DaprSecretStoreClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }

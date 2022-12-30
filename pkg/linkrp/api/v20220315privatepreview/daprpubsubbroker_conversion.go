@@ -91,7 +91,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 
 	switch daprPubSub.Properties.Mode {
 	case datamodel.LinkModeRecipe:
-		mode := DaprPubSubBrokerPropertiesModeRecipe
+		mode := "recipe"
 		dst.Properties = &RecipeDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -108,7 +108,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Recipe:            fromRecipeDataModel(daprPubSub.Properties.Recipe),
 		}
 	case datamodel.LinkModeResource:
-		mode := DaprPubSubBrokerPropertiesModeResource
+		mode := "resource"
 		dst.Properties = &ResourceDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
@@ -123,7 +123,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Metadata:          daprPubSub.Properties.Metadata,
 		}
 	case datamodel.LinkModeValues:
-		mode := DaprPubSubBrokerPropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesDaprPubSubProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),

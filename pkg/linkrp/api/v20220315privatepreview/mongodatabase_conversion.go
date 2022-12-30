@@ -111,8 +111,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 
 	switch mongo.Properties.Mode {
 	case datamodel.LinkModeResource:
-		var mode MongoDatabasePropertiesMode
-		mode = MongoDatabasePropertiesModeResource
+		mode := "resource"
 		dst.Properties = &ResourceMongoDatabaseProperties{
 			Mode:     &mode,
 			Resource: to.StringPtr(mongo.Properties.MongoDatabaseResourceProperties.Resource),
@@ -127,8 +126,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
 	case datamodel.LinkModeValues:
-		var mode MongoDatabasePropertiesMode
-		mode = MongoDatabasePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesMongoDatabaseProperties{
 			Mode:     &mode,
 			Host:     to.StringPtr(mongo.Properties.Host),
@@ -142,8 +140,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
 	case datamodel.LinkModeRecipe:
-		var mode MongoDatabasePropertiesMode
-		mode = MongoDatabasePropertiesModeRecipe
+		mode := "recipe"
 		dst.Properties = &RecipeMongoDatabaseProperties{
 			Mode:     &mode,
 			Recipe:   fromRecipeDataModel(mongo.Properties.Recipe),

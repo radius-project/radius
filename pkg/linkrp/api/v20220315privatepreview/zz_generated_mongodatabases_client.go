@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -55,15 +56,15 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a Mongo database resource
+// CreateOrUpdate - Creates or updates a MongoDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// mongoDatabaseName - The name of the Mongo database link resource
-// mongoDatabaseParameters - Mongo database create parameters
+// mongoDatabaseName - The name of the MongoDatabase link resource
+// resource - Resource create parameters.
 // options - MongoDatabasesClientCreateOrUpdateOptions contains the optional parameters for the MongoDatabasesClient.CreateOrUpdate
 // method.
-func (client *MongoDatabasesClient) CreateOrUpdate(ctx context.Context, mongoDatabaseName string, mongoDatabaseParameters MongoDatabaseResource, options *MongoDatabasesClientCreateOrUpdateOptions) (MongoDatabasesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, mongoDatabaseName, mongoDatabaseParameters, options)
+func (client *MongoDatabasesClient) CreateOrUpdate(ctx context.Context, mongoDatabaseName string, resource MongoDatabaseResource, options *MongoDatabasesClientCreateOrUpdateOptions) (MongoDatabasesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, mongoDatabaseName, resource, options)
 	if err != nil {
 		return MongoDatabasesClientCreateOrUpdateResponse{}, err
 	}
@@ -78,7 +79,7 @@ func (client *MongoDatabasesClient) CreateOrUpdate(ctx context.Context, mongoDat
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, mongoDatabaseName string, mongoDatabaseParameters MongoDatabaseResource, options *MongoDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, mongoDatabaseName string, resource MongoDatabaseResource, options *MongoDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if mongoDatabaseName == "" {
@@ -93,22 +94,30 @@ func (client *MongoDatabasesClient) createOrUpdateCreateRequest(ctx context.Cont
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, mongoDatabaseParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *MongoDatabasesClient) createOrUpdateHandleResponse(resp *http.Response) (MongoDatabasesClientCreateOrUpdateResponse, error) {
 	result := MongoDatabasesClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return MongoDatabasesClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResource); err != nil {
 		return MongoDatabasesClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing mongo database resource
+// Delete - Deletes an existing MongoDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// mongoDatabaseName - The name of the Mongo database link resource
+// mongoDatabaseName - The name of the MongoDatabase link resource
 // options - MongoDatabasesClientDeleteOptions contains the optional parameters for the MongoDatabasesClient.Delete method.
 func (client *MongoDatabasesClient) Delete(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientDeleteOptions) (MongoDatabasesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, mongoDatabaseName, options)
@@ -122,7 +131,7 @@ func (client *MongoDatabasesClient) Delete(ctx context.Context, mongoDatabaseNam
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return MongoDatabasesClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return MongoDatabasesClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -144,10 +153,24 @@ func (client *MongoDatabasesClient) deleteCreateRequest(ctx context.Context, mon
 	return req, nil
 }
 
-// Get - Retrieves information about a Mongo database resource
+// deleteHandleResponse handles the Delete response.
+func (client *MongoDatabasesClient) deleteHandleResponse(resp *http.Response) (MongoDatabasesClientDeleteResponse, error) {
+	result := MongoDatabasesClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return MongoDatabasesClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a MongoDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// mongoDatabaseName - The name of the Mongo database link resource
+// mongoDatabaseName - The name of the MongoDatabase link resource
 // options - MongoDatabasesClientGetOptions contains the optional parameters for the MongoDatabasesClient.Get method.
 func (client *MongoDatabasesClient) Get(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientGetOptions) (MongoDatabasesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, mongoDatabaseName, options)
@@ -192,7 +215,7 @@ func (client *MongoDatabasesClient) getHandleResponse(resp *http.Response) (Mong
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all Mongo database resources in the given root scope
+// NewListByRootScopePager - Lists information about all MongoDatabaseResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
 // options - MongoDatabasesClientListByRootScopeOptions contains the optional parameters for the MongoDatabasesClient.ListByRootScope
 // method.
@@ -242,16 +265,16 @@ func (client *MongoDatabasesClient) listByRootScopeCreateRequest(ctx context.Con
 // listByRootScopeHandleResponse handles the ListByRootScope response.
 func (client *MongoDatabasesClient) listByRootScopeHandleResponse(resp *http.Response) (MongoDatabasesClientListByRootScopeResponse, error) {
 	result := MongoDatabasesClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseResourceListResult); err != nil {
 		return MongoDatabasesClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
 
-// ListSecrets - Lists secrets values for the specified Mongo database resource
+// ListSecrets - Lists secrets values for the specified MongoDatabase resource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// mongoDatabaseName - The name of the Mongo database link resource
+// mongoDatabaseName - The name of the MongoDatabase link resource
 // options - MongoDatabasesClientListSecretsOptions contains the optional parameters for the MongoDatabasesClient.ListSecrets
 // method.
 func (client *MongoDatabasesClient) ListSecrets(ctx context.Context, mongoDatabaseName string, options *MongoDatabasesClientListSecretsOptions) (MongoDatabasesClientListSecretsResponse, error) {
@@ -277,7 +300,7 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
@@ -291,7 +314,7 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 // listSecretsHandleResponse handles the ListSecrets response.
 func (client *MongoDatabasesClient) listSecretsHandleResponse(resp *http.Response) (MongoDatabasesClientListSecretsResponse, error) {
 	result := MongoDatabasesClientListSecretsResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseSecrets); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.MongoDatabaseListSecretsResult); err != nil {
 		return MongoDatabasesClientListSecretsResponse{}, err
 	}
 	return result, nil

@@ -20,6 +20,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
@@ -55,15 +56,15 @@ pl: pl,
 	return client, nil
 }
 
-// CreateOrUpdate - Creates or updates a SQLDatabase resource
+// CreateOrUpdate - Creates or updates a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQLDatabase link resource
-// sqlDatabaseParameters - sqlDatabase create parameters
+// sqlDatabaseName - The name of the SqlDatabase link resource
+// resource - Resource create parameters.
 // options - SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate
 // method.
-func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesClientCreateOrUpdateOptions) (SQLDatabasesClientCreateOrUpdateResponse, error) {
-	req, err := client.createOrUpdateCreateRequest(ctx, sqlDatabaseName, sqlDatabaseParameters, options)
+func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, sqlDatabaseName string, resource SQLDatabaseResource, options *SQLDatabasesClientCreateOrUpdateOptions) (SQLDatabasesClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, sqlDatabaseName, resource, options)
 	if err != nil {
 		return SQLDatabasesClientCreateOrUpdateResponse{}, err
 	}
@@ -78,7 +79,7 @@ func (client *SQLDatabasesClient) CreateOrUpdate(ctx context.Context, sqlDatabas
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, sqlDatabaseName string, sqlDatabaseParameters SQLDatabaseResource, options *SQLDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
+func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Context, sqlDatabaseName string, resource SQLDatabaseResource, options *SQLDatabasesClientCreateOrUpdateOptions) (*policy.Request, error) {
 	urlPath := "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}"
 	urlPath = strings.ReplaceAll(urlPath, "{rootScope}", client.rootScope)
 	if sqlDatabaseName == "" {
@@ -93,22 +94,30 @@ func (client *SQLDatabasesClient) createOrUpdateCreateRequest(ctx context.Contex
 	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
-	return req, runtime.MarshalAsJSON(req, sqlDatabaseParameters)
+	return req, runtime.MarshalAsJSON(req, resource)
 }
 
 // createOrUpdateHandleResponse handles the CreateOrUpdate response.
 func (client *SQLDatabasesClient) createOrUpdateHandleResponse(resp *http.Response) (SQLDatabasesClientCreateOrUpdateResponse, error) {
 	result := SQLDatabasesClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return SQLDatabasesClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
 	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseResource); err != nil {
 		return SQLDatabasesClientCreateOrUpdateResponse{}, err
 	}
 	return result, nil
 }
 
-// Delete - Deletes an existing sqlDatabase resource
+// Delete - Deletes an existing SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQLDatabase link resource
+// sqlDatabaseName - The name of the SqlDatabase link resource
 // options - SQLDatabasesClientDeleteOptions contains the optional parameters for the SQLDatabasesClient.Delete method.
 func (client *SQLDatabasesClient) Delete(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientDeleteOptions) (SQLDatabasesClientDeleteResponse, error) {
 	req, err := client.deleteCreateRequest(ctx, sqlDatabaseName, options)
@@ -122,7 +131,7 @@ func (client *SQLDatabasesClient) Delete(ctx context.Context, sqlDatabaseName st
 	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
 		return SQLDatabasesClientDeleteResponse{}, runtime.NewResponseError(resp)
 	}
-	return SQLDatabasesClientDeleteResponse{}, nil
+	return client.deleteHandleResponse(resp)
 }
 
 // deleteCreateRequest creates the Delete request.
@@ -144,10 +153,24 @@ func (client *SQLDatabasesClient) deleteCreateRequest(ctx context.Context, sqlDa
 	return req, nil
 }
 
-// Get - Retrieves information about a sqlDatabase resource
+// deleteHandleResponse handles the Delete response.
+func (client *SQLDatabasesClient) deleteHandleResponse(resp *http.Response) (SQLDatabasesClientDeleteResponse, error) {
+	result := SQLDatabasesClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return SQLDatabasesClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a SqlDatabaseResource
 // If the operation fails it returns an *azcore.ResponseError type.
 // Generated from API version 2022-03-15-privatepreview
-// sqlDatabaseName - The name of the SQLDatabase link resource
+// sqlDatabaseName - The name of the SqlDatabase link resource
 // options - SQLDatabasesClientGetOptions contains the optional parameters for the SQLDatabasesClient.Get method.
 func (client *SQLDatabasesClient) Get(ctx context.Context, sqlDatabaseName string, options *SQLDatabasesClientGetOptions) (SQLDatabasesClientGetResponse, error) {
 	req, err := client.getCreateRequest(ctx, sqlDatabaseName, options)
@@ -192,7 +215,7 @@ func (client *SQLDatabasesClient) getHandleResponse(resp *http.Response) (SQLDat
 	return result, nil
 }
 
-// NewListByRootScopePager - Lists information about all sqlDatabase resources in the given root scope
+// NewListByRootScopePager - Lists information about all SqlDatabaseResources in the given root scope
 // Generated from API version 2022-03-15-privatepreview
 // options - SQLDatabasesClientListByRootScopeOptions contains the optional parameters for the SQLDatabasesClient.ListByRootScope
 // method.
@@ -242,7 +265,7 @@ func (client *SQLDatabasesClient) listByRootScopeCreateRequest(ctx context.Conte
 // listByRootScopeHandleResponse handles the ListByRootScope response.
 func (client *SQLDatabasesClient) listByRootScopeHandleResponse(resp *http.Response) (SQLDatabasesClientListByRootScopeResponse, error) {
 	result := SQLDatabasesClientListByRootScopeResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseList); err != nil {
+	if err := runtime.UnmarshalAsJSON(resp, &result.SQLDatabaseResourceListResult); err != nil {
 		return SQLDatabasesClientListByRootScopeResponse{}, err
 	}
 	return result, nil

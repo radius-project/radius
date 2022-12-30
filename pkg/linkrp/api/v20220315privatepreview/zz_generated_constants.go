@@ -14,6 +14,20 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
+// ActionType - Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+type ActionType string
+
+const (
+	ActionTypeInternal ActionType = "Internal"
+)
+
+// PossibleActionTypeValues returns the possible values for the ActionType const type.
+func PossibleActionTypeValues() []ActionType {
+	return []ActionType{	
+		ActionTypeInternal,
+	}
+}
+
 // CreatedByType - The type of identity that created the resource.
 type CreatedByType string
 
@@ -34,77 +48,22 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 	}
 }
 
-// DaprPubSubBrokerPropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
-// or build manually via 'values'. Selection determines which set of fields to additionally require.
-type DaprPubSubBrokerPropertiesMode string
+// Origin - The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+// value is "user,system"
+type Origin string
 
 const (
-	DaprPubSubBrokerPropertiesModeRecipe DaprPubSubBrokerPropertiesMode = "recipe"
-	DaprPubSubBrokerPropertiesModeResource DaprPubSubBrokerPropertiesMode = "resource"
-	DaprPubSubBrokerPropertiesModeValues DaprPubSubBrokerPropertiesMode = "values"
+	OriginSystem Origin = "system"
+	OriginUser Origin = "user"
+	OriginUserSystem Origin = "user,system"
 )
 
-// PossibleDaprPubSubBrokerPropertiesModeValues returns the possible values for the DaprPubSubBrokerPropertiesMode const type.
-func PossibleDaprPubSubBrokerPropertiesModeValues() []DaprPubSubBrokerPropertiesMode {
-	return []DaprPubSubBrokerPropertiesMode{	
-		DaprPubSubBrokerPropertiesModeRecipe,
-		DaprPubSubBrokerPropertiesModeResource,
-		DaprPubSubBrokerPropertiesModeValues,
-	}
-}
-
-// DaprSecretStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-type DaprSecretStorePropertiesMode string
-
-const (
-	DaprSecretStorePropertiesModeRecipe DaprSecretStorePropertiesMode = "recipe"
-	DaprSecretStorePropertiesModeValues DaprSecretStorePropertiesMode = "values"
-)
-
-// PossibleDaprSecretStorePropertiesModeValues returns the possible values for the DaprSecretStorePropertiesMode const type.
-func PossibleDaprSecretStorePropertiesModeValues() []DaprSecretStorePropertiesMode {
-	return []DaprSecretStorePropertiesMode{	
-		DaprSecretStorePropertiesModeRecipe,
-		DaprSecretStorePropertiesModeValues,
-	}
-}
-
-// DaprStateStorePropertiesMode - How to build the link. Options are to build automatically via 'recipe', build via 'resource'
-// or build manually via 'values'. Selection determines which set of fields to additionally require.
-type DaprStateStorePropertiesMode string
-
-const (
-	DaprStateStorePropertiesModeRecipe DaprStateStorePropertiesMode = "recipe"
-	DaprStateStorePropertiesModeResource DaprStateStorePropertiesMode = "resource"
-	DaprStateStorePropertiesModeValues DaprStateStorePropertiesMode = "values"
-)
-
-// PossibleDaprStateStorePropertiesModeValues returns the possible values for the DaprStateStorePropertiesMode const type.
-func PossibleDaprStateStorePropertiesModeValues() []DaprStateStorePropertiesMode {
-	return []DaprStateStorePropertiesMode{	
-		DaprStateStorePropertiesModeRecipe,
-		DaprStateStorePropertiesModeResource,
-		DaprStateStorePropertiesModeValues,
-	}
-}
-
-// MongoDatabasePropertiesMode - How to build the Mongo database link. Options are to build automatically via 'recipe' or
-// 'resource', or build manually via 'values'. Selection determines which set of fields to additionally require.
-type MongoDatabasePropertiesMode string
-
-const (
-	MongoDatabasePropertiesModeRecipe MongoDatabasePropertiesMode = "recipe"
-	MongoDatabasePropertiesModeResource MongoDatabasePropertiesMode = "resource"
-	MongoDatabasePropertiesModeValues MongoDatabasePropertiesMode = "values"
-)
-
-// PossibleMongoDatabasePropertiesModeValues returns the possible values for the MongoDatabasePropertiesMode const type.
-func PossibleMongoDatabasePropertiesModeValues() []MongoDatabasePropertiesMode {
-	return []MongoDatabasePropertiesMode{	
-		MongoDatabasePropertiesModeRecipe,
-		MongoDatabasePropertiesModeResource,
-		MongoDatabasePropertiesModeValues,
+// PossibleOriginValues returns the possible values for the Origin const type.
+func PossibleOriginValues() []Origin {
+	return []Origin{	
+		OriginSystem,
+		OriginUser,
+		OriginUserSystem,
 	}
 }
 
@@ -131,61 +90,6 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 		ProvisioningStateProvisioning,
 		ProvisioningStateSucceeded,
 		ProvisioningStateUpdating,
-	}
-}
-
-// RabbitMQMessageQueuePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-type RabbitMQMessageQueuePropertiesMode string
-
-const (
-	RabbitMQMessageQueuePropertiesModeRecipe RabbitMQMessageQueuePropertiesMode = "recipe"
-	RabbitMQMessageQueuePropertiesModeValues RabbitMQMessageQueuePropertiesMode = "values"
-)
-
-// PossibleRabbitMQMessageQueuePropertiesModeValues returns the possible values for the RabbitMQMessageQueuePropertiesMode const type.
-func PossibleRabbitMQMessageQueuePropertiesModeValues() []RabbitMQMessageQueuePropertiesMode {
-	return []RabbitMQMessageQueuePropertiesMode{	
-		RabbitMQMessageQueuePropertiesModeRecipe,
-		RabbitMQMessageQueuePropertiesModeValues,
-	}
-}
-
-// RedisCachePropertiesMode - How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource',
-// or build manually via 'values'. Selection determines which set of fields to additionally require.
-type RedisCachePropertiesMode string
-
-const (
-	RedisCachePropertiesModeRecipe RedisCachePropertiesMode = "recipe"
-	RedisCachePropertiesModeResource RedisCachePropertiesMode = "resource"
-	RedisCachePropertiesModeValues RedisCachePropertiesMode = "values"
-)
-
-// PossibleRedisCachePropertiesModeValues returns the possible values for the RedisCachePropertiesMode const type.
-func PossibleRedisCachePropertiesModeValues() []RedisCachePropertiesMode {
-	return []RedisCachePropertiesMode{	
-		RedisCachePropertiesModeRecipe,
-		RedisCachePropertiesModeResource,
-		RedisCachePropertiesModeValues,
-	}
-}
-
-// SQLDatabasePropertiesMode - How to build the link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-type SQLDatabasePropertiesMode string
-
-const (
-	SQLDatabasePropertiesModeRecipe SQLDatabasePropertiesMode = "recipe"
-	SQLDatabasePropertiesModeResource SQLDatabasePropertiesMode = "resource"
-	SQLDatabasePropertiesModeValues SQLDatabasePropertiesMode = "values"
-)
-
-// PossibleSQLDatabasePropertiesModeValues returns the possible values for the SQLDatabasePropertiesMode const type.
-func PossibleSQLDatabasePropertiesModeValues() []SQLDatabasePropertiesMode {
-	return []SQLDatabasePropertiesMode{	
-		SQLDatabasePropertiesModeRecipe,
-		SQLDatabasePropertiesModeResource,
-		SQLDatabasePropertiesModeValues,
 	}
 }
 

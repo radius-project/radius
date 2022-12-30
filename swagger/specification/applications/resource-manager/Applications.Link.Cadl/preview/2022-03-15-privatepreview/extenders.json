@@ -1,0 +1,349 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Applications.Link Management APIs",
+    "description": "REST APIs for Applications.Link/extenders",
+    "version": "2022-03-15-privatepreview"
+  },
+  "host": "management.azure.com",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "security": [
+    {
+      "azure_auth": [
+        "user_impersonation"
+      ]
+    }
+  ],
+  "securityDefinitions": {
+    "azure_auth": {
+      "type": "oauth2",
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize",
+      "flow": "implicit",
+      "description": "Azure Active Directory OAuth2 Flow.",
+      "scopes": {
+        "user_impersonation": "impersonate your user account"
+      }
+    }
+  },
+  "paths": {
+    "/{rootScope}/providers/Applications.Link/extenders": {
+      "get": {
+        "description": "Lists information about all extender resources in the given root scope",
+        "operationId": "Extenders_ListByRootScope",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Extenders"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "openapi.json#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of Extender resources",
+            "schema": {
+              "$ref": "#/definitions/ExtenderList"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "deprecated": false,
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/extenders/{extenderName}": {
+      "get": {
+        "description": "Retrieves information about a extender resource",
+        "operationId": "Extenders_Get",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Extenders"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "openapi.json#/parameters/RootScopeParam"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Extender resource",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResponseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "description": "Creates or updates a Extender resource",
+        "operationId": "Extenders_CreateOrUpdate",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Extenders"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "openapi.json#/parameters/RootScopeParam"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          },
+          {
+            "name": "ExtenderParameters",
+            "description": "extender create parameters",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ExtenderResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request was successful; response contains the extender resource",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResponseResource"
+            }
+          },
+          "201": {
+            "description": "The request was successful, resource will be updated asynchronously",
+            "schema": {
+              "$ref": "#/definitions/ExtenderResponseResource"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "description": "Deletes an existing extender resource",
+        "operationId": "Extenders_Delete",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Extenders"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "openapi.json#/parameters/RootScopeParam"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The Extender link was successfully deleted."
+          },
+          "202": {
+            "description": "The Extender link will be deleted asynchronously."
+          },
+          "204": {
+            "description": "The Extender link does not exist."
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/extenders/{extenderName}/listSecrets": {
+      "post": {
+        "description": "Lists secrets values for the specified Extender resource",
+        "operationId": "Extenders_listSecrets",
+        "produces": [
+          "application/json"
+        ],
+        "tags": [
+          "Extenders"
+        ],
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "openapi.json#/parameters/RootScopeParam"
+          },
+          {
+            "$ref": "#/parameters/ExtenderNameParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Extender secrets",
+            "schema": {
+              "$ref": "#/definitions/ExtenderListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "Error response describing the reason for operation failure",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "ExtenderList": {
+      "description": "Object that includes an array of Extender and a possible link for next set",
+      "type": "object",
+      "properties": {
+        "value": {
+          "description": "List of Extender resources",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ExtenderResponseResource"
+          }
+        },
+        "nextLink": {
+          "description": "The link used to fetch the next page of Extender list.",
+          "type": "string"
+        }
+      }
+    },
+    "ExtenderResource": {
+      "description": "Extender link",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/ExtenderProperties"
+        }
+      }
+    },
+    "ExtenderResponseResource": {
+      "description": "Extender link",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ],
+      "required": [
+        "properties"
+      ],
+      "properties": {
+        "properties": {
+          "x-ms-client-flatten": true,
+          "$ref": "#/definitions/ExtenderResponseProperties"
+        }
+      }
+    },
+    "ExtenderListSecretsResult": {
+      "description": "The secret values for the given Extender resource",
+      "$ref": "#/definitions/ExtenderSecrets"
+    },
+    "ExtenderSecrets": {
+      "description": "The secret values for the given Extender resource",
+      "additionalProperties": true,
+      "properties": {}
+    },
+    "ExtenderResponseProperties": {
+      "description": "Extender link properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "openapi.json#/definitions/BasicResourceProperties"
+        }
+      ],
+      "additionalProperties": true,
+      "properties": {
+        "provisioningState": {
+          "readOnly": true,
+          "$ref": "openapi.json#/definitions/ProvisioningState",
+          "description": "Provisioning state of the extender link at the time the operation was called"
+        }
+      },
+      "required": [
+        "environment"
+      ]
+    },
+    "ExtenderProperties": {
+      "description": "Extender link properties",
+      "type": "object",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ExtenderResponseProperties"
+        }
+      ],
+      "properties": {
+        "secrets": {
+          "additionalProperties": true,
+          "$ref": "#/definitions/ExtenderSecrets"
+        }
+      }
+    }
+  },
+  "parameters": {
+    "ExtenderNameParameter": {
+      "description": "The name of the Extender link resource",
+      "name": "extenderName",
+      "in": "path",
+      "required": true,
+      "type": "string",
+      "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
+      "x-ms-parameter-location": "method"
+    }
+  }
+}

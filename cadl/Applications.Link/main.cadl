@@ -1,0 +1,16 @@
+import "@cadl-lang/rest";
+import "@cadl-lang/openapi";
+import "@azure-tools/cadl-autorest";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+
+import "./mongoDatabases.cadl";
+import "./sqlDatabases.cadl";
+import "./redisCaches.cadl";
+import "./rabbitMQMessageQueues.cadl";
+import "./daprInvokeHttpRoutes.cadl";
+import "./daprSecretStores.cadl";
+import "./daprStateStores.cadl";
+import "./daprPubSubBrokers.cadl";
+// Extender app model spec is not generated using cadl as "additionalPropertis" property is not supported by cadl.
+//import "./extenders.cadl";

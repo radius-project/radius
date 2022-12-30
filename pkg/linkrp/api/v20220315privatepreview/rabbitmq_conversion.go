@@ -79,7 +79,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	dst.Tags = *to.StringMapPtr(rabbitmq.Tags)
 	switch rabbitmq.Properties.Mode {
 	case datamodel.LinkModeValues:
-		mode := RabbitMQMessageQueuePropertiesModeValues
+		mode := "values"
 		dst.Properties = &ValuesRabbitMQMessageQueueProperties{
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(rabbitmq.Properties.Status.OutputResources),
@@ -91,7 +91,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 			Queue:             to.StringPtr(rabbitmq.Properties.Queue),
 		}
 	case datamodel.LinkModeRecipe:
-		mode := RabbitMQMessageQueuePropertiesModeRecipe
+		mode := "recipe"
 		var recipe *Recipe
 		recipe = fromRecipeDataModel(rabbitmq.Properties.Recipe)
 		dst.Properties = &RecipeRabbitMQMessageQueueProperties{
@@ -111,7 +111,7 @@ func (dst *RabbitMQMessageQueueResource) ConvertFrom(src conv.DataModelInterface
 	return nil
 }
 
-// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitMQSecrets instance.
+// ConvertFrom converts from version-agnostic datamodel to the versioned RabbitmqSecrets instance.
 func (dst *RabbitMQSecrets) ConvertFrom(src conv.DataModelInterface) error {
 	rabbitMQSecrets, ok := src.(*datamodel.RabbitMQSecrets)
 	if !ok {

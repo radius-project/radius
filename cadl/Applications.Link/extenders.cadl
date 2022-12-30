@@ -8,6 +8,7 @@ import "@cadl-lang/versioning";
 import "@azure-tools/cadl-providerhub";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
+import "@cadl-lang/openapi";
 
 // These files allow the use of {rootScope} in the generated paths with a custom resourceOperations object
 import "../customRootScope.cadl";
@@ -20,9 +21,12 @@ using Cadl.Rest;
 using Cadl.Versioning;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
+using OpenAPI;
 
-@armNamespace
-@serviceTitle("Applications.Link Management APIs")
+@service({
+  title: "Applications.Link Management APIs",
+  version: "2022-03-15-privatepreview",
+})
 @doc("REST API for Applications.Link Extender Resource")
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Applications.Link;
@@ -35,20 +39,9 @@ model ExtenderResource is TrackedResource<ExtenderProperties> {
   @key("extenderName")
   @path
   @segment("extenders")
+  @extension("x-ms-parameter-location", "method")
   name: string;
 }
-
-@doc("Extender link")
-model ExtenderResponseResource is TrackedResource<ExtenderResponseProperties> {
-  @doc("Extender name")
-  @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-  @key("extenderName")
-  @path
-  @segment("extenders")
-  name: string;
-}
-
 @doc("The secret values for the given Extender resource")
 model ExtenderListSecretsResult is ExtenderSecrets;
 
@@ -56,35 +49,32 @@ model ExtenderListSecretsResult is ExtenderSecrets;
 model ExtenderSecrets {}
 
 @doc("Extender link properties")
-model ExtenderResponseProperties extends BasicResourceProperties {
+model ExtenderProperties extends BasicResourceProperties {
   @doc("Provisioning state of the extender link at the time the operation was called")
   @visibility("read")
   provisioningState?: ProvisioningState;
 
-  @doc("Fully qualified resource ID for the environment that the link is linked to")
-  environment: string;
-
-  @doc("Fully qualified resource ID for the application that the link is consumed by")
-  application?: Application;
-}
-
-@doc("Extender link properties")
-model ExtenderProperties extends ExtenderResponseProperties {
   @doc("The secrets value for the resource")
   secrets?: ExtenderSecrets;
 }
 
+#suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
 @doc("Lists secrets values for the specified Extender resource")
 @route("/{rootScope}/providers/Applications.Link/extenders/{extenderName}/listSecrets")
-op post(@path rootScope: RootScopeParam, @path extenderName: string): {
-  @statusCode statusCode: 200;
-  schema: ExtenderListSecretsResult;
-} | ErrorResponse;
+op Extenders_listSecrets(
+  ...ApiVersionParameter,
+  ...RootScopeParam,
+  @doc("The name of the Extender link resource")
+  @maxLength(63)
+  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @path
+  @extension("x-ms-parameter-location", "method")
+  extenderName: string): ArmResponse<ExtenderListSecretsResult> | ErrorResponse;
 
 @armResourceOperations
 interface Extenders
   extends Radius.RootScopeResourceOperations<
-      ExtenderResponseResource,
-      ExtenderResponseProperties,
+      ExtenderResource,
+      ExtenderProperties,
       RootScopeParam
     > {}

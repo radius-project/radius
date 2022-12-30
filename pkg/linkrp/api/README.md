@@ -34,19 +34,11 @@ These settings apply only when `--tag=link-2022-03-15-privatepreview` is specifi
 
 ```yaml $(tag) == 'link-2022-03-15-privatepreview'
 input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprSecretStores.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/sqlDatabases.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/redisCaches.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/daprStateStores.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/extenders.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/extenders.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
-
 ### Common
 
 The following configuration generates track2 go models and client.
