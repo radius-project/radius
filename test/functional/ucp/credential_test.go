@@ -22,11 +22,10 @@ import (
 
 func Test_Azure_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_Azure_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		credentialResourceID := "/planes/azure/azurecloud/providers/System.Azure/credentials/default"
-		credentialCollectionID := "/planes/azure/azurecloud/providers/System.Azure/credentials"
-		credentialResourceURL := fmt.Sprintf("%s%s?api-version=%s", url, credentialResourceID, ucp.Version)
-		credentialCollectionURL := fmt.Sprintf("%s%s?api-version=%s", url, credentialCollectionID, ucp.Version)
-		credentialOperations(t, credentialResourceURL, credentialCollectionURL, roundTripper, getAzureCredentialObject())
+		resourceTypePath := "/planes/azure/azurecloud/providers/System.Azure/credentials"
+		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
+		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
+		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAzureCredentialObject())
 	})
 
 	test.Test(t)
@@ -34,17 +33,16 @@ func Test_Azure_Credential_Operations(t *testing.T) {
 
 func Test_AWS_Credential_Operations(t *testing.T) {
 	test := NewUCPTest(t, "Test_AWS_Credential_Operations", func(t *testing.T, url string, roundTripper http.RoundTripper) {
-		credentialResourceID := "/planes/aws/awscloud/providers/System.AWS/credentials/default"
-		credentialCollectionID := "/planes/aws/awscloud/providers/System.AWS/credentials"
-		credentialResourceURL := fmt.Sprintf("%s%s?api-version=%s", url, credentialResourceID, ucp.Version)
-		credentialCollectionURL := fmt.Sprintf("%s%s?api-version=%s", url, credentialCollectionID, ucp.Version)
-		credentialOperations(t, credentialResourceURL, credentialCollectionURL, roundTripper, getAWSCredentialObject())
+		resourceTypePath := "/planes/aws/awscloud/providers/System.AWS/credentials"
+		resourceURL := fmt.Sprintf("%s%s/default?api-version=%s", url, resourceTypePath, ucp.Version)
+		collectionURL := fmt.Sprintf("%s%s?api-version=%s", url, resourceTypePath, ucp.Version)
+		runCredentialTests(t, resourceURL, collectionURL, roundTripper, getAWSCredentialObject())
 	})
 
 	test.Test(t)
 }
 
-func credentialOperations(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, credential ucp.CredentialResource) {
+func runCredentialTests(t *testing.T, resourceUrl string, collectionUrl string, roundTripper http.RoundTripper, credential ucp.CredentialResource) {
 	// Create credential operation
 	createCredential(t, roundTripper, resourceUrl, credential)
 	// Create duplicate credential
@@ -73,10 +71,7 @@ func credentialOperations(t *testing.T, resourceUrl string, collectionUrl string
 func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, credential ucp.CredentialResource) {
 	body, err := json.Marshal(credential)
 	require.NoError(t, err)
-	createRequest, err := http.NewRequest(
-		http.MethodPut,
-		url,
-		bytes.NewBuffer(body))
+	createRequest, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(body))
 	require.NoError(t, err, "")
 
 	res, err := roundTripper.RoundTrip(createRequest)
@@ -87,11 +82,7 @@ func createCredential(t *testing.T, roundTripper http.RoundTripper, url string, 
 }
 
 func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (ucp.CredentialResource, int) {
-	getCredentialRequest, err := http.NewRequest(
-		http.MethodGet,
-		url,
-		nil,
-	)
+	getCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err, "")
 
 	result, err := roundTripper.RoundTrip(getCredentialRequest)
@@ -110,11 +101,7 @@ func getCredential(t *testing.T, roundTripper http.RoundTripper, url string) (uc
 }
 
 func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) (int, error) {
-	deleteCredentialRequest, err := http.NewRequest(
-		http.MethodDelete,
-		url,
-		nil,
-	)
+	deleteCredentialRequest, err := http.NewRequest(http.MethodDelete, url, nil)
 	require.NoError(t, err, "")
 
 	res, err := roundTripper.RoundTrip(deleteCredentialRequest)
@@ -122,11 +109,7 @@ func deleteCredential(t *testing.T, roundTripper http.RoundTripper, url string) 
 }
 
 func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []ucp.CredentialResource {
-	listCredentialRequest, err := http.NewRequest(
-		http.MethodGet,
-		url,
-		nil,
-	)
+	listCredentialRequest, err := http.NewRequest(http.MethodGet, url, nil)
 	require.NoError(t, err, "")
 
 	res, err := roundTripper.RoundTrip(listCredentialRequest)
@@ -135,12 +118,13 @@ func listCredential(t *testing.T, roundTripper http.RoundTripper, url string) []
 }
 
 func getCredentialList(t *testing.T, res *http.Response) []ucp.CredentialResource {
-	var data map[string]interface{}
 	body := res.Body
 	defer body.Close()
+
+	var data map[string]any
 	err := json.NewDecoder(body).Decode(&data)
 	require.NoError(t, err)
-	list, ok := data["value"].([]interface{})
+	list, ok := data["value"].([]any)
 	require.Equal(t, ok, true)
 	var credentialList []ucp.CredentialResource
 	for _, item := range list {
