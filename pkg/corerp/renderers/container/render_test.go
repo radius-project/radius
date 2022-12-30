@@ -271,6 +271,12 @@ func Test_Render_Basic(t *testing.T) {
 		require.Equal(t, labels, deployment.Spec.Template.Labels)
 		require.Equal(t, matchLabels, deployment.Spec.Selector.MatchLabels)
 
+		// See https://github.com/project-radius/radius/issues/3002
+		//
+		// We disable service links and rely on Radius' connections feature instead.
+		require.NotNil(t, deployment.Spec.Template.Spec.EnableServiceLinks)
+		require.False(t, *deployment.Spec.Template.Spec.EnableServiceLinks)
+
 		require.Len(t, deployment.Spec.Template.Spec.Containers, 1)
 
 		container := deployment.Spec.Template.Spec.Containers[0]
@@ -486,7 +492,6 @@ func Test_Render_Connections(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -584,7 +589,6 @@ func Test_RenderConnections_DisableDefaultEnvVars(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -637,7 +641,6 @@ func Test_Render_Connections_SecretsGetHashed(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -692,7 +695,6 @@ func Test_Render_ConnectionWithRoleAssignment(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -956,7 +958,6 @@ func Test_Render_EphemeralVolumes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID:     makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition:     map[string]interface{}{},
 			ComputedValues: map[string]interface{}{},
 		},
 	}
@@ -1032,9 +1033,6 @@ func Test_Render_PersistentAzureFileShareVolumes(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		testResourceID: {
 			ResourceID: resourceID,
-			Definition: map[string]interface{}{
-				"kind": "azure.com.fileshare",
-			},
 			ComputedValues: map[string]interface{}{
 				"azurestorageaccountname": "accountname",
 				"azurestorageaccountkey":  "storagekey",
@@ -1219,7 +1217,6 @@ func Test_Render_ReadinessProbeHttpGet(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1296,7 +1293,6 @@ func Test_Render_ReadinessProbeTcp(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1366,7 +1362,6 @@ func Test_Render_LivenessProbeExec(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,
@@ -1426,7 +1421,6 @@ func Test_Render_LivenessProbeWithDefaults(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, "SomeProvider/ResourceType", "A").String()): {
 			ResourceID: makeResourceID(t, "SomeProvider/ResourceType", "A"),
-			Definition: map[string]interface{}{},
 			ComputedValues: map[string]interface{}{
 				"ComputedKey1": "ComputedValue1",
 				"ComputedKey2": 82,

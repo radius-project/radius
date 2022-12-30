@@ -33,8 +33,9 @@ type EnvironmentProperties struct {
 
 // EnvironmentRecipeProperties represents the properties of environment's recipe.
 type EnvironmentRecipeProperties struct {
-	LinkType     string `json:"linkType,omitempty"`
-	TemplatePath string `json:"templatePath,omitempty"`
+	LinkType     string                 `json:"linkType,omitempty"`
+	TemplatePath string                 `json:"templatePath,omitempty"`
+	Parameters   map[string]interface{} `json:"parameters,omitempty"`
 }
 
 // Providers represents configs for providers for the environment, eg azure

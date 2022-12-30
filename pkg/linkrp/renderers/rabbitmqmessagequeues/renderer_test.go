@@ -33,10 +33,12 @@ func Test_Render_User_Secrets(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.RabbitMQMessageQueue{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
-			Name: "queue0",
-			Type: "Applications.Link/rabbitMQMessageQueues",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
+				Name: "queue0",
+				Type: "Applications.Link/rabbitMQMessageQueues",
+			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -73,10 +75,12 @@ func Test_Render_NoQueueSpecified(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.RabbitMQMessageQueue{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
-			Name: "queue0",
-			Type: "Applications.Link/rabbitMQMessageQueues",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
+				Name: "queue0",
+				Type: "Applications.Link/rabbitMQMessageQueues",
+			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{
@@ -97,10 +101,12 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 
 	resource := datamodel.RabbitMQMessageQueue{
-		TrackedResource: v1.TrackedResource{
-			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
-			Name: "queue0",
-			Type: "Applications.Link/rabbitMQMessageQueues",
+		BaseResource: v1.BaseResource{
+			TrackedResource: v1.TrackedResource{
+				ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/Applications.Link/rabbitMQMessageQueues/queue0",
+				Name: "queue0",
+				Type: "Applications.Link/rabbitMQMessageQueues",
+			},
 		},
 		Properties: datamodel.RabbitMQMessageQueueProperties{
 			BasicResourceProperties: rp.BasicResourceProperties{

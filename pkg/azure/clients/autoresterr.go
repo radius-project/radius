@@ -62,12 +62,3 @@ func Is404Error(err error) bool {
 
 	return false
 }
-
-func IsLongRunning404(err error, future azure.FutureAPI) bool {
-	if Is404Error(err) {
-		return true
-	}
-
-	response := future.Response()
-	return response != nil && response.StatusCode == 404
-}

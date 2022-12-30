@@ -11,8 +11,15 @@ import (
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
+	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
+	"github.com/project-radius/radius/pkg/ucp/datamodel"
+	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	awsproxy_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/awsproxy"
+	aws_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/aws"
+	azure_credential_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/credentials/azure"
 	kubernetes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/kubernetes"
 	planes_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/planes"
 	resourcegroups_ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller/resourcegroups"
@@ -23,17 +30,21 @@ import (
 
 // TODO: Use variables and construct the path as we add more APIs.
 const (
-	planeCollectionPath       = "/planes"
-	awsPlaneType              = "/planes/aws"
-	planeItemPath             = "/planes/{planeType}/{planeName}"
-	planeCollectionByType     = "/planes/{planeType}"
-	awsOperationResultsPath   = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
-	awsOperationStatusesPath  = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
-	awsResourceCollectionPath = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
-	awsResourcePath           = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
-	putPath                   = "put"
-	getPath                   = "get"
-	deletePath                = "delete"
+	planeCollectionPath           = "/planes"
+	awsPlaneType                  = "/planes/aws"
+	planeItemPath                 = "/planes/{planeType}/{planeName}"
+	planeCollectionByType         = "/planes/{planeType}"
+	awsOperationResultsPath       = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationResults/{operationID}"
+	awsOperationStatusesPath      = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/locations/{Location}/operationStatuses/{operationID}"
+	awsResourceCollectionPath     = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}"
+	awsResourcePath               = "/{AWSPlaneName}/accounts/{AccountID}/regions/{Region}/providers/{Provider}/{ResourceType}/{ResourceName}"
+	putPath                       = "put"
+	getPath                       = "get"
+	deletePath                    = "delete"
+	azureCredentialCollectionPath = "/planes/azure/{planeName}/providers/{Provider}/{ResourceType}"
+	azureCredentialResourcePath   = "/planes/azure/{planeName}/providers/{Provider}/{ResourceType}/{ResourceName}"
+	awsCredentialCollectionPath   = "/planes/aws/{planeName}/providers/{Provider}/{ResourceType}"
+	awsCredentialResourcePath     = "/planes/aws/{planeName}/providers/{Provider}/{ResourceType}/{ResourceName}"
 )
 
 // Register registers the routes for UCP
@@ -93,6 +104,11 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	awsPutResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, putPath)).Subrouter()
 	awsGetResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, getPath)).Subrouter()
 	awsDeleteResourceSubRouter := awsResourcesSubRouter.Path(fmt.Sprintf("%s/:%s", awsResourceCollectionPath, deletePath)).Subrouter()
+
+	azureCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, azureCredentialCollectionPath)).Subrouter()
+	azureCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, azureCredentialResourcePath)).Subrouter()
+	awsCredentialCollectionSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialCollectionPath)).Subrouter()
+	awsCredentialResourceSubRouter := router.Path(fmt.Sprintf("%s%s", baseURL, awsCredentialResourcePath)).Subrouter()
 
 	handlerOptions = append(handlerOptions, []ctrl.HandlerOptions{
 		// Planes resource handler registration.
@@ -190,6 +206,81 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			HandlerFactory: awsproxy_ctrl.NewDeleteAWSResourceWithPost,
 		},
 
+		// Azure Credential Handlers
+		{
+			ParentRouter: azureCredentialCollectionSubRouter,
+			ResourceType: v20220901privatepreview.AzureCredentialType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+					frontend_ctrl.ResourceOptions[datamodel.Credential]{
+						RequestConverter:  converter.CredentialDataModelFromVersioned,
+						ResponseConverter: converter.CredentialDataModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: azureCredentialResourceSubRouter,
+			ResourceType: v20220901privatepreview.AzureCredentialType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+					frontend_ctrl.ResourceOptions[datamodel.Credential]{
+						RequestConverter:  converter.CredentialDataModelFromVersioned,
+						ResponseConverter: converter.CredentialDataModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter:   azureCredentialResourceSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: azure_credential_ctrl.NewCreateOrUpdateCredential,
+		},
+		{
+			ParentRouter:   azureCredentialResourceSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: azure_credential_ctrl.NewDeleteCredential,
+		},
+
+		// AWS Credential Handlers
+		{
+			ParentRouter: awsCredentialCollectionSubRouter,
+			ResourceType: v20220901privatepreview.AWSCredentialType,
+			Method:       v1.OperationList,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewListResources(opt.CommonControllerOptions,
+					frontend_ctrl.ResourceOptions[datamodel.Credential]{
+						RequestConverter:  converter.CredentialDataModelFromVersioned,
+						ResponseConverter: converter.CredentialDataModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter: awsCredentialResourceSubRouter,
+			ResourceType: v20220901privatepreview.AWSCredentialType,
+			Method:       v1.OperationGet,
+			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
+				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
+					frontend_ctrl.ResourceOptions[datamodel.Credential]{
+						RequestConverter:  converter.CredentialDataModelFromVersioned,
+						ResponseConverter: converter.CredentialDataModelToVersioned,
+					},
+				)
+			},
+		},
+		{
+			ParentRouter:   awsCredentialResourceSubRouter,
+			Method:         v1.OperationPut,
+			HandlerFactory: aws_credential_ctrl.NewCreateOrUpdateCredential,
+		},
+		{
+			ParentRouter:   awsCredentialResourceSubRouter,
+			Method:         v1.OperationDelete,
+			HandlerFactory: aws_credential_ctrl.NewDeleteCredential,
+		},
 		// Proxy request should take the least priority in routing and should therefore be last
 		{
 			// Note that the API validation is not applied to the router used for proxying

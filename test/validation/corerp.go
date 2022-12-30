@@ -6,6 +6,7 @@ package validation
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
@@ -39,9 +40,17 @@ const (
 )
 
 type CoreRPResource struct {
-	Type string
-	Name string
-	App  string
+	Type            string
+	Name            string
+	App             string
+	OutputResources []OutputResourceResponse
+}
+
+// Output resource fields returned as a part of get/list response payload for Radius resources
+// https://github.com/project-radius/radius/blob/main/pkg/rp/types.go#L173
+type OutputResourceResponse struct {
+	LocalID  string
+	Provider string
 }
 
 type CoreRPResourceSet struct {
@@ -76,42 +85,64 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 }
 
 func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
-	for _, resource := range expected.Resources {
-		if resource.Type == EnvironmentsResource {
+	for _, expectedResource := range expected.Resources {
+		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
 			require.NoError(t, err)
 			require.NotEmpty(t, envs)
 
 			found := false
 			for _, env := range envs {
-				if *env.Name == resource.Name {
+				if *env.Name == expectedResource.Name {
 					found = true
-					continue
+					break
 				}
 			}
 
-			require.True(t, found, fmt.Sprintf("environment %s was not found", resource.Name))
-		} else if resource.Type == ApplicationsResource {
+			require.True(t, found, fmt.Sprintf("environment %s was not found", expectedResource.Name))
+		} else if expectedResource.Type == ApplicationsResource {
 			apps, err := client.ListApplications(ctx)
 			require.NoError(t, err)
 			require.NotEmpty(t, apps)
 
 			found := false
 			for _, app := range apps {
-				if *app.Name == resource.Name {
+				if *app.Name == expectedResource.Name {
 					found = true
-					continue
+					break
 				}
 			}
 
-			require.True(t, found, fmt.Sprintf("application %s was not found", resource.Name))
+			require.True(t, found, fmt.Sprintf("application %s was not found", expectedResource.Name))
 		} else {
-			res, err := client.ShowResource(ctx, resource.Type, resource.Name)
+			res, err := client.ShowResource(ctx, expectedResource.Type, expectedResource.Name)
 			require.NoError(t, err)
-			require.NotNil(t, res, "resource %s with type %s does not exist", resource.Name, resource.Type)
+			require.NotNil(t, res, "resource %s with type %s does not exist", expectedResource.Name, expectedResource.Type)
 
-			if resource.App != "" {
-				require.True(t, strings.HasSuffix(res.Properties["application"].(string), resource.App), "resource %s with type %s was not found in application %s", resource.Name, resource.Type, resource.App)
+			if expectedResource.App != "" {
+				require.True(t, strings.HasSuffix(res.Properties["application"].(string), expectedResource.App), "resource %s with type %s was not found in application %s", expectedResource.Name, expectedResource.Type, expectedResource.App)
+			}
+
+			// Validate expected output resources are present in the response
+			if len(expectedResource.OutputResources) > 0 {
+				bytes, err := json.Marshal(res.Properties["status"])
+				require.NoError(t, err)
+
+				var outputResourcesMap map[string][]OutputResourceResponse
+				err = json.Unmarshal(bytes, &outputResourcesMap)
+				require.NoError(t, err)
+				outputResources := outputResourcesMap["outputResources"]
+				require.Equalf(t, len(expectedResource.OutputResources), len(outputResources), "expected output resources: %v, actual: %v", expectedResource.OutputResources, outputResources)
+				for _, expectedOutputResource := range expectedResource.OutputResources {
+					found := false
+					for _, actualOutputResource := range outputResources {
+						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
+							found = true
+							break
+						}
+					}
+					require.Truef(t, found, "expected output resource %v wasn't found", expectedOutputResource)
+				}
 			}
 		}
 	}

@@ -128,7 +128,7 @@ func (redis *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseW
 		return nil, err
 	}
 
-	versioned, err := converter.RedisCacheDataModelToVersioned(redisResponse, serviceCtx.APIVersion, false)
+	versioned, err := converter.RedisCacheDataModelToVersioned(redisResponse, serviceCtx.APIVersion)
 	if err != nil {
 		return nil, err
 	}
