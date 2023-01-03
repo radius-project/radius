@@ -21,8 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const testHeaderfile = "operationstatus_requestheaders.json"
-
 func TestGetOperationStatusRun(t *testing.T) {
 	mctrl := gomock.NewController(t)
 	defer mctrl.Finish()
@@ -40,7 +38,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -63,7 +61,7 @@ func TestGetOperationStatusRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.

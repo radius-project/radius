@@ -54,8 +54,11 @@ type ResourceOptions[T any] struct {
 	// ResponseConverter is the response converter.
 	ResponseConverter conv.ConvertToAPIModel[T]
 
-	// RequestValidator is the request validator.
-	RequestValidator ValidateRequest[T]
+	// DeleteFilters is a slice of filters that execute prior to deleting a resource.
+	DeleteFilters []DeleteFilter[T]
+
+	// UpdateFilters is a slice of filters that execute prior to updating a resource.
+	UpdateFilters []UpdateFilter[T]
 }
 
 // TODO: Remove Controller when all controller uses Operation
@@ -181,5 +184,20 @@ func BuildTrackedResource(ctx context.Context) v1.TrackedResource {
 	return trackedResource
 }
 
-// ValidateRequest function is used to validate the request.
-type ValidateRequest[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)
+// DeleteFilter is a function that is executed as part of the controller lifecycle. DeleteFilters can be used to:
+//
+// - Block deletion of a resource based on some arbitrary condition.
+//
+// DeleteFilters should return a rest.Response to handle the request without allowing deletion to occur. Any
+// errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
+type DeleteFilter[T any] func(ctx context.Context, oldResource *T, options *Options) (rest.Response, error)
+
+// UpdateFilter is a function that is executed as part of the controller lifecycle. UpdateFilters can be used to:
+//
+// - Set internal state of a resource data model prior to saving.
+// - Perform semantic validation based on the old state of a resource.
+// - Perform semantic validation based on external state.
+//
+// UpdateFilters should return a rest.Response to handle the request without allowing updates to occur. Any
+// errors returned will be treated as "unhandled" and logged before sending back an HTTP 500.
+type UpdateFilter[T any] func(ctx context.Context, newResource *T, oldResource *T, options *Options) (rest.Response, error)
