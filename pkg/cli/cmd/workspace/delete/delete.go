@@ -94,7 +94,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		message := fmt.Sprintf(deleteConfirmationFmt, r.Workspace.Name)
-		confirmed, err := r.InputPrompter.GetListInput([]string{"yes", "no"}, message)
+		confirmed, err := prompt.YesOrNoPrompt(message, r.InputPrompter)
 		if err != nil {
 			return err
 		}

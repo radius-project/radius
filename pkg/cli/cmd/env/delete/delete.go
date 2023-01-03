@@ -120,7 +120,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		confirmed, err := r.InputPrompter.GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, r.EnvironmentName))
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), r.InputPrompter)
 		if err != nil {
 			return err
 		}

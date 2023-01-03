@@ -92,9 +92,9 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
 	if !r.Confirmation {
-		confirmed, err := r.InputPrompter.GetListInput(
-			[]string{"yes", "no"},
-			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName))
+		confirmed, err := prompt.YesOrNoPrompt(
+			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
+			r.InputPrompter)
 		if err != nil {
 			return err
 		}

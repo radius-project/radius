@@ -284,3 +284,9 @@ func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (
 
 	return lm.Choice, nil
 }
+
+// Creates a Yes or No prompts where user has to select either a Yes or No as input
+func YesOrNoPrompt(promptMsg string, prompter BubbleTeaPrompter) (string, error) {
+	
+	return prompter.GetListInput([]string{"yes","no"}, promptMsg)
+}
