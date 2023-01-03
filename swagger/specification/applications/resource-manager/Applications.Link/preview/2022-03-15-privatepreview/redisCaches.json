@@ -323,6 +323,13 @@
         "password": {
           "description": "The password for this Redis cache instance",
           "type": "string"
+        },
+        "url": {
+          "description": "The URL used to connect to the Redis cache",
+          "type": "string",
+          "example": [
+            "rediss://username:password@redis.default.svc.cluster.local:6379"
+          ]
         }
       }
     },

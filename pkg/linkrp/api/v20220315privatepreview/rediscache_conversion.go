@@ -21,7 +21,8 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RedisCache{
 		BaseResource: v1.BaseResource{
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
 			},
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -36,7 +37,6 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Environment: to.String(src.Properties.GetRedisCacheProperties().Environment),
 				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -53,6 +53,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
 				Password:         to.String(v.Secrets.Password),
+				URL:              to.String(v.Secrets.URL),
 			}
 		}
 	case *RecipeRedisCacheProperties:
@@ -70,6 +71,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
 				Password:         to.String(v.Secrets.Password),
+				URL:              to.String(v.Secrets.URL),
 			}
 		}
 	case *ValuesRedisCacheProperties:
@@ -84,6 +86,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			converted.Properties.Secrets = datamodel.RedisCacheSecrets{
 				ConnectionString: to.String(v.Secrets.ConnectionString),
 				Password:         to.String(v.Secrets.Password),
+				URL:              to.String(v.Secrets.URL),
 			}
 		}
 	default:
@@ -118,14 +121,14 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
 	case datamodel.LinkModeValues:
 		var mode RedisCachePropertiesMode
 		mode = RedisCachePropertiesModeValues
-		dst.Properties = &ResourceRedisCacheProperties{
+		dst.Properties = &ValuesRedisCacheProperties{
 			Mode:     &mode,
 			Host:     to.StringPtr(redis.Properties.Host),
 			Port:     to.Int32Ptr(redis.Properties.Port),
@@ -133,7 +136,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
@@ -149,7 +152,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
@@ -168,6 +171,7 @@ func (dst *RedisCacheSecrets) ConvertFrom(src conv.DataModelInterface) error {
 
 	dst.ConnectionString = to.StringPtr(redisSecrets.ConnectionString)
 	dst.Password = to.StringPtr(redisSecrets.Password)
+	dst.URL = to.StringPtr(redisSecrets.URL)
 
 	return nil
 }
@@ -177,6 +181,7 @@ func (src *RedisCacheSecrets) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RedisCacheSecrets{
 		ConnectionString: to.String(src.ConnectionString),
 		Password:         to.String(src.Password),
+		URL:              to.String(src.URL),
 	}
 	return converted, nil
 }

@@ -88,9 +88,9 @@ func main() {
 	var connOpts *hostoptions.HostOptions
 	if runLink && linkConfigFile != "" {
 		logger.Info("Run Applications.Link.")
-		var connSvcs []hosting.Service
-		connSvcs, connOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
-		hostingSvc = append(hostingSvc, connSvcs...)
+		var linkSvcs []hosting.Service
+		linkSvcs, connOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
+		hostingSvc = append(hostingSvc, linkSvcs...)
 	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&

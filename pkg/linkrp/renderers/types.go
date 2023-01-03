@@ -20,6 +20,7 @@ const (
 	ConnectionStringValue = "connectionString"
 	DatabaseNameValue     = "database"
 	ServerNameValue       = "server"
+	URLValue              = "url"
 	UsernameStringValue   = "username"
 	PasswordStringHolder  = "password"
 	Host                  = "host"

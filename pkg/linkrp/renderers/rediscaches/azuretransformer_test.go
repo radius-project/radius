@@ -16,7 +16,7 @@ import (
 
 func Test_Transform_Success(t *testing.T) {
 	ctx := context.Background()
-	redisTransformer := AzureTransformer{}
+	redisTransformer := AzureConnectionStringTransformer{}
 
 	testComputedValues := map[string]interface{}{
 		renderers.Host: "test-hostname",
@@ -32,7 +32,7 @@ func Test_Transform_Success(t *testing.T) {
 
 func Test_Transform_Error(t *testing.T) {
 	ctx := context.Background()
-	redisTransformer := AzureTransformer{}
+	redisTransformer := AzureConnectionStringTransformer{}
 
 	testCases := []struct {
 		description        string

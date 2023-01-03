@@ -50,6 +50,6 @@ planes:
 # Metrics configuration
 metricsProvider:
   prometheus:
-    enabled: true
+    enabled: false
     path: "/metrics"
     port: 2222

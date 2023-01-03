@@ -83,9 +83,11 @@ func NewARMCredential() (azcore.TokenCredential, error) {
 			os.Getenv("AZURE_TENANT_ID"),
 			os.Getenv("AZURE_CLIENT_ID"),
 			os.Getenv("AZURE_CLIENT_SECRET"), nil)
+	} else if authMethod == ManagedIdentityAuth {
+		return azidentity.NewManagedIdentityCredential(nil)
+	} else {
+		return azidentity.NewAzureCLICredential(nil)
 	}
-
-	return nil, nil
 }
 
 // GetArmAuthorizer returns an ARM authorizer and the client ID for the current process

@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // RedisCache represents RedisCache link resource.
@@ -29,6 +30,18 @@ func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
 	return redisSecrets == RedisCacheSecrets{}
 }
 
+func (redis RedisCache) ApplyDeploymentOutput(deploymentOutput rp.DeploymentOutput) {
+	// TODO: fill this in when I understand how it's used.
+}
+
+func (redis RedisCache) OutputResources() []outputresource.OutputResource {
+	return redis.Properties.Status.OutputResources
+}
+
+func (redis RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
+	return &redis.Properties.BasicResourceProperties
+}
+
 type RedisValuesProperties struct {
 	Host     string `json:"host,omitempty"`
 	Port     int32  `json:"port,omitempty"`
@@ -47,15 +60,15 @@ type RedisCacheProperties struct {
 	RedisValuesProperties
 	RedisResourceProperties
 	RedisRecipeProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Secrets           RedisCacheSecrets    `json:"secrets,omitempty"`
-	Mode              LinkMode             `json:"mode"`
+	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
+	Mode    LinkMode          `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource
 type RedisCacheSecrets struct {
 	ConnectionString string `json:"connectionString"`
 	Password         string `json:"password"`
+	URL              string `json:"url"`
 }
 
 func (redis RedisCacheSecrets) ResourceTypeName() string {

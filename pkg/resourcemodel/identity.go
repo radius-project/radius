@@ -23,6 +23,7 @@ import (
 // The RP will be able to support a resource only if the corresponding provider is configured with the RP
 const (
 	ProviderAzure      = "azure"
+	ProviderAWS        = "aws"
 	ProviderKubernetes = "kubernetes"
 )
 
@@ -54,6 +55,11 @@ var _ json.Unmarshaler = (*ResourceIdentity)(nil)
 type ARMIdentity struct {
 	ID         string `json:"id"`
 	APIVersion string `json:"apiVersion"`
+}
+
+// UCPIdentity uniquely identifies a UCP resource
+type UCPIdentity struct {
+	ID string `json:"id"`
 }
 
 // KubernetesIdentity uniquely identifies a Kubernetes resource
@@ -91,6 +97,18 @@ func NewARMIdentity(resourceType *ResourceType, id string, apiVersion string) Re
 	}
 }
 
+func NewUCPIdentity(resourceType *ResourceType, id string) ResourceIdentity {
+	return ResourceIdentity{
+		ResourceType: &ResourceType{
+			Type:     resourceType.Type,
+			Provider: resourceType.Provider,
+		},
+		Data: UCPIdentity{
+			ID: id,
+		},
+	}
+}
+
 func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objectMeta metav1.ObjectMeta) ResourceIdentity {
 	return ResourceIdentity{
 		ResourceType: &ResourceType{
@@ -103,6 +121,30 @@ func NewKubernetesIdentity(resourceType *ResourceType, obj runtime.Object, objec
 			Name:       objectMeta.Name,
 			Namespace:  objectMeta.Namespace,
 		},
+	}
+}
+
+func (r ResourceIdentity) GetID() string {
+	switch r.ResourceType.Provider {
+	case ProviderAzure:
+		id, _, _ := r.RequireARM()
+		return id
+	case ProviderAWS:
+		id, _ := r.RequireAWS()
+		return id
+	case ProviderKubernetes:
+		gvk, namespace, name, _ := r.RequireKubernetes()
+		group := gvk.Group
+		if group == "" {
+			group = "core"
+		}
+		if namespace == "" {
+			return fmt.Sprintf("/planes/kubernetes/local/providers/%s/%s/%s", group, gvk.Kind, name)
+		} else {
+			return fmt.Sprintf("/planes/kubernetes/local/namespaces/%s/providers/%s/%s/%s", namespace, group, gvk.Kind, name)
+		}
+	default:
+		return ""
 	}
 }
 
@@ -119,6 +161,21 @@ func (r ResourceIdentity) RequireARM() (string, string, error) {
 	}
 
 	return "", "", fmt.Errorf("expected an %q provider, was %q", ProviderAzure, r.ResourceType.Provider)
+}
+
+func (r ResourceIdentity) RequireAWS() (string, error) {
+	if r.ResourceType.Provider == ProviderAWS {
+		data, ok := r.Data.(UCPIdentity)
+		if !ok {
+			data = UCPIdentity{}
+			if err := store.DecodeMap(r.Data, &data); err != nil {
+				return "", err
+			}
+		}
+		return data.ID, nil
+	}
+
+	return "", fmt.Errorf("expected an %q provider, was %q", ProviderAWS, r.ResourceType.Provider)
 }
 
 func (r ResourceIdentity) RequireKubernetes() (schema.GroupVersionKind, string, string, error) {
@@ -145,6 +202,11 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 	case ProviderAzure:
 		a, _ := r.Data.(ARMIdentity)
 		b, _ := other.Data.(ARMIdentity)
+		return a == b
+
+	case ProviderAWS:
+		a, _ := r.Data.(UCPIdentity)
+		b, _ := other.Data.(UCPIdentity)
 		return a == b
 
 	case ProviderKubernetes:
@@ -175,6 +237,20 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 			radlogger.LogFieldResourceID, data.ID,
 			radlogger.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
 			radlogger.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
+			radlogger.LogFieldResourceType, id.Type(),
+			radlogger.LogFieldResourceName, id.QualifiedName(),
+		}
+
+	case ProviderAWS:
+		// We can't report an error here so this is best-effort.
+		data := r.Data.(UCPIdentity)
+		id, err := resources.ParseResource(data.ID)
+		if err != nil {
+			return []interface{}{radlogger.LogFieldResourceID, data.ID}
+		}
+
+		return []interface{}{
+			radlogger.LogFieldResourceID, data.ID,
 			radlogger.LogFieldResourceType, id.Type(),
 			radlogger.LogFieldResourceName, id.QualifiedName(),
 		}
@@ -217,6 +293,15 @@ func (r *ResourceIdentity) UnmarshalJSON(b []byte) error {
 		r.Data = identity
 		return nil
 
+	case ProviderAWS:
+		identity := UCPIdentity{}
+		err = json.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
 	case ProviderKubernetes:
 		identity := KubernetesIdentity{}
 		err = json.Unmarshal(data.Data, &identity)
@@ -252,6 +337,15 @@ func (r *ResourceIdentity) UnmarshalBSON(b []byte) error {
 	switch r.ResourceType.Provider {
 	case ProviderAzure:
 		identity := ARMIdentity{}
+		err = bson.Unmarshal(data.Data, &identity)
+		if err != nil {
+			return err
+		}
+		r.Data = identity
+		return nil
+
+	case ProviderAWS:
+		identity := UCPIdentity{}
 		err = bson.Unmarshal(data.Data, &identity)
 		if err != nil {
 			return err

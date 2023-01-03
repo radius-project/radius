@@ -1133,6 +1133,9 @@ type RedisCacheSecrets struct {
 
 	// The password for this Redis cache instance
 	Password *string `json:"password,omitempty"`
+
+	// The URL used to connect to the Redis cache
+	URL *string `json:"url,omitempty"`
 }
 
 // RedisCachesClientCreateOrUpdateOptions contains the optional parameters for the RedisCachesClient.CreateOrUpdate method.

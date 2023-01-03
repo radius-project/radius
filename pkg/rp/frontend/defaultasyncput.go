@@ -27,14 +27,15 @@ type DefaultAsyncPut[P interface {
 	rp.RadiusResourceModel
 }, T any] struct {
 	ctrl.Operation[P, T]
+	AsyncOperationTimeout time.Duration
 }
 
 // NewDefaultAsyncPut creates a new DefaultAsyncPut.
 func NewDefaultAsyncPut[P interface {
 	*T
 	rp.RadiusResourceModel
-}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
-	return &DefaultAsyncPut[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
+}, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (*DefaultAsyncPut[P, T], error) {
+	return &DefaultAsyncPut[P, T]{Operation: ctrl.NewOperation[P](opts, resourceOpts), AsyncOperationTimeout: defaultAsyncPutTimeout}, nil
 }
 
 // Run executes DefaultAsyncPut operation.

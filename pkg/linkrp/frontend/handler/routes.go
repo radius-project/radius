@@ -7,12 +7,14 @@ package handler
 
 import (
 	"context"
+	"time"
 
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	frontend_ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/server"
+	rp_ctrl "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/validator"
 	"github.com/project-radius/radius/swagger"
 
@@ -324,22 +326,42 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				op, err := rp_ctrl.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+					})
+				op.AsyncOperationTimeout = time.Minute * 30
+				return op, err
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rp_ctrl.NewDefaultAsyncPut(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+					})
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: redis_ctrl.NewDeleteRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rp_ctrl.NewDefaultAsyncDelete(opt,
+					frontend_ctrl.ResourceOptions[datamodel.RedisCache]{
+						RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+						ResponseConverter: converter.RedisCacheDataModelToVersioned,
+					})
+			},
 		},
 		{
 			ParentRouter:   redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),

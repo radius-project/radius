@@ -230,5 +230,12 @@ func (b *Operation[P, T]) ResponseConverter() conv.ConvertToAPIModel[T] {
 
 // RequestValidator returns the request validator function for this controller.
 func (b *Operation[P, T]) RequestValidator() ValidateRequest[T] {
-	return b.resourceOptions.RequestValidator
+	validator := b.resourceOptions.RequestValidator
+	if validator == nil {
+		return func(ctx context.Context, newResource, oldResource *T, options *Options) (rest.Response, error) {
+			return nil, nil
+		}
+	}
+
+	return validator
 }

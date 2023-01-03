@@ -1858,6 +1858,7 @@ func (r RedisCacheSecrets) MarshalJSON() ([]byte, error) {
 	objectMap := make(map[string]interface{})
 	populate(objectMap, "connectionString", r.ConnectionString)
 	populate(objectMap, "password", r.Password)
+	populate(objectMap, "url", r.URL)
 	return json.Marshal(objectMap)
 }
 
@@ -1875,6 +1876,9 @@ func (r *RedisCacheSecrets) UnmarshalJSON(data []byte) error {
 				delete(rawMsg, key)
 		case "password":
 				err = unpopulate(val, "Password", &r.Password)
+				delete(rawMsg, key)
+		case "url":
+				err = unpopulate(val, "URL", &r.URL)
 				delete(rawMsg, key)
 		}
 		if err != nil {

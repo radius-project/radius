@@ -153,7 +153,7 @@ func (redis *CreateOrUpdateRedisCache) Validate(ctx context.Context, req *http.R
 
 	dm.ID = serviceCtx.ResourceID.String()
 	dm.TrackedResource = ctrl.BuildTrackedResource(ctx)
-	dm.Properties.ProvisioningState = v1.ProvisioningStateSucceeded
+	dm.AsyncProvisioningState = v1.ProvisioningStateSucceeded
 	dm.TenantID = serviceCtx.HomeTenantID
 	dm.CreatedAPIVersion = dm.UpdatedAPIVersion
 

@@ -19,6 +19,10 @@ server:
   host: "0.0.0.0"
   port: 8080
   enableArmAuth: false
+ucp:
+  connection: "direct"
+  direct:
+    baseURI: "http://localhost:9000"
 workerServer:
   maxOperationConcurrency: 3
   maxOperationRetryCount: 2

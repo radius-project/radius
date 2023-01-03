@@ -15,6 +15,10 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/handler"
 	"github.com/project-radius/radius/pkg/linkrp/model"
+	"github.com/project-radius/radius/pkg/recipes"
+	bicepdriver "github.com/project-radius/radius/pkg/recipes/drivers/bicep"
+	recipeengine "github.com/project-radius/radius/pkg/recipes/engine"
+	environmentrepository "github.com/project-radius/radius/pkg/recipes/environment"
 
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	backend_ctrl "github.com/project-radius/radius/pkg/linkrp/backend/controller"
@@ -25,6 +29,7 @@ var (
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
 		"Applications.Link/mongoDatabases",
+		"Applications.Link/redisCaches",
 	}
 )
 
@@ -55,6 +60,25 @@ func (s *Service) Run(ctx context.Context) error {
 		return fmt.Errorf("failed to initialize application model: %w", err)
 	}
 
+	ucpClientOptions, err := GetUCPClientOptions(s.Options)
+	if err != nil {
+		return fmt.Errorf("failed to initialize UCP connection options: %w", err)
+	}
+
+	client, err := GetUCPDeploymentClient(s.Options)
+	if err != nil {
+		return fmt.Errorf("failed to initialize UCP deployment client: %w", err)
+	}
+
+	loader := &environmentrepository.EnvironmentLoader{UCPClientOptions: ucpClientOptions}
+	engine := recipeengine.NewEngine(recipeengine.Options{
+		ConfigurationLoader: loader,
+		Repository:          loader,
+		Drivers: map[string]recipes.Driver{
+			"bicep": &bicepdriver.Driver{UCPClientOptions: ucpClientOptions, DeploymentClient: client},
+		},
+	})
+
 	opts := ctrl.Options{
 		DataProvider: s.StorageProvider,
 		SecretClient: s.SecretClient,
@@ -68,9 +92,17 @@ func (s *Service) Run(ctx context.Context) error {
 		// Register controllers
 		err = s.Controllers.Register(ctx, rt, v1.OperationDelete, backend_ctrl.NewDeleteResource, opts)
 		if err != nil {
-			panic(err)
+			return err
 		}
 	}
+
+	err = s.Controllers.Register(ctx, "Applications.Link/redisCaches", v1.OperationPut, func(opts ctrl.Options) (ctrl.Controller, error) {
+		return backend_ctrl.NewCreateOrUpdateRedisCache(opts, engine, s.Options.Arm)
+	}, opts)
+	if err != nil {
+		return err
+	}
+
 	workerOpts := worker.Options{}
 	if s.Options.Config.WorkerServer != nil {
 		if s.Options.Config.WorkerServer.MaxOperationConcurrency != nil {

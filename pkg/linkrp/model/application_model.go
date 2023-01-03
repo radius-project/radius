@@ -146,7 +146,15 @@ func NewApplicationModel(arm *armauth.ArmConfig, k8s client.Client) (Application
 				Provider: resourcemodel.ProviderAzure,
 			},
 			ResourceHandler:        handlers.NewARMHandler(arm),
-			SecretValueTransformer: &rediscaches.AzureTransformer{},
+			SecretValueTransformer: &rediscaches.AzureConnectionStringTransformer{},
+		},
+		{
+			ResourceType: resourcemodel.ResourceType{
+				Type:     "azure.redis.url",
+				Provider: resourcemodel.ProviderAzure,
+			},
+			ResourceHandler:        handlers.NewARMHandler(arm),
+			SecretValueTransformer: &rediscaches.AzureURLTransformer{},
 		},
 	}
 

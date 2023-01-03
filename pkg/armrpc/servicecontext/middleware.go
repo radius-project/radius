@@ -15,6 +15,10 @@ import (
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
 func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler {
+	if location == "" {
+		panic("location must be non-empty")
+	}
+
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rpcContext, err := v1.FromARMRequest(r, pathBase, location)
