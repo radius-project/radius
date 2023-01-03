@@ -24,6 +24,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 func main() {
@@ -64,7 +65,7 @@ func main() {
 		//
 		// The client will be initialized asynchronously.
 		logger.Info("Enabled in-memory etcd")
-		client := hosting.NewAsyncValue()
+		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}

@@ -2,15 +2,22 @@ import "@cadl-lang/openapi";
 
 using OpenAPI;
 
+
 @doc("Basic properties of a Radius resource.")
 model BasicResourceProperties {
   @doc("Status of a resource.")
   @visibility("read")
-  status: ResourceStatus;
+  status?: ResourceStatus;
+
+  @doc("Fully qualified resource ID for the environment that the link is linked to")
+  environment: string;
+
+  @doc("Fully qualified resource ID for the application that the link is consumed by")
+  application?: Application
 }
 
 @doc("Basic properties of a Dapr component object.")
-model BasicResourceProperties {
+model BasicDaprResourceProperties extends BasicResourceProperties{
   @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
   @visibility("read")
   componentName: string;
@@ -27,11 +34,10 @@ model ResourceStatus {
 model OutputResource {}
 
 @doc("Fully qualified resource ID for the application that the link is consumed by")
-model Application is string;
+scalar Application extends string;
 
-@knownValues(ProvisioningStateKV)
-model ProvisioningState is string;
-enum ProvisioningStateKV {
+@doc("Provisioning state of the link at the time the operation was called")
+enum ProvisioningState {
   Succeeded,
   Failed,
   Canceled,
@@ -41,44 +47,12 @@ enum ProvisioningStateKV {
   Accepted,
 }
 
-@doc("Common error response for all Azure Resource Manager APIs to return error details for failed operations. (This also follows the OData error response format.).")
-@error
-model ErrorResponse {
-  @doc("The error object.")
-  error: ErrorDetail;
+@doc("The recipe used to automatically deploy underlying infrastructure for a link")
+model Recipe{
+  @doc("The name of the recipe within the environment to use")
+  name: string;
+  @doc("Key/value parameters to pass into the recipe at deployment")
+  parameters: Parameters;
 }
-
-@doc("The error detail")
-model ErrorDetail {
-  @doc("The error code")
-  @visibility("read")
-  code: string;
-
-  @doc("The error message")
-  @visibility("read")
-  message: string;
-
-  @doc("The error target")
-  @visibility("read")
-  target: string;
-
-  @doc("The error details")
-  @visibility("read")
-  @extension("x-ms-identifiers", ["target", "message"])
-  details: ErrorDetail[];
-
-  @doc("The error additional info")
-  @visibility("read")
-  additionalInfo: ErrorAdditionalInfo;
-}
-
-@doc("The resource management error additional info.")
-model ErrorAdditionalInfo {
-  @doc("The additional info type")
-  @visibility("read")
-  type: string;
-
-  @doc("The additional info")
-  @visibility("read")
-  info: string;
-}
+@doc("Key/value parameters to pass into the recipe at deployment")
+model Parameters{}

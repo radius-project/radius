@@ -7,16 +7,20 @@ import "@cadl-lang/rest";
 import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 import "@azure-tools/cadl-providerhub";
+import "@cadl-lang/openapi";
 
+using OpenAPI;
 using Cadl.Http;
 using Cadl.Rest;
 using Azure.ResourceManager;
 
 @doc("Custom root scope")
 model RootScopeParam {
-  @doc("root scope path")
+  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
   @minLength(1)
   @path
+  @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "client")
   rootScope: string;
 }
 

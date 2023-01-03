@@ -21,11 +21,11 @@ func unmarshalDaprPubSubBrokerPropertiesClassification(rawMsg json.RawMessage) (
 	}
 	var b DaprPubSubBrokerPropertiesClassification
 	switch m["mode"] {
-	case string(DaprPubSubBrokerPropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeDaprPubSubProperties{}
-	case string(DaprPubSubBrokerPropertiesModeResource):
+	case "resource":
 		b = &ResourceDaprPubSubProperties{}
-	case string(DaprPubSubBrokerPropertiesModeValues):
+	case "values":
 		b = &ValuesDaprPubSubProperties{}
 	default:
 		b = &DaprPubSubBrokerProperties{}
@@ -43,9 +43,9 @@ func unmarshalDaprSecretStorePropertiesClassification(rawMsg json.RawMessage) (D
 	}
 	var b DaprSecretStorePropertiesClassification
 	switch m["mode"] {
-	case string(DaprSecretStorePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeDaprSecretStoreProperties{}
-	case string(DaprSecretStorePropertiesModeValues):
+	case "values":
 		b = &ValuesDaprSecretStoreProperties{}
 	default:
 		b = &DaprSecretStoreProperties{}
@@ -63,12 +63,12 @@ func unmarshalDaprStateStorePropertiesClassification(rawMsg json.RawMessage) (Da
 	}
 	var b DaprStateStorePropertiesClassification
 	switch m["mode"] {
-	case string(DaprStateStorePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeDaprStateStoreProperties{}
-	case string(DaprStateStorePropertiesModeResource):
-		b = &ResourceDaprStateStoreResourceProperties{}
-	case string(DaprStateStorePropertiesModeValues):
-		b = &ValuesDaprStateStoreResourceProperties{}
+	case "resource":
+		b = &ResourceDaprStateStoreProperties{}
+	case "values":
+		b = &ValuesDaprStateStoreProperties{}
 	default:
 		b = &DaprStateStoreProperties{}
 	}
@@ -85,11 +85,11 @@ func unmarshalMongoDatabasePropertiesClassification(rawMsg json.RawMessage) (Mon
 	}
 	var b MongoDatabasePropertiesClassification
 	switch m["mode"] {
-	case string(MongoDatabasePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeMongoDatabaseProperties{}
-	case string(MongoDatabasePropertiesModeResource):
+	case "resource":
 		b = &ResourceMongoDatabaseProperties{}
-	case string(MongoDatabasePropertiesModeValues):
+	case "values":
 		b = &ValuesMongoDatabaseProperties{}
 	default:
 		b = &MongoDatabaseProperties{}
@@ -107,9 +107,9 @@ func unmarshalRabbitMQMessageQueuePropertiesClassification(rawMsg json.RawMessag
 	}
 	var b RabbitMQMessageQueuePropertiesClassification
 	switch m["mode"] {
-	case string(RabbitMQMessageQueuePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeRabbitMQMessageQueueProperties{}
-	case string(RabbitMQMessageQueuePropertiesModeValues):
+	case "values":
 		b = &ValuesRabbitMQMessageQueueProperties{}
 	default:
 		b = &RabbitMQMessageQueueProperties{}
@@ -127,11 +127,11 @@ func unmarshalRedisCachePropertiesClassification(rawMsg json.RawMessage) (RedisC
 	}
 	var b RedisCachePropertiesClassification
 	switch m["mode"] {
-	case string(RedisCachePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeRedisCacheProperties{}
-	case string(RedisCachePropertiesModeResource):
+	case "resource":
 		b = &ResourceRedisCacheProperties{}
-	case string(RedisCachePropertiesModeValues):
+	case "values":
 		b = &ValuesRedisCacheProperties{}
 	default:
 		b = &RedisCacheProperties{}
@@ -149,11 +149,11 @@ func unmarshalSQLDatabasePropertiesClassification(rawMsg json.RawMessage) (SQLDa
 	}
 	var b SQLDatabasePropertiesClassification
 	switch m["mode"] {
-	case string(SQLDatabasePropertiesModeRecipe):
+	case "recipe":
 		b = &RecipeSQLDatabaseProperties{}
-	case string(SQLDatabasePropertiesModeResource):
+	case "resource":
 		b = &ResourceSQLDatabaseProperties{}
-	case string(SQLDatabasePropertiesModeValues):
+	case "values":
 		b = &ValuesSQLDatabaseProperties{}
 	default:
 		b = &SQLDatabaseProperties{}

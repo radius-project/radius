@@ -13,9 +13,18 @@ import "time"
 
 // BasicDaprResourceProperties - Basic properties of a Dapr component object.
 type BasicDaprResourceProperties struct {
+	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
+	Environment *string `json:"environment,omitempty"`
+
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
+
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Status of a resource.
+	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // BasicResourceProperties - Basic properties of a Radius resource.
@@ -26,17 +35,30 @@ type BasicResourceProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// DaprInvokeHTTPRouteList - Object that includes an array of DaprInvokeHttpRoute and a possible link for next set
-type DaprInvokeHTTPRouteList struct {
-	// The link used to fetch the next page of DaprInvokeHttpRoute list.
-	NextLink *string `json:"nextLink,omitempty"`
+// DaprInvokeHTTPRouteClientCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.CreateOrUpdate
+// method.
+type DaprInvokeHTTPRouteClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
 
-	// List of DaprInvokeHttpRoute resources
-	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
+// DaprInvokeHTTPRouteClientDeleteOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Delete method.
+type DaprInvokeHTTPRouteClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRouteClientGetOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.Get method.
+type DaprInvokeHTTPRouteClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprInvokeHTTPRouteClientListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRouteClient.ListByRootScope
+// method.
+type DaprInvokeHTTPRouteClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
 }
 
 // DaprInvokeHTTPRouteProperties - DaprInvokeHttpRoute link properties
@@ -56,7 +78,7 @@ type DaprInvokeHTTPRouteProperties struct {
 	// READ-ONLY; Provisioning state of the daprInvokeHttpRoute link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -65,7 +87,7 @@ type DaprInvokeHTTPRouteResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; DaprInvokeHttpRoute link properties
+	// The resource-specific properties for this resource.
 	Properties *DaprInvokeHTTPRouteProperties `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -77,42 +99,42 @@ type DaprInvokeHTTPRouteResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// DaprInvokeHTTPRoutesClientCreateOrUpdateOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.CreateOrUpdate
-// method.
-type DaprInvokeHTTPRoutesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
+// DaprInvokeHTTPRouteResourceListResult - The response of a DaprInvokeHttpRouteResource list operation.
+type DaprInvokeHTTPRouteResourceListResult struct {
+	// REQUIRED; The DaprInvokeHttpRouteResource items on this page
+	Value []*DaprInvokeHTTPRouteResource `json:"value,omitempty"`
 
-// DaprInvokeHTTPRoutesClientDeleteOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.Delete method.
-type DaprInvokeHTTPRoutesClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRoutesClientGetOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.Get method.
-type DaprInvokeHTTPRoutesClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprInvokeHTTPRoutesClientListByRootScopeOptions contains the optional parameters for the DaprInvokeHTTPRoutesClient.ListByRootScope
-// method.
-type DaprInvokeHTTPRoutesClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokerList - Object that includes an array of DaprPubSubBroker and a possible link for next set
-type DaprPubSubBrokerList struct {
-	// The link used to fetch the next page of DaprPubSubBroker list.
+	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
+}
 
-	// List of DaprPubSubBroker resources
-	Value []*DaprPubSubBrokerResource `json:"value,omitempty"`
+// DaprPubSubBrokerClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokerClient.CreateOrUpdate
+// method.
+type DaprPubSubBrokerClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokerClientDeleteOptions contains the optional parameters for the DaprPubSubBrokerClient.Delete method.
+type DaprPubSubBrokerClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokerClientGetOptions contains the optional parameters for the DaprPubSubBrokerClient.Get method.
+type DaprPubSubBrokerClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprPubSubBrokerClientListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokerClient.ListByRootScope
+// method.
+type DaprPubSubBrokerClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
 }
 
 // DaprPubSubBrokerPropertiesClassification provides polymorphic access to related types.
@@ -129,9 +151,12 @@ type DaprPubSubBrokerProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
+	Mode *string `json:"mode,omitempty"`
+
+	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
+// use the Dapr component.
+	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -139,14 +164,10 @@ type DaprPubSubBrokerProperties struct {
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
-	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
-// use the Dapr component.
-	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
-
 	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -158,7 +179,7 @@ type DaprPubSubBrokerResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; DaprPubSubBroker link properties
+	// The resource-specific properties for this resource.
 	Properties DaprPubSubBrokerPropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -170,42 +191,42 @@ type DaprPubSubBrokerResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// DaprPubSubBrokersClientCreateOrUpdateOptions contains the optional parameters for the DaprPubSubBrokersClient.CreateOrUpdate
-// method.
-type DaprPubSubBrokersClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
+// DaprPubSubBrokerResourceListResult - The response of a DaprPubSubBrokerResource list operation.
+type DaprPubSubBrokerResourceListResult struct {
+	// REQUIRED; The DaprPubSubBrokerResource items on this page
+	Value []*DaprPubSubBrokerResource `json:"value,omitempty"`
 
-// DaprPubSubBrokersClientDeleteOptions contains the optional parameters for the DaprPubSubBrokersClient.Delete method.
-type DaprPubSubBrokersClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokersClientGetOptions contains the optional parameters for the DaprPubSubBrokersClient.Get method.
-type DaprPubSubBrokersClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprPubSubBrokersClientListByRootScopeOptions contains the optional parameters for the DaprPubSubBrokersClient.ListByRootScope
-// method.
-type DaprPubSubBrokersClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprSecretStoreList - Object that includes an array of DaprSecretStore and a possible link for next set
-type DaprSecretStoreList struct {
-	// The link used to fetch the next page of DaprSecretStore list.
+	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
+}
 
-	// List of DaprSecretStore resources
-	Value []*DaprSecretStoreResource `json:"value,omitempty"`
+// DaprSecretStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoreClient.CreateOrUpdate
+// method.
+type DaprSecretStoreClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoreClientDeleteOptions contains the optional parameters for the DaprSecretStoreClient.Delete method.
+type DaprSecretStoreClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoreClientGetOptions contains the optional parameters for the DaprSecretStoreClient.Get method.
+type DaprSecretStoreClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprSecretStoreClientListByRootScopeOptions contains the optional parameters for the DaprSecretStoreClient.ListByRootScope
+// method.
+type DaprSecretStoreClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
 }
 
 // DaprSecretStorePropertiesClassification provides polymorphic access to related types.
@@ -222,21 +243,20 @@ type DaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
+	// REQUIRED; Discriminator property for DaprSecretStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -248,7 +268,7 @@ type DaprSecretStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; DaprSecretStore link properties
+	// The resource-specific properties for this resource.
 	Properties DaprSecretStorePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -260,48 +280,48 @@ type DaprSecretStoreResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// DaprSecretStoresClientCreateOrUpdateOptions contains the optional parameters for the DaprSecretStoresClient.CreateOrUpdate
-// method.
-type DaprSecretStoresClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
+// DaprSecretStoreResourceListResult - The response of a DaprSecretStoreResource list operation.
+type DaprSecretStoreResourceListResult struct {
+	// REQUIRED; The DaprSecretStoreResource items on this page
+	Value []*DaprSecretStoreResource `json:"value,omitempty"`
 
-// DaprSecretStoresClientDeleteOptions contains the optional parameters for the DaprSecretStoresClient.Delete method.
-type DaprSecretStoresClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprSecretStoresClientGetOptions contains the optional parameters for the DaprSecretStoresClient.Get method.
-type DaprSecretStoresClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprSecretStoresClientListByRootScopeOptions contains the optional parameters for the DaprSecretStoresClient.ListByRootScope
-// method.
-type DaprSecretStoresClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoreList - Object that includes an array of DaprStateStore and a possible link for next set
-type DaprStateStoreList struct {
-	// The link used to fetch the next page of DaprStateStore list.
+	// The link to the next page of items
 	NextLink *string `json:"nextLink,omitempty"`
+}
 
-	// List of DaprStateStore resources
-	Value []*DaprStateStoreResource `json:"value,omitempty"`
+// DaprStateStoreClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoreClient.CreateOrUpdate
+// method.
+type DaprStateStoreClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprStateStoreClientDeleteOptions contains the optional parameters for the DaprStateStoreClient.Delete method.
+type DaprStateStoreClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprStateStoreClientGetOptions contains the optional parameters for the DaprStateStoreClient.Get method.
+type DaprStateStoreClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// DaprStateStoreClientListByRootScopeOptions contains the optional parameters for the DaprStateStoreClient.ListByRootScope
+// method.
+type DaprStateStoreClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
 }
 
 // DaprStateStorePropertiesClassification provides polymorphic access to related types.
 // Call the interface's GetDaprStateStoreProperties() method to access the common type.
 // Use a type switch to determine the concrete type.  The possible types are:
-// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreResourceProperties, *ValuesDaprStateStoreResourceProperties
+// - *DaprStateStoreProperties, *RecipeDaprStateStoreProperties, *ResourceDaprStateStoreProperties, *ValuesDaprStateStoreProperties
 type DaprStateStorePropertiesClassification interface {
 	// GetDaprStateStoreProperties returns the DaprStateStoreProperties content of the underlying type.
 	GetDaprStateStoreProperties() *DaprStateStoreProperties
@@ -312,21 +332,20 @@ type DaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
+	// REQUIRED; Discriminator property for DaprStateStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the DaprStateStore link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -338,7 +357,7 @@ type DaprStateStoreResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; DaprStateStore link properties
+	// The resource-specific properties for this resource.
 	Properties DaprStateStorePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -350,33 +369,20 @@ type DaprStateStoreResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// DaprStateStoresClientCreateOrUpdateOptions contains the optional parameters for the DaprStateStoresClient.CreateOrUpdate
-// method.
-type DaprStateStoresClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
+// DaprStateStoreResourceListResult - The response of a DaprStateStoreResource list operation.
+type DaprStateStoreResourceListResult struct {
+	// REQUIRED; The DaprStateStoreResource items on this page
+	Value []*DaprStateStoreResource `json:"value,omitempty"`
 
-// DaprStateStoresClientDeleteOptions contains the optional parameters for the DaprStateStoresClient.Delete method.
-type DaprStateStoresClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoresClientGetOptions contains the optional parameters for the DaprStateStoresClient.Get method.
-type DaprStateStoresClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// DaprStateStoresClientListByRootScopeOptions contains the optional parameters for the DaprStateStoresClient.ListByRootScope
-// method.
-type DaprStateStoresClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
 // ErrorAdditionalInfo - The resource management error additional info.
@@ -439,7 +445,7 @@ type ExtenderProperties struct {
 	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -460,7 +466,7 @@ type ExtenderResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
@@ -481,7 +487,7 @@ type ExtenderResponseProperties struct {
 	// READ-ONLY; Provisioning state of the extender link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -502,7 +508,7 @@ type ExtenderResponseResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
@@ -534,13 +540,16 @@ type ExtendersClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// MongoDatabaseList - Object that includes an array of Mongo database and a possible link for next set
-type MongoDatabaseList struct {
-	// The link used to fetch the next page of Mongo database list.
-	NextLink *string `json:"nextLink,omitempty"`
+// MongoDatabaseListSecretsResult - The secret values for the given MongoDatabase resource
+type MongoDatabaseListSecretsResult struct {
+	// Connection string used to connect to the target Mongo database
+	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// List of Mongo database resources
-	Value []*MongoDatabaseResource `json:"value,omitempty"`
+	// Password to use when connecting to the target Mongo database
+	Password *string `json:"password,omitempty"`
+
+	// Username to use when connecting to the target Mongo database
+	Username *string `json:"username,omitempty"`
 }
 
 // MongoDatabasePropertiesClassification provides polymorphic access to related types.
@@ -552,14 +561,13 @@ type MongoDatabasePropertiesClassification interface {
 	GetMongoDatabaseProperties() *MongoDatabaseProperties
 }
 
-// MongoDatabaseProperties - Mongo database link properties
+// MongoDatabaseProperties - MongoDatabase link properties
 type MongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for MongoDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -570,7 +578,7 @@ type MongoDatabaseProperties struct {
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -582,7 +590,7 @@ type MongoDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; Mongo database link properties
+	// The resource-specific properties for this resource.
 	Properties MongoDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -594,14 +602,23 @@ type MongoDatabaseResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// MongoDatabaseSecrets - The secret values for the given Mongo database resource
+// MongoDatabaseResourceListResult - The response of a MongoDatabaseResource list operation.
+type MongoDatabaseResourceListResult struct {
+	// REQUIRED; The MongoDatabaseResource items on this page
+	Value []*MongoDatabaseResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
+}
+
+// MongoDatabaseSecrets - The secret values for the given MongoDatabase resource
 type MongoDatabaseSecrets struct {
 	// Connection string used to connect to the target Mongo database
 	ConnectionString *string `json:"connectionString,omitempty"`
@@ -640,13 +657,64 @@ type MongoDatabasesClientListSecretsOptions struct {
 	// placeholder for future optional parameters
 }
 
-// RabbitMQMessageQueueList - Object that includes an array of RabbitMQMessageQueue and a possible link for next set
-type RabbitMQMessageQueueList struct {
-	// The link used to fetch the next page of RabbitMQMessageQueue list.
-	NextLink *string `json:"nextLink,omitempty"`
+// Operation - Details of a REST API operation, returned from the Resource Provider Operations API
+type Operation struct {
+	// Localized display information for this particular operation.
+	Display *OperationDisplay `json:"display,omitempty"`
 
-	// List of RabbitMQMessageQueue resources
-	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
+	// READ-ONLY; Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+	ActionType *ActionType `json:"actionType,omitempty" azure:"ro"`
+
+	// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
+// operations.
+	IsDataAction *bool `json:"isDataAction,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
+// "Microsoft.Compute/virtualMachines/capture/action"
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+// value is "user,system"
+	Origin *Origin `json:"origin,omitempty" azure:"ro"`
+}
+
+// OperationDisplay - Localized display information for this particular operation.
+type OperationDisplay struct {
+	// READ-ONLY; The short, localized friendly description of the operation; suitable for tool tips and detailed views.
+	Description *string `json:"description,omitempty" azure:"ro"`
+
+	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
+// Machine", "Restart Virtual Machine".
+	Operation *string `json:"operation,omitempty" azure:"ro"`
+
+	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
+// Compute".
+	Provider *string `json:"provider,omitempty" azure:"ro"`
+
+	// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
+// Schedule Collections".
+	Resource *string `json:"resource,omitempty" azure:"ro"`
+}
+
+// OperationListResult - A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to
+// get the next set of results.
+type OperationListResult struct {
+	// READ-ONLY; URL to get the next set of operation list results (if there are any).
+	NextLink *string `json:"nextLink,omitempty" azure:"ro"`
+
+	// READ-ONLY; List of operations supported by the resource provider
+	Value []*Operation `json:"value,omitempty" azure:"ro"`
+}
+
+// OperationsClientListOptions contains the optional parameters for the OperationsClient.List method.
+type OperationsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMQListSecretsResult - The secret values for the given RabbitMQMessageQueue resource
+type RabbitMQListSecretsResult struct {
+	// The connection string used to connect to this RabbitMQ instance
+	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
 // RabbitMQMessageQueuePropertiesClassification provides polymorphic access to related types.
@@ -658,14 +726,13 @@ type RabbitMQMessageQueuePropertiesClassification interface {
 	GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties
 }
 
-// RabbitMQMessageQueueProperties - RabbitMQMessageQueue link response properties
+// RabbitMQMessageQueueProperties - RabbitMQMessageQueue link properties
 type RabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
@@ -676,7 +743,7 @@ type RabbitMQMessageQueueProperties struct {
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
@@ -688,7 +755,7 @@ type RabbitMQMessageQueueResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; RabbitMQMessageQueue link response properties
+	// The resource-specific properties for this resource.
 	Properties RabbitMQMessageQueuePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -700,39 +767,20 @@ type RabbitMQMessageQueueResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// RabbitMQMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMQMessageQueuesClient.CreateOrUpdate
-// method.
-type RabbitMQMessageQueuesClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
-}
+// RabbitMQMessageQueueResourceListResult - The response of a RabbitMQMessageQueueResource list operation.
+type RabbitMQMessageQueueResourceListResult struct {
+	// REQUIRED; The RabbitMQMessageQueueResource items on this page
+	Value []*RabbitMQMessageQueueResource `json:"value,omitempty"`
 
-// RabbitMQMessageQueuesClientDeleteOptions contains the optional parameters for the RabbitMQMessageQueuesClient.Delete method.
-type RabbitMQMessageQueuesClientDeleteOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RabbitMQMessageQueuesClientGetOptions contains the optional parameters for the RabbitMQMessageQueuesClient.Get method.
-type RabbitMQMessageQueuesClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RabbitMQMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitMQMessageQueuesClient.ListByRootScope
-// method.
-type RabbitMQMessageQueuesClientListByRootScopeOptions struct {
-	// placeholder for future optional parameters
-}
-
-// RabbitMQMessageQueuesClientListSecretsOptions contains the optional parameters for the RabbitMQMessageQueuesClient.ListSecrets
-// method.
-type RabbitMQMessageQueuesClientListSecretsOptions struct {
-	// placeholder for future optional parameters
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
 // RabbitMQSecrets - The secret values for the given RabbitMQMessageQueue resource
@@ -741,28 +789,53 @@ type RabbitMQSecrets struct {
 	ConnectionString *string `json:"connectionString,omitempty"`
 }
 
+// RabbitMqMessageQueuesClientCreateOrUpdateOptions contains the optional parameters for the RabbitMqMessageQueuesClient.CreateOrUpdate
+// method.
+type RabbitMqMessageQueuesClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMqMessageQueuesClientDeleteOptions contains the optional parameters for the RabbitMqMessageQueuesClient.Delete method.
+type RabbitMqMessageQueuesClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMqMessageQueuesClientGetOptions contains the optional parameters for the RabbitMqMessageQueuesClient.Get method.
+type RabbitMqMessageQueuesClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMqMessageQueuesClientListByRootScopeOptions contains the optional parameters for the RabbitMqMessageQueuesClient.ListByRootScope
+// method.
+type RabbitMqMessageQueuesClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// RabbitMqMessageQueuesClientListSecretsOptions contains the optional parameters for the RabbitMqMessageQueuesClient.ListSecrets
+// method.
+type RabbitMqMessageQueuesClientListSecretsOptions struct {
+	// placeholder for future optional parameters
+}
+
 // Recipe - The recipe used to automatically deploy underlying infrastructure for a link
 type Recipe struct {
 	// REQUIRED; The name of the recipe within the environment to use
 	Name *string `json:"name,omitempty"`
 
-	// Key/value parameters to pass into the recipe at deployment
+	// REQUIRED; Key/value parameters to pass into the recipe at deployment
 	Parameters map[string]interface{} `json:"parameters,omitempty"`
 }
 
+// RecipeDaprPubSubProperties - DaprPubSubBroker Properties for Mode Recipe
 type RecipeDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprPubSub link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -770,9 +843,6 @@ type RecipeDaprPubSubProperties struct {
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
-	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
 	// Dapr component version
 	Version *string `json:"version,omitempty"`
 
@@ -780,39 +850,42 @@ type RecipeDaprPubSubProperties struct {
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type RecipeDaprPubSubProperties.
 func (r *RecipeDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Topic: r.Topic,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
-		ComponentName: r.ComponentName,
 	}
 }
 
+// RecipeDaprSecretStoreProperties - DaprSecretStore Properties for Mode Recipe
 type RecipeDaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprSecretStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprSecretStore link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -820,45 +893,45 @@ type RecipeDaprSecretStoreProperties struct {
 	// Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 	Type *string `json:"type,omitempty"`
 
-	// Dapr component version
-	Version *string `json:"version,omitempty"`
-
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
 	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type RecipeDaprSecretStoreProperties.
 func (r *RecipeDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties {
 	return &DaprSecretStoreProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
-		ComponentName: r.ComponentName,
 	}
 }
 
+// RecipeDaprStateStoreProperties - DaprStateStore Properties for Mode Recipe
 type RecipeDaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprStateStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the daprStateStore link
 	Recipe *Recipe `json:"recipe,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -866,41 +939,44 @@ type RecipeDaprStateStoreProperties struct {
 	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
-	// Dapr component version
-	Version *string `json:"version,omitempty"`
-
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; Provisioning state of the DaprStateStore link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type RecipeDaprStateStoreProperties.
 func (r *RecipeDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
-		ComponentName: r.ComponentName,
 	}
 }
 
+// RecipeMongoDatabaseProperties - MongoDatabase Properties for Mode Recipe
 type RecipeMongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for MongoDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabase link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the mongodatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
@@ -921,15 +997,15 @@ type RecipeMongoDatabaseProperties struct {
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type RecipeMongoDatabaseProperties.
 func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
 		Status: r.Status,
 		Environment: r.Environment,
@@ -937,15 +1013,15 @@ func (r *RecipeMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatab
 	}
 }
 
+// RecipeRabbitMQMessageQueueProperties - RabbitMQMessageQueue Properties for Mode Recipe
 type RecipeRabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitmq link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rabbitMQ link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
@@ -960,60 +1036,60 @@ type RecipeRabbitMQMessageQueueProperties struct {
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRabbitMQMessageQueueProperties implements the RabbitMQMessageQueuePropertiesClassification interface for type RecipeRabbitMQMessageQueueProperties.
 func (r *RecipeRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties {
 	return &RabbitMQMessageQueueProperties{
+		Mode: r.Mode,
 		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
-		Mode: r.Mode,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
 	}
 }
 
+// RecipeRedisCacheProperties - RedisCache Properties for Mode Recipe
 type RecipeRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RedisCacheProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the Redis cache link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the rediscaches link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The host name of the target Redis cache
+	// The host name of the target redis cache
 	Host *string `json:"host,omitempty"`
 
-	// The port value of the target Redis cache
+	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The secret values for the given Redis cache resource
+	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	// The username for redis
+	Username *string `json:"username,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RecipeRedisCacheProperties.
 func (r *RecipeRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
 	return &RedisCacheProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
 		Status: r.Status,
 		Environment: r.Environment,
@@ -1021,51 +1097,51 @@ func (r *RecipeRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProper
 	}
 }
 
+// RecipeSQLDatabaseProperties - SqlDatabase Properties for Mode Recipe
 type RecipeSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
-	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for SqlDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the SQL database link
+	// REQUIRED; The recipe used to automatically deploy underlying infrastructure for the sqldatabases link
 	Recipe *Recipe `json:"recipe,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The name of the SQL database.
+	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
-	// The fully qualified domain name of the SQL database.
+	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
-	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type RecipeSQLDatabaseProperties.
 func (r *RecipeSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
 	return &SQLDatabaseProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
 	}
 }
 
-// RedisCacheList - Object that includes an array of Redis cache and a possible link for next set
-type RedisCacheList struct {
-	// The link used to fetch the next page of Redis cache list.
-	NextLink *string `json:"nextLink,omitempty"`
+// RedisCacheListSecretsResult - The secret values for the given RedisCache resource
+type RedisCacheListSecretsResult struct {
+	// The connection string used to connect to the redis cache
+	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// List of RedisCache resources
-	Value []*RedisCacheResource `json:"value,omitempty"`
+	// The password for this Redis instance
+	Password *string `json:"password,omitempty"`
 }
 
 // RedisCachePropertiesClassification provides polymorphic access to related types.
@@ -1077,37 +1153,36 @@ type RedisCachePropertiesClassification interface {
 	GetRedisCacheProperties() *RedisCacheProperties
 }
 
-// RedisCacheProperties - Redis cache link properties
+// RedisCacheProperties - RedisCache link properties
 type RedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RedisCacheProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The secret values for the given Redis cache resource
+	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type RedisCacheProperties.
 func (r *RedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties { return r }
 
-// RedisCacheResource - Redis cache link
+// RedisCacheResource - RedisCache link
 type RedisCacheResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; Redis cache link properties
+	// The resource-specific properties for this resource.
 	Properties RedisCachePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -1119,19 +1194,28 @@ type RedisCacheResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// RedisCacheSecrets - The secret values for the given Redis cache resource
+// RedisCacheResourceListResult - The response of a RedisCacheResource list operation.
+type RedisCacheResourceListResult struct {
+	// REQUIRED; The RedisCacheResource items on this page
+	Value []*RedisCacheResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
+}
+
+// RedisCacheSecrets - The secret values for the given RedisCache resource
 type RedisCacheSecrets struct {
-	// The connection string used to connect to the Redis cache
+	// The connection string used to connect to the redis cache
 	ConnectionString *string `json:"connectionString,omitempty"`
 
-	// The password for this Redis cache instance
+	// The password for this Redis instance
 	Password *string `json:"password,omitempty"`
 }
 
@@ -1168,23 +1252,23 @@ type Resource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+// ResourceDaprPubSubProperties - DaprPubSubBroker Properties for Mode Resource
 type ResourceDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; PubSub resource
 	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -1192,9 +1276,6 @@ type ResourceDaprPubSubProperties struct {
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
 
-	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
-	Type *string `json:"type,omitempty"`
-
 	// Dapr component version
 	Version *string `json:"version,omitempty"`
 
@@ -1202,39 +1283,42 @@ type ResourceDaprPubSubProperties struct {
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
+	Type *string `json:"type,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type ResourceDaprPubSubProperties.
 func (r *ResourceDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Topic: r.Topic,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
-		ComponentName: r.ComponentName,
 	}
 }
 
-type ResourceDaprStateStoreResourceProperties struct {
+// ResourceDaprStateStoreProperties - DaprStateStore Properties for Mode Resource
+type ResourceDaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprStateStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; The resource id of the Azure SQL Database or Azure Table Storage the daprStateStore resource is connected to.
 	Resource *string `json:"resource,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
@@ -1242,39 +1326,42 @@ type ResourceDaprStateStoreResourceProperties struct {
 	// Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
-	// Dapr component version
-	Version *string `json:"version,omitempty"`
-
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// Dapr component version
+	Version *string `json:"version,omitempty"`
+
+	// READ-ONLY; Provisioning state of the DaprStateStore link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreResourceProperties.
-func (r *ResourceDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ResourceDaprStateStoreProperties.
+func (r *ResourceDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
+		ComponentName: r.ComponentName,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
-		ComponentName: r.ComponentName,
 	}
 }
 
+// ResourceMongoDatabaseProperties - MongoDatabase Properties for Mode Resource
 type ResourceMongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for MongoDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Fully qualified resource ID of a supported resource with Mongo API to use for this link
 	Resource *string `json:"resource,omitempty"`
@@ -1297,15 +1384,15 @@ type ResourceMongoDatabaseProperties struct {
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ResourceMongoDatabaseProperties.
 func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
 		Status: r.Status,
 		Environment: r.Environment,
@@ -1313,13 +1400,13 @@ func (r *ResourceMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDat
 	}
 }
 
+// ResourceRedisCacheProperties - RedisCache Properties for Mode Resource
 type ResourceRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RedisCacheProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Fully qualified resource ID of a supported resource with Redis API to use for this link
 	Resource *string `json:"resource,omitempty"`
@@ -1327,30 +1414,30 @@ type ResourceRedisCacheProperties struct {
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The host name of the target Redis cache
+	// The host name of the target redis cache
 	Host *string `json:"host,omitempty"`
 
-	// The port value of the target Redis cache
+	// The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
-	// The secret values for the given Redis cache resource
+	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	// The username for redis
+	Username *string `json:"username,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ResourceRedisCacheProperties.
 func (r *ResourceRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
 	return &RedisCacheProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Secrets: r.Secrets,
 		Status: r.Status,
 		Environment: r.Environment,
@@ -1358,38 +1445,38 @@ func (r *ResourceRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProp
 	}
 }
 
+// ResourceSQLDatabaseProperties - SqlDatabase Properties for Mode Resource
 type ResourceSQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
-	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for SqlDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; Fully qualified resource ID of a supported resource with SQL API to use for this link
+	// REQUIRED; Fully qualified resource ID of a supported resource with Sql API to use for this link
 	Resource *string `json:"resource,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The name of the SQL database.
+	// The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
-	// The fully qualified domain name of the SQL database.
+	// The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
-	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ResourceSQLDatabaseProperties.
 func (r *ResourceSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
 	return &SQLDatabaseProperties{
-		ProvisioningState: r.ProvisioningState,
 		Mode: r.Mode,
+		ProvisioningState: r.ProvisioningState,
 		Status: r.Status,
 		Environment: r.Environment,
 		Application: r.Application,
@@ -1398,16 +1485,8 @@ func (r *ResourceSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseP
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
+	// REQUIRED; Properties of an output resource
 	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
-}
-
-// SQLDatabaseList - Object that includes an array of SQLDatabase and a possible link for next set
-type SQLDatabaseList struct {
-	// The link used to fetch the next page of SQLDatabase list.
-	NextLink *string `json:"nextLink,omitempty"`
-
-	// List of SQLDatabase resources
-	Value []*SQLDatabaseResource `json:"value,omitempty"`
 }
 
 // SQLDatabasePropertiesClassification provides polymorphic access to related types.
@@ -1419,34 +1498,33 @@ type SQLDatabasePropertiesClassification interface {
 	GetSQLDatabaseProperties() *SQLDatabaseProperties
 }
 
-// SQLDatabaseProperties - SQLDatabase link properties
+// SQLDatabaseProperties - SqlDatabase properties
 type SQLDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
-	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for SqlDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type SQLDatabaseProperties.
 func (s *SQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties { return s }
 
-// SQLDatabaseResource - SQLDatabse link
+// SQLDatabaseResource - SqlDatabase link
 type SQLDatabaseResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; SQLDatabase link properties
+	// The resource-specific properties for this resource.
 	Properties SQLDatabasePropertiesClassification `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -1458,11 +1536,20 @@ type SQLDatabaseResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
-	// READ-ONLY; Metadata pertaining to creation and last modification of the resource.
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
 	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// SQLDatabaseResourceListResult - The response of a SqlDatabaseResource list operation.
+type SQLDatabaseResourceListResult struct {
+	// REQUIRED; The SqlDatabaseResource items on this page
+	Value []*SQLDatabaseResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
 // SQLDatabasesClientCreateOrUpdateOptions contains the optional parameters for the SQLDatabasesClient.CreateOrUpdate method.
@@ -1521,10 +1608,14 @@ type TrackedResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
+// ValuesDaprPubSubProperties - DaprPubSubBroker Properties for Mode Values
 type ValuesDaprPubSubProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1532,18 +1623,14 @@ type ValuesDaprPubSubProperties struct {
 	// REQUIRED; Metadata for the pub sub resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprPubSubBrokerPropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprPubSubBrokerProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Dapr PubSub type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
 
 	// REQUIRED; Dapr component version
 	Version *string `json:"version,omitempty"`
-
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
 
 	// Topic name of the Azure ServiceBus resource
 	Topic *string `json:"topic,omitempty"`
@@ -1552,26 +1639,30 @@ type ValuesDaprPubSubProperties struct {
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// READ-ONLY; Provisioning state of the daprPubSubBroker link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprPubSubBrokerProperties implements the DaprPubSubBrokerPropertiesClassification interface for type ValuesDaprPubSubProperties.
 func (v *ValuesDaprPubSubProperties) GetDaprPubSubBrokerProperties() *DaprPubSubBrokerProperties {
 	return &DaprPubSubBrokerProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
 		Topic: v.Topic,
+		ComponentName: v.ComponentName,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,
-		ComponentName: v.ComponentName,
 	}
 }
 
+// ValuesDaprSecretStoreProperties - DaprSecretStore Properties for Mode Values
 type ValuesDaprSecretStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1579,9 +1670,8 @@ type ValuesDaprSecretStoreProperties struct {
 	// REQUIRED; Metadata for the Secret Store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *DaprSecretStorePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprSecretStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Dapr Secret Store type. These strings match the types defined in Dapr Component format: https://docs.dapr.io/reference/components-reference/supported-secret-stores/
 	Type *string `json:"type,omitempty"`
@@ -1589,42 +1679,42 @@ type ValuesDaprSecretStoreProperties struct {
 	// REQUIRED; Dapr component version
 	Version *string `json:"version,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
 	// READ-ONLY; Provisioning state of the dapr secret store link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetDaprSecretStoreProperties implements the DaprSecretStorePropertiesClassification interface for type ValuesDaprSecretStoreProperties.
 func (v *ValuesDaprSecretStoreProperties) GetDaprSecretStoreProperties() *DaprSecretStoreProperties {
 	return &DaprSecretStoreProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
+		ComponentName: v.ComponentName,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,
-		ComponentName: v.ComponentName,
 	}
 }
 
-type ValuesDaprStateStoreResourceProperties struct {
+// ValuesDaprStateStoreProperties - DaprStateStore Properties for Mode Values
+type ValuesDaprStateStoreProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
 	// REQUIRED; Metadata for the state store resource. This should match the values specified in Dapr component spec
 	Metadata map[string]interface{} `json:"metadata,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe', build via 'resource' or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *DaprStateStorePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for DaprStateStoreProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Dapr StateStore type. These strings match the format used by Dapr Kubernetes configuration format.
 	Type *string `json:"type,omitempty"`
@@ -1632,32 +1722,33 @@ type ValuesDaprStateStoreResourceProperties struct {
 	// REQUIRED; Dapr component version
 	Version *string `json:"version,omitempty"`
 
-	// Fully qualified resource ID for the application that the link is consumed by
-	Application *string `json:"application,omitempty"`
-
 	// READ-ONLY; The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to
 // use the Dapr component.
 	ComponentName *string `json:"componentName,omitempty" azure:"ro"`
 
-	// READ-ONLY; Provisioning state of the daprStateStore link at the time the operation was called
+	// Fully qualified resource ID for the application that the link is consumed by
+	Application *string `json:"application,omitempty"`
+
+	// READ-ONLY; Provisioning state of the DaprStateStore link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
-// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreResourceProperties.
-func (v *ValuesDaprStateStoreResourceProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
+// GetDaprStateStoreProperties implements the DaprStateStorePropertiesClassification interface for type ValuesDaprStateStoreProperties.
+func (v *ValuesDaprStateStoreProperties) GetDaprStateStoreProperties() *DaprStateStoreProperties {
 	return &DaprStateStoreProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
+		ComponentName: v.ComponentName,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,
-		ComponentName: v.ComponentName,
 	}
 }
 
+// ValuesMongoDatabaseProperties - MongoDatabase Properties for Mode Values
 type ValuesMongoDatabaseProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
@@ -1665,9 +1756,8 @@ type ValuesMongoDatabaseProperties struct {
 	// REQUIRED; Host name of the target Mongo database
 	Host *string `json:"host,omitempty"`
 
-	// REQUIRED; How to build the Mongo database link. Options are to build automatically via 'recipe' or 'resource', or build
-// manually via 'values'. Selection determines which set of fields to additionally require.
-	Mode *MongoDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for MongoDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; Port value of the target Mongo database
 	Port *int32 `json:"port,omitempty"`
@@ -1684,15 +1774,15 @@ type ValuesMongoDatabaseProperties struct {
 	// READ-ONLY; Provisioning state of the mongo database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetMongoDatabaseProperties implements the MongoDatabasePropertiesClassification interface for type ValuesMongoDatabaseProperties.
 func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatabaseProperties {
 	return &MongoDatabaseProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
 		Secrets: v.Secrets,
 		Status: v.Status,
 		Environment: v.Environment,
@@ -1700,13 +1790,13 @@ func (v *ValuesMongoDatabaseProperties) GetMongoDatabaseProperties() *MongoDatab
 	}
 }
 
+// ValuesRabbitMQMessageQueueProperties - RabbitMQMessageQueue Properties for Mode Values
 type ValuesRabbitMQMessageQueueProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or build manually via 'values'. Selection
-// determines which set of fields to additionally require.
-	Mode *RabbitMQMessageQueuePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RabbitMQMessageQueueProperties.
+	Mode *string `json:"mode,omitempty"`
 
 	// REQUIRED; The name of the queue
 	Queue *string `json:"queue,omitempty"`
@@ -1720,57 +1810,57 @@ type ValuesRabbitMQMessageQueueProperties struct {
 	// READ-ONLY; Provisioning state of the rabbitMQ message queue link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetRabbitMQMessageQueueProperties implements the RabbitMQMessageQueuePropertiesClassification interface for type ValuesRabbitMQMessageQueueProperties.
 func (v *ValuesRabbitMQMessageQueueProperties) GetRabbitMQMessageQueueProperties() *RabbitMQMessageQueueProperties {
 	return &RabbitMQMessageQueueProperties{
+		Mode: v.Mode,
 		ProvisioningState: v.ProvisioningState,
 		Secrets: v.Secrets,
-		Mode: v.Mode,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,
 	}
 }
 
+// ValuesRedisCacheProperties - RedisCache Properties for Mode Values
 type ValuesRedisCacheProperties struct {
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; The host name of the target Redis cache
+	// REQUIRED; The host name of the target redis cache
 	Host *string `json:"host,omitempty"`
 
-	// REQUIRED; How to build the Redis cache Link. Options are to build automatically via 'recipe' or 'resource', or build manually
-// via 'values'. Selection determines which set of fields to additionally require.
-	Mode *RedisCachePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for RedisCacheProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The port value of the target Redis cache
+	// REQUIRED; The port value of the target redis cache
 	Port *int32 `json:"port,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// The secret values for the given Redis cache resource
+	// Secrets provided by resource
 	Secrets *RedisCacheSecrets `json:"secrets,omitempty"`
 
-	// READ-ONLY; Provisioning state of the Redis cache link at the time the operation was called
+	// The username for redis
+	Username *string `json:"username,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
-
-	// READ-ONLY; The username for Redis cache
-	Username *string `json:"username,omitempty" azure:"ro"`
 }
 
 // GetRedisCacheProperties implements the RedisCachePropertiesClassification interface for type ValuesRedisCacheProperties.
 func (v *ValuesRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProperties {
 	return &RedisCacheProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
 		Secrets: v.Secrets,
 		Status: v.Status,
 		Environment: v.Environment,
@@ -1778,35 +1868,35 @@ func (v *ValuesRedisCacheProperties) GetRedisCacheProperties() *RedisCacheProper
 	}
 }
 
+// ValuesSQLDatabaseProperties - SqlDatabase Properties for Mode Values
 type ValuesSQLDatabaseProperties struct {
-	// REQUIRED; The name of the SQL database.
+	// REQUIRED; The name of the Sql database.
 	Database *string `json:"database,omitempty"`
 
 	// REQUIRED; Fully qualified resource ID for the environment that the link is linked to
 	Environment *string `json:"environment,omitempty"`
 
-	// REQUIRED; How to build the link. Options are to build automatically via 'recipe' or 'resource', or build manually via 'values'.
-// Selection determines which set of fields to additionally require.
-	Mode *SQLDatabasePropertiesMode `json:"mode,omitempty"`
+	// REQUIRED; Discriminator property for SqlDatabaseProperties.
+	Mode *string `json:"mode,omitempty"`
 
-	// REQUIRED; The fully qualified domain name of the SQL database.
+	// REQUIRED; The fully qualified domain name of the Sql database.
 	Server *string `json:"server,omitempty"`
 
 	// Fully qualified resource ID for the application that the link is consumed by
 	Application *string `json:"application,omitempty"`
 
-	// READ-ONLY; Provisioning state of the SQL database link at the time the operation was called
+	// READ-ONLY; Provisioning state of the Sql database link at the time the operation was called
 	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 
-	// READ-ONLY; Status of the resource
+	// READ-ONLY; Status of a resource.
 	Status *ResourceStatus `json:"status,omitempty" azure:"ro"`
 }
 
 // GetSQLDatabaseProperties implements the SQLDatabasePropertiesClassification interface for type ValuesSQLDatabaseProperties.
 func (v *ValuesSQLDatabaseProperties) GetSQLDatabaseProperties() *SQLDatabaseProperties {
 	return &SQLDatabaseProperties{
-		ProvisioningState: v.ProvisioningState,
 		Mode: v.Mode,
+		ProvisioningState: v.ProvisioningState,
 		Status: v.Status,
 		Environment: v.Environment,
 		Application: v.Application,

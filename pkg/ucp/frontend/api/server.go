@@ -28,6 +28,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/secret"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -36,7 +37,7 @@ const (
 
 type ServiceOptions struct {
 	Address                 string
-	ClientConfigSource      *hosting.AsyncValue
+	ClientConfigSource      *hosting.AsyncValue[etcdclient.Client]
 	Configure               func(*mux.Router)
 	TLSCertDir              string
 	DefaultPlanesConfigFile string

@@ -9,84 +9,96 @@
 
 package v20220315privatepreview
 
-// DaprInvokeHTTPRoutesClientCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRoutesClient.CreateOrUpdate.
-type DaprInvokeHTTPRoutesClientCreateOrUpdateResponse struct {
+// DaprInvokeHTTPRouteClientCreateOrUpdateResponse contains the response from method DaprInvokeHTTPRouteClient.CreateOrUpdate.
+type DaprInvokeHTTPRouteClientCreateOrUpdateResponse struct {
+	DaprInvokeHTTPRouteResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
+}
+
+// DaprInvokeHTTPRouteClientDeleteResponse contains the response from method DaprInvokeHTTPRouteClient.Delete.
+type DaprInvokeHTTPRouteClientDeleteResponse struct {
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
+}
+
+// DaprInvokeHTTPRouteClientGetResponse contains the response from method DaprInvokeHTTPRouteClient.Get.
+type DaprInvokeHTTPRouteClientGetResponse struct {
 	DaprInvokeHTTPRouteResource
 }
 
-// DaprInvokeHTTPRoutesClientDeleteResponse contains the response from method DaprInvokeHTTPRoutesClient.Delete.
-type DaprInvokeHTTPRoutesClientDeleteResponse struct {
-	// placeholder for future response values
+// DaprInvokeHTTPRouteClientListByRootScopeResponse contains the response from method DaprInvokeHTTPRouteClient.ListByRootScope.
+type DaprInvokeHTTPRouteClientListByRootScopeResponse struct {
+	DaprInvokeHTTPRouteResourceListResult
 }
 
-// DaprInvokeHTTPRoutesClientGetResponse contains the response from method DaprInvokeHTTPRoutesClient.Get.
-type DaprInvokeHTTPRoutesClientGetResponse struct {
-	DaprInvokeHTTPRouteResource
+// DaprPubSubBrokerClientCreateOrUpdateResponse contains the response from method DaprPubSubBrokerClient.CreateOrUpdate.
+type DaprPubSubBrokerClientCreateOrUpdateResponse struct {
+	DaprPubSubBrokerResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprInvokeHTTPRoutesClientListByRootScopeResponse contains the response from method DaprInvokeHTTPRoutesClient.ListByRootScope.
-type DaprInvokeHTTPRoutesClientListByRootScopeResponse struct {
-	DaprInvokeHTTPRouteList
+// DaprPubSubBrokerClientDeleteResponse contains the response from method DaprPubSubBrokerClient.Delete.
+type DaprPubSubBrokerClientDeleteResponse struct {
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprPubSubBrokersClientCreateOrUpdateResponse contains the response from method DaprPubSubBrokersClient.CreateOrUpdate.
-type DaprPubSubBrokersClientCreateOrUpdateResponse struct {
+// DaprPubSubBrokerClientGetResponse contains the response from method DaprPubSubBrokerClient.Get.
+type DaprPubSubBrokerClientGetResponse struct {
 	DaprPubSubBrokerResource
 }
 
-// DaprPubSubBrokersClientDeleteResponse contains the response from method DaprPubSubBrokersClient.Delete.
-type DaprPubSubBrokersClientDeleteResponse struct {
-	// placeholder for future response values
+// DaprPubSubBrokerClientListByRootScopeResponse contains the response from method DaprPubSubBrokerClient.ListByRootScope.
+type DaprPubSubBrokerClientListByRootScopeResponse struct {
+	DaprPubSubBrokerResourceListResult
 }
 
-// DaprPubSubBrokersClientGetResponse contains the response from method DaprPubSubBrokersClient.Get.
-type DaprPubSubBrokersClientGetResponse struct {
-	DaprPubSubBrokerResource
+// DaprSecretStoreClientCreateOrUpdateResponse contains the response from method DaprSecretStoreClient.CreateOrUpdate.
+type DaprSecretStoreClientCreateOrUpdateResponse struct {
+	DaprSecretStoreResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprPubSubBrokersClientListByRootScopeResponse contains the response from method DaprPubSubBrokersClient.ListByRootScope.
-type DaprPubSubBrokersClientListByRootScopeResponse struct {
-	DaprPubSubBrokerList
+// DaprSecretStoreClientDeleteResponse contains the response from method DaprSecretStoreClient.Delete.
+type DaprSecretStoreClientDeleteResponse struct {
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprSecretStoresClientCreateOrUpdateResponse contains the response from method DaprSecretStoresClient.CreateOrUpdate.
-type DaprSecretStoresClientCreateOrUpdateResponse struct {
+// DaprSecretStoreClientGetResponse contains the response from method DaprSecretStoreClient.Get.
+type DaprSecretStoreClientGetResponse struct {
 	DaprSecretStoreResource
 }
 
-// DaprSecretStoresClientDeleteResponse contains the response from method DaprSecretStoresClient.Delete.
-type DaprSecretStoresClientDeleteResponse struct {
-	// placeholder for future response values
+// DaprSecretStoreClientListByRootScopeResponse contains the response from method DaprSecretStoreClient.ListByRootScope.
+type DaprSecretStoreClientListByRootScopeResponse struct {
+	DaprSecretStoreResourceListResult
 }
 
-// DaprSecretStoresClientGetResponse contains the response from method DaprSecretStoresClient.Get.
-type DaprSecretStoresClientGetResponse struct {
-	DaprSecretStoreResource
+// DaprStateStoreClientCreateOrUpdateResponse contains the response from method DaprStateStoreClient.CreateOrUpdate.
+type DaprStateStoreClientCreateOrUpdateResponse struct {
+	DaprStateStoreResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprSecretStoresClientListByRootScopeResponse contains the response from method DaprSecretStoresClient.ListByRootScope.
-type DaprSecretStoresClientListByRootScopeResponse struct {
-	DaprSecretStoreList
+// DaprStateStoreClientDeleteResponse contains the response from method DaprStateStoreClient.Delete.
+type DaprStateStoreClientDeleteResponse struct {
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
-// DaprStateStoresClientCreateOrUpdateResponse contains the response from method DaprStateStoresClient.CreateOrUpdate.
-type DaprStateStoresClientCreateOrUpdateResponse struct {
+// DaprStateStoreClientGetResponse contains the response from method DaprStateStoreClient.Get.
+type DaprStateStoreClientGetResponse struct {
 	DaprStateStoreResource
 }
 
-// DaprStateStoresClientDeleteResponse contains the response from method DaprStateStoresClient.Delete.
-type DaprStateStoresClientDeleteResponse struct {
-	// placeholder for future response values
-}
-
-// DaprStateStoresClientGetResponse contains the response from method DaprStateStoresClient.Get.
-type DaprStateStoresClientGetResponse struct {
-	DaprStateStoreResource
-}
-
-// DaprStateStoresClientListByRootScopeResponse contains the response from method DaprStateStoresClient.ListByRootScope.
-type DaprStateStoresClientListByRootScopeResponse struct {
-	DaprStateStoreList
+// DaprStateStoreClientListByRootScopeResponse contains the response from method DaprStateStoreClient.ListByRootScope.
+type DaprStateStoreClientListByRootScopeResponse struct {
+	DaprStateStoreResourceListResult
 }
 
 // ExtendersClientCreateOrUpdateResponse contains the response from method ExtendersClient.CreateOrUpdate.
@@ -118,11 +130,14 @@ type ExtendersClientListSecretsResponse struct {
 // MongoDatabasesClientCreateOrUpdateResponse contains the response from method MongoDatabasesClient.CreateOrUpdate.
 type MongoDatabasesClientCreateOrUpdateResponse struct {
 	MongoDatabaseResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // MongoDatabasesClientDeleteResponse contains the response from method MongoDatabasesClient.Delete.
 type MongoDatabasesClientDeleteResponse struct {
-	// placeholder for future response values
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // MongoDatabasesClientGetResponse contains the response from method MongoDatabasesClient.Get.
@@ -132,47 +147,58 @@ type MongoDatabasesClientGetResponse struct {
 
 // MongoDatabasesClientListByRootScopeResponse contains the response from method MongoDatabasesClient.ListByRootScope.
 type MongoDatabasesClientListByRootScopeResponse struct {
-	MongoDatabaseList
+	MongoDatabaseResourceListResult
 }
 
 // MongoDatabasesClientListSecretsResponse contains the response from method MongoDatabasesClient.ListSecrets.
 type MongoDatabasesClientListSecretsResponse struct {
-	MongoDatabaseSecrets
+	MongoDatabaseListSecretsResult
 }
 
-// RabbitMQMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitMQMessageQueuesClient.CreateOrUpdate.
-type RabbitMQMessageQueuesClientCreateOrUpdateResponse struct {
+// OperationsClientListResponse contains the response from method OperationsClient.List.
+type OperationsClientListResponse struct {
+	OperationListResult
+}
+
+// RabbitMqMessageQueuesClientCreateOrUpdateResponse contains the response from method RabbitMqMessageQueuesClient.CreateOrUpdate.
+type RabbitMqMessageQueuesClientCreateOrUpdateResponse struct {
+	RabbitMQMessageQueueResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
+}
+
+// RabbitMqMessageQueuesClientDeleteResponse contains the response from method RabbitMqMessageQueuesClient.Delete.
+type RabbitMqMessageQueuesClientDeleteResponse struct {
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
+}
+
+// RabbitMqMessageQueuesClientGetResponse contains the response from method RabbitMqMessageQueuesClient.Get.
+type RabbitMqMessageQueuesClientGetResponse struct {
 	RabbitMQMessageQueueResource
 }
 
-// RabbitMQMessageQueuesClientDeleteResponse contains the response from method RabbitMQMessageQueuesClient.Delete.
-type RabbitMQMessageQueuesClientDeleteResponse struct {
-	// placeholder for future response values
+// RabbitMqMessageQueuesClientListByRootScopeResponse contains the response from method RabbitMqMessageQueuesClient.ListByRootScope.
+type RabbitMqMessageQueuesClientListByRootScopeResponse struct {
+	RabbitMQMessageQueueResourceListResult
 }
 
-// RabbitMQMessageQueuesClientGetResponse contains the response from method RabbitMQMessageQueuesClient.Get.
-type RabbitMQMessageQueuesClientGetResponse struct {
-	RabbitMQMessageQueueResource
-}
-
-// RabbitMQMessageQueuesClientListByRootScopeResponse contains the response from method RabbitMQMessageQueuesClient.ListByRootScope.
-type RabbitMQMessageQueuesClientListByRootScopeResponse struct {
-	RabbitMQMessageQueueList
-}
-
-// RabbitMQMessageQueuesClientListSecretsResponse contains the response from method RabbitMQMessageQueuesClient.ListSecrets.
-type RabbitMQMessageQueuesClientListSecretsResponse struct {
-	RabbitMQSecrets
+// RabbitMqMessageQueuesClientListSecretsResponse contains the response from method RabbitMqMessageQueuesClient.ListSecrets.
+type RabbitMqMessageQueuesClientListSecretsResponse struct {
+	RabbitMQListSecretsResult
 }
 
 // RedisCachesClientCreateOrUpdateResponse contains the response from method RedisCachesClient.CreateOrUpdate.
 type RedisCachesClientCreateOrUpdateResponse struct {
 	RedisCacheResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // RedisCachesClientDeleteResponse contains the response from method RedisCachesClient.Delete.
 type RedisCachesClientDeleteResponse struct {
-	// placeholder for future response values
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // RedisCachesClientGetResponse contains the response from method RedisCachesClient.Get.
@@ -182,22 +208,25 @@ type RedisCachesClientGetResponse struct {
 
 // RedisCachesClientListByRootScopeResponse contains the response from method RedisCachesClient.ListByRootScope.
 type RedisCachesClientListByRootScopeResponse struct {
-	RedisCacheList
+	RedisCacheResourceListResult
 }
 
 // RedisCachesClientListSecretsResponse contains the response from method RedisCachesClient.ListSecrets.
 type RedisCachesClientListSecretsResponse struct {
-	RedisCacheSecrets
+	RedisCacheListSecretsResult
 }
 
 // SQLDatabasesClientCreateOrUpdateResponse contains the response from method SQLDatabasesClient.CreateOrUpdate.
 type SQLDatabasesClientCreateOrUpdateResponse struct {
 	SQLDatabaseResource
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // SQLDatabasesClientDeleteResponse contains the response from method SQLDatabasesClient.Delete.
 type SQLDatabasesClientDeleteResponse struct {
-	// placeholder for future response values
+	// RetryAfter contains the information returned from the Retry-After header response.
+	RetryAfter *int32
 }
 
 // SQLDatabasesClientGetResponse contains the response from method SQLDatabasesClient.Get.
@@ -207,6 +236,6 @@ type SQLDatabasesClientGetResponse struct {
 
 // SQLDatabasesClientListByRootScopeResponse contains the response from method SQLDatabasesClient.ListByRootScope.
 type SQLDatabasesClientListByRootScopeResponse struct {
-	SQLDatabaseList
+	SQLDatabaseResourceListResult
 }
 
