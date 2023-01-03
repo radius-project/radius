@@ -113,7 +113,7 @@ func (b *BaseController) StatusManager() sm.StatusManager {
 }
 
 // GetResource is the helper to get the resource via storage client.
-func (c *BaseController) GetResource(ctx context.Context, id string, out interface{}) (etag string, err error) {
+func (c *BaseController) GetResource(ctx context.Context, id string, out any) (etag string, err error) {
 	etag = ""
 	var res *store.Object
 	if res, err = c.StorageClient().Get(ctx, id); err == nil {
@@ -126,7 +126,7 @@ func (c *BaseController) GetResource(ctx context.Context, id string, out interfa
 }
 
 // SaveResource is the helper to save the resource via storage client.
-func (c *BaseController) SaveResource(ctx context.Context, id string, in interface{}, etag string) (*store.Object, error) {
+func (c *BaseController) SaveResource(ctx context.Context, id string, in any, etag string) (*store.Object, error) {
 	nr := &store.Object{
 		Metadata: store.Metadata{
 			ID: id,

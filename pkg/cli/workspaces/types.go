@@ -33,7 +33,7 @@ type Workspace struct {
 	// Connection represents the connection to the workspace. The details required by the connection are different
 	// depending on the kind of connection. For example a Kubernetes connection requires a valid kubeconfig context
 	// entry and a namespace.
-	Connection map[string]interface{} `json:"connection" mapstructure:"connection" yaml:"connection" validate:"required"`
+	Connection map[string]any `json:"connection" mapstructure:"connection" yaml:"connection" validate:"required"`
 
 	// Environment represents the default environment used for deployments of applications. This field is optional.
 	Environment string `json:"environment,omitempty" mapstructure:"environment" yaml:"environment,omitempty"`

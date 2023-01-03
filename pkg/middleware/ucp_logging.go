@@ -16,7 +16,7 @@ import (
 // UseLogValues appends logging values to the context based on the request.
 func UseLogValues(h http.Handler, basePath string) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
-		values := []interface{}{}
+		values := []any{}
 		values = append(values,
 			ucplog.LogFieldHTTPMethod, r.Method,
 			ucplog.LogFieldRequestURL, r.URL.Path,

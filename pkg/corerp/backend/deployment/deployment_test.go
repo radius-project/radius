@@ -189,7 +189,7 @@ func buildMongoDBLinkWithRecipe() linkrp_dm.MongoDatabase {
 				RecipeProperties: linkrp_dm.RecipeProperties{
 					LinkRecipe: linkrp_dm.LinkRecipe{
 						Name: "mongoDB",
-						Parameters: map[string]interface{}{
+						Parameters: map[string]any{
 							"ResourceGroup": "testRG",
 							"Subscription":  "Radius-Test",
 						},
@@ -218,7 +218,7 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 		},
 	}
 
-	computedValues := map[string]interface{}{
+	computedValues := map[string]any{
 		linkrp_r.DatabaseNameValue: "db",
 	}
 
@@ -258,8 +258,8 @@ func buildMongoDBResourceDataWithRecipeAndSecrets() ResourceData {
 					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
-			Resource: map[string]interface{}{
-				"properties": map[string]interface{}{
+			Resource: map[string]any{
+				"properties": map[string]any{
 					"resource": map[string]string{
 						"id": "test-database",
 					},
@@ -903,7 +903,7 @@ func Test_Deploy(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, len(testRendererOutput.Resources), len(deploymentOutput.DeployedOutputResources))
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.DeployedOutputResources[0].Identity)
-		require.Equal(t, map[string]interface{}{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{"url": testRendererOutput.ComputedValues["url"].Value}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy failure", func(t *testing.T) {

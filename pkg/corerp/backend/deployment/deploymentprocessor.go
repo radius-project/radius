@@ -55,7 +55,7 @@ type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
-	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error)
+	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8sClient controller_runtime.Client, k8sClientSet kubernetes.Interface) DeploymentProcessor {
@@ -78,7 +78,7 @@ type ResourceData struct {
 	ID              resources.ID // resource ID
 	Resource        conv.DataModelInterface
 	OutputResources []outputresource.OutputResource
-	ComputedValues  map[string]interface{}
+	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
 	AppID           *resources.ID      // Application ID for which the resource is created
 	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
@@ -332,8 +332,8 @@ func (dp *deploymentProcessor) fetchDependencies(ctx context.Context, resourceID
 	return rendererDependencies, nil
 }
 
-func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]interface{}, error) {
-	secretValues := map[string]interface{}{}
+func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency ResourceData) (map[string]any, error) {
+	secretValues := map[string]any{}
 	for k, secretReference := range dependency.SecretValues {
 		secret, err := dp.fetchSecret(ctx, dependency, secretReference)
 		if err != nil {
@@ -360,7 +360,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, dependency Reso
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rp.SecretValueReference) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency ResourceData, reference rp.SecretValueReference) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil
@@ -581,7 +581,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]interface{}, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
@@ -615,7 +615,7 @@ func (dp *deploymentProcessor) getRendererDependency(ctx context.Context, depend
 	}
 
 	// Get  dependent resource computedValues
-	computedValues := map[string]interface{}{}
+	computedValues := map[string]any{}
 	for k, v := range dependency.ComputedValues {
 		computedValues[k] = v
 	}

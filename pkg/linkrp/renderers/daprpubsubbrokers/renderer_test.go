@@ -57,7 +57,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -73,18 +73,18 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := &unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    pubsubType,
 				"version": daprPubSubVersion,
-				"metadata": []map[string]interface{}{
+				"metadata": []map[string]any{
 					{
 						"name":  "foo",
 						"value": "bar",
@@ -139,7 +139,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeValues,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 			Version: "v1",
@@ -168,7 +168,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeValues,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 			Type: "pubsub.kafka",
@@ -185,7 +185,7 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 	properties := datamodel.DaprPubSubBrokerProperties{
 		Type:    "pubsub.kafka",
 		Version: "v1",
-		Metadata: map[string]interface{}{
+		Metadata: map[string]any{
 			"foo": "bar",
 		},
 	}
@@ -198,18 +198,18 @@ func Test_ConstructDaprPubSubGeneric(t *testing.T) {
 	require.NoError(t, err, "Unable to construct Pub/Sub resource spec")
 
 	expected := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    pubsubType,
 				"version": daprPubSubVersion,
-				"metadata": []map[string]interface{}{
+				"metadata": []map[string]any{
 					{
 						"name":  "foo",
 						"value": "bar",
@@ -383,7 +383,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -412,7 +412,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    "pubsub.kafka",
 			Version: "v1",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},

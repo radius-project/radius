@@ -81,20 +81,20 @@ func Test_Run(t *testing.T) {
 			Workspace: &workspaces.Workspace{
 				Name:        "test-workspace",
 				Environment: "test-environment",
-				Connection:  map[string]interface{}{},
+				Connection:  map[string]any{},
 			},
 		}
 
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.FormattedOutput{
 				Format: "",
 				Obj: &workspaces.Workspace{
 					Name:        "test-workspace",
 					Environment: "test-environment",
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 				Options: objectformats.GetWorkspaceTableFormat(),
 			},
@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.FormattedOutput{
 				Format:  "",
 				Obj:     runner.Workspace,

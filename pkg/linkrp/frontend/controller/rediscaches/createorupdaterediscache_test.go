@@ -28,7 +28,7 @@ import (
 
 func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers.RendererOutput, deployment.DeploymentOutput) {
 	var computedValues map[string]renderers.ComputedValueReference
-	var portValue interface{}
+	var portValue any
 	if buildComputedValueReferences {
 		computedValues = map[string]renderers.ComputedValueReference{
 			renderers.Host: {
@@ -83,7 +83,7 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 				},
 			},
 		},
-		ComputedValues: map[string]interface{}{
+		ComputedValues: map[string]any{
 			renderers.Host: "myrediscache.redis.cache.windows.net",
 			renderers.Port: portValue,
 		},

@@ -75,7 +75,7 @@ mega      true                Some-Value  some-value
 }
 
 func Test_Table_Slice(t *testing.T) {
-	obj := []interface{}{
+	obj := []any{
 		tableInput{
 			Size:   "mega",
 			IsCool: true,
@@ -123,7 +123,7 @@ func Test_convertToStruct(t *testing.T) {
 			Name:    "struct",
 			Input:   aStruct,
 			Success: true,
-			Expected: []interface{}{
+			Expected: []any{
 				aStruct,
 			},
 		},
@@ -131,18 +131,18 @@ func Test_convertToStruct(t *testing.T) {
 			Name:    "struct pointer",
 			Input:   &aStruct,
 			Success: true,
-			Expected: []interface{}{
+			Expected: []any{
 				aStruct,
 			},
 		},
 		{
 			Name: "slice",
-			Input: []interface{}{
-				aStruct, &aStruct, "test", []interface{}{},
+			Input: []any{
+				aStruct, &aStruct, "test", []any{},
 			},
 			Success: true,
-			Expected: []interface{}{
-				aStruct, &aStruct, "test", []interface{}{},
+			Expected: []any{
+				aStruct, &aStruct, "test", []any{},
 			},
 		},
 	}
@@ -162,7 +162,7 @@ func Test_convertToStruct(t *testing.T) {
 
 type convertInput struct {
 	Name     string
-	Input    interface{}
+	Input    any
 	Success  bool
-	Expected []interface{}
+	Expected []any
 }

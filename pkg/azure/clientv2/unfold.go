@@ -131,7 +131,7 @@ func TryUnfoldErrorResponse(err error) *generated.ErrorDetail {
 	return &errDetails
 }
 
-func roundTripJSON(input interface{}, output interface{}) error {
+func roundTripJSON(input any, output any) error {
 	b, err := json.Marshal(input)
 	if err != nil {
 		return err
@@ -139,7 +139,7 @@ func roundTripJSON(input interface{}, output interface{}) error {
 	return json.Unmarshal(b, output)
 }
 
-func extractString(o interface{}) *string {
+func extractString(o any) *string {
 	if o == nil {
 		return nil
 	}

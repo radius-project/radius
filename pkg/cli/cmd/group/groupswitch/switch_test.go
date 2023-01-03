@@ -68,12 +68,12 @@ func Test_Run(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			configPath := path.Join(t.TempDir(), "config.yaml")
 
-			yamlData, err := yaml.Marshal(map[string]interface{}{
+			yamlData, err := yaml.Marshal(map[string]any{
 				"workspaces": cli.WorkspaceSection{
 					Default: "b",
 					Items: map[string]workspaces.Workspace{
 						"a": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
@@ -81,7 +81,7 @@ func Test_Run(t *testing.T) {
 							Scope:  "/planes/radius/local/resourceGroups/a",
 						},
 						"b": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
@@ -101,7 +101,7 @@ func Test_Run(t *testing.T) {
 				Items: map[string]workspaces.Workspace{
 					"a": {
 						Name: "a",
-						Connection: map[string]interface{}{
+						Connection: map[string]any{
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
@@ -110,7 +110,7 @@ func Test_Run(t *testing.T) {
 					},
 					"b": {
 						Name: "b",
-						Connection: map[string]interface{}{
+						Connection: map[string]any{
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
@@ -130,7 +130,7 @@ func Test_Run(t *testing.T) {
 
 			workspace := &workspaces.Workspace{
 				Name: "b",
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    workspaces.KindKubernetes,
 					"context": "my-context",
 				},
@@ -158,13 +158,13 @@ func Test_Run(t *testing.T) {
 		t.Run("Switch (not existant)", func(t *testing.T) {
 			configPath := path.Join(t.TempDir(), "config.yaml")
 
-			yamlData, err := yaml.Marshal(map[string]interface{}{
+			yamlData, err := yaml.Marshal(map[string]any{
 				"workspaces": cli.WorkspaceSection{
 					Default: "b",
 					Items: map[string]workspaces.Workspace{
 
 						"b": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
@@ -189,7 +189,7 @@ func Test_Run(t *testing.T) {
 
 			workspace := &workspaces.Workspace{
 				Name: "b",
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    workspaces.KindKubernetes,
 					"context": "my-context",
 				},

@@ -164,7 +164,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 
 	// Set up a connection so we can list environments
 	r.Workspace = &workspaces.Workspace{
-		Connection: map[string]interface{}{
+		Connection: map[string]any{
 			"context": r.KubeContext,
 			"kind":    kubernetesKind,
 		},

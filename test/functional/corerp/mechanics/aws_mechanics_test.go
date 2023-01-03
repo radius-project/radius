@@ -30,7 +30,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Name:       name,
 						Type:       validation.KinesisResourceType,
 						Identifier: name,
-						Properties: map[string]interface{}{
+						Properties: map[string]any{
 							"Name":                 name,
 							"RetentionPeriodHours": float64(168),
 							"ShardCount":           float64(3),
@@ -49,7 +49,7 @@ func Test_AWSRedeployWithUpdatedResourceUpdatesResource(t *testing.T) {
 						Name:       name,
 						Type:       validation.KinesisResourceType,
 						Identifier: name,
-						Properties: map[string]interface{}{
+						Properties: map[string]any{
 							"Name":                 name,
 							"RetentionPeriodHours": float64(48),
 							"ShardCount":           float64(3),
@@ -78,8 +78,8 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 						Name:       name,
 						Type:       validation.DBInstanceResourceType,
 						Identifier: name,
-						Properties: map[string]interface{}{
-							"Endpoint": map[string]interface{}{
+						Properties: map[string]any{
+							"Endpoint": map[string]any{
 								"Port": 1444,
 							},
 						},
@@ -97,8 +97,8 @@ func Test_AWSRedeployWithCreateAndWriteOnlyPropertyUpdate(t *testing.T) {
 						Name:       name,
 						Type:       validation.DBInstanceResourceType,
 						Identifier: name,
-						Properties: map[string]interface{}{
-							"Endpoint": map[string]interface{}{
+						Properties: map[string]any{
+							"Endpoint": map[string]any{
 								"Port": 1444,
 							},
 						},

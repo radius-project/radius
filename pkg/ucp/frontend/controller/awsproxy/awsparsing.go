@@ -56,7 +56,7 @@ func ParseAWSRequest(ctx context.Context, opts ctrl.Options, r *http.Request) (a
 // getPrimaryIdentifiersFromSchema returns the primaryIdentifier field from the
 // provided AWS CloudFormation type schema
 func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]string, error) {
-	schemaObject := map[string]interface{}{}
+	schemaObject := map[string]any{}
 	err := json.Unmarshal([]byte(schema), &schemaObject)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]stri
 		return nil, fmt.Errorf("primaryIdentifier not found in schema")
 	}
 
-	primaryIdentifiers, ok := primaryIdentifiersObject.([]interface{})
+	primaryIdentifiers, ok := primaryIdentifiersObject.([]any)
 	if !ok {
 		return nil, fmt.Errorf("primaryIdentifier is not an array")
 	}
@@ -82,7 +82,7 @@ func getPrimaryIdentifiersFromSchema(ctx context.Context, schema string) ([]stri
 
 // getPrimaryIdentifierFromMultiIdentifiers returns the primary identifier for the resource
 // when provided desired primary identifier values and the resource type schema
-func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]interface{}, schema string) (string, error) {
+func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties map[string]any, schema string) (string, error) {
 	primaryIdentifiers, err := getPrimaryIdentifiersFromSchema(ctx, schema)
 	if err != nil {
 		return "", err
@@ -110,20 +110,20 @@ func getPrimaryIdentifierFromMultiIdentifiers(ctx context.Context, properties ma
 	return resourceID, nil
 }
 
-func readPropertiesFromBody(req *http.Request) (map[string]interface{}, error) {
+func readPropertiesFromBody(req *http.Request) (map[string]any, error) {
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 
-	body := map[string]interface{}{}
+	body := map[string]any{}
 	err := decoder.Decode(&body)
 	if err != nil {
 		return nil, err
 	}
 
-	properties := map[string]interface{}{}
+	properties := map[string]any{}
 	obj, ok := body["properties"]
 	if ok {
-		pp, ok := obj.(map[string]interface{})
+		pp, ok := obj.(map[string]any)
 		if ok {
 			properties = pp
 		}

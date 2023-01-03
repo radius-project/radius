@@ -157,25 +157,25 @@ func GetAzProvider(options RadiusOptions, kubeContext string) (*azure.Provider, 
 	if !ok {
 		return nil, nil
 	}
-	global := cfg["global"].(map[string]interface{})
+	global := cfg["global"].(map[string]any)
 
 	_, ok = global["rp"]
 	if !ok {
 		return nil, nil
 	}
-	rp := global["rp"].(map[string]interface{})
+	rp := global["rp"].(map[string]any)
 
 	_, ok = rp["provider"]
 	if !ok {
 		return nil, nil
 	}
-	provider := rp["provider"].(map[string]interface{})
+	provider := rp["provider"].(map[string]any)
 
 	_, ok = provider["azure"]
 	if !ok {
 		return nil, nil
 	}
-	azureProvider := provider["azure"].(map[string]interface{})
+	azureProvider := provider["azure"].(map[string]any)
 
 	var azProvider azure.Provider
 
@@ -218,21 +218,21 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 
 	_, ok := values["global"]
 	if !ok {
-		values["global"] = make(map[string]interface{})
+		values["global"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]interface{})
+	global := values["global"].(map[string]any)
 
 	_, ok = global["radius"]
 	if !ok {
-		global["radius"] = make(map[string]interface{})
+		global["radius"] = make(map[string]any)
 	}
-	radius := global["radius"].(map[string]interface{})
+	radius := global["radius"].(map[string]any)
 
 	_, ok = global["rp"]
 	if !ok {
-		global["rp"] = make(map[string]interface{})
+		global["rp"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]interface{})
+	rp := global["rp"].(map[string]any)
 
 	if options.Image != "" {
 		rp["container"] = options.Image
@@ -248,9 +248,9 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 
 	_, ok = global["appcorerp"]
 	if !ok {
-		global["appcorerp"] = make(map[string]interface{})
+		global["appcorerp"] = make(map[string]any)
 	}
-	appcorerp := global["appcorerp"].(map[string]interface{})
+	appcorerp := global["appcorerp"].(map[string]any)
 
 	if options.AppCoreImage != "" {
 		appcorerp["image"] = options.AppCoreImage
@@ -261,9 +261,9 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 
 	_, ok = global["ucp"]
 	if !ok {
-		global["ucp"] = make(map[string]interface{})
+		global["ucp"] = make(map[string]any)
 	}
-	ucp := global["ucp"].(map[string]interface{})
+	ucp := global["ucp"].(map[string]any)
 	if options.UCPImage != "" {
 		ucp["image"] = options.UCPImage
 	}
@@ -273,10 +273,10 @@ func addRadiusValues(helmChart *chart.Chart, options *RadiusOptions) error {
 
 	_, ok = global["engine"]
 	if !ok {
-		global["engine"] = make(map[string]interface{})
+		global["engine"] = make(map[string]any)
 	}
 
-	de := global["engine"].(map[string]interface{})
+	de := global["engine"].(map[string]any)
 	if options.DEImage != "" {
 		de["image"] = options.DEImage
 	}
@@ -295,23 +295,23 @@ func addAWSProviderValues(helmChart *chart.Chart, awsProvider *aws.Provider) err
 
 	_, ok := values["global"]
 	if !ok {
-		values["global"] = make(map[string]interface{})
+		values["global"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]interface{})
+	global := values["global"].(map[string]any)
 
 	_, ok = global["rp"]
 	if !ok {
-		global["rp"] = make(map[string]interface{})
+		global["rp"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]interface{})
+	rp := global["rp"].(map[string]any)
 
 	_, ok = rp["provider"]
 	if !ok {
-		rp["provider"] = make(map[string]interface{})
+		rp["provider"] = make(map[string]any)
 	}
-	provider := rp["provider"].(map[string]interface{})
+	provider := rp["provider"].(map[string]any)
 
-	provider["aws"] = map[string]interface{}{
+	provider["aws"] = map[string]any{
 		"accessKeyId":     awsProvider.AccessKeyId,
 		"secretAccessKey": awsProvider.SecretAccessKey,
 		"region":          awsProvider.TargetRegion,
@@ -328,35 +328,35 @@ func addAzureProviderValues(helmChart *chart.Chart, azureProvider *azure.Provide
 
 	_, ok := values["global"]
 	if !ok {
-		values["global"] = make(map[string]interface{})
+		values["global"] = make(map[string]any)
 	}
-	global := values["global"].(map[string]interface{})
+	global := values["global"].(map[string]any)
 
 	_, ok = global["rp"]
 	if !ok {
-		global["rp"] = make(map[string]interface{})
+		global["rp"] = make(map[string]any)
 	}
-	rp := global["rp"].(map[string]interface{})
+	rp := global["rp"].(map[string]any)
 
 	_, ok = rp["provider"]
 	if !ok {
-		rp["provider"] = make(map[string]interface{})
+		rp["provider"] = make(map[string]any)
 	}
-	provider := rp["provider"].(map[string]interface{})
+	provider := rp["provider"].(map[string]any)
 
 	_, ok = provider["azure"]
 	if !ok {
-		provider["azure"] = make(map[string]interface{})
+		provider["azure"] = make(map[string]any)
 	}
 
-	azure := provider["azure"].(map[string]interface{})
+	azure := provider["azure"].(map[string]any)
 
 	if azureProvider.ServicePrincipal != nil {
 		_, ok = azure["servicePrincipal"]
 		if !ok {
-			azure["servicePrincipal"] = make(map[string]interface{})
+			azure["servicePrincipal"] = make(map[string]any)
 		}
-		azure["servicePrincipal"] = map[string]interface{}{
+		azure["servicePrincipal"] = map[string]any{
 			"clientId":     azureProvider.ServicePrincipal.ClientID,
 			"clientSecret": azureProvider.ServicePrincipal.ClientSecret,
 			"tenantId":     azureProvider.ServicePrincipal.TenantID,

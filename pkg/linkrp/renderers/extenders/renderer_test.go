@@ -43,10 +43,10 @@ func Test_Render_Success(t *testing.T) {
 				Application: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			AdditionalProperties: map[string]interface{}{
+			AdditionalProperties: map[string]any{
 				"foo": "bar",
 			},
-			Secrets: map[string]interface{}{
+			Secrets: map[string]any{
 				"secretname": "secretvalue",
 			},
 		},
@@ -85,10 +85,10 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 				Application: "invalid-app-id",
 				Environment: "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 			},
-			AdditionalProperties: map[string]interface{}{
+			AdditionalProperties: map[string]any{
 				"foo": "bar",
 			},
-			Secrets: map[string]interface{}{
+			Secrets: map[string]any{
 				"secretname": "secretvalue",
 			},
 		},

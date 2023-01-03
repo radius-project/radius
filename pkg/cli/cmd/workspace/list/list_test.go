@@ -58,12 +58,12 @@ func Test_Run(t *testing.T) {
 				"workspace-b": {
 					Environment: "b",
 					Source:      workspaces.SourceUserConfig,
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 				"workspace-a": {
 					Environment: "a",
 					Source:      workspaces.SourceUserConfig,
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 			},
 		})
@@ -80,7 +80,7 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.FormattedOutput{
 				Format: "",
 				Obj: []workspaces.Workspace{
@@ -88,13 +88,13 @@ func Test_Run(t *testing.T) {
 						Name:        "workspace-a",
 						Environment: "a",
 						Source:      workspaces.SourceUserConfig,
-						Connection:  map[string]interface{}{},
+						Connection:  map[string]any{},
 					},
 					{
 						Name:        "workspace-b",
 						Environment: "b",
 						Source:      workspaces.SourceUserConfig,
-						Connection:  map[string]interface{}{},
+						Connection:  map[string]any{},
 					},
 				},
 				Options: objectformats.GetWorkspaceTableFormat(),

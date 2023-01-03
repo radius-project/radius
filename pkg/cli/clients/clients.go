@@ -31,12 +31,12 @@ import (
 // The full format is documented here: https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/parameter-files
 //
 // Note that we're only storing the 'parameters' node of the format described above.
-type DeploymentParameters = map[string]map[string]interface{}
+type DeploymentParameters = map[string]map[string]any
 
 // DeploymentOptions is the options passed when deploying an ARM-JSON template.
 type DeploymentOptions struct {
 	// Template is the text of the ARM-JSON template in string form.
-	Template map[string]interface{}
+	Template map[string]any
 
 	// Parameters is the set of parameters passed to the deployment.
 	Parameters DeploymentParameters
@@ -60,8 +60,8 @@ type ResourceProgress struct {
 }
 
 type DeploymentOutput struct {
-	Type  string      `json:"type"`
-	Value interface{} `json:"value"`
+	Type  string `json:"type"`
+	Value any    `json:"value"`
 }
 
 type DeploymentResult struct {

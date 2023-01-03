@@ -15,7 +15,7 @@ func unmarshalEnvironmentComputeClassification(rawMsg json.RawMessage) (Environm
 	if rawMsg == nil {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
@@ -33,7 +33,7 @@ func unmarshalExtensionClassification(rawMsg json.RawMessage) (ExtensionClassifi
 	if rawMsg == nil {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
@@ -72,7 +72,7 @@ func unmarshalHealthProbePropertiesClassification(rawMsg json.RawMessage) (Healt
 	if rawMsg == nil {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
@@ -94,7 +94,7 @@ func unmarshalVolumeClassification(rawMsg json.RawMessage) (VolumeClassification
 	if rawMsg == nil {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
@@ -133,7 +133,7 @@ func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumeProp
 	if rawMsg == nil {
 		return nil, nil
 	}
-	var m map[string]interface{}
+	var m map[string]any
 	if err := json.Unmarshal(rawMsg, &m); err != nil {
 		return nil, err
 	}
@@ -146,4 +146,3 @@ func unmarshalVolumePropertiesClassification(rawMsg json.RawMessage) (VolumeProp
 	}
 	return b, json.Unmarshal(rawMsg, b)
 }
-

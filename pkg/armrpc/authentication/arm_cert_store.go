@@ -23,7 +23,7 @@ func storeCertificates(certificates []Certificate) {
 func getValidCertificates() []Certificate {
 	purgeOldCertificates()
 	var validCertificates []Certificate
-	ArmCertStore.Range(func(k, v interface{}) bool {
+	ArmCertStore.Range(func(k, v any) bool {
 		valid := v.(Certificate).isValid()
 		if valid {
 			validCertificates = append(validCertificates, v.(Certificate))
@@ -36,7 +36,7 @@ func getValidCertificates() []Certificate {
 // purgeOldCertificates updates the cert store with active thumbprints
 func purgeOldCertificates() {
 	var certificates []Certificate
-	ArmCertStore.Range(func(k, v interface{}) bool {
+	ArmCertStore.Range(func(k, v any) bool {
 		expired := v.(Certificate).isExpired()
 		if expired {
 			certificates = append(certificates, v.(Certificate))

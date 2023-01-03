@@ -56,7 +56,7 @@ func (e *ListResources[P, T]) Run(ctx context.Context, w http.ResponseWriter, re
 func (e *ListResources[P, T]) createPaginationResponse(ctx context.Context, req *http.Request, result *store.ObjectQueryResult) (*v1.PaginatedList, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
 
-	items := []interface{}{}
+	items := []any{}
 	for _, item := range result.Items {
 		resource := new(T)
 		if err := item.As(resource); err != nil {

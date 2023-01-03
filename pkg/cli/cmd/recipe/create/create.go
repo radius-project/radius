@@ -74,7 +74,7 @@ type Runner struct {
 	TemplatePath      string
 	LinkType          string
 	RecipeName        string
-	Parameters        map[string]map[string]interface{}
+	Parameters        map[string]map[string]any
 }
 
 // NewRunner creates a new instance of the `rad recipe create` runner.

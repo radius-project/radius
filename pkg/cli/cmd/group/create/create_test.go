@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient.EXPECT().CreateUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg", gomock.Any()).Return(true, nil).Times(2)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -103,14 +103,14 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "creating resource group %q in workspace %q...\n",
-				Params: []interface{}{"testrg", "kind-kind"},
+				Params: []any{"testrg", "kind-kind"},
 			},
 			output.LogOutput{
 				Format: "resource group %q created",
-				Params: []interface{}{"testrg"},
+				Params: []any{"testrg"},
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

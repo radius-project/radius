@@ -126,7 +126,7 @@ func Test_Run(t *testing.T) {
 	bicep := bicep.NewMockInterface(ctrl)
 	bicep.EXPECT().
 		PrepareTemplate("app.bicep").
-		Return(map[string]interface{}{}, nil).
+		Return(map[string]any{}, nil).
 		Times(1)
 
 	deployOptionsChan := make(chan deploy.Options, 1)
@@ -197,7 +197,7 @@ func Test_Run(t *testing.T) {
 		Times(1)
 
 	workspace := &workspaces.Workspace{
-		Connection: map[string]interface{}{
+		Connection: map[string]any{
 			"kind":    "kubernetes",
 			"context": "kind-kind",
 		},
@@ -218,7 +218,7 @@ func Test_Run(t *testing.T) {
 			ApplicationName: "test-application",
 			EnvironmentID:   fmt.Sprintf("/planes/radius/local/resourceGroups/%s/providers/applications.core/environments/%s", radcli.TestEnvironmentName, radcli.TestEnvironmentName),
 			EnvironmentName: radcli.TestEnvironmentName,
-			Parameters:      map[string]map[string]interface{}{},
+			Parameters:      map[string]map[string]any{},
 			Workspace:       workspace,
 		},
 		Logstream:   logstreamMock,
@@ -259,7 +259,7 @@ func Test_Run(t *testing.T) {
 
 	// All of the output in this command is being done by functions that we mock for testing, so this
 	// is always empty except for some boilerplate.
-	expected := []interface{}{
+	expected := []any{
 		output.LogOutput{
 			Format: "",
 		},

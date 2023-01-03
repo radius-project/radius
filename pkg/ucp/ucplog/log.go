@@ -45,7 +45,7 @@ func GetLogger(ctx context.Context) logr.Logger {
 	return logr.FromContextOrDiscard(ctx)
 }
 
-func WrapLogContext(ctx context.Context, keyValues ...interface{}) context.Context {
+func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	ctx = logr.NewContext(ctx, logger.WithValues(keyValues...))

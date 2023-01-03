@@ -108,7 +108,7 @@ func main() {
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
-	loggerValues := []interface{}{}
+	loggerValues := []any{}
 	host := &hosting.Host{
 		Services: hostingSvc,
 

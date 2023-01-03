@@ -42,7 +42,7 @@ type DeploymentProcessor interface {
 	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
-	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]interface{}, error)
+	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
 }
 
 func NewDeploymentProcessor(appmodel model.ApplicationModel, sp dataprovider.DataStorageProvider, secretClient rp.SecretValueClient, k8s client.Client) DeploymentProcessor {
@@ -60,7 +60,7 @@ type deploymentProcessor struct {
 
 type DeploymentOutput struct {
 	Resources      []outputresource.OutputResource
-	ComputedValues map[string]interface{}
+	ComputedValues map[string]any
 	SecretValues   map[string]rp.SecretValueReference
 	RecipeData     datamodel.RecipeData
 }
@@ -69,7 +69,7 @@ type ResourceData struct {
 	ID              resources.ID
 	Resource        conv.DataModelInterface
 	OutputResources []outputresource.OutputResource
-	ComputedValues  map[string]interface{}
+	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
 	RecipeData      datamodel.RecipeData
 }
@@ -178,7 +178,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	// Resource id based links - Validate that the resource exists by doing a GET on the resource; Populate expected computed values from response of the GET request.
 	// Dapr links - Validate that the resource exists (if resource id is provided); Apply dapr spec from output resource; Populate expected computed values from response of the GET request.
 	updatedOutputResources := []outputresource.OutputResource{}
-	computedValues := make(map[string]interface{})
+	computedValues := make(map[string]any)
 	for _, outputResource := range orderedOutputResources {
 		// Add resources deployed by recipe to output resource identity
 		for _, id := range rendererOutput.RecipeData.Resources {
@@ -223,7 +223,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 	}, nil
 }
 
-func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]interface{}, err error) {
+func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {
 	logger := radlogger.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
@@ -246,7 +246,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 	}
 
 	// Values consumed by other Radius resource types through connections
-	computedValues = map[string]interface{}{}
+	computedValues = map[string]any{}
 	// Copy deployed output resource property values into corresponding expected computed values
 	for k, v := range rendererOutput.ComputedValues {
 		logger.Info(fmt.Sprintf("Processing computed value for %s", k))
@@ -307,8 +307,8 @@ func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData Resource
 	return nil
 }
 
-func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]interface{}, error) {
-	secretValues := map[string]interface{}{}
+func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error) {
+	secretValues := map[string]any{}
 
 	for k, secretReference := range resourceData.SecretValues {
 		secret, err := dp.fetchSecret(ctx, resourceData.OutputResources, secretReference, resourceData.RecipeData)
@@ -336,7 +336,7 @@ func (dp *deploymentProcessor) FetchSecrets(ctx context.Context, resourceData Re
 	return secretValues, nil
 }
 
-func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (interface{}, error) {
+func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources []outputresource.OutputResource, reference rp.SecretValueReference, recipeData datamodel.RecipeData) (any, error) {
 	if reference.Value != "" {
 		// The secret reference contains the value itself
 		return reference.Value, nil

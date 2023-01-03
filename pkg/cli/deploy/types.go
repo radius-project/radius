@@ -29,7 +29,7 @@ type Options struct {
 	Parameters clients.DeploymentParameters
 
 	// Template should contain a parsed ARM-JSON template.
-	Template map[string]interface{}
+	Template map[string]any
 
 	// ApplicationID is the resource ID of the application. If provided, will be used as configuration for the Radius provider.
 	ApplicationID string

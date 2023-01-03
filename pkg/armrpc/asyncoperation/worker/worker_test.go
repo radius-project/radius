@@ -30,16 +30,16 @@ func TestDefaultOptions(t *testing.T) {
 func TestUpdateResourceState(t *testing.T) {
 	updateStates := []struct {
 		tc          string
-		in          map[string]interface{}
+		in          map[string]any
 		updateState v1.ProvisioningState
 		outErr      error
 		callSave    bool
 	}{
 		{
 			tc: "not found provisioningState",
-			in: map[string]interface{}{
+			in: map[string]any{
 				"name":       "env0",
-				"properties": map[string]interface{}{},
+				"properties": map[string]any{},
 			},
 			updateState: v1.ProvisioningStateAccepted,
 			outErr:      nil,
@@ -47,10 +47,10 @@ func TestUpdateResourceState(t *testing.T) {
 		},
 		{
 			tc: "not update state",
-			in: map[string]interface{}{
+			in: map[string]any{
 				"name":              "env0",
 				"provisioningState": "Accepted",
-				"properties":        map[string]interface{}{},
+				"properties":        map[string]any{},
 			},
 			updateState: v1.ProvisioningStateAccepted,
 			outErr:      nil,
@@ -58,10 +58,10 @@ func TestUpdateResourceState(t *testing.T) {
 		},
 		{
 			tc: "update state",
-			in: map[string]interface{}{
+			in: map[string]any{
 				"name":              "env0",
 				"provisioningState": "Updating",
-				"properties":        map[string]interface{}{},
+				"properties":        map[string]any{},
 			},
 			updateState: v1.ProvisioningStateAccepted,
 			outErr:      nil,
@@ -91,7 +91,7 @@ func TestUpdateResourceState(t *testing.T) {
 					EXPECT().
 					Save(gomock.Any(), gomock.Any(), gomock.Any()).
 					DoAndReturn(func(ctx context.Context, obj *store.Object, options ...store.SaveOptions) error {
-						k := obj.Data.(map[string]interface{})
+						k := obj.Data.(map[string]any)
 						require.Equal(t, k["provisioningState"].(string), string(tt.updateState))
 						return nil
 					})

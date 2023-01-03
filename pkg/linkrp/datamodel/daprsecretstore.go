@@ -29,10 +29,10 @@ func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
 type DaprSecretStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Mode              LinkMode               `json:"mode"`
-	Type              string                 `json:"type"`
-	Version           string                 `json:"version"`
-	Metadata          map[string]interface{} `json:"metadata"`
-	Recipe            LinkRecipe             `json:"recipe,omitempty"`
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Mode              LinkMode             `json:"mode"`
+	Type              string               `json:"type"`
+	Version           string               `json:"version"`
+	Metadata          map[string]any       `json:"metadata"`
+	Recipe            LinkRecipe           `json:"recipe,omitempty"`
 }

@@ -21,7 +21,7 @@ func TestRabbitMQMessageQueueDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
-		apiModelType  interface{}
+		apiModelType  any
 		err           error
 	}{
 		{
@@ -95,7 +95,7 @@ func TestRabbitMQSecretsDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
-		apiModelType  interface{}
+		apiModelType  any
 		err           error
 	}{
 		{

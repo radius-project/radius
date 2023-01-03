@@ -49,7 +49,7 @@ func (handler *armHandler) Delete(ctx context.Context, options *DeleteOptions) e
 	return nil
 }
 
-func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]interface{}, error) {
+func (handler *armHandler) serializeResource(resource resources.GenericResource) (map[string]any, error) {
 	// We turn the resource into a weakly-typed representation. This is needed because JSON Pointer
 	// will have trouble with the autorest embdedded types.
 	b, err := json.Marshal(&resource)
@@ -57,7 +57,7 @@ func (handler *armHandler) serializeResource(resource resources.GenericResource)
 		return nil, fmt.Errorf("failed to marshal %T", resource)
 	}
 
-	data := map[string]interface{}{}
+	data := map[string]any{}
 	err = json.Unmarshal(b, &data)
 	if err != nil {
 		return nil, errors.New("failed to umarshal resource data")

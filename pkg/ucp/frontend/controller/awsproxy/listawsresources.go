@@ -47,9 +47,9 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 	//
 	// https://docs.aws.amazon.com/cloudcontrolapi/latest/userguide/resource-operations-list.html
 
-	items := []interface{}{}
+	items := []any{}
 	for _, result := range response.ResourceDescriptions {
-		properties := map[string]interface{}{}
+		properties := map[string]any{}
 		if result.Properties != nil {
 			err := json.Unmarshal([]byte(*result.Properties), &properties)
 			if err != nil {
@@ -58,7 +58,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		}
 
 		resourceName := *result.Identifier
-		item := map[string]interface{}{
+		item := map[string]any{
 			"id":         path.Join(id.String(), resourceName),
 			"name":       result.Identifier,
 			"type":       id.Type(),
@@ -67,7 +67,7 @@ func (p *ListAWSResources) Run(ctx context.Context, w http.ResponseWriter, req *
 		items = append(items, item)
 	}
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"value": items,
 	}
 	return armrpc_rest.NewOKResponse(body), nil

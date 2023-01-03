@@ -70,13 +70,13 @@ func runBicepRaw(args ...string) ([]byte, error) {
 	return bytes, nil
 }
 
-func runBicepJson(args ...string) (map[string]interface{}, error) {
+func runBicepJson(args ...string) (map[string]any, error) {
 	bytes, err := runBicepRaw(args...)
 	if err != nil {
 		return nil, err
 	}
 
-	template := map[string]interface{}{}
+	template := map[string]any{}
 	err = json.Unmarshal(bytes, &template)
 	if err != nil {
 		return nil, err
@@ -86,7 +86,7 @@ func runBicepJson(args ...string) (map[string]interface{}, error) {
 }
 
 // Build the provided `.bicep` file and returns the deployment template.
-func Build(filePath string) (map[string]interface{}, error) {
+func Build(filePath string) (map[string]any, error) {
 	// rad-bicep is being told to output the template to stdout and we will capture it
 	// rad-bicep will output compilation errors to stderr which will go to the user's console
 	return runBicepJson("build", "--stdout", filePath)

@@ -16,7 +16,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 )
 
-func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body interface{}) (*http.Request, error) {
+func GetARMTestHTTPRequest(ctx context.Context, method string, headerFixtureJSONFile string, body any) (*http.Request, error) {
 	jsonData, err := os.ReadFile("./testdata/" + headerFixtureJSONFile)
 	if err != nil {
 		return nil, err
