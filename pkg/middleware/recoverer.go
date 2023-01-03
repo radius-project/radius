@@ -22,7 +22,7 @@ func Recoverer(h http.Handler) http.Handler {
 				log := radlogger.GetLogger(r.Context())
 
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
-				log.V(radlogger.Fatal).Info(msg)
+				log.V(radlogger.Error).Info(msg)
 
 				resp := rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
 					Error: v1.ErrorDetails{

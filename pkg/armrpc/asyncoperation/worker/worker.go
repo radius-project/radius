@@ -215,7 +215,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			close(done)
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
-				logger.V(radlogger.Fatal).Info(msg)
+				logger.V(radlogger.Error).Info(msg)
 
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).

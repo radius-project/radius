@@ -31,25 +31,26 @@ const (
 
 // Log levels
 const (
-	// More details on verbosity levels can be found here: https://github.com/go-logr/logr#how-do-i-choose-my-v-levels
-	Fatal   = 0
-	Error   = 1
-	Warn    = 2
-	Info    = 3
-	Verbose = 4
-	Debug   = 9
-	Trace   = 10
+	// More details on verbosity levels can be found here: https://pkg.go.dev/go.uber.org/zap@v1.20.0/zapcore#DebugLevel
+	Error = 1
+	Warn  = 2
+	Info  = 3
+	//Verbose = 4
+	Debug = 9
+	//Trace   = 10
 
-	DefaultLogLevel       = Info
-	VerbosityLevelNormal  = "normal"
-	VerbosityLevelVerbose = "verbose"
+	DefaultLogLevel     = Info
+	VerbosityLevelInfo  = "info"
+	VerbosityLevelDebug = "debug"
+	VerbosityLevelError = "error"
+	VerbosityLevelWarn  = "warn"
 )
 
 // Logger Profiles which determines the logger configuration
 const (
 	LoggerProfileProd    = "production"
 	LoggerProfileDev     = "development"
-	DefaultLoggerProfile = LoggerProfileProd
+	DefaultLoggerProfile = LoggerProfileDev // TODO To be changed to production
 )
 
 func InitRadLoggerConfig() (*zap.Logger, error) {
@@ -65,7 +66,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	} else if strings.EqualFold(profile, LoggerProfileProd) {
 		cfg = zap.NewProductionConfig()
 	} else {
-		return nil, fmt.Errorf("Invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
+		return nil, fmt.Errorf("invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
 	}
 
 	// Modify the default log level intialized by the profile preset if a custom value
@@ -73,10 +74,16 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	radLogLevel := os.Getenv(RadLogLevel)
 	var logLevel int
 	if radLogLevel != "" {
-		if strings.EqualFold(VerbosityLevelVerbose, radLogLevel) {
-			logLevel = Verbose
-		} else if strings.EqualFold(VerbosityLevelNormal, radLogLevel) {
-			logLevel = Info
+		if strings.EqualFold(VerbosityLevelDebug, radLogLevel) {
+			logLevel = int(zapcore.DebugLevel)
+		} else if strings.EqualFold(VerbosityLevelInfo, radLogLevel) {
+			logLevel = int(zapcore.InfoLevel)
+		} else if strings.EqualFold(VerbosityLevelWarn, radLogLevel) {
+			logLevel = int(zapcore.WarnLevel)
+		} else if strings.EqualFold(VerbosityLevelError, radLogLevel) {
+			logLevel = int(zapcore.ErrorLevel)
+		} else {
+			return nil, fmt.Errorf("invalid Radius Logger Level set. Valid options are: %s, %s, %s, %s", VerbosityLevelError, VerbosityLevelWarn, VerbosityLevelInfo, VerbosityLevelDebug)
 		}
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
 	}
@@ -84,7 +91,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
-		return nil, fmt.Errorf("Unable to initialize zap logger: %v", err)
+		return nil, fmt.Errorf("unable to initialize zap logger: %v", err)
 	}
 
 	return logger, nil
