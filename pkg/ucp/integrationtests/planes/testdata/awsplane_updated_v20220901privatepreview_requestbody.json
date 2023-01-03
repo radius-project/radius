@@ -1,0 +1,6 @@
+{
+    "location": "global",
+    "properties":{
+        "kind": "AWS"
+    }
+}

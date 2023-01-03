@@ -22,25 +22,26 @@ type noCopy struct{} //nolint:golint,unused
 func (*noCopy) Lock()   {} //nolint:golint,unused
 func (*noCopy) Unlock() {} //nolint:golint,unused
 
-type AsyncValue struct {
+type AsyncValue[T any] struct {
 	noCopy noCopy //nolint
 
 	Cond  *sync.Cond
-	Value interface{}
+	Value *T
 	Err   error
 }
 
-func NewAsyncValue() *AsyncValue {
-	return &AsyncValue{Cond: &sync.Cond{L: &sync.Mutex{}}}
+type result[T any] struct {
+	Value *T
+	Err   error
 }
 
-func (a *AsyncValue) Get(ctx context.Context) (interface{}, error) {
-	type result struct {
-		Value interface{}
-		Err   error
-	}
+func NewAsyncValue[T any]() *AsyncValue[T] {
+	return &AsyncValue[T]{Cond: &sync.Cond{L: &sync.Mutex{}}}
+}
 
-	initialized := make(chan result, 1)
+func (a *AsyncValue[T]) Get(ctx context.Context) (*T, error) {
+
+	initialized := make(chan result[T], 1)
 	go func() {
 		a.Cond.L.Lock()
 
@@ -54,7 +55,7 @@ func (a *AsyncValue) Get(ctx context.Context) (interface{}, error) {
 		}
 
 		a.Cond.L.Unlock()
-		initialized <- result{Value: a.Value, Err: a.Err}
+		initialized <- result[T]{Value: a.Value, Err: a.Err}
 		close(initialized)
 	}()
 
@@ -63,18 +64,22 @@ func (a *AsyncValue) Get(ctx context.Context) (interface{}, error) {
 		return nil, fmt.Errorf("failed to retrieve value: %w", ctx.Err())
 
 	case result := <-initialized:
-		return result.Value, result.Err
+		if result.Err != nil {
+			return nil, result.Err
+		}
+
+		return result.Value, nil
 	}
 }
 
-func (a *AsyncValue) Put(value interface{}) {
+func (a *AsyncValue[T]) Put(value *T) {
 	a.Cond.L.Lock()
 	a.Value = value
 	a.Cond.L.Unlock()
 	a.Cond.Broadcast()
 }
 
-func (a *AsyncValue) PutErr(err error) {
+func (a *AsyncValue[T]) PutErr(err error) {
 	a.Cond.L.Lock()
 	a.Err = err
 	a.Cond.L.Unlock()

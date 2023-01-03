@@ -1,0 +1,10 @@
+{
+    "location": "global",
+    "properties":{
+        "kind": "UCPNative",
+        "resourceProviders": {
+            "test": "http://localhost:9999",
+            "another": "http://localhost:10000"
+        }
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "id": "/planes/radius/local",
+    "name": "local",
+    "properties": {
+        "kind": "UCPNative",
+        "resourceProviders": {
+            "test": "http://localhost:9999"
+        }
+    },
+    "type": "System.Planes/radius"
+}

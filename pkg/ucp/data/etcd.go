@@ -8,6 +8,8 @@ package data
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -27,7 +29,14 @@ const (
 var _ hosting.Service = (*EmbeddedETCDService)(nil)
 
 type EmbeddedETCDServiceOptions struct {
-	ClientConfigSink *hosting.AsyncValue
+	ClientConfigSink *hosting.AsyncValue[etcdclient.Client]
+
+	// AssignRandomPorts will choose random ports so that each instance of the etcd service
+	// is isolated.
+	AssignRandomPorts bool
+
+	// Quiet will prevent etcd from logging to the console.
+	Quiet bool
 }
 
 type EmbeddedETCDService struct {
@@ -48,6 +57,27 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	defer s.cleanup(ctx)
 
 	config := embed.NewConfig()
+
+	if s.options.AssignRandomPorts {
+		// We need to auto-assign ports to avoid crosstalk when tests create multiple clusters. ETCD uses
+		// hardcoded ports by default.
+		peerPort, clientPort, err := s.assignPorts(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to assign listening ports for etcd: %w", err)
+		}
+
+		logger.Info(fmt.Sprintf("etcd will listen on ports %d %d", *peerPort, *clientPort))
+
+		config.APUrls = []url.URL{makeURL(*peerPort)}
+		config.LPUrls = []url.URL{makeURL(*peerPort)}
+		config.ACUrls = []url.URL{makeURL(*clientPort)}
+		config.LCUrls = []url.URL{makeURL(*clientPort)}
+
+		// Needs to be updated based on the ports that were chosen
+		config.ForceNewCluster = true
+		config.InitialCluster = config.InitialClusterFromName("default")
+		config.InitialClusterToken = fmt.Sprintf("cluster-%d", clientPort)
+	}
 
 	// Using temp directories for storage
 	dataDir, err := os.MkdirTemp(os.TempDir(), "ucp-etcd-data-*")
@@ -70,9 +100,12 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	zaplog := ucplog.Unwrap(logger)
 	if zaplog != nil {
 		config.ZapLoggerBuilder = embed.NewZapLoggerBuilder(zaplog.Named("etcd.server"))
-	} else {
+	} else if !s.options.Quiet {
 		config.LogLevel = "info"
 		config.LogOutputs = []string{"stdout"}
+	} else {
+		config.LogLevel = "fatal"
+		config.LogOutputs = []string{}
 	}
 
 	// Use generated self-signed certs for authentication.
@@ -80,6 +113,7 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 	config.PeerAutoTLS = true
 	config.SelfSignedCertValidity = 1 // One year
 
+	logger.Info("Starting etcd server")
 	server, err := embed.StartEtcd(config)
 	if err != nil {
 		if strings.HasPrefix(err.Error(), "listen tcp ") {
@@ -93,12 +127,19 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 				clientconfig.Logger = zaplog.Named("etcd.client")
 			}
 
-			s.options.ClientConfigSink.Put(&clientconfig)
+			client, err := etcdclient.New(clientconfig)
+			if err != nil {
+				s.options.ClientConfigSink.PutErr(err)
+			} else {
+				s.options.ClientConfigSink.Put(client)
+			}
+
 			<-ctx.Done()
 		}
 
 		return err
 	}
+	logger.Info("Waiting for etcd server ready...")
 
 	select {
 	case <-server.Server.ReadyNotify():
@@ -120,12 +161,17 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 		clientconfig.Logger = zaplog.Named("etcd.client")
 	}
 
-	s.options.ClientConfigSink.Put(&clientconfig)
+	client, err := etcdclient.New(clientconfig)
+	if err != nil {
+		s.options.ClientConfigSink.PutErr(err)
+	} else {
+		s.options.ClientConfigSink.Put(client)
+	}
 
 	<-ctx.Done()
 
-	logger.Info("Stopping etcd")
-	server.Server.Stop()
+	logger.Info("Stopping etcd...")
+	server.Close()
 
 	select {
 	case <-server.Server.StopNotify():
@@ -139,15 +185,46 @@ func (s *EmbeddedETCDService) Run(ctx context.Context) error {
 		}
 	}
 
+	logger.Info("Stopped etcd")
 	return nil
 }
 
 func (s *EmbeddedETCDService) cleanup(ctx context.Context) {
 	logger := logr.FromContextOrDiscard(ctx)
+	logger.Info("Cleaning up etcd directories")
 	for _, dir := range s.dirs {
 		err := os.RemoveAll(dir)
 		if err != nil {
 			logger.Error(err, "Failed to delete temp directory", "directory", dir)
 		}
 	}
+}
+
+func makeURL(port int) url.URL {
+	u, err := url.Parse(fmt.Sprintf("http://localhost:%d", port))
+	if err != nil {
+		// This should never happen.
+		panic(fmt.Sprintf("failed to parse URL: %v", err))
+	}
+
+	return *u
+}
+
+func (s *EmbeddedETCDService) assignPorts(ctx context.Context) (*int, *int, error) {
+	listener1, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer listener1.Close()
+
+	listener2, err := net.Listen("tcp", ":0")
+	if err != nil {
+		return nil, nil, err
+	}
+	defer listener2.Close()
+
+	port1 := listener1.Addr().(*net.TCPAddr).Port
+	port2 := listener2.Addr().(*net.TCPAddr).Port
+
+	return &port1, &port2, nil
 }

@@ -20,13 +20,13 @@ const TestTimeout = time.Minute * 5
 type testValue struct{}
 
 type testResult struct {
-	Value interface{}
+	Value *testValue
 	Err   error
 }
 
 // Used to synchronize the test "workers" for our tests.
 type synchronizer struct {
-	Value *AsyncValue
+	Value *AsyncValue[testValue]
 
 	WorkerCount      int
 	workersStarted   *sync.WaitGroup
@@ -38,7 +38,7 @@ type synchronizer struct {
 
 func NewSynchronizer(workerCount int) *synchronizer {
 	s := &synchronizer{
-		Value:            NewAsyncValue(),
+		Value:            NewAsyncValue[testValue](),
 		WorkerCount:      workerCount,
 		workersStarted:   &sync.WaitGroup{},
 		workersCompleted: &sync.WaitGroup{},
@@ -104,7 +104,7 @@ func Test_Get_NoBlockingWhenValueSet_Value(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
 	defer cancel()
 
-	asyncValue := NewAsyncValue()
+	asyncValue := NewAsyncValue[testValue]()
 
 	value := &testValue{}
 	asyncValue.Put(value)
@@ -118,7 +118,7 @@ func Test_Get_NoBlockingWhenValueSet_Err(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), TestTimeout)
 	defer cancel()
 
-	asyncValue := NewAsyncValue()
+	asyncValue := NewAsyncValue[testValue]()
 
 	err := errors.New("OH noes...")
 	asyncValue.PutErr(err)

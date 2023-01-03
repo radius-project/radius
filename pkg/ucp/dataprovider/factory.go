@@ -17,7 +17,6 @@ import (
 	ucpv1alpha1 "github.com/project-radius/radius/pkg/ucp/store/apiserverstore/api/ucp.dev/v1alpha1"
 	"github.com/project-radius/radius/pkg/ucp/store/cosmosdb"
 	"github.com/project-radius/radius/pkg/ucp/store/etcdstore"
-	etcdclient "go.etcd.io/etcd/client/v3"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -118,16 +117,11 @@ func InitETCDClient(ctx context.Context, opt StorageProviderOptions, _ string) (
 	}
 
 	// Initialize the storage client once the storage service has started
-	obj, err := opt.ETCD.Client.Get(ctx)
+	client, err := opt.ETCD.Client.Get(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize etcd client: %w", err)
 	}
 
-	clientconfig := obj.(*etcdclient.Config)
-	client, err := etcdclient.New(*clientconfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize etcd client: %w", err)
-	}
 	etcdClient := etcdstore.NewETCDClient(client)
 	return etcdClient, nil
 }
