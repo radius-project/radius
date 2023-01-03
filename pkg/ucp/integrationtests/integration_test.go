@@ -62,7 +62,7 @@ const (
 )
 
 var planeKindAzure v20220901privatepreview.PlaneKind = v20220901privatepreview.PlaneKindAzure
-var applicationList = []map[string]interface{}{
+var applicationList = []map[string]any{
 	{
 		"Name": "app1",
 	},
@@ -305,11 +305,11 @@ func initialize(t *testing.T) (*httptest.Server, Client, *store.MockStorageClien
 }
 
 func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.MockStorageClient, ucpNative bool) {
-	var requestBody map[string]interface{}
+	var requestBody map[string]any
 	if ucpNative {
-		requestBody = map[string]interface{}{
+		requestBody = map[string]any{
 			"location": v1.LocationGlobal,
-			"properties": map[string]interface{}{
+			"properties": map[string]any{
 				"resourceProviders": map[string]string{
 					"Applications.Core": "http://" + rpURL,
 				},
@@ -317,9 +317,9 @@ func registerRP(t *testing.T, ucp *httptest.Server, ucpClient Client, db *store.
 			},
 		}
 	} else {
-		requestBody = map[string]interface{}{
+		requestBody = map[string]any{
 			"location": v1.LocationGlobal,
-			"properties": map[string]interface{}{
+			"properties": map[string]any{
 				"kind": rest.PlaneKindAzure,
 				"url":  "http://" + azureURL,
 			},
@@ -405,7 +405,7 @@ func sendProxyRequest(t *testing.T, ucp *httptest.Server, ucpClient Client, db *
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
-	responseAppList := []map[string]interface{}{}
+	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
 	assert.DeepEqual(t, applicationList, responseAppList)
@@ -429,7 +429,7 @@ func sendProxyRequest_AzurePlane(t *testing.T, ucp *httptest.Server, ucpClient C
 
 	proxyRequestResponseBody, err := io.ReadAll(proxyRequestResponse.Body)
 	require.NoError(t, err)
-	responseAppList := []map[string]interface{}{}
+	responseAppList := []map[string]any{}
 	err = json.Unmarshal(proxyRequestResponseBody, &responseAppList)
 	require.NoError(t, err)
 	assert.DeepEqual(t, applicationList, responseAppList)
@@ -480,9 +480,9 @@ func Test_RequestWithBadAPIVersion(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
 	defer mockCtrl.Finish()
 
-	requestBody := map[string]interface{}{
+	requestBody := map[string]any{
 		"location": v1.LocationGlobal,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"resourceProviders": map[string]string{
 				"Applications.Core": "http://" + rpURL,
 			},

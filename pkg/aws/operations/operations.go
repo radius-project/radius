@@ -16,10 +16,10 @@ import (
 )
 
 type ResourceTypeSchema struct {
-	Properties           map[string]interface{} `json:"properties,omitempty"`
-	ReadOnlyProperties   []string               `json:"readOnlyProperties,omitempty"`
-	CreateOnlyProperties []string               `json:"createOnlyProperties,omitempty"`
-	WriteOnlyProperties  []string               `json:"writeOnlyProperties,omitempty"`
+	Properties           map[string]any `json:"properties,omitempty"`
+	ReadOnlyProperties   []string       `json:"readOnlyProperties,omitempty"`
+	CreateOnlyProperties []string       `json:"createOnlyProperties,omitempty"`
+	WriteOnlyProperties  []string       `json:"writeOnlyProperties,omitempty"`
 }
 
 // FlattenProperties flattens a state object.
@@ -36,13 +36,13 @@ type ResourceTypeSchema struct {
 //	"NumShards": 1
 //	"ClusterEndpoint/Address": "test-address"
 //	"ClusterEndpoint/Port": 3000
-func FlattenProperties(state map[string]interface{}) map[string]interface{} {
-	flattenedState := map[string]interface{}{}
+func FlattenProperties(state map[string]any) map[string]any {
+	flattenedState := map[string]any{}
 
 	for k, v := range state {
 		// If the value is a map, flatten it
 		if reflect.TypeOf(v).Kind() == reflect.Map {
-			flattenedSubState := FlattenProperties(v.(map[string]interface{}))
+			flattenedSubState := FlattenProperties(v.(map[string]any))
 
 			for subK, subV := range flattenedSubState {
 				key := k + "/" + subK
@@ -70,8 +70,8 @@ func FlattenProperties(state map[string]interface{}) map[string]interface{} {
 //	  "Address": "test-address"
 //	  "Port": 3000
 //	}
-func UnflattenProperties(state map[string]interface{}) map[string]interface{} {
-	unflattenedState := map[string]interface{}{}
+func UnflattenProperties(state map[string]any) map[string]any {
+	unflattenedState := map[string]any{}
 
 	for k, v := range state {
 		splitPath := strings.Split(k, "/")
@@ -80,17 +80,17 @@ func UnflattenProperties(state map[string]interface{}) map[string]interface{} {
 		if len(splitPath) == 1 {
 			unflattenedState[rootKey] = v
 		} else {
-			var currentState interface{} = unflattenedState
+			var currentState any = unflattenedState
 			for i := 0; i < len(splitPath); i++ {
 				subKey := splitPath[i]
 				if i == len(splitPath)-1 {
-					if currentStateMap, ok := currentState.(map[string]interface{}); ok {
+					if currentStateMap, ok := currentState.(map[string]any); ok {
 						currentStateMap[subKey] = v
 					}
 				} else {
-					if currentStateMap, ok := currentState.(map[string]interface{}); ok {
+					if currentStateMap, ok := currentState.(map[string]any); ok {
 						if _, exists := currentStateMap[subKey]; !exists {
-							currentStateMap[subKey] = map[string]interface{}{}
+							currentStateMap[subKey] = map[string]any{}
 						}
 
 						currentState = currentStateMap[subKey]
@@ -116,7 +116,7 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	}
 
 	// Get the current state of the resource
-	var currentStateObject map[string]interface{}
+	var currentStateObject map[string]any
 	err = json.Unmarshal(currentState, &currentStateObject)
 	if err != nil {
 		return nil, err
@@ -124,7 +124,7 @@ func GeneratePatch(currentState []byte, desiredState []byte, schema []byte) (jso
 	flattenedCurrentStateObject := FlattenProperties(currentStateObject)
 
 	// Get the desired state of the resource
-	var desiredStateObject map[string]interface{}
+	var desiredStateObject map[string]any
 	err = json.Unmarshal(desiredState, &desiredStateObject)
 	if err != nil {
 		return nil, err

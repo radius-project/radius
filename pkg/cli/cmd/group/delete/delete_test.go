@@ -80,14 +80,14 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "deleting resource group %q ...\n",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 				output.LogOutput{
 					Format: "resource group %q deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -112,14 +112,14 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "deleting resource group %q ...\n",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 				output.LogOutput{
 					Format: "resource group %q does not exist or has already been deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -149,10 +149,10 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "resource group %q NOT deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

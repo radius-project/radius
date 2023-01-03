@@ -128,7 +128,7 @@ func Test_Run(t *testing.T) {
 		outputSink := &output.MockOutput{}
 		workspace := &workspaces.Workspace{
 			Name: "defaultWorkspace",
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},

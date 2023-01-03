@@ -157,8 +157,8 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		expectedListResponseBody := map[string]interface{}{
-			"items":   []interface{}{},
+		expectedListResponseBody := map[string]any{
+			"items":   []any{},
 			"message": nil,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)
@@ -182,7 +182,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		var createdItem map[string]interface{}
+		var createdItem map[string]any
 		err = json.Unmarshal(createResponseBody, &createdItem)
 		if err != nil {
 			return err
@@ -209,8 +209,8 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		expectedListResponseBody = map[string]interface{}{
-			"items": []interface{}{
+		expectedListResponseBody = map[string]any{
+			"items": []any{
 				createdItem,
 			},
 			"message": nil,
@@ -228,7 +228,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		var actualGetResponseBody map[string]interface{}
+		var actualGetResponseBody map[string]any
 		err = json.Unmarshal(getResponseBody, &actualGetResponseBody)
 		if err != nil {
 			return err
@@ -238,7 +238,7 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 		require.Equal(t, expectedGetResponseBody, actualGetResponseBody)
 
 		// Test PUT /api/todos/:id (update)
-		updateRequestBody := map[string]interface{}{
+		updateRequestBody := map[string]any{
 			"id":    createdItem["id"],
 			"_id":   createdItem["_id"],
 			"title": createdItem["title"],
@@ -276,8 +276,8 @@ func testGatewayWithPortForward(t *testing.T, ctx context.Context, at corerp.Cor
 			return err
 		}
 
-		expectedListResponseBody = map[string]interface{}{
-			"items":   []interface{}{},
+		expectedListResponseBody = map[string]any{
+			"items":   []any{},
 			"message": nil,
 		}
 		require.Equal(t, expectedListResponseBody, actualListResponseBody)

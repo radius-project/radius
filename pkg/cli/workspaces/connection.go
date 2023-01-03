@@ -18,7 +18,7 @@ const KindKubernetes string = "kubernetes"
 func MakeFallbackWorkspace() *Workspace {
 	return &Workspace{
 		Source: SourceFallback,
-		Connection: map[string]interface{}{
+		Connection: map[string]any{
 			"kind":    KindKubernetes,
 			"context": "", // Default Kubernetes context
 		},

@@ -73,7 +73,7 @@ func (client ResourceDeploymentOperationsClient) List(ctx context.Context, resou
 // ListPreparer prepares the List request.
 func (client ResourceDeploymentOperationsClient) ListPreparer(ctx context.Context, resourceId string, top *int32) (*http.Request, error) {
 	const APIVersion = "2020-10-01"
-	queryParameters := map[string]interface{}{
+	queryParameters := map[string]any{
 		"api-version": APIVersion,
 	}
 	if top != nil {

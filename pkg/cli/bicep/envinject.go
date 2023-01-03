@@ -10,7 +10,7 @@ package bicep
 // - parameters.environment exists && param not passed in -> inject environmentId
 // - parameters.environment does not exist -> noop
 // - input parameters already include environment -> noop.
-func InjectEnvironmentParam(deploymentTemplate map[string]interface{}, parameters map[string]map[string]interface{}, environmentId string) error {
+func InjectEnvironmentParam(deploymentTemplate map[string]any, parameters map[string]map[string]any, environmentId string) error {
 	return injectParam(deploymentTemplate, parameters, "environment", environmentId)
 }
 
@@ -19,16 +19,16 @@ func InjectEnvironmentParam(deploymentTemplate map[string]interface{}, parameter
 // - parameters.application exists && param not passed in -> inject environmentId
 // - parameters.application does not exist -> noop
 // - input parameters already include application -> noop.
-func InjectApplicationParam(deploymentTemplate map[string]interface{}, parameters map[string]map[string]interface{}, applicationId string) error {
+func InjectApplicationParam(deploymentTemplate map[string]any, parameters map[string]map[string]any, applicationId string) error {
 	return injectParam(deploymentTemplate, parameters, "application", applicationId)
 }
 
-func injectParam(deploymentTemplate map[string]interface{}, parameters map[string]map[string]interface{}, parameter string, value string) error {
+func injectParam(deploymentTemplate map[string]any, parameters map[string]map[string]any, parameter string, value string) error {
 	if deploymentTemplate["parameters"] == nil {
 		return nil
 	}
 
-	innerParameters := deploymentTemplate["parameters"].(map[string]interface{})
+	innerParameters := deploymentTemplate["parameters"].(map[string]any)
 	if innerParameters[parameter] == nil {
 		return nil
 	}
@@ -37,7 +37,7 @@ func injectParam(deploymentTemplate map[string]interface{}, parameters map[strin
 
 	// Set the value if it wasn't set at the command line by the user.
 	if _, ok := parameters[parameter]; !ok {
-		parameters[parameter] = map[string]interface{}{
+		parameters[parameter] = map[string]any{
 			"value": value,
 		}
 	}

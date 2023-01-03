@@ -44,7 +44,7 @@ func (r ResourceType) String() string {
 type ResourceIdentity struct {
 	ResourceType *ResourceType `json:"resourceType"`
 	// A polymorphic payload. The fields in this data structure are determined by the provider field in the ResourceType
-	Data interface{} `json:"data"`
+	Data any `json:"data"`
 }
 
 // We just need custom Unmarshaling, default Marshaling is fine.
@@ -158,7 +158,7 @@ func (r ResourceIdentity) IsSameResource(other ResourceIdentity) bool {
 }
 
 // AsLogValues returns log values as key-value pairs from this ResourceIdentifier.
-func (r ResourceIdentity) AsLogValues() []interface{} {
+func (r ResourceIdentity) AsLogValues() []any {
 	if r.ResourceType == nil {
 		return nil
 	}
@@ -168,10 +168,10 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 		data := r.Data.(ARMIdentity)
 		id, err := resources.ParseResource(data.ID)
 		if err != nil {
-			return []interface{}{radlogger.LogFieldResourceID, data.ID}
+			return []any{radlogger.LogFieldResourceID, data.ID}
 		}
 
-		return []interface{}{
+		return []any{
 			radlogger.LogFieldResourceID, data.ID,
 			radlogger.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
 			radlogger.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
@@ -181,7 +181,7 @@ func (r ResourceIdentity) AsLogValues() []interface{} {
 
 	case ProviderKubernetes:
 		data := r.Data.(KubernetesIdentity)
-		return []interface{}{
+		return []any{
 			radlogger.LogFieldResourceName, data.Name,
 			radlogger.LogFieldNamespace, data.Namespace,
 			radlogger.LogFieldKind, data.Kind,

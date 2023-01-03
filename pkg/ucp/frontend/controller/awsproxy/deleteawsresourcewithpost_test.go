@@ -38,7 +38,7 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"Name":                 testResource.ResourceName,
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
@@ -69,8 +69,8 @@ func Test_DeleteAWSResourceWithPost(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -122,8 +122,8 @@ func Test_DeleteAWSResourceWithPost_ResourceDoesNotExist(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -166,7 +166,7 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"ClusterIdentifier": clusterIdentifierValue,
 		"Account":           accountValue,
 	}
@@ -191,8 +191,8 @@ func Test_DeleteAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"Account":           accountValue,
 		},

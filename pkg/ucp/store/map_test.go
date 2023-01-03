@@ -21,7 +21,7 @@ type TestTime struct {
 
 type Test struct {
 	Flag int
-	Data interface{}
+	Data any
 }
 
 func TestDecodeMap_WithoutTimeDecodeHook(t *testing.T) {
@@ -36,7 +36,7 @@ func TestDecodeMap_WithoutTimeDecodeHook(t *testing.T) {
 	}
 
 	jsv, _ := json.Marshal(test)
-	i := make(map[string]interface{})
+	i := make(map[string]any)
 
 	err := json.Unmarshal(jsv, &i)
 	require.NoError(t, err)
@@ -63,25 +63,25 @@ func TestDecodeMap_WithTimeDecodeHook(t *testing.T) {
 
 	testCases := []struct {
 		desc string
-		obj  map[string]interface{}
+		obj  map[string]any
 	}{
 		{
 			"time-now",
-			map[string]interface{}{
+			map[string]any{
 				"name":      "time-string",
 				"createdAt": "2022-09-01T15:00:00Z",
 			},
 		},
 		{
 			"time-unix-float",
-			map[string]interface{}{
+			map[string]any{
 				"name":      "time-unix-float",
 				"createdAt": float64(now.UnixMilli()),
 			},
 		},
 		{
 			"time-unix-int",
-			map[string]interface{}{
+			map[string]any{
 				"name":      "time-unix-int",
 				"createdAt": int64(now.UnixMilli()),
 			},

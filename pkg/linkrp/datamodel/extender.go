@@ -28,7 +28,7 @@ func (extender Extender) ResourceTypeName() string {
 // ExtenderProperties represents the properties of Extender resource.
 type ExtenderProperties struct {
 	rp.BasicResourceProperties
-	AdditionalProperties map[string]interface{} `json:"additionalProperties,omitempty"`
-	ProvisioningState    v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Secrets              map[string]interface{} `json:"secrets,omitempty"`
+	AdditionalProperties map[string]any       `json:"additionalProperties,omitempty"`
+	ProvisioningState    v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Secrets              map[string]any       `json:"secrets,omitempty"`
 }

@@ -78,7 +78,7 @@ func Test_ListResourceGroups(t *testing.T) {
 		Tags:     *to.Ptr(map[string]*string{}),
 	}
 	expectedResourceGroupList := &v1.PaginatedList{
-		Value: []interface{}{
+		Value: []any{
 			&resourceGroup,
 		},
 	}

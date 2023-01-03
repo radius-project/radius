@@ -19,11 +19,11 @@ type CustomActionClient struct {
 }
 
 type CustomActionResponse struct {
-	Body     map[string]interface{}
+	Body     map[string]any
 	Response autorest.Response
 }
 
-func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id string, apiVersion string, action string, body interface{}) (result CustomActionResponse, err error) {
+func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id string, apiVersion string, action string, body any) (result CustomActionResponse, err error) {
 	req, err := client.InvokeCustomActionPreparer(ctx, id, apiVersion, action, body)
 	if err != nil {
 		err = autorest.NewErrorWithError(err, "CustomActionClient", "InvokeCustomAction", nil, "Failure preparing request")
@@ -45,13 +45,13 @@ func (client CustomActionClient) InvokeCustomAction(ctx context.Context, id stri
 	return
 }
 
-func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context, id string, apiVersion string, action string, body interface{}) (*http.Request, error) {
-	pathParameters := map[string]interface{}{
+func (client CustomActionClient) InvokeCustomActionPreparer(ctx context.Context, id string, apiVersion string, action string, body any) (*http.Request, error) {
+	pathParameters := map[string]any{
 		"id":     autorest.Encode("none", id),
 		"action": autorest.Encode("path", action),
 	}
 
-	queryParameters := map[string]interface{}{
+	queryParameters := map[string]any{
 		"api-version": apiVersion,
 	}
 
@@ -73,7 +73,7 @@ func (client CustomActionClient) InvokeCustomActionSender(req *http.Request) (*h
 }
 
 func (client CustomActionClient) InvokeCustomActionResponder(resp *http.Response) (result CustomActionResponse, err error) {
-	body := map[string]interface{}{}
+	body := map[string]any{}
 	err = autorest.Respond(
 		resp,
 		azure.WithErrorUnlessStatusCode(http.StatusOK),

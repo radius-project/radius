@@ -26,9 +26,9 @@ import (
 // EnvironmentsClient contains the methods for the Environments group.
 // Don't use this type directly, use NewEnvironmentsClient() instead.
 type EnvironmentsClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewEnvironmentsClient creates a new instance of EnvironmentsClient with the specified values.
@@ -49,8 +49,8 @@ func NewEnvironmentsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &EnvironmentsClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -196,7 +196,7 @@ func (client *EnvironmentsClient) getHandleResponse(resp *http.Response) (Enviro
 // Generated from API version 2022-03-15-privatepreview
 // options - EnvironmentsClientListByScopeOptions contains the optional parameters for the EnvironmentsClient.ListByScope
 // method.
-func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) (*runtime.Pager[EnvironmentsClientListByScopeResponse]) {
+func (client *EnvironmentsClient) NewListByScopePager(options *EnvironmentsClientListByScopeOptions) *runtime.Pager[EnvironmentsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[EnvironmentsClientListByScopeResponse]{
 		More: func(page EnvironmentsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -296,4 +296,3 @@ func (client *EnvironmentsClient) updateHandleResponse(resp *http.Response) (Env
 	}
 	return result, nil
 }
-

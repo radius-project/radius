@@ -27,13 +27,13 @@ type Deployment struct {
 // DeploymentProperties deployment properties.
 type DeploymentProperties struct {
 	// Template - The template content. You use this element when you want to pass the template syntax directly in the request rather than link to an existing template. It can be a JObject or well-formed JSON string. Use either the templateLink property or the template property, but not both.
-	Template interface{} `json:"template,omitempty"`
+	Template any `json:"template,omitempty"`
 	// TemplateLink - The URI of the template. Use either the templateLink property or the template property, but not both.
 	TemplateLink *resources.TemplateLink `json:"templateLink,omitempty"`
 	//ProviderConfig specifies the scope for resources
-	ProviderConfig interface{} `json:"providerconfig,omitempty"`
+	ProviderConfig any `json:"providerconfig,omitempty"`
 	// Parameters - Name and value pairs that define the deployment parameters for the template. You use this element when you want to provide the parameter values directly in the request rather than link to an existing parameter file. Use either the parametersLink property or the parameters property, but not both. It can be a JObject or a well formed JSON string.
-	Parameters interface{} `json:"parameters,omitempty"`
+	Parameters any `json:"parameters,omitempty"`
 	// ParametersLink - The URI of parameters file. You use this element to link to an existing parameters file. Use either the parametersLink property or the parameters property, but not both.
 	ParametersLink *resources.ParametersLink `json:"parametersLink,omitempty"`
 	// Mode - The mode that is used to deploy resources. This value can be either Incremental or Complete. In Incremental mode, resources are deployed without deleting existing resources that are not included in the template. In Complete mode, resources are deployed and existing resources in the resource group that are not included in the template are deleted. Be careful when using Complete mode as you may unintentionally delete resources. Possible values include: 'DeploymentModeIncremental', 'DeploymentModeComplete'
@@ -114,7 +114,7 @@ func (client ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, resou
 // CreateOrUpdatePreparer prepares the CreateOrUpdate request.
 func (client ResourceDeploymentClient) ResourceCreateOrUpdatePreparer(ctx context.Context, resourceID string, parameters Deployment) (*http.Request, error) {
 	const APIVersion = "2020-10-01"
-	queryParameters := map[string]interface{}{
+	queryParameters := map[string]any{
 		"api-version": APIVersion,
 	}
 

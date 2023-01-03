@@ -24,7 +24,7 @@ import (
 func Test_GetAWSResource(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}

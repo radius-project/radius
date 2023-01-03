@@ -71,7 +71,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 	existing := true
 	var getResponse *cloudcontrol.GetResourceOutput = nil
 	computedResourceID := ""
-	responseProperties := map[string]interface{}{}
+	responseProperties := map[string]any{}
 
 	awsResourceIdentifier, err := getPrimaryIdentifierFromMultiIdentifiers(ctx, properties, *describeTypeOutput.Schema)
 	if errors.Is(&awserror.AWSMissingPropertyError{}, err) {
@@ -140,7 +140,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 			// mark provisioning state as succeeded here
 			// and return 200, telling the deployment engine that the resource has already been created
 			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
-			responseBody := map[string]interface{}{
+			responseBody := map[string]any{
 				"id":         computedResourceID,
 				"name":       awsResourceIdentifier,
 				"type":       id.Type(),
@@ -174,7 +174,7 @@ func (p *CreateOrUpdateAWSResourceWithPost) Run(ctx context.Context, w http.Resp
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 
-	responseBody := map[string]interface{}{
+	responseBody := map[string]any{
 		"type":       id.Type(),
 		"properties": responseProperties,
 	}

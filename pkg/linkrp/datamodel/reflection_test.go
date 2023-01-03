@@ -38,7 +38,7 @@ func Test_TestReflectionIsCool(t *testing.T) {
 	expected := &properties
 	require.Equal(t, expected, actual)
 
-	err := mapstructure.Decode(map[string]interface{}{"AppId": "B"}, actual)
+	err := mapstructure.Decode(map[string]any{"AppId": "B"}, actual)
 	require.NoError(t, err)
 
 	require.Equal(t, res.Resource.(*DaprInvokeHttpRoute).Properties.AppId, "B")

@@ -36,13 +36,13 @@ func (e *OpenAPIv2Doc) Run(ctx context.Context, w http.ResponseWriter, req *http
 
 	// We avoid using the rest package here so we can avoid logging every request.
 	// This endpoint is called ..... A ... LOT.
-	b, err := json.Marshal(map[string]interface{}{
+	b, err := json.Marshal(map[string]any{
 		"swagger": "2.0",
-		"info": map[string]interface{}{
+		"info": map[string]any{
 			"title":   "Radius APIService",
 			"version": "v1alpha3",
 		},
-		"paths": map[string]interface{}{},
+		"paths": map[string]any{},
 	})
 	if err != nil {
 		controller.HandleError(ctx, w, req, err)

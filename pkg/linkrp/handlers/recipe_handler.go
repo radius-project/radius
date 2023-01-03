@@ -82,7 +82,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
 
-	recipeData := make(map[string]interface{})
+	recipeData := make(map[string]any)
 	err = json.Unmarshal(recipeBytes, &recipeData)
 	if err != nil {
 		return nil, err
@@ -147,13 +147,13 @@ func getDigestFromManifest(ctx context.Context, repo *remote.Repository, tag str
 		return "", err
 	}
 	// create the manifest map to get the digest of the layer
-	var manifest map[string]interface{}
+	var manifest map[string]any
 	err = json.Unmarshal(manifestBlob, &manifest)
 	if err != nil {
 		return "", err
 	}
 	// get the layers digest to fetch the blob
-	layer, ok := manifest["layers"].([]interface{})[0].(map[string]interface{})
+	layer, ok := manifest["layers"].([]any)[0].(map[string]any)
 	if !ok {
 		return "", fmt.Errorf("failed to decode the layers from manifest")
 	}

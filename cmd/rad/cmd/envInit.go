@@ -260,7 +260,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	workspace = &workspaces.Workspace{
-		Connection: map[string]interface{}{
+		Connection: map[string]any{
 			"kind":    "kubernetes",
 			"context": contextName,
 		},

@@ -51,8 +51,8 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterName":         testResource.ResourceName,
 			"Port":                6379,
 			"NumReplicasPerShard": 1,
@@ -84,11 +84,11 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterName":         testResource.ResourceName,
 			"Port":                float64(6379),
 			"NumReplicasPerShard": float64(1),
@@ -96,7 +96,7 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -117,9 +117,9 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"ClusterName": testResource.ResourceName,
-		"ClusterEndpoint": map[string]interface{}{
+		"ClusterEndpoint": map[string]any{
 			"Address": "test",
 			"Port":    6379,
 		},
@@ -146,8 +146,8 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterName":         testResource.ResourceName,
 			"Port":                6379,
 			"NumReplicasPerShard": 0,
@@ -179,13 +179,13 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterName": testResource.ResourceName,
-			"ClusterEndpoint": map[string]interface{}{
+			"ClusterEndpoint": map[string]any{
 				"Address": "test",
 				"Port":    float64(6379),
 			},
@@ -196,7 +196,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -217,9 +217,9 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"ClusterName": testResource.ResourceName,
-		"ClusterEndpoint": map[string]interface{}{
+		"ClusterEndpoint": map[string]any{
 			"Address": "test",
 			"Port":    6379,
 		},
@@ -237,8 +237,8 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterName":         testResource.ResourceName,
 			"Port":                6379,
 			"NumReplicasPerShard": 1,
@@ -270,13 +270,13 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterName": testResource.ResourceName,
-			"ClusterEndpoint": map[string]interface{}{
+			"ClusterEndpoint": map[string]any{
 				"Address": "test",
 				"Port":    float64(6379),
 			},
@@ -287,7 +287,7 @@ func Test_UpdateAWSResourceWithPost_NoChangesNoops(t *testing.T) {
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -320,8 +320,8 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 		},
 	}
@@ -354,17 +354,17 @@ func Test_CreateAWSResourceWithPost_NoPrimaryIdentifierAvailable(t *testing.T) {
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
 	rID := computeResourceID(id, multiIdentifierResourceID)
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   rID,
 		"name": multiIdentifierResourceID,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"provisioningState": "Provisioning",
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -402,8 +402,8 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"Account":           accountValue,
 		},
@@ -437,18 +437,18 @@ func Test_CreateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
 	rID := computeResourceID(id, multiIdentifierResourceID)
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   rID,
 		"name": multiIdentifierResourceID,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"Account":           accountValue,
 			"provisioningState": "Provisioning",
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -472,7 +472,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"ClusterIdentifier": clusterIdentifierValue,
 		"Account":           accountValue,
 	}
@@ -495,8 +495,8 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"Account":           accountValue,
 			"EndpointCount":     2,
@@ -531,11 +531,11 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	id, err := resources.Parse(testResource.CollectionPath)
 	require.NoError(t, err)
 	rID := computeResourceID(id, multiIdentifierResourceID)
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   rID,
 		"name": multiIdentifierResourceID,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterIdentifier": "abc",
 			"Account":           "xyz",
 			"EndpointCount":     float64(2),
@@ -543,7 +543,7 @@ func Test_UpdateAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 

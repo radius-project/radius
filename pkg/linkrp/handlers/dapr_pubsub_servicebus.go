@@ -93,7 +93,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 }
 
 func (handler *daprPubSubServiceBusHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]interface{})
+	properties := resource.Resource.(map[string]any)
 
 	err := handler.DeleteDaprPubSub(ctx, properties)
 	if err != nil {
@@ -110,19 +110,19 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 	}
 
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
 				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprPubSubBrokerResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    "pubsub.azure.servicebus",
 				"version": "v1",
-				"metadata": []interface{}{
-					map[string]interface{}{
+				"metadata": []any{
+					map[string]any{
 						"name":  "connectionString",
 						"value": cs,
 					},
@@ -139,12 +139,12 @@ func (handler *daprPubSubServiceBusHandler) PatchDaprPubSub(ctx context.Context,
 	return nil
 }
 
-func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]interface{}) error {
+func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context, properties map[string]any) error {
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName].(string)),
 			},

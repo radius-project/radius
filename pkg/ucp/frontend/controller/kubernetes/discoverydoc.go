@@ -36,11 +36,11 @@ func (e *DiscoveryDoc) Run(ctx context.Context, w http.ResponseWriter, req *http
 
 	// We avoid using the rest package here so we can avoid logging every request.
 	// This endpoint is called ..... A ... LOT.
-	b, err := json.Marshal(map[string]interface{}{
+	b, err := json.Marshal(map[string]any{
 		"kind":         "APIResourceList",
 		"apiVersion":   "v1alpha3",
 		"groupVersion": "api.ucp.dev/v1alpha3",
-		"resources":    []interface{}{},
+		"resources":    []any{},
 	})
 	if err != nil {
 		controller.HandleError(ctx, w, req, err)

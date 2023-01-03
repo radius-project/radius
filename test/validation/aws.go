@@ -32,7 +32,7 @@ type AWSResource struct {
 	Type       string
 	Name       string
 	Identifier string
-	Properties map[string]interface{}
+	Properties map[string]any
 }
 
 type AWSResourceSet struct {
@@ -49,7 +49,7 @@ func ValidateAWSResources(ctx context.Context, t *testing.T, expected *AWSResour
 		require.NoError(t, err)
 
 		if resource.Properties != nil {
-			var resourceResponseProperties map[string]interface{}
+			var resourceResponseProperties map[string]any
 			err := json.Unmarshal([]byte(*resourceResponse.ResourceDescription.Properties), &resourceResponseProperties)
 			require.NoError(t, err)
 
@@ -127,10 +127,10 @@ func GetResourceTypeName(ctx context.Context, t *testing.T, resource *AWSResourc
 }
 
 // assertFieldsArePresent ensures that all fields in actual exist and are equivalent in expected
-func assertFieldsArePresent(t *testing.T, actual interface{}, expected interface{}) {
+func assertFieldsArePresent(t *testing.T, actual any, expected any) {
 	switch actual := actual.(type) {
-	case map[string]interface{}:
-		if expectedMap, ok := expected.(map[string]interface{}); ok {
+	case map[string]any:
+		if expectedMap, ok := expected.(map[string]any); ok {
 			for k := range actual {
 				assertFieldsArePresent(t, actual[k], expectedMap[k])
 			}

@@ -52,7 +52,7 @@ type ResourceEntity struct {
 	// PartitionKey represents the key used for partitioning.
 	PartitionKey string `json:"partitionKey"`
 	// Entity represents the resource metadata.
-	Entity interface{} `json:"entity"`
+	Entity any `json:"entity"`
 }
 
 // CosmosDBStorageClient implements CosmosDB stroage client.

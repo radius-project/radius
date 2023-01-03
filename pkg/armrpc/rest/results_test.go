@@ -100,8 +100,8 @@ func Test_NewLinkedResourceUpdateErrorResponse(t *testing.T) {
 
 func Test_NewNoResourceMatchResponse(t *testing.T) {
 	response := NewNoResourceMatchResponse("/some/url")
-	payload := map[string]interface{}{
-		"error": map[string]interface{}{
+	payload := map[string]any{
+		"error": map[string]any{
 			"code":    v1.CodeNotFound,
 			"message": "the specified path \"/some/url\" did not match any resource",
 			"target":  "/some/url",

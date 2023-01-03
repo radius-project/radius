@@ -10,7 +10,7 @@
 package generated
 
 const (
-	moduleName = "generated"
+	moduleName    = "generated"
 	moduleVersion = "v0.0.1"
 )
 
@@ -18,13 +18,13 @@ const (
 type AzureIdentityKind string
 
 const (
-	AzureIdentityKindWorkload AzureIdentityKind = "Workload"
+	AzureIdentityKindWorkload       AzureIdentityKind = "Workload"
 	AzureIdentityKindSystemAssigned AzureIdentityKind = "SystemAssigned"
 )
 
 // PossibleAzureIdentityKindValues returns the possible values for the AzureIdentityKind const type.
 func PossibleAzureIdentityKindValues() []AzureIdentityKind {
-	return []AzureIdentityKind{	
+	return []AzureIdentityKind{
 		AzureIdentityKindWorkload,
 		AzureIdentityKindSystemAssigned,
 	}
@@ -35,13 +35,13 @@ type CertType string
 
 const (
 	CertTypeCertificate CertType = "certificate"
-	CertTypePublickey CertType = "publickey"
-	CertTypePrivatekey CertType = "privatekey"
+	CertTypePublickey   CertType = "publickey"
+	CertTypePrivatekey  CertType = "privatekey"
 )
 
 // PossibleCertTypeValues returns the possible values for the CertType const type.
 func PossibleCertTypeValues() []CertType {
-	return []CertType{	
+	return []CertType{
 		CertTypeCertificate,
 		CertTypePublickey,
 		CertTypePrivatekey,
@@ -52,15 +52,15 @@ func PossibleCertTypeValues() []CertType {
 type CreatedByType string
 
 const (
-	CreatedByTypeApplication CreatedByType = "Application"
-	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeApplication     CreatedByType = "Application"
+	CreatedByTypeKey             CreatedByType = "Key"
 	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
-	CreatedByTypeUser CreatedByType = "User"
+	CreatedByTypeUser            CreatedByType = "User"
 )
 
 // PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
 func PossibleCreatedByTypeValues() []CreatedByType {
-	return []CreatedByType{	
+	return []CreatedByType{
 		CreatedByTypeApplication,
 		CreatedByTypeKey,
 		CreatedByTypeManagedIdentity,
@@ -72,14 +72,14 @@ func PossibleCreatedByTypeValues() []CreatedByType {
 type Encoding string
 
 const (
-	EncodingUTF8 Encoding = "utf-8"
-	EncodingHex Encoding = "hex"
+	EncodingUTF8   Encoding = "utf-8"
+	EncodingHex    Encoding = "hex"
 	EncodingBase64 Encoding = "base64"
 )
 
 // PossibleEncodingValues returns the possible values for the Encoding const type.
 func PossibleEncodingValues() []Encoding {
-	return []Encoding{	
+	return []Encoding{
 		EncodingUTF8,
 		EncodingHex,
 		EncodingBase64,
@@ -96,7 +96,7 @@ const (
 
 // PossibleFormatValues returns the possible values for the Format const type.
 func PossibleFormatValues() []Format {
-	return []Format{	
+	return []Format{
 		FormatPem,
 		FormatPfx,
 	}
@@ -111,7 +111,7 @@ const (
 
 // PossibleKindValues returns the possible values for the Kind const type.
 func PossibleKindValues() []Kind {
-	return []Kind{	
+	return []Kind{
 		KindAzure,
 	}
 }
@@ -120,13 +120,13 @@ func PossibleKindValues() []Kind {
 type ManagedStore string
 
 const (
-	ManagedStoreDisk ManagedStore = "disk"
+	ManagedStoreDisk   ManagedStore = "disk"
 	ManagedStoreMemory ManagedStore = "memory"
 )
 
 // PossibleManagedStoreValues returns the possible values for the ManagedStore const type.
 func PossibleManagedStoreValues() []ManagedStore {
-	return []ManagedStore{	
+	return []ManagedStore{
 		ManagedStoreDisk,
 		ManagedStoreMemory,
 	}
@@ -138,13 +138,13 @@ type Protocol string
 const (
 	ProtocolGrpc Protocol = "grpc"
 	ProtocolHTTP Protocol = "http"
-	ProtocolTCP Protocol = "TCP"
-	ProtocolUDP Protocol = "UDP"
+	ProtocolTCP  Protocol = "TCP"
+	ProtocolUDP  Protocol = "UDP"
 )
 
 // PossibleProtocolValues returns the possible values for the Protocol const type.
 func PossibleProtocolValues() []Protocol {
-	return []Protocol{	
+	return []Protocol{
 		ProtocolGrpc,
 		ProtocolHTTP,
 		ProtocolTCP,
@@ -156,18 +156,18 @@ func PossibleProtocolValues() []Protocol {
 type ProvisioningState string
 
 const (
-	ProvisioningStateAccepted ProvisioningState = "Accepted"
-	ProvisioningStateCanceled ProvisioningState = "Canceled"
-	ProvisioningStateDeleting ProvisioningState = "Deleting"
-	ProvisioningStateFailed ProvisioningState = "Failed"
+	ProvisioningStateAccepted     ProvisioningState = "Accepted"
+	ProvisioningStateCanceled     ProvisioningState = "Canceled"
+	ProvisioningStateDeleting     ProvisioningState = "Deleting"
+	ProvisioningStateFailed       ProvisioningState = "Failed"
 	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
-	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
-	ProvisioningStateUpdating ProvisioningState = "Updating"
+	ProvisioningStateSucceeded    ProvisioningState = "Succeeded"
+	ProvisioningStateUpdating     ProvisioningState = "Updating"
 )
 
 // PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
 func PossibleProvisioningStateValues() []ProvisioningState {
-	return []ProvisioningState{	
+	return []ProvisioningState{
 		ProvisioningStateAccepted,
 		ProvisioningStateCanceled,
 		ProvisioningStateDeleting,
@@ -182,15 +182,14 @@ func PossibleProvisioningStateValues() []ProvisioningState {
 type VolumePermission string
 
 const (
-	VolumePermissionRead VolumePermission = "read"
+	VolumePermissionRead  VolumePermission = "read"
 	VolumePermissionWrite VolumePermission = "write"
 )
 
 // PossibleVolumePermissionValues returns the possible values for the VolumePermission const type.
 func PossibleVolumePermissionValues() []VolumePermission {
-	return []VolumePermission{	
+	return []VolumePermission{
 		VolumePermissionRead,
 		VolumePermissionWrite,
 	}
 }
-

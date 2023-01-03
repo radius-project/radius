@@ -13,7 +13,7 @@ import (
 type JSONFormatter struct {
 }
 
-func (f *JSONFormatter) Format(obj interface{}, writer io.Writer, options FormatterOptions) error {
+func (f *JSONFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {
 	b, err := json.MarshalIndent(obj, "", "  ")
 	if err != nil {
 		return err

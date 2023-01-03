@@ -171,9 +171,9 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"name": "env0",
-						"properties": map[string]interface{}{
+						"properties": map[string]any{
 							"provisioningState": "Accepted",
 						},
 					},
@@ -368,9 +368,9 @@ func TestCreateOrUpdateResourceRun_20220315PrivatePreview(t *testing.T) {
 			getCall := msc.EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				Return(&store.Object{
-					Data: map[string]interface{}{
+					Data: map[string]any{
 						"name": "env0",
-						"properties": map[string]interface{}{
+						"properties": map[string]any{
 							"provisioningState": "Accepted",
 						},
 					},

@@ -73,7 +73,7 @@ func newTestResourceObject() *store.Object {
 		Data: map[string]any{
 			"name":              "env0",
 			"provisioningState": "Accepted",
-			"properties":        map[string]interface{}{},
+			"properties":        map[string]any{},
 		},
 	}
 }

@@ -86,7 +86,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 		return awsclient.HandleAWSError(err)
 	}
 
-	resourceProperties := map[string]interface{}{}
+	resourceProperties := map[string]any{}
 	if response.ResourceDescription.Properties != nil {
 		err := json.Unmarshal([]byte(*response.ResourceDescription.Properties), &resourceProperties)
 		if err != nil {
@@ -95,7 +95,7 @@ func (p *GetAWSResourceWithPost) Run(ctx context.Context, w http.ResponseWriter,
 	}
 
 	computedResourceID := computeResourceID(id, awsResourceIdentifier)
-	body := map[string]interface{}{
+	body := map[string]any{
 		"id":         computedResourceID,
 		"name":       response.ResourceDescription.Identifier,
 		"type":       id.Type(),

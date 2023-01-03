@@ -59,7 +59,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
-		ComputedValues: map[string]interface{}{
+		ComputedValues: map[string]any{
 			"componentName": rendererOutput.ComputedValues["componentName"].Value,
 		},
 	}

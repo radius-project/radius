@@ -131,12 +131,12 @@ func (handler *kubernetesHandler) Put(ctx context.Context, options *PutOptions) 
 func (handler *kubernetesHandler) PatchNamespace(ctx context.Context, namespace string) error {
 	// Ensure that the namespace exists that we're able to operate upon.
 	ns := &unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Namespace",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name": namespace,
-				"labels": map[string]interface{}{
+				"labels": map[string]any{
 					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 				},
 			},
@@ -159,10 +159,10 @@ func (handler *kubernetesHandler) Delete(ctx context.Context, options *DeleteOpt
 	}
 
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": identity.APIVersion,
 			"kind":       identity.Kind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": identity.Namespace,
 				"name":      identity.Name,
 			},
@@ -195,7 +195,7 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 
 	deploymentInformer := informerFactory.Apps().V1().Deployments().Informer()
 	handlers := cache.ResourceEventHandlerFuncs{
-		AddFunc: func(new_obj interface{}) {
+		AddFunc: func(new_obj any) {
 			obj, ok := new_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("deployment object is not of appsv1.Deployment type")
@@ -203,7 +203,7 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 
 			handler.watchUntilDeploymentReady(ctx, obj, readinessCh)
 		},
-		UpdateFunc: func(old_obj, new_obj interface{}) {
+		UpdateFunc: func(old_obj, new_obj any) {
 			old, ok := old_obj.(*v1.Deployment)
 			if !ok {
 				watchErrorCh <- errors.New("old deployment object is not of appsv1.Deployment type")
@@ -216,7 +216,7 @@ func (handler *kubernetesHandler) watchUntilReady(ctx context.Context, item clie
 				handler.watchUntilDeploymentReady(ctx, new, readinessCh)
 			}
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj any) {
 			// no-op here
 		},
 	}

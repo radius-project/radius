@@ -26,7 +26,7 @@ const testProxyRequestAWSListPath = "/planes/aws/aws/accounts/1234567/regions/us
 func Test_ListAWSResources(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, _ := initializeTest(t)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
