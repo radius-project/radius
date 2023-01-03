@@ -57,7 +57,7 @@ func TestDaprStateStore_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		case *RecipeDaprStateStoreProperties:
 			if payload == "daprstatestoreresource_recipe2.json" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
 			} else {
 				require.Equal(t, "recipe-test", convertedResource.Properties.Recipe.Name)
@@ -110,7 +110,7 @@ func TestDaprStateStore_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "kubernetes", v.GetDaprStateStoreProperties().Status.OutputResources[0]["Provider"])
 		case *RecipeDaprStateStoreProperties:
 			if payload == "daprstatestoreresourcedatamodel_recipe2.json" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
 			} else {
 				require.Equal(t, "recipe-test", resource.Properties.Recipe.Name)

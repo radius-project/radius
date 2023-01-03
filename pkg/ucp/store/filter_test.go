@@ -49,19 +49,19 @@ func Test_MatchesFilters(t *testing.T) {
 		// We can work with maps of different types
 		{
 			Description:   "map_string_interface_match",
-			Obj:           &Object{Data: map[string]interface{}{"value": "cool"}},
+			Obj:           &Object{Data: map[string]any{"value": "cool"}},
 			Filters:       []QueryFilter{{Field: "value", Value: "cool"}},
 			ExpectedMatch: true,
 		},
 		{
 			Description:   "map_string_interface_match_not_match",
-			Obj:           &Object{Data: map[string]interface{}{"value": "cool"}},
+			Obj:           &Object{Data: map[string]any{"value": "cool"}},
 			Filters:       []QueryFilter{{Field: "value", Value: "uncool"}},
 			ExpectedMatch: false,
 		},
 		{
 			Description:   "map_string_interface_match_not_match_wrong_type",
-			Obj:           &Object{Data: map[string]interface{}{"value": 3}},
+			Obj:           &Object{Data: map[string]any{"value": 3}},
 			Filters:       []QueryFilter{{Field: "value", Value: "uncool"}},
 			ExpectedMatch: false,
 		},
@@ -80,25 +80,25 @@ func Test_MatchesFilters(t *testing.T) {
 
 		{
 			Description:   "multi_match",
-			Obj:           &Object{Data: map[string]interface{}{"value": "cool", "another": "very-cool"}},
+			Obj:           &Object{Data: map[string]any{"value": "cool", "another": "very-cool"}},
 			Filters:       []QueryFilter{{Field: "value", Value: "cool"}, {Field: "another", Value: "very-cool"}},
 			ExpectedMatch: true,
 		},
 		{
 			Description:   "multi_not_match",
-			Obj:           &Object{Data: map[string]interface{}{"value": "cool", "another": "sub-zero"}},
+			Obj:           &Object{Data: map[string]any{"value": "cool", "another": "sub-zero"}},
 			Filters:       []QueryFilter{{Field: "value", Value: "cool"}, {Field: "another", Value: "very-cool"}},
 			ExpectedMatch: false,
 		},
 		{
 			Description:   "nested_match",
-			Obj:           &Object{Data: map[string]interface{}{"properties": map[string]interface{}{"value": "freezing"}}},
+			Obj:           &Object{Data: map[string]any{"properties": map[string]any{"value": "freezing"}}},
 			Filters:       []QueryFilter{{Field: "properties.value", Value: "freezing"}},
 			ExpectedMatch: true,
 		},
 		{
 			Description:   "nested_match",
-			Obj:           &Object{Data: map[string]interface{}{"properties": map[string]interface{}{"value": "freezing"}}},
+			Obj:           &Object{Data: map[string]any{"properties": map[string]any{"value": "freezing"}}},
 			Filters:       []QueryFilter{{Field: "properties.value", Value: "warm"}},
 			ExpectedMatch: false,
 		},

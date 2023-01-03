@@ -189,7 +189,7 @@ func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byt
 		requestBuffer = bytes.NewBuffer(body)
 
 		// Pretty-print body for logs.
-		var data interface{}
+		var data any
 		err := json.Unmarshal(body, &data)
 		require.NoError(ts.t, err, "unmarshalling request failed")
 
@@ -214,7 +214,7 @@ func (ts *TestServer) MakeRequest(method string, pathAndQuery string, body []byt
 
 	// Pretty-print response for logs.
 	if len(responseBuffer.Bytes()) > 0 {
-		var data interface{}
+		var data any
 		err = json.Unmarshal(responseBuffer.Bytes(), &data)
 		require.NoError(ts.t, err, "unmarshalling response failed")
 
@@ -258,11 +258,11 @@ func (tr *TestResponse) EqualsResponse(statusCode int, body []byte) {
 		return
 	}
 
-	var expected interface{}
+	var expected any
 	err := json.Unmarshal(body, &expected)
 	require.NoError(tr.t, err, "unmarshalling expected response failed")
 
-	var actual interface{}
+	var actual any
 	err = json.Unmarshal(tr.Body.Bytes(), &actual)
 	require.NoError(tr.t, err, "unmarshalling actual response failed")
 

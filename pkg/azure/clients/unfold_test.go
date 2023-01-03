@@ -124,7 +124,7 @@ func TestUnfoldServiceError(t *testing.T) {
 		{
 			name: "nested once",
 			input: azure.ServiceError{
-				Details: []map[string]interface{}{{
+				Details: []map[string]any{{
 					"code":    to.Ptr("DownstreamEndpointError"),
 					"message": `{"error": { "code": "BadRequest" }}`,
 				}},
@@ -217,7 +217,7 @@ func TestTryUnfoldServiceError(t *testing.T) {
 		{
 			name: "nested once",
 			input: &azure.ServiceError{
-				Details: []map[string]interface{}{{
+				Details: []map[string]any{{
 					"code":    to.Ptr("DownstreamEndpointError"),
 					"message": `{"error": { "code": "BadRequest" }}`,
 				}},

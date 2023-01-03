@@ -20,7 +20,7 @@ var _ rp.SecretValueTransformer = (*AzureTransformer)(nil)
 type AzureTransformer struct {
 }
 
-func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]interface{}, value interface{}) (interface{}, error) {
+func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]any, value any) (any, error) {
 	// Mongo uses the following format for mongo: mongodb://{accountname}:{key}@{endpoint}:{port}/{database}?...{params}
 	//
 	// The connection strings that come back from CosmosDB don't include the database name.

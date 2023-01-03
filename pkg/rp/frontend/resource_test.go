@@ -89,7 +89,7 @@ type TestResourceProperties struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+	OutputResources []map[string]any `json:"outputResources,omitempty"`
 }
 
 func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {

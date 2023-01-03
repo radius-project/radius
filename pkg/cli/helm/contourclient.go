@@ -80,7 +80,7 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 	if options.HostNetwork {
 		// https://projectcontour.io/docs/main/deploy-options/#host-networking
 		// https://github.com/bitnami/charts/blob/7550513a4f491bb999f95027a7bfcc35ff076c33/bitnami/contour/values.yaml#L605
-		envoyNode := helmChart.Values["envoy"].(map[string]interface{})
+		envoyNode := helmChart.Values["envoy"].(map[string]any)
 		if envoyNode == nil {
 			return fmt.Errorf("envoy node not found in chart values")
 		}
@@ -88,7 +88,7 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 		envoyNode["hostNetwork"] = true
 		envoyNode["dnsPolicy"] = "ClusterFirstWithHostNet"
 
-		containerPortsNode := envoyNode["containerPorts"].(map[string]interface{})
+		containerPortsNode := envoyNode["containerPorts"].(map[string]any)
 		if containerPortsNode == nil {
 			return fmt.Errorf("envoy.containerPorts node not found in chart values")
 		}
@@ -98,12 +98,12 @@ func AddContourValues(helmChart *chart.Chart, options ContourOptions) error {
 		containerPortsNode["http"] = 80
 		containerPortsNode["https"] = 443
 
-		serviceNode := envoyNode["service"].(map[string]interface{})
+		serviceNode := envoyNode["service"].(map[string]any)
 		if serviceNode == nil {
 			return fmt.Errorf("envoy.service node not found in chart values")
 		}
 
-		servicePortsNode := serviceNode["ports"].(map[string]interface{})
+		servicePortsNode := serviceNode["ports"].(map[string]any)
 		if serviceNode == nil {
 			return fmt.Errorf("envoy.service.ports node not found in chart values")
 		}

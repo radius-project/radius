@@ -77,7 +77,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	connection := map[string]interface{}{
+	connection := map[string]any{
 		"kind":    workspaces.KindKubernetes,
 		"context": "my-context",
 	}
@@ -110,10 +110,10 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "Showing cloud provider %q for Radius installation %q...",
-					Params: []interface{}{"azure", "Kubernetes (context=my-context)"},
+					Params: []any{"azure", "Kubernetes (context=my-context)"},
 				},
 				output.FormattedOutput{
 					Format:  "table",

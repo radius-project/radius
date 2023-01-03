@@ -4,8 +4,8 @@
 // ------------------------------------------------------------
 
 // Package v1alpha1 contains API Schema definitions for the ucp v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=ucp.dev
+// +kubebuilder:object:generate=true
+// +groupName=ucp.dev
 package v1alpha1
 
 import (

@@ -44,8 +44,8 @@ func Test_CreateAWSResource(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"RetentionPeriodHours": 178,
 			"ShardCount":           3,
 		},
@@ -82,18 +82,18 @@ func Test_CreateAWSResource(t *testing.T) {
 	require.Equal(t, testResource.AzureAsyncOpHeader, res.Header.Get("Azure-AsyncOperation"))
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
 			"provisioningState":    "Provisioning",
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -111,8 +111,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 		Schema:   aws.String(testResource.Schema),
 	}
 
-	getResponseBody := map[string]interface{}{
-		"ClusterEndpoint": map[string]interface{}{
+	getResponseBody := map[string]any{
+		"ClusterEndpoint": map[string]any{
 			"Address": "test",
 			"Port":    6379,
 		},
@@ -142,8 +142,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Port":                6379,
 			"NumReplicasPerShard": 0,
 		},
@@ -174,12 +174,12 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
-			"ClusterEndpoint": map[string]interface{}{
+		"properties": map[string]any{
+			"ClusterEndpoint": map[string]any{
 				"Address": "test",
 				"Port":    float64(6379),
 			},
@@ -190,7 +190,7 @@ func Test_UpdateAWSResource(t *testing.T) {
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 
@@ -208,7 +208,7 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 		Schema:   aws.String(testResource.Schema),
 	}
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
@@ -226,8 +226,8 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"RetentionPeriodHours": 178,
 			"ShardCount":           3,
 		},
@@ -258,18 +258,18 @@ func Test_UpdateNoChangesDoesNotCallUpdate(t *testing.T) {
 	require.NoError(t, err)
 	defer res.Body.Close()
 
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
 			"provisioningState":    "Succeeded",
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 

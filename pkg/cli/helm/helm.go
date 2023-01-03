@@ -33,7 +33,7 @@ func HelmConfig(builder *strings.Builder, flags *genericclioptions.ConfigFlags) 
 	hc := helm.Configuration{}
 	// helmDriver is "secret" to make the backend storage driver
 	// use kubernetes secrets.
-	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...interface{}) {
+	err := hc.Init(flags, *flags.Namespace, helmDriverSecret, func(format string, v ...any) {
 		builder.WriteString(fmt.Sprintf(format, v...))
 		builder.WriteRune('\n')
 	})

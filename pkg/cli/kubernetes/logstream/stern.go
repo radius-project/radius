@@ -88,8 +88,8 @@ func (i *Impl) Stream(ctx context.Context, options Options) error {
 }
 
 // functionTable sets the functions available to the text template.
-func functionTable() map[string]interface{} {
-	return map[string]interface{}{
+func functionTable() map[string]any {
+	return map[string]any{
 		"color": func(color color.Color, text string) string {
 			// Use the provided color to add ascii escapes.
 			return color.SprintFunc()(text)

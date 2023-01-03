@@ -121,10 +121,10 @@ type AzureKeyVaultVolumeProperties struct {
 // GetVolumeProperties implements the VolumePropertiesClassification interface for type AzureKeyVaultVolumeProperties.
 func (a *AzureKeyVaultVolumeProperties) GetVolumeProperties() *VolumeProperties {
 	return &VolumeProperties{
-		Kind: a.Kind,
+		Kind:              a.Kind,
 		ProvisioningState: a.ProvisioningState,
-		Application: a.Application,
-		Status: a.Status,
+		Application:       a.Application,
+		Status:            a.Status,
 	}
 }
 
@@ -156,9 +156,9 @@ type CertificateObjectProperties struct {
 
 type ConnectionProperties struct {
 	// REQUIRED; The source of the connection
-	Source *string `json:"source,omitempty"`
-	DisableDefaultEnvVars *bool `json:"disableDefaultEnvVars,omitempty"`
-	Iam *IamProperties `json:"iam,omitempty"`
+	Source                *string        `json:"source,omitempty"`
+	DisableDefaultEnvVars *bool          `json:"disableDefaultEnvVars,omitempty"`
+	Iam                   *IamProperties `json:"iam,omitempty"`
 }
 
 // Container - Definition of a container.
@@ -419,7 +419,7 @@ type EphemeralVolume struct {
 // GetVolume implements the VolumeClassification interface for type EphemeralVolume.
 func (e *EphemeralVolume) GetVolume() *Volume {
 	return &Volume{
-		Kind: e.Kind,
+		Kind:      e.Kind,
 		MountPath: e.MountPath,
 	}
 }
@@ -427,7 +427,7 @@ func (e *EphemeralVolume) GetVolume() *Volume {
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
 	// READ-ONLY; The additional info.
-	Info map[string]interface{} `json:"info,omitempty" azure:"ro"`
+	Info map[string]any `json:"info,omitempty" azure:"ro"`
 
 	// READ-ONLY; The additional info type.
 	Type *string `json:"type,omitempty" azure:"ro"`
@@ -479,10 +479,10 @@ type ExecHealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type ExecHealthProbeProperties.
 func (e *ExecHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
 	return &HealthProbeProperties{
-		Kind: e.Kind,
+		Kind:                e.Kind,
 		InitialDelaySeconds: e.InitialDelaySeconds,
-		FailureThreshold: e.FailureThreshold,
-		PeriodSeconds: e.PeriodSeconds,
+		FailureThreshold:    e.FailureThreshold,
+		PeriodSeconds:       e.PeriodSeconds,
 	}
 }
 
@@ -532,11 +532,11 @@ type GatewayProperties struct {
 // mygateway.myapp.PUBLICHOSTNAMEORIP.nip.io.
 type GatewayPropertiesHostname struct {
 	// Specify a fully-qualified domain name: myapp.mydomain.com. Mutually exclusive with 'prefix' and will take priority if both
-// are defined.
+	// are defined.
 	FullyQualifiedHostname *string `json:"fullyQualifiedHostname,omitempty"`
 
 	// Specify a prefix for the hostname: myhostname.myapp.PUBLICHOSTNAMEORIP.nip.io. Mutually exclusive with 'fullyQualifiedHostname'
-// and will be overridden if both are defined.
+	// and will be overridden if both are defined.
 	Prefix *string `json:"prefix,omitempty"`
 }
 
@@ -581,7 +581,7 @@ type GatewayRoute struct {
 	Path *string `json:"path,omitempty"`
 
 	// Optionally update the prefix when sending the request to the service. Ex - replacePrefix: '/' and path: '/myservice' will
-// transform '/myservice/myroute' to '/myroute'
+	// transform '/myservice/myroute' to '/myroute'
 	ReplacePrefix *string `json:"replacePrefix,omitempty"`
 }
 
@@ -637,10 +637,10 @@ type HTTPGetHealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type HTTPGetHealthProbeProperties.
 func (h *HTTPGetHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
 	return &HealthProbeProperties{
-		Kind: h.Kind,
+		Kind:                h.Kind,
 		InitialDelaySeconds: h.InitialDelaySeconds,
-		FailureThreshold: h.FailureThreshold,
-		PeriodSeconds: h.PeriodSeconds,
+		FailureThreshold:    h.FailureThreshold,
+		PeriodSeconds:       h.PeriodSeconds,
 	}
 }
 
@@ -787,7 +787,7 @@ type KubernetesCompute struct {
 // GetEnvironmentCompute implements the EnvironmentComputeClassification interface for type KubernetesCompute.
 func (k *KubernetesCompute) GetEnvironmentCompute() *EnvironmentCompute {
 	return &EnvironmentCompute{
-		Kind: k.Kind,
+		Kind:       k.Kind,
 		ResourceID: k.ResourceID,
 	}
 }
@@ -826,7 +826,7 @@ type PersistentVolume struct {
 // GetVolume implements the VolumeClassification interface for type PersistentVolume.
 func (p *PersistentVolume) GetVolume() *Volume {
 	return &Volume{
-		Kind: p.Kind,
+		Kind:      p.Kind,
 		MountPath: p.MountPath,
 	}
 }
@@ -857,7 +857,7 @@ type Resource struct {
 
 // ResourceStatus - Status of a resource.
 type ResourceStatus struct {
-	OutputResources []map[string]interface{} `json:"outputResources,omitempty"`
+	OutputResources []map[string]any `json:"outputResources,omitempty"`
 }
 
 type SecretObjectProperties struct {
@@ -916,10 +916,10 @@ type TCPHealthProbeProperties struct {
 // GetHealthProbeProperties implements the HealthProbePropertiesClassification interface for type TCPHealthProbeProperties.
 func (t *TCPHealthProbeProperties) GetHealthProbeProperties() *HealthProbeProperties {
 	return &HealthProbeProperties{
-		Kind: t.Kind,
+		Kind:                t.Kind,
 		InitialDelaySeconds: t.InitialDelaySeconds,
-		FailureThreshold: t.FailureThreshold,
-		PeriodSeconds: t.PeriodSeconds,
+		FailureThreshold:    t.FailureThreshold,
+		PeriodSeconds:       t.PeriodSeconds,
 	}
 }
 
@@ -1046,4 +1046,3 @@ type VolumesClientListByScopeOptions struct {
 type VolumesClientUpdateOptions struct {
 	// placeholder for future optional parameters
 }
-

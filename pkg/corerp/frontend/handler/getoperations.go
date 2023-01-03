@@ -42,7 +42,7 @@ func (opctrl *GetOperations) Run(ctx context.Context, w http.ResponseWriter, req
 
 func (opctrl *GetOperations) availableOperationsV1() *v1.PaginatedList {
 	return &v1.PaginatedList{
-		Value: []interface{}{
+		Value: []any{
 			&v1.Operation{
 				Name: "Applications.Core/operations/read",
 				Display: &v1.OperationDisplayProperties{

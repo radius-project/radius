@@ -27,8 +27,8 @@ import (
 func Test_CreateAWSResourceWithPost(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
 
-	primaryIdentifiers := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+	primaryIdentifiers := map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/Name",
 		},
 	}
@@ -59,8 +59,8 @@ func Test_CreateAWSResourceWithPost(t *testing.T) {
 		return &output, nil
 	})
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name":                 "testStream",
 			"RetentionPeriodHours": 178,
 			"ShardCount":           3,

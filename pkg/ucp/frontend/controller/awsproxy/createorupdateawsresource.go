@@ -43,7 +43,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 	decoder := json.NewDecoder(req.Body)
 	defer req.Body.Close()
 
-	body := map[string]interface{}{}
+	body := map[string]any{}
 	err = decoder.Decode(&body)
 	if err != nil {
 		e := v1.ErrorResponse{
@@ -60,10 +60,10 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 		}
 	}
 
-	properties := map[string]interface{}{}
+	properties := map[string]any{}
 	obj, ok := body["properties"]
 	if ok {
-		pp, ok := obj.(map[string]interface{})
+		pp, ok := obj.(map[string]any)
 		if ok {
 			properties = pp
 		}
@@ -91,7 +91,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	// AWS doesn't return the resource state as part of the cloud-control operation. Let's
 	// simulate that here.
-	responseProperties := map[string]interface{}{}
+	responseProperties := map[string]any{}
 	if getResponse != nil {
 		err = json.Unmarshal([]byte(*getResponse.ResourceDescription.Properties), &responseProperties)
 		if err != nil {
@@ -146,7 +146,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 			// mark provisioning state as succeeded here
 			// and return 200, telling the deployment engine that the resource has already been created
 			responseProperties["provisioningState"] = v1.ProvisioningStateSucceeded
-			responseBody := map[string]interface{}{
+			responseBody := map[string]any{
 				"id":         id.String(),
 				"name":       id.Name(),
 				"type":       id.Type(),
@@ -173,7 +173,7 @@ func (p *CreateOrUpdateAWSResource) Run(ctx context.Context, w http.ResponseWrit
 
 	responseProperties["provisioningState"] = v1.ProvisioningStateProvisioning
 
-	responseBody := map[string]interface{}{
+	responseBody := map[string]any{
 		"id":         id.String(),
 		"name":       id.Name(),
 		"type":       id.Type(),

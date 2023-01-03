@@ -44,8 +44,8 @@ func Test_AWS_DeleteResource(t *testing.T) {
 		resourceIDParts = resourceIDParts[:len(resourceIDParts)-1]
 		resourceID = strings.Join(resourceIDParts, "/")
 		deleteURL := fmt.Sprintf("%s%s/:delete?api-version=%s", url, resourceID, v20220901privatepreview.Version)
-		deleteRequestBody := map[string]interface{}{
-			"properties": map[string]interface{}{
+		deleteRequestBody := map[string]any{
+			"properties": map[string]any{
 				"Name": streamName,
 			},
 		}
@@ -73,7 +73,7 @@ func Test_AWS_DeleteResource(t *testing.T) {
 			// Read the request status from the body
 			payload, err := io.ReadAll(getResponse.Body)
 			require.NoError(t, err)
-			body := map[string]interface{}{}
+			body := map[string]any{}
 			err = json.Unmarshal(payload, &body)
 			require.NoError(t, err)
 			if body["status"] == "Succeeded" {
@@ -114,7 +114,7 @@ func Test_AWS_ListResources(t *testing.T) {
 
 		payload, err := io.ReadAll(listResponse.Body)
 		require.NoError(t, err)
-		body := map[string][]interface{}{}
+		body := map[string][]any{}
 		err = json.Unmarshal(payload, &body)
 		require.NoError(t, err)
 
@@ -131,7 +131,7 @@ func setupTestAWSResource(t *testing.T, ctx context.Context, resourceName string
 	cfg, err := awsconfig.LoadDefaultConfig(ctx)
 	require.NoError(t, err)
 	var awsClient aws.AWSCloudControlClient = cloudcontrol.NewFromConfig(cfg)
-	desiredState := map[string]interface{}{
+	desiredState := map[string]any{
 		"Name":                 resourceName,
 		"RetentionPeriodHours": 180,
 		"ShardCount":           4,

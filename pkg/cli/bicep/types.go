@@ -18,7 +18,7 @@ import (
 // Interface is the interface for preparing Bicep or ARM-JSON templates for deployment. This interface
 // is designed to be called from the CLI and will print output to the console.
 type Interface interface {
-	PrepareTemplate(filePath string) (map[string]interface{}, error)
+	PrepareTemplate(filePath string) (map[string]any, error)
 }
 
 var _ Interface = (*Impl)(nil)
@@ -29,7 +29,7 @@ var _ Interface = (*Impl)(nil)
 type Impl struct {
 }
 
-func (*Impl) PrepareTemplate(filePath string) (map[string]interface{}, error) {
+func (*Impl) PrepareTemplate(filePath string) (map[string]any, error) {
 	if strings.EqualFold(path.Ext(filePath), ".json") {
 		return ReadARMJSON(filePath)
 	} else if !strings.EqualFold(path.Ext(filePath), ".bicep") {
@@ -65,8 +65,8 @@ func (*Impl) PrepareTemplate(filePath string) (map[string]interface{}, error) {
 	return template, nil
 }
 
-func ConvertToMapStringInterface(in map[string]map[string]interface{}) map[string]interface{} {
-	result := make(map[string]interface{})
+func ConvertToMapStringInterface(in map[string]map[string]any) map[string]any {
+	result := make(map[string]any)
 	for k, v := range in {
 		result[k] = v["value"]
 	}

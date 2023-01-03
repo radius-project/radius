@@ -91,7 +91,7 @@ func prettyPrintRPError(err error) string {
 	return err.Error()
 }
 
-func prettyPrintJSON(o interface{}) (string, error) {
+func prettyPrintJSON(o any) (string, error) {
 	b, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
 		return "", err

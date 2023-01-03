@@ -66,7 +66,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
-		expectedSecrets := map[string]interface{}{
+		expectedSecrets := map[string]any{
 			renderers.PasswordStringHolder:  "testPassword",
 			renderers.ConnectionStringValue: "test-connection-string",
 		}
@@ -108,7 +108,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		w := httptest.NewRecorder()
 		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
-		expectedSecrets := map[string]interface{}{
+		expectedSecrets := map[string]any{
 			renderers.PasswordStringHolder: "testPassword",
 		}
 

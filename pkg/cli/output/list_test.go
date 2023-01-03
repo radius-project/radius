@@ -11,6 +11,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 )
+
 var formatter = &ListFormatter{}
 
 func Test_List_Scalar(t *testing.T) {
@@ -22,7 +23,6 @@ func Test_List_Scalar(t *testing.T) {
 		IsCool: true,
 	}
 
-	
 	buffer := &bytes.Buffer{}
 	err := formatter.Format(obj, buffer, FormatterOptions{})
 	require.NoError(t, err)

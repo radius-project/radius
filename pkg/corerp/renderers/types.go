@@ -45,7 +45,7 @@ type RendererDependency struct {
 	Resource conv.DataModelInterface
 
 	// ComputedValues is a map of the computed values and secrets of the dependency.
-	ComputedValues map[string]interface{}
+	ComputedValues map[string]any
 
 	// OutputResources is a map of the output resource identities of the dependency. The map is keyed on the LocalID of the output resource.
 	OutputResources map[string]resourcemodel.ResourceIdentity

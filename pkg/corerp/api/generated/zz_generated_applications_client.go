@@ -26,9 +26,9 @@ import (
 // ApplicationsClient contains the methods for the Applications group.
 // Don't use this type directly, use NewApplicationsClient() instead.
 type ApplicationsClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewApplicationsClient creates a new instance of ApplicationsClient with the specified values.
@@ -49,8 +49,8 @@ func NewApplicationsClient(rootScope string, credential azcore.TokenCredential, 
 	}
 	client := &ApplicationsClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -196,7 +196,7 @@ func (client *ApplicationsClient) getHandleResponse(resp *http.Response) (Applic
 // Generated from API version 2022-03-15-privatepreview
 // options - ApplicationsClientListByScopeOptions contains the optional parameters for the ApplicationsClient.ListByScope
 // method.
-func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) (*runtime.Pager[ApplicationsClientListByScopeResponse]) {
+func (client *ApplicationsClient) NewListByScopePager(options *ApplicationsClientListByScopeOptions) *runtime.Pager[ApplicationsClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ApplicationsClientListByScopeResponse]{
 		More: func(page ApplicationsClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -296,4 +296,3 @@ func (client *ApplicationsClient) updateHandleResponse(resp *http.Response) (App
 	}
 	return result, nil
 }
-

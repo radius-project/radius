@@ -20,7 +20,7 @@ type AzureTransformer struct {
 }
 
 // Transform builds connection string using primary key for Azure Redis Cache resource
-func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]interface{}, primaryKey interface{}) (interface{}, error) {
+func (t *AzureTransformer) Transform(ctx context.Context, computedValues map[string]any, primaryKey any) (any, error) {
 	// Redis connection string format: '{hostName}:{port},password={primaryKey},ssl=True,abortConnect=False'
 	password, ok := primaryKey.(string)
 	if !ok {

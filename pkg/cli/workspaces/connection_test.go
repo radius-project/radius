@@ -18,7 +18,7 @@ func Test_IsSameKubernetesContext(t *testing.T) {
 	ctx := "kind-kind"
 	ws := Workspace{
 		Name: "my_workspace",
-		Connection: map[string]interface{}{
+		Connection: map[string]any{
 			"kind":    "kubernetes",
 			"context": "kind-kind",
 		},

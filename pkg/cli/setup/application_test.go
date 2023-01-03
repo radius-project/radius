@@ -28,12 +28,12 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(directory, ".rad", "rad.yaml"))
 	require.NoError(t, err)
 
-	actualYaml := map[string]interface{}{}
+	actualYaml := map[string]any{}
 	err = yaml.Unmarshal(b, &actualYaml)
 	require.NoError(t, err)
 
-	expectedYaml := map[string]interface{}{
-		"workspace": map[string]interface{}{
+	expectedYaml := map[string]any{
+		"workspace": map[string]any{
 			"application": "cool-application",
 		},
 	}
@@ -43,14 +43,14 @@ func Test_ScaffoldApplication_CreatesBothFiles(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, appBicepTemplate, string(b))
 
-	expectedOutput := []interface{}{
+	expectedOutput := []any{
 		output.LogOutput{
 			Format: "Created %q",
-			Params: []interface{}{"app.bicep"},
+			Params: []any{"app.bicep"},
 		},
 		output.LogOutput{
 			Format: "Created %q",
-			Params: []interface{}{filepath.Join(".rad", "rad.yaml")},
+			Params: []any{filepath.Join(".rad", "rad.yaml")},
 		},
 	}
 	require.Equal(t, expectedOutput, outputSink.Writes)
@@ -77,12 +77,12 @@ func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
 	b, err := os.ReadFile(filepath.Join(directory, ".rad", "rad.yaml"))
 	require.NoError(t, err)
 
-	actualYaml := map[string]interface{}{}
+	actualYaml := map[string]any{}
 	err = yaml.Unmarshal(b, &actualYaml)
 	require.NoError(t, err)
 
-	expectedYaml := map[string]interface{}{
-		"workspace": map[string]interface{}{
+	expectedYaml := map[string]any{
+		"workspace": map[string]any{
 			"application": "cool-application",
 		},
 	}
@@ -92,10 +92,10 @@ func Test_ScaffoldApplication_KeepsAppBicepButWritesRadYaml(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "something else", string(b))
 
-	expectedOutput := []interface{}{
+	expectedOutput := []any{
 		output.LogOutput{
 			Format: "Created %q",
-			Params: []interface{}{filepath.Join(".rad", "rad.yaml")},
+			Params: []any{filepath.Join(".rad", "rad.yaml")},
 		},
 	}
 	require.Equal(t, expectedOutput, outputSink.Writes)

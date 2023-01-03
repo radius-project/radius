@@ -50,7 +50,7 @@ func TestRedisCache_ConvertVersionedToDataModel(t *testing.T) {
 		case *RecipeRedisCacheProperties:
 			require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
 			if payload == "rediscacheresource_recipe2.json" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
 				require.Equal(t, "myrediscache.redis.cache.windows.net", convertedResource.Properties.Host)
 				require.Equal(t, int32(10255), convertedResource.Properties.Port)
@@ -99,7 +99,7 @@ func TestRedisCache_ConvertDataModelToVersioned(t *testing.T) {
 		case *RecipeRedisCacheProperties:
 			require.Equal(t, "redis-test", *v.Recipe.Name)
 			if payload == "rediscacheresourcedatamodel_recipe2.json" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, v.Recipe.Parameters)
 			}
 		case *ValuesRedisCacheProperties:

@@ -33,7 +33,7 @@ type Host struct {
 	Services []Service
 
 	// LoggerValues is key-value-pairs passed to .WithValues to initialize the logger for the host.
-	LoggerValues []interface{}
+	LoggerValues []any
 
 	// TimeoutFunc allows you to control the timeout behavior for testing
 	TimeoutFunc func()

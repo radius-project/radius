@@ -134,7 +134,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 		r.Workspace = &workspaces.Workspace{}
 		r.Workspace.Name = workspaceName
 	}
-	r.Workspace.Connection = map[string]interface{}{}
+	r.Workspace.Connection = map[string]any{}
 	r.Workspace.Connection["context"] = context
 	r.Workspace.Connection["kind"] = args[0]
 

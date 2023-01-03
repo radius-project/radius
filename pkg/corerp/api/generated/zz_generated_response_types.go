@@ -158,4 +158,3 @@ type VolumesClientListByScopeResponse struct {
 type VolumesClientUpdateResponse struct {
 	VolumeResource
 }
-

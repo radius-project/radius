@@ -102,7 +102,7 @@ type Runner struct {
 	EnvironmentID   string
 	EnvironmentName string
 	FilePath        string
-	Parameters      map[string]map[string]interface{}
+	Parameters      map[string]map[string]any
 	Workspace       *workspaces.Workspace
 }
 

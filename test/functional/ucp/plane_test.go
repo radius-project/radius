@@ -117,7 +117,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []interface{} {
+func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []any {
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -133,7 +133,7 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []inte
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var listOfPlanes []interface{}
+	var listOfPlanes []any
 	err = json.Unmarshal(payload, &listOfPlanes)
 	require.NoError(t, err)
 

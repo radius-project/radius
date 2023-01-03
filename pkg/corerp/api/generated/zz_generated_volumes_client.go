@@ -26,9 +26,9 @@ import (
 // VolumesClient contains the methods for the Volumes group.
 // Don't use this type directly, use NewVolumesClient() instead.
 type VolumesClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewVolumesClient creates a new instance of VolumesClient with the specified values.
@@ -49,8 +49,8 @@ func NewVolumesClient(rootScope string, credential azcore.TokenCredential, optio
 	}
 	client := &VolumesClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -194,7 +194,7 @@ func (client *VolumesClient) getHandleResponse(resp *http.Response) (VolumesClie
 // NewListByScopePager - List all volumes in the given scope.
 // Generated from API version 2022-03-15-privatepreview
 // options - VolumesClientListByScopeOptions contains the optional parameters for the VolumesClient.ListByScope method.
-func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) (*runtime.Pager[VolumesClientListByScopeResponse]) {
+func (client *VolumesClient) NewListByScopePager(options *VolumesClientListByScopeOptions) *runtime.Pager[VolumesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[VolumesClientListByScopeResponse]{
 		More: func(page VolumesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -294,4 +294,3 @@ func (client *VolumesClient) updateHandleResponse(resp *http.Response) (VolumesC
 	}
 	return result, nil
 }
-

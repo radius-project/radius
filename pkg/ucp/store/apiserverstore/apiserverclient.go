@@ -511,7 +511,7 @@ func findIndex(resource *ucpv1alpha1.Resource, id resources.ID) *int {
 }
 
 func readEntry(entry *ucpv1alpha1.ResourceEntry) (*store.Object, error) {
-	var data interface{}
+	var data any
 	err := json.Unmarshal(entry.Data.Raw, &data)
 	if err != nil {
 		return nil, err

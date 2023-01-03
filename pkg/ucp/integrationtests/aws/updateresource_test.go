@@ -29,7 +29,7 @@ const ZeroAWSRequestToken = "00000000-0000-0000-0000-000000000000"
 func Test_UpdateAWSResource(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, cloudFormationClient := initializeTest(t)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
@@ -37,11 +37,11 @@ func Test_UpdateAWSResource(t *testing.T) {
 	require.NoError(t, err)
 
 	resourceType := "AWS::Kinesis::Stream"
-	typeSchema := map[string]interface{}{
-		"readOnlyProperties": []interface{}{
+	typeSchema := map[string]any{
+		"readOnlyProperties": []any{
 			"/properties/Arn",
 		},
-		"createOnlyProperties": []interface{}{
+		"createOnlyProperties": []any{
 			"/properties/Name",
 		},
 	}
@@ -73,8 +73,8 @@ func Test_UpdateAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"RetentionPeriodHours": 180,
 			"ShardCount":           4,
 		},

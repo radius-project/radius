@@ -64,7 +64,7 @@ func main() {
 		services = append(services, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
 
-	loggerValues := []interface{}{}
+	loggerValues := []any{}
 	host := &hosting.Host{
 		Services: services,
 

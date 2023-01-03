@@ -62,7 +62,7 @@ const (
 
 var (
 	mongoLinkResourceID = getResourceID(mongoLinkID)
-	recipeParams        = map[string]interface{}{
+	recipeParams        = map[string]any{
 		"throughput": 400,
 	}
 )
@@ -142,8 +142,8 @@ func buildOutputResourcesMongo(mode string) []outputresource.OutputResource {
 					APIVersion: clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
 				},
 			},
-			Resource: map[string]interface{}{
-				"properties": map[string]interface{}{
+			Resource: map[string]any{
+				"properties": map[string]any{
 					"resource": map[string]string{
 						"id": "test-database",
 					},
@@ -648,7 +648,7 @@ func Test_Deploy(t *testing.T) {
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[0].Identity)
 		require.NotEqual(t, resourcemodel.ResourceIdentity{}, deploymentOutput.Resources[1].Identity)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", renderers.Host: testRendererOutput.ComputedValues[renderers.Host].Value}, deploymentOutput.ComputedValues)
 	})
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
@@ -660,7 +660,7 @@ func Test_Deploy(t *testing.T) {
 		deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.NoError(t, err)
 		require.Equal(t, testRendererOutput.SecretValues, deploymentOutput.SecretValues)
-		require.Equal(t, map[string]interface{}{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
+		require.Equal(t, map[string]any{renderers.DatabaseNameValue: "test-database", "host": 8080}, deploymentOutput.ComputedValues)
 		require.Equal(t, resources, deploymentOutput.RecipeData.Resources)
 	})
 
@@ -746,7 +746,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	testOutputResource := outputresource.OutputResource{
 		LocalID:      outputresource.LocalIDAzureCosmosAccount,
 		ResourceType: testResourceType,
-		Resource: map[string]interface{}{
+		Resource: map[string]any{
 			"some-data": "jsonpointer-value",
 		},
 	}
@@ -778,7 +778,7 @@ func Test_DeployRenderedResources_ComputedValues(t *testing.T) {
 	deploymentOutput, err := dp.Deploy(ctx, mongoLinkResourceID, rendererOutput)
 	require.NoError(t, err)
 
-	expected := map[string]interface{}{
+	expected := map[string]any{
 		"test-key1": "static-value",
 		"test-key2": "property-value",
 		"test-key3": "jsonpointer-value",
@@ -839,7 +839,7 @@ func Test_Deploy_MissingJsonPointer(t *testing.T) {
 				ID: "test",
 			},
 		},
-		Resource: map[string]interface{}{
+		Resource: map[string]any{
 			"some-data": 3,
 		},
 	}
@@ -982,7 +982,7 @@ func Test_FetchSecretsWithValues(t *testing.T) {
 	dp := deploymentProcessor{mocks.model, mocks.storageProvider, mocks.secretsValueClient, nil}
 
 	rendererOutput := buildRendererOutputMongo(modeValues)
-	computedValues := map[string]interface{}{
+	computedValues := map[string]any{
 		renderers.DatabaseNameValue: mongoLinkName,
 	}
 	resourceData := ResourceData{
@@ -1007,7 +1007,7 @@ func Test_FetchSecretsWithResource(t *testing.T) {
 
 	resource := buildInputResourceMongo(modeResource)
 	rendererOutput := buildRendererOutputMongo(modeResource)
-	computedValues := map[string]interface{}{
+	computedValues := map[string]any{
 		renderers.DatabaseNameValue: "test-database",
 	}
 
@@ -1021,7 +1021,7 @@ func Test_FetchSecretsWithResource(t *testing.T) {
 		ComputedValues:  computedValues,
 	}
 
-	expectedOutput := map[string]interface{}{
+	expectedOutput := map[string]any{
 		renderers.ConnectionStringValue: cosmosConnectionString + "/test-database",
 	}
 	secrets, err := dp.FetchSecrets(ctx, resourceData)
@@ -1037,7 +1037,7 @@ func Test_FetchSecretsWithRecipe(t *testing.T) {
 
 	resource := buildInputResourceMongo(modeRecipe)
 	rendererOutput := buildRendererOutputMongo(modeRecipe)
-	computedValues := map[string]interface{}{
+	computedValues := map[string]any{
 		renderers.DatabaseNameValue: "test-database",
 	}
 
@@ -1051,7 +1051,7 @@ func Test_FetchSecretsWithRecipe(t *testing.T) {
 		ComputedValues:  computedValues,
 	}
 
-	expectedOutput := map[string]interface{}{
+	expectedOutput := map[string]any{
 		renderers.ConnectionStringValue: cosmosConnectionString + "/test-database",
 	}
 	secrets, err := dp.FetchSecrets(ctx, resourceData)

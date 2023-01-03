@@ -30,7 +30,7 @@ type OutputResource struct {
 
 	RadiusManaged *bool                `json:"radiusManaged"`
 	Deployed      bool                 `json:"deployed"`
-	Resource      interface{}          `json:"resource,omitempty"`
+	Resource      any                  `json:"resource,omitempty"`
 	Dependencies  []Dependency         // resources that are required to be deployed before this resource can be deployed - used for parent/child resources.
 	Status        OutputResourceStatus `json:"status,omitempty"`
 }

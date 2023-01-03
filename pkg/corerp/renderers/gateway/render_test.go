@@ -925,7 +925,7 @@ func Test_Render_WithDependencies(t *testing.T) {
 	dependencies := map[string]renderers.RendererDependency{
 		(makeResourceID(t, routeDestination).String()): {
 			ResourceID: makeResourceID(t, routeDestination),
-			ComputedValues: map[string]interface{}{
+			ComputedValues: map[string]any{
 				"port": port,
 			},
 		},

@@ -28,7 +28,7 @@ func Test_DeleteAWSResource(t *testing.T) {
 
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}

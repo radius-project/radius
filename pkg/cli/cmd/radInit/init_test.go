@@ -758,7 +758,7 @@ type PromptMatcher struct {
 	Message string
 }
 
-func (m *PromptMatcher) Matches(x interface{}) bool {
+func (m *PromptMatcher) Matches(x any) bool {
 	p, ok := x.(promptui.Prompt)
 	if !ok {
 		return false
@@ -781,7 +781,7 @@ type SelectMatcher struct {
 	Message string
 }
 
-func (m *SelectMatcher) Matches(x interface{}) bool {
+func (m *SelectMatcher) Matches(x any) bool {
 	p, ok := x.(promptui.Select)
 	if !ok {
 		return false

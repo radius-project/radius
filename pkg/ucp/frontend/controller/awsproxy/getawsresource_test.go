@@ -32,7 +32,7 @@ func Test_GetAWSResource(t *testing.T) {
 
 	testResource := CreateKinesisStreamTestResource(uuid.NewString())
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
@@ -59,11 +59,11 @@ func Test_GetAWSResource(t *testing.T) {
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
-	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"name": aws.String(testResource.ResourceName),
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
 		},

@@ -80,7 +80,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient.EXPECT().ShowUCPGroup(gomock.Any(), gomock.Any(), gomock.Any(), "testrg").Return(testResourceGroup, nil)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -103,7 +103,7 @@ func Test_Run(t *testing.T) {
 			ID:   &id,
 			Name: &runner.UCPResourceGroupName,
 		}
-		expected := []interface{}{
+		expected := []any{
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     resourceGroup,

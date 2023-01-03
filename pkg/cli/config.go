@@ -351,7 +351,7 @@ func SaveConfig(v *viper.Viper) error {
 	return nil
 }
 
-func validate(value interface{}) error {
+func validate(value any) error {
 	english := en.New()
 	uni := ut.New(english, english)
 	trans, _ := uni.GetTranslator("en")

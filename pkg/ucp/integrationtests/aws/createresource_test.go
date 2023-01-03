@@ -42,8 +42,8 @@ func Test_CreateAWSResource(t *testing.T) {
 		return &output, nil
 	})
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"RetentionPeriodHours": 178,
 			"ShardCount":           3,
 		},

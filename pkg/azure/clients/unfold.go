@@ -23,12 +23,12 @@ import (
 // being the Details field having more structure.  We need that structure to unfold the
 // error messages.
 type ServiceError struct {
-	Code           string                   `json:"code,omitempty" yaml:"code,omitempty"`
-	Message        string                   `json:"message,omitempty" yaml:"message,omitempty"`
-	Target         *string                  `json:"target,omitempty" yaml:"target,omitempty"`
-	Details        []*v1.ErrorDetails       `json:"details,omitempty" yaml:"details,omitempty"`
-	InnerError     map[string]interface{}   `json:"innererror,omitempty" yaml:"innererror,omitempty"`
-	AdditionalInfo []map[string]interface{} `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
+	Code           string             `json:"code,omitempty" yaml:"code,omitempty"`
+	Message        string             `json:"message,omitempty" yaml:"message,omitempty"`
+	Target         *string            `json:"target,omitempty" yaml:"target,omitempty"`
+	Details        []*v1.ErrorDetails `json:"details,omitempty" yaml:"details,omitempty"`
+	InnerError     map[string]any     `json:"innererror,omitempty" yaml:"innererror,omitempty"`
+	AdditionalInfo []map[string]any   `json:"additionalInfo,omitempty" yaml:"additionalInfo,omitempty"`
 }
 
 // UnfoldServiceError unfolds the Details field in the given azure.ServiceError,
@@ -138,7 +138,7 @@ func TryUnfoldServiceError(err error) *ServiceError {
 	return UnfoldServiceError(svcError)
 }
 
-func roundTripJSON(input interface{}, output interface{}) error {
+func roundTripJSON(input any, output any) error {
 	b, err := json.Marshal(input)
 	if err != nil {
 		return err
@@ -146,7 +146,7 @@ func roundTripJSON(input interface{}, output interface{}) error {
 	return json.Unmarshal(b, output)
 }
 
-func extractString(o interface{}) *string {
+func extractString(o any) *string {
 	if o == nil {
 		return nil
 	}

@@ -46,7 +46,7 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"Name":                 testResource.ResourceName,
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
@@ -69,8 +69,8 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -82,11 +82,11 @@ func Test_GetAWSResourceWithPost(t *testing.T) {
 	require.NoError(t, err)
 	actualResponse, err := awsController.Run(ctx, nil, request)
 
-	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
 		"id":   testResource.SingleResourcePath,
 		"type": testResource.ResourceType,
 		"name": aws.String(testResource.ResourceName),
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"Name":                 testResource.ResourceName,
 			"RetentionPeriodHours": float64(178),
 			"ShardCount":           float64(3),
@@ -123,8 +123,8 @@ func Test_GetAWSResourceWithPost_NotFound(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -164,8 +164,8 @@ func Test_GetAWSResourceWithPost_UnknownError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -212,8 +212,8 @@ func Test_GetAWSResourceWithPost_SmithyError(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name": testResource.ResourceName,
 		},
 	}
@@ -252,7 +252,7 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	testOptions := setupTest(t)
 	testOptions.AWSCloudFormationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"ClusterIdentifier": clusterIdentifierValue,
 		"Account":           accountValue,
 	}
@@ -270,8 +270,8 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 			},
 		}, nil)
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"ClusterIdentifier": clusterIdentifierValue,
 			"Account":           accountValue,
 		},
@@ -306,17 +306,17 @@ func Test_GetAWSResourceWithPost_MultiIdentifier(t *testing.T) {
 	require.NoError(t, err)
 	multiIdentifierResourceID := clusterIdentifierValue + "|" + accountValue
 	rID := computeResourceID(id, multiIdentifierResourceID)
-	expectedResponseObject := map[string]interface{}{
+	expectedResponseObject := map[string]any{
 		"id":   rID,
 		"name": testResource.ResourceName,
 		"type": testResource.ResourceType,
-		"properties": map[string]interface{}{
+		"properties": map[string]any{
 			"ClusterIdentifier": "abc",
 			"Account":           "xyz",
 		},
 	}
 
-	actualResponseObject := map[string]interface{}{}
+	actualResponseObject := map[string]any{}
 	err = json.Unmarshal(body, &actualResponseObject)
 	require.NoError(t, err)
 

@@ -16,7 +16,7 @@ import (
 type DaprGeneric struct {
 	Type     *string
 	Version  *string
-	Metadata map[string]interface{}
+	Metadata map[string]any
 }
 
 func (daprGeneric DaprGeneric) Validate() error {
@@ -38,9 +38,9 @@ func (daprGeneric DaprGeneric) Validate() error {
 func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName string, namespace string, resourceType string) (unstructured.Unstructured, error) {
 	// Convert the metadata map to a yaml list with keys name and value as per
 	// Dapr specs: https://docs.dapr.io/reference/components-reference/
-	yamlListItems := []map[string]interface{}{}
+	yamlListItems := []map[string]any{}
 	for k, v := range daprGeneric.Metadata {
-		yamlItem := map[string]interface{}{
+		yamlItem := map[string]any{
 			"name":  k,
 			"value": v,
 		}
@@ -49,15 +49,15 @@ func ConstructDaprGeneric(daprGeneric DaprGeneric, appName string, resourceName 
 
 	// Translate into Dapr State Store schema
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": "dapr.io/v1alpha1",
 			"kind":       "Component",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": namespace,
 				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(appName, resourceName, resourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":     *daprGeneric.Type,
 				"version":  *daprGeneric.Version,
 				"metadata": yamlListItems,

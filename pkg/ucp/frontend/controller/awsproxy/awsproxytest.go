@@ -91,7 +91,7 @@ func CreateRedshiftEndpointAuthorizationTestResource(resourceName string) *AWSTe
 	return CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn, typeSchema)
 }
 
-func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]interface{}) *AWSTestResource {
+func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider, arn string, typeSchema map[string]any) *AWSTestResource {
 	serialized, err := json.Marshal(typeSchema)
 	if err != nil {
 		return nil
@@ -113,40 +113,40 @@ func CreateAWSTestResource(resourceType, awsResourceType, resourceName, provider
 	}
 }
 
-func getMockKinesisStreamResourceTypeSchema() map[string]interface{} {
-	return map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+func getMockKinesisStreamResourceTypeSchema() map[string]any {
+	return map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/Name",
 		},
-		"readOnlyProperties": []interface{}{
+		"readOnlyProperties": []any{
 			"/properties/Arn",
 		},
-		"createOnlyProperties": []interface{}{
+		"createOnlyProperties": []any{
 			"/properties/Name",
 		},
 	}
 }
 
-func getMockMemoryDBClusterResourceTypeSchema() map[string]interface{} {
-	return map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+func getMockMemoryDBClusterResourceTypeSchema() map[string]any {
+	return map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/ClusterName",
 		},
-		"readOnlyProperties": []interface{}{
+		"readOnlyProperties": []any{
 			"/properties/ClusterEndpoint/Address",
 			"/properties/ClusterEndpoint/Port",
 			"/properties/ARN",
 		},
-		"createOnlyProperties": []interface{}{
+		"createOnlyProperties": []any{
 			"/properties/ClusterName",
 			"/properties/Port",
 		},
 	}
 }
 
-func getMockRedShiftEndpointAuthorizationResourceTypeSchema() map[string]interface{} {
-	return map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+func getMockRedShiftEndpointAuthorizationResourceTypeSchema() map[string]any {
+	return map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/ClusterIdentifier",
 			"/properties/Account",
 		},

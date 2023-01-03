@@ -26,9 +26,9 @@ import (
 // HTTPRoutesClient contains the methods for the HTTPRoutes group.
 // Don't use this type directly, use NewHTTPRoutesClient() instead.
 type HTTPRoutesClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewHTTPRoutesClient creates a new instance of HTTPRoutesClient with the specified values.
@@ -49,8 +49,8 @@ func NewHTTPRoutesClient(rootScope string, credential azcore.TokenCredential, op
 	}
 	client := &HTTPRoutesClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -195,7 +195,7 @@ func (client *HTTPRoutesClient) getHandleResponse(resp *http.Response) (HTTPRout
 // NewListByScopePager - List all HTTP Routes in the given scope.
 // Generated from API version 2022-03-15-privatepreview
 // options - HTTPRoutesClientListByScopeOptions contains the optional parameters for the HTTPRoutesClient.ListByScope method.
-func (client *HTTPRoutesClient) NewListByScopePager(options *HTTPRoutesClientListByScopeOptions) (*runtime.Pager[HTTPRoutesClientListByScopeResponse]) {
+func (client *HTTPRoutesClient) NewListByScopePager(options *HTTPRoutesClientListByScopeOptions) *runtime.Pager[HTTPRoutesClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[HTTPRoutesClientListByScopeResponse]{
 		More: func(page HTTPRoutesClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -295,4 +295,3 @@ func (client *HTTPRoutesClient) updateHandleResponse(resp *http.Response) (HTTPR
 	}
 	return result, nil
 }
-

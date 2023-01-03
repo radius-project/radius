@@ -146,7 +146,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     resources,
@@ -184,7 +184,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.FormattedOutput{
 					Format:  "table",
 					Obj:     resources,

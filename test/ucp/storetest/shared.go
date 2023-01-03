@@ -44,48 +44,48 @@ var NestedResource1ID = parseOrPanic(ResourceGroup1Scope + "/providers/" + Neste
 var ARMResourceID = parseOrPanic(ARMResourceScope + "/providers/" + ResourcePath1)
 var RadiusPlaneID = parseOrPanic(RadiusScope)
 
-var ResourceGroup1Data = map[string]interface{}{
+var ResourceGroup1Data = map[string]any{
 	"value": "1",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"group": "1",
 	},
 }
 
-var ResourceGroup2Data = map[string]interface{}{
+var ResourceGroup2Data = map[string]any{
 	"value": "2",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"group": "2",
 	},
 }
 
-var Data1 = map[string]interface{}{
+var Data1 = map[string]any{
 	"value": "1",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"resource": "1",
 	},
 }
-var Data2 = map[string]interface{}{
+var Data2 = map[string]any{
 	"value": "2",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"resource": "2",
 	},
 }
 
-var NestedData1 = map[string]interface{}{
+var NestedData1 = map[string]any{
 	"value": "3",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"resource": "3",
 	},
 }
 
-var RadiusPlaneData = map[string]interface{}{
+var RadiusPlaneData = map[string]any{
 	"value:": "1",
-	"properties": map[string]interface{}{
+	"properties": map[string]any{
 		"plane": "1",
 	},
 }
 
-func MarshalOrPanic(in interface{}) []byte {
+func MarshalOrPanic(in any) []byte {
 	b, err := json.Marshal(in)
 	if err != nil {
 		panic(err)
@@ -103,7 +103,7 @@ func parseOrPanic(id string) resources.ID {
 	return parsed
 }
 
-func createObject(id resources.ID, data interface{}) store.Object {
+func createObject(id resources.ID, data any) store.Object {
 	return store.Object{
 		Metadata: store.Metadata{
 			ID:          id.String(),

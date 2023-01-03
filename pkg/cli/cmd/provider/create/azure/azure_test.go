@@ -146,12 +146,12 @@ func Test_Run(t *testing.T) {
 			// We need to isolate the configuration because we're going to make edits
 			configPath := path.Join(t.TempDir(), "config.yaml")
 
-			yamlData, err := yaml.Marshal(map[string]interface{}{
+			yamlData, err := yaml.Marshal(map[string]any{
 				"workspaces": cli.WorkspaceSection{
 					Default: "a",
 					Items: map[string]workspaces.Workspace{
 						"a": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
@@ -160,7 +160,7 @@ func Test_Run(t *testing.T) {
 							// Will have provider info added
 						},
 						"b": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-context",
 							},
@@ -175,7 +175,7 @@ func Test_Run(t *testing.T) {
 							},
 						},
 						"c": {
-							Connection: map[string]interface{}{
+							Connection: map[string]any{
 								"kind":    workspaces.KindKubernetes,
 								"context": "my-other-context",
 							},
@@ -225,7 +225,7 @@ func Test_Run(t *testing.T) {
 				ConnectionFactory: &connections.MockFactory{CloudProviderManagementClient: client},
 				Output:            outputSink,
 				Workspace: &workspaces.Workspace{
-					Connection: map[string]interface{}{
+					Connection: map[string]any{
 						"kind":    workspaces.KindKubernetes,
 						"context": "my-context",
 					},
@@ -244,10 +244,10 @@ func Test_Run(t *testing.T) {
 			err = runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "Setting cloud provider %q for Radius installation %q...",
-					Params: []interface{}{"azure", "Kubernetes (context=my-context)"},
+					Params: []any{"azure", "Kubernetes (context=my-context)"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -257,7 +257,7 @@ func Test_Run(t *testing.T) {
 				Items: map[string]workspaces.Workspace{
 					"a": {
 						Name: "a",
-						Connection: map[string]interface{}{
+						Connection: map[string]any{
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
@@ -271,7 +271,7 @@ func Test_Run(t *testing.T) {
 					},
 					"b": {
 						Name: "b",
-						Connection: map[string]interface{}{
+						Connection: map[string]any{
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-context",
 						},
@@ -285,7 +285,7 @@ func Test_Run(t *testing.T) {
 					},
 					"c": {
 						Name: "c",
-						Connection: map[string]interface{}{
+						Connection: map[string]any{
 							"kind":    workspaces.KindKubernetes,
 							"context": "my-other-context",
 						},

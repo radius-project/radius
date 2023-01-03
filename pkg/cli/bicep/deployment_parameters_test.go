@@ -60,17 +60,17 @@ func Test_ParseParameters_Overwrite(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := clients.DeploymentParameters{
-		"key1": map[string]interface{}{
-			"value": map[string]interface{}{
+		"key1": map[string]any{
+			"value": map[string]any{
 				"someValue": true,
 			},
 		},
-		"key2": map[string]interface{}{
-			"value": map[string]interface{}{
+		"key2": map[string]any{
+			"value": map[string]any{
 				"someValue": "another-value",
 			},
 		},
-		"key3": map[string]interface{}{
+		"key3": map[string]any{
 			"value": "value3",
 		},
 	}
@@ -86,7 +86,7 @@ func Test_ParseParameters_File(t *testing.T) {
 	input, err := os.ReadFile(filepath.Join("testdata", "test-parameters.json"))
 	require.NoError(t, err)
 
-	template := map[string]interface{}{}
+	template := map[string]any{}
 	err = json.Unmarshal(input, &template)
 	require.NoError(t, err)
 
@@ -94,10 +94,10 @@ func Test_ParseParameters_File(t *testing.T) {
 	require.NoError(t, err)
 
 	expected := clients.DeploymentParameters{
-		"param1": map[string]interface{}{
+		"param1": map[string]any{
 			"value": "value1",
 		},
-		"param2": map[string]interface{}{
+		"param2": map[string]any{
 			"value": "value2",
 		},
 	}

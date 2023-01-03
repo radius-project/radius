@@ -14,7 +14,7 @@ import (
 
 // Client is an interface to implement secret operations.
 type Client interface {
-	// Save creates or updates secret. 
+	// Save creates or updates secret.
 	// Returns ErrInvalid in case of invalid input.
 	Save(ctx context.Context, name string, value []byte) error
 
@@ -27,7 +27,7 @@ type Client interface {
 }
 
 // SaveSecret saves a generic secret value using secret client.
-func SaveSecret[T any](ctx context.Context, client Client,name string, value T) error {
+func SaveSecret[T any](ctx context.Context, client Client, name string, value T) error {
 	secretData, err := json.Marshal(value)
 	if err != nil {
 		return err

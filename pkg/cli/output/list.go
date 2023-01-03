@@ -15,7 +15,7 @@ type ListFormatter struct{}
 
 var _ Formatter = (*ListFormatter)(nil)
 
-func (f *ListFormatter) Format(obj interface{}, writer io.Writer, options FormatterOptions) error {
+func (f *ListFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {
 
 	items, err := convertToSlice(obj)
 	if err != nil {

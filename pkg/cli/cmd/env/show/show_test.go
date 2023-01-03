@@ -96,7 +96,7 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -115,7 +115,7 @@ func Test_Show(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.FormattedOutput{
 				Format:  "table",
 				Obj:     environment,
@@ -137,7 +137,7 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},

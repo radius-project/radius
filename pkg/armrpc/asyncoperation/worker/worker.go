@@ -366,7 +366,7 @@ func updateResourceState(ctx context.Context, sc store.StorageClient, id string,
 		return err
 	}
 
-	objmap := obj.Data.(map[string]interface{})
+	objmap := obj.Data.(map[string]any)
 	pState, ok := objmap["provisioningState"].(string)
 	if ok && strings.EqualFold(pState, string(state)) {
 		// Do not update it if provisioning state is already the target state.

@@ -23,6 +23,6 @@ type ErrorDetails struct {
 
 // ErrorAdditionalInfo represents abritrary additional information as part of an error as defined by the ARM API.
 type ErrorAdditionalInfo struct {
-	Type string                 `json:"type"`
-	Info map[string]interface{} `json:"info"`
+	Type string         `json:"type"`
+	Info map[string]any `json:"info"`
 }

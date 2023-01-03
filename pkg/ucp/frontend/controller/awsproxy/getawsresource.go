@@ -45,7 +45,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		return awsclient.HandleAWSError(err)
 	}
 
-	properties := map[string]interface{}{}
+	properties := map[string]any{}
 	if response.ResourceDescription.Properties != nil {
 		err := json.Unmarshal([]byte(*response.ResourceDescription.Properties), &properties)
 		if err != nil {
@@ -53,7 +53,7 @@ func (p *GetAWSResource) Run(ctx context.Context, w http.ResponseWriter, req *ht
 		}
 	}
 
-	body := map[string]interface{}{
+	body := map[string]any{
 		"id":         id.String(),
 		"name":       response.ResourceDescription.Identifier,
 		"type":       id.Type(),

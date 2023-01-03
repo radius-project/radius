@@ -13,7 +13,7 @@ import (
 )
 
 // DecodeMap decodes map[string]interface{} structure to the type of out.
-func DecodeMap(in interface{}, out interface{}) error {
+func DecodeMap(in any, out any) error {
 	cfg := &mapstructure.DecoderConfig{
 		TagName: "json", // Use the JSON config for conversions.
 		Result:  out,
@@ -31,7 +31,7 @@ func DecodeMap(in interface{}, out interface{}) error {
 
 // https://github.com/mitchellh/mapstructure/issues/159
 func toTimeHookFunc() mapstructure.DecodeHookFunc {
-	return func(f reflect.Type, t reflect.Type, data interface{}) (interface{}, error) {
+	return func(f reflect.Type, t reflect.Type, data any) (any, error) {
 		if t != reflect.TypeOf(time.Time{}) {
 			return data, nil
 		}

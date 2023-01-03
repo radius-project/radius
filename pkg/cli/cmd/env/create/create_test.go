@@ -122,7 +122,7 @@ func Test_Run(t *testing.T) {
 			awsProvider := &workspaces.AWSProvider{}
 			providerConfig := workspaces.ProviderConfig{Azure: azureProvider, AWS: awsProvider}
 			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},
@@ -166,7 +166,7 @@ func Test_RunWithoutAzureProvider(t *testing.T) {
 			awsProvider := &workspaces.AWSProvider{}
 			providerConfig := workspaces.ProviderConfig{AWS: awsProvider}
 			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},
@@ -206,7 +206,7 @@ func Test_Run_WithoutProvider(t *testing.T) {
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},
@@ -245,7 +245,7 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},
@@ -281,7 +281,7 @@ func Test_Run_SkipDevRecipes(t *testing.T) {
 			configFileInterface := framework.NewMockConfigFileInterface(ctrl)
 			outputSink := &output.MockOutput{}
 			workspace := &workspaces.Workspace{
-				Connection: map[string]interface{}{
+				Connection: map[string]any{
 					"kind":    "kubernetes",
 					"context": "kind-kind",
 				},

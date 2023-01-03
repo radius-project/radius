@@ -36,10 +36,10 @@ func TestExtender_ConvertVersionedToDataModel(t *testing.T) {
 		require.Equal(t, "Applications.Link/extenders", convertedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", convertedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", convertedResource.Properties.Environment)
-		require.Equal(t, map[string]interface{}{"fromNumber": "222-222-2222"}, convertedResource.Properties.AdditionalProperties)
+		require.Equal(t, map[string]any{"fromNumber": "222-222-2222"}, convertedResource.Properties.AdditionalProperties)
 
 		if payload == "extenderresource.json" {
-			require.Equal(t, map[string]interface{}{"accountSid": "sid", "authToken:": "token"}, convertedResource.Properties.Secrets)
+			require.Equal(t, map[string]any{"accountSid": "sid", "authToken:": "token"}, convertedResource.Properties.Secrets)
 			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		} else {
 			require.Empty(t, convertedResource.Properties.Secrets)
@@ -69,7 +69,7 @@ func TestExtender_ConvertDataModelToVersioned(t *testing.T) {
 		require.Equal(t, "Applications.Link/extenders", *versionedResource.Type)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication", *versionedResource.Properties.Application)
 		require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", *versionedResource.Properties.Environment)
-		require.Equal(t, map[string]interface{}{"fromNumber": "222-222-2222"}, versionedResource.Properties.AdditionalProperties)
+		require.Equal(t, map[string]any{"fromNumber": "222-222-2222"}, versionedResource.Properties.AdditionalProperties)
 		require.Empty(t, versionedResource.Properties.Secrets) // Secrets are omitted from the versioned data model.
 
 		if payload == "extenderresourcedatamodel.json" {

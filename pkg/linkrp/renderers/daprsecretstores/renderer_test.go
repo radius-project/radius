@@ -90,7 +90,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Type:    ResourceType,
 			Mode:    datamodel.LinkModeValues,
 			Version: daprSecretStoreVersion,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -112,18 +112,18 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, expectedComputedValues, result.ComputedValues)
 
 	expected := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    "Applications.Link/daprSecretStores",
 				"version": "v1",
-				"metadata": []map[string]interface{}{
+				"metadata": []map[string]any{
 					{
 						"name":  "foo",
 						"value": "bar",
@@ -180,7 +180,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 			},
 			Mode:    datamodel.LinkModeValues,
 			Version: daprSecretStoreVersion,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -210,7 +210,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 			},
 			Mode: datamodel.LinkModeValues,
 			Type: "secretstores.kubernetes",
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -242,7 +242,7 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    ResourceType,
 			Version: daprSecretStoreVersion,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -272,7 +272,7 @@ func Test_Render_EmptyApplicationID(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    ResourceType,
 			Version: daprSecretStoreVersion,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},

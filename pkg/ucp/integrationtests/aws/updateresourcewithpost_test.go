@@ -27,8 +27,8 @@ import (
 func Test_UpdateAWSResourceWithPost(t *testing.T) {
 	ucp, ucpClient, cloudcontrolClient, cloudformationClient := initializeTest(t)
 
-	primaryIdentifiers := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+	primaryIdentifiers := map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/Name",
 		},
 	}
@@ -41,7 +41,7 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 
 	cloudformationClient.EXPECT().DescribeType(gomock.Any(), gomock.Any()).Return(&output, nil)
 
-	getResponseBody := map[string]interface{}{
+	getResponseBody := map[string]any{
 		"Name":                 "testStream",
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
@@ -68,8 +68,8 @@ func Test_UpdateAWSResourceWithPost(t *testing.T) {
 		return &output, nil
 	})
 
-	requestBody := map[string]interface{}{
-		"properties": map[string]interface{}{
+	requestBody := map[string]any{
+		"properties": map[string]any{
 			"Name":                 "testStream",
 			"RetentionPeriodHours": 180,
 			"ShardCount":           4,

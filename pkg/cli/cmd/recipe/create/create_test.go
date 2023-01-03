@@ -156,7 +156,7 @@ func Test_Run(t *testing.T) {
 						"cosmosDB": {
 							LinkType:     to.Ptr("Applications.Link/mongoDatabases"),
 							TemplatePath: to.Ptr("testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1"),
-							Parameters:   map[string]interface{}{"throughput": 400},
+							Parameters:   map[string]any{"throughput": 400},
 						},
 					},
 					Compute: &v20220315privatepreview.KubernetesCompute{
@@ -182,7 +182,7 @@ func Test_Run(t *testing.T) {
 				TemplatePath:      "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 				LinkType:          "Applications.Link/mongoDatabases",
 				RecipeName:        "cosmosDB_new",
-				Parameters:        map[string]map[string]interface{}{},
+				Parameters:        map[string]map[string]any{},
 			}
 
 			err := runner.Run(context.Background())

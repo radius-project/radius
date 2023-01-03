@@ -26,9 +26,9 @@ import (
 // GatewaysClient contains the methods for the Gateways group.
 // Don't use this type directly, use NewGatewaysClient() instead.
 type GatewaysClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewGatewaysClient creates a new instance of GatewaysClient with the specified values.
@@ -49,8 +49,8 @@ func NewGatewaysClient(rootScope string, credential azcore.TokenCredential, opti
 	}
 	client := &GatewaysClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -194,7 +194,7 @@ func (client *GatewaysClient) getHandleResponse(resp *http.Response) (GatewaysCl
 // NewListByScopePager - List all Gateways in the given scope.
 // Generated from API version 2022-03-15-privatepreview
 // options - GatewaysClientListByScopeOptions contains the optional parameters for the GatewaysClient.ListByScope method.
-func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) (*runtime.Pager[GatewaysClientListByScopeResponse]) {
+func (client *GatewaysClient) NewListByScopePager(options *GatewaysClientListByScopeOptions) *runtime.Pager[GatewaysClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[GatewaysClientListByScopeResponse]{
 		More: func(page GatewaysClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -294,4 +294,3 @@ func (client *GatewaysClient) updateHandleResponse(resp *http.Response) (Gateway
 	}
 	return result, nil
 }
-

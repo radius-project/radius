@@ -24,7 +24,7 @@ type Column struct {
 }
 
 type Formatter interface {
-	Format(obj interface{}, writer io.Writer, options FormatterOptions) error
+	Format(obj any, writer io.Writer, options FormatterOptions) error
 }
 
 func NewFormatter(format string) (Formatter, error) {
@@ -41,10 +41,10 @@ func NewFormatter(format string) (Formatter, error) {
 	}
 }
 
-func convertToSlice(obj interface{}) ([]interface{}, error) {
+func convertToSlice(obj any) ([]any, error) {
 	// We use reflection here because we're building a table and thus need to handle both scalars (structs)
 	// and slices/arrays of structs.
-	var vv []interface{}
+	var vv []any
 	v := reflect.ValueOf(obj)
 
 	// Follow pointers at the top level

@@ -38,7 +38,7 @@ type Metadata struct {
 }
 
 // NewMessage creates Message.
-func NewMessage(data interface{}) *Message {
+func NewMessage(data any) *Message {
 	msg := &Message{
 		// Support only JSONContentType.
 		ContentType: JSONContentType,

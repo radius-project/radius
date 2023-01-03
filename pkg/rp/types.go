@@ -42,7 +42,7 @@ type ComputedValueReference struct {
 	LocalID string
 
 	// Value specifies a static value to copy to computed values.
-	Value interface{}
+	Value any
 
 	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string
@@ -90,18 +90,18 @@ type SecretValueReference struct {
 // string that application code consumes will include a database name or queue name, etc. Or the different
 // libraries involved might support different connection string formats, and the user has to choose on.
 type SecretValueTransformer interface {
-	Transform(ctx context.Context, resourceComputedValues map[string]interface{}, secretValue interface{}) (interface{}, error)
+	Transform(ctx context.Context, resourceComputedValues map[string]any, secretValue any) (any, error)
 }
 
 //go:generate mockgen -destination=./mock_secretvalueclient.go -package=rp -self_package github.com/project-radius/radius/pkg/rp github.com/project-radius/radius/pkg/rp SecretValueClient
 type SecretValueClient interface {
-	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (interface{}, error)
+	FetchSecret(ctx context.Context, identity resourcemodel.ResourceIdentity, action string, valueSelector string) (any, error)
 }
 
 // DeploymentOutput is the output details of a deployment.
 type DeploymentOutput struct {
 	DeployedOutputResources []outputresource.OutputResource
-	ComputedValues          map[string]interface{}
+	ComputedValues          map[string]any
 	SecretValues            map[string]SecretValueReference
 }
 
@@ -167,10 +167,10 @@ type KubernetesComputeProperties struct {
 }
 
 // OutputResource contains some internal fields like resources/dependencies that shouldn't be inlcuded in the user response
-func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]interface{} {
-	var externalOutputResources []map[string]interface{}
+func BuildExternalOutputResources(outputResources []outputresource.OutputResource) []map[string]any {
+	var externalOutputResources []map[string]any
 	for _, or := range outputResources {
-		externalOutput := map[string]interface{}{
+		externalOutput := map[string]any{
 			"LocalID":  or.LocalID,
 			"Provider": or.ResourceType.Provider,
 			"Identity": or.Identity.Data,

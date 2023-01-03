@@ -133,7 +133,7 @@ workspaces:
 	require.Equal(t, workspaces.Source(workspaces.SourceUserConfig), ws.Source)
 	require.Equal(t, "/a/b/c", ws.Scope)
 	require.Equal(t, "/a/b/c/providers/Applications.Core/environments/ice-cold", ws.Environment)
-	require.Equal(t, map[string]interface{}{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
+	require.Equal(t, map[string]any{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
 }
 
 func Test_GetWorkspace_Named_Valid(t *testing.T) {
@@ -161,7 +161,7 @@ workspaces:
 	require.Equal(t, workspaces.Source(workspaces.SourceUserConfig), ws.Source)
 	require.Equal(t, "/a/b/c", ws.Scope)
 	require.Equal(t, "/a/b/c/providers/Applications.Core/environments/ice-cold", ws.Environment)
-	require.Equal(t, map[string]interface{}{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
+	require.Equal(t, map[string]any{"kind": "kubernetes", "context": "cool-beans"}, ws.Connection)
 }
 
 func makeConfig(yaml string) (*viper.Viper, error) {

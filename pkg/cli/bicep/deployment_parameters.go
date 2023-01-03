@@ -32,7 +32,7 @@ func (OSFileSystem) Open(name string) (fs.File, error) {
 	return os.Open(name)
 }
 
-func (pp ParameterParser) ParseFileContents(input map[string]interface{}) (clients.DeploymentParameters, error) {
+func (pp ParameterParser) ParseFileContents(input map[string]any) (clients.DeploymentParameters, error) {
 	output := clients.DeploymentParameters{}
 
 	b, err := json.Marshal(input)
@@ -98,7 +98,7 @@ func (pp ParameterParser) parseSingle(input string, output clients.DeploymentPar
 			return err
 		}
 
-		var data interface{}
+		var data any
 		err = json.Unmarshal(b, &data)
 		if err != nil {
 			return err
@@ -132,13 +132,13 @@ func (pp ParameterParser) mergeParameters(output clients.DeploymentParameters, i
 	}
 }
 
-func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParameters, name string, input interface{}) {
+func (pp ParameterParser) mergeSingleParameter(output clients.DeploymentParameters, name string, input any) {
 	// We intentionally overwrite duplicates.
 	output[name] = NewParameter(input)
 }
 
-func NewParameter(value interface{}) map[string]interface{} {
-	return map[string]interface{}{
+func NewParameter(value any) map[string]any {
+	return map[string]any{
 		"value": value,
 	}
 }

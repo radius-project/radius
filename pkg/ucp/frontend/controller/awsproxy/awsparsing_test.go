@@ -17,8 +17,8 @@ import (
 func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 	ctx := context.Background()
 
-	schemaObject := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+	schemaObject := map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
 			"/properties/DeviceId",
 		},
@@ -29,7 +29,7 @@ func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 
 	schema := string(schemaBytes)
 
-	properties := map[string]interface{}{
+	properties := map[string]any{
 		"GlobalNetworkId": "global-network-id",
 		"DeviceId":        "device-id",
 	}
@@ -42,8 +42,8 @@ func TestGetPrimaryIdentifierFromMultiIdentifiers(t *testing.T) {
 func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *testing.T) {
 	ctx := context.Background()
 
-	schemaObject := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+	schemaObject := map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
 			"/properties/DeviceId",
 		},
@@ -54,7 +54,7 @@ func TestGetPrimaryIdentifierFromMultiIdentifiers_MissingMandatoryParameters(t *
 
 	schema := string(schemaBytes)
 
-	properties := map[string]interface{}{
+	properties := map[string]any{
 		"GlobalNetworkId": "global-network-id",
 	}
 
@@ -76,8 +76,8 @@ func TestComputeResourceID(t *testing.T) {
 func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
 	ctx := context.Background()
 
-	schemaObject := map[string]interface{}{
-		"primaryIdentifier": []interface{}{
+	schemaObject := map[string]any{
+		"primaryIdentifier": []any{
 			"/properties/GlobalNetworkId",
 			"/properties/DeviceId",
 		},
@@ -96,7 +96,7 @@ func TestGetPrimaryIdentifiersFromSchema(t *testing.T) {
 func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) {
 	ctx := context.Background()
 
-	schemaObject := map[string]interface{}{}
+	schemaObject := map[string]any{}
 
 	schemaBytes, err := json.Marshal(schemaObject)
 	require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierMissing(t *testing.T) 
 func TestGetPrimaryIdentifiersFromSchema_PrimaryIdentifierWrongDataType(t *testing.T) {
 	ctx := context.Background()
 
-	schemaObject := map[string]interface{}{
+	schemaObject := map[string]any{
 		"primaryIdentifier": "/properties/GlobalNetworkId",
 	}
 

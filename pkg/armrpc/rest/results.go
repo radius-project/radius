@@ -35,19 +35,19 @@ type Response interface {
 //
 // This is used when modification to an existing resource is processed synchronously.
 type OKResponse struct {
-	Body    interface{}
+	Body    any
 	Headers map[string]string
 }
 
 // NewOKResponse creates an OKResponse that will write a 200 OK with the provided body as JSON.
 // Set the body to nil to write an empty 200 OK.
-func NewOKResponse(body interface{}) Response {
+func NewOKResponse(body any) Response {
 	return &OKResponse{Body: body}
 }
 
 // NewOKResponseWithHeaders creates an OKResponse that will write a 200 OK with the provided body as JSON.
 // Set the body to nil to write an empty 200 OK.
-func NewOKResponseWithHeaders(body interface{}, headers map[string]string) Response {
+func NewOKResponseWithHeaders(body any, headers map[string]string) Response {
 	return &OKResponse{
 		Body:    body,
 		Headers: headers,
@@ -85,10 +85,10 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 //
 // This is used when a request to create a new resource is processed synchronously.
 type CreatedResponse struct {
-	Body interface{}
+	Body any
 }
 
-func NewCreatedResponse(body interface{}) Response {
+func NewCreatedResponse(body any) Response {
 	response := &CreatedResponse{Body: body}
 	return response
 }
@@ -116,12 +116,12 @@ func (r *CreatedResponse) Apply(ctx context.Context, w http.ResponseWriter, req 
 //
 // This is used when a request to create a new resource is processed asynchronously.
 type CreatedAsyncResponse struct {
-	Body     interface{}
+	Body     any
 	Location string
 	Scheme   string
 }
 
-func NewCreatedAsyncResponse(body interface{}, location string, scheme string) Response {
+func NewCreatedAsyncResponse(body any, location string, scheme string) Response {
 	return &CreatedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
@@ -165,13 +165,13 @@ func (r *CreatedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter,
 //
 // This is used when a request to create an existing resource is processed asynchronously.
 type AcceptedAsyncResponse struct {
-	Body     interface{}
+	Body     any
 	Location string
 	Scheme   string
 }
 
 // NewAcceptedAsyncResponse creates an AcceptedAsyncResponse
-func NewAcceptedAsyncResponse(body interface{}, location string, scheme string) Response {
+func NewAcceptedAsyncResponse(body any, location string, scheme string) Response {
 	return &AcceptedAsyncResponse{Body: body, Location: location, Scheme: scheme}
 }
 
@@ -215,7 +215,7 @@ func (r *AcceptedAsyncResponse) Apply(ctx context.Context, w http.ResponseWriter
 
 // AsyncOperationResponse represents the response for an async operation request.
 type AsyncOperationResponse struct {
-	Body        interface{}
+	Body        any
 	Location    string
 	Code        int
 	ResourceID  resources.ID
@@ -226,7 +226,7 @@ type AsyncOperationResponse struct {
 }
 
 // NewAsyncOperationResponse creates an AsyncOperationResponse
-func NewAsyncOperationResponse(body interface{}, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
+func NewAsyncOperationResponse(body any, location string, code int, resourceID resources.ID, operationID uuid.UUID, apiVersion string, rootScope string, pathBase string) Response {
 	return &AsyncOperationResponse{
 		Body:        body,
 		Location:    location,

@@ -19,12 +19,12 @@ func (o Object) MatchesFilters(filters []QueryFilter) (bool, error) {
 	data := o.Data
 	if data == nil {
 		// Treat nil as "empty" data
-		data = map[string]interface{}{}
+		data = map[string]any{}
 	} else if reflect.TypeOf(o.Data).Kind() != reflect.Map ||
 		reflect.TypeOf(o.Data).Key().Kind() != reflect.String {
 		// It's most likely for our use case that the data is a map[string]interface{}. However, if it's not
 		// then we need to convert This is basically just here for safety and completeness.
-		data = map[string]interface{}{}
+		data = map[string]any{}
 		err := o.As(&data)
 		if err != nil {
 			return false, err
