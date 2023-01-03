@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/secret/provider"
+	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
 const (
@@ -73,7 +74,7 @@ func NewServerOptionsFromEnvironment() (Options, error) {
 }
 
 func NewServer(options Options) (*hosting.Host, error) {
-	clientconfigSource := hosting.NewAsyncValue()
+	clientconfigSource := hosting.NewAsyncValue[etcdclient.Client]()
 	hostingServices := []hosting.Service{
 		api.NewService(api.ServiceOptions{
 			Address:                ":" + options.Port,

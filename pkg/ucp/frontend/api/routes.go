@@ -77,7 +77,7 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 	})
 
 	logger := ucplog.GetLogger(ctx)
-	logger.Info(fmt.Sprintf("UCP base path: %s", baseURL))
+	logger.Info(fmt.Sprintf("Registering routes with base path: %s", baseURL))
 
 	specLoader, err := validator.LoadSpec(ctx, "ucp", swagger.SpecFilesUCP, baseURL, "")
 	if err != nil {

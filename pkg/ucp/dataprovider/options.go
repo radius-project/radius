@@ -5,7 +5,10 @@
 
 package dataprovider
 
-import "github.com/project-radius/radius/pkg/ucp/hosting"
+import (
+	"github.com/project-radius/radius/pkg/ucp/hosting"
+	etcdclient "go.etcd.io/etcd/client/v3"
+)
 
 // StorageProviderOptions represents the data storage provider options.
 type StorageProviderOptions struct {
@@ -52,5 +55,5 @@ type ETCDOptions struct {
 	//
 	// NOTE: when we run etcd in memory it will be registered as its own hosting.Service with its own startup/shutdown lifecyle.
 	// We need a way to share state between the etcd service and the things that want to consume it. This is that.
-	Client *hosting.AsyncValue `yaml:"-"`
+	Client *hosting.AsyncValue[etcdclient.Client] `yaml:"-"`
 }

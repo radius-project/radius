@@ -24,7 +24,7 @@ const (
 )
 
 func Test_ETCD(t *testing.T) {
-	config := hosting.NewAsyncValue()
+	config := hosting.NewAsyncValue[etcdclient.Client]()
 	service := data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: config})
 
 	ctx, cancel := testcontext.New(t)
@@ -44,11 +44,7 @@ func Test_ETCD(t *testing.T) {
 		_ = service.Run(ctx)
 	}()
 
-	c, err := config.Get(ctx)
-	require.NoError(t, err)
-
-	clientconfig := c.(*etcdclient.Config)
-	etcdc, err := etcdclient.New(*clientconfig)
+	etcdc, err := config.Get(ctx)
 	require.NoError(t, err)
 
 	runSaveTests(t, etcdc)
