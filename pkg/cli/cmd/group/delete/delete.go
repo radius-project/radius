@@ -8,6 +8,7 @@ package delete
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -46,7 +47,7 @@ type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
 	Output               output.Interface
-	Prompter             prompt.Interface
+	InputPrompter        prompt.BubbleTeaPrompter
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 	Confirmation         bool
@@ -58,7 +59,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
-		Prompter:          factory.GetPrompter(),
+		InputPrompter:     factory.GetInputPrompter(),
 	}
 }
 
@@ -91,11 +92,14 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
 	if !r.Confirmation {
-		confirmed, err := r.Prompter.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName), prompt.No)
+		confirmed, err := r.InputPrompter.GetListInput(
+			[]string{"yes", "no"},
+			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName))
 		if err != nil {
 			return err
 		}
-		if !confirmed {
+
+		if strings.EqualFold(confirmed, "no") {
 			r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
 			return nil
 		}

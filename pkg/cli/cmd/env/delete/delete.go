@@ -8,6 +8,7 @@ package delete
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -20,7 +21,7 @@ import (
 )
 
 const (
-	deleteConfirmation = "Are you sure you want to delete environment '%v' [y/N]?"
+	deleteConfirmation = "Are you sure you want to delete environment '%v'?"
 )
 
 // NewCommand creates an instance of the command and runner for the `rad env delete` command.
@@ -63,7 +64,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Workspace         *workspaces.Workspace
 	Output            output.Interface
-	Prompt            prompt.Interface
+	InputPrompter     prompt.BubbleTeaPrompter
 
 	Confirm         bool
 	EnvironmentName string
@@ -76,7 +77,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
-		Prompt:            factory.GetPrompter(),
+		InputPrompter:     factory.GetInputPrompter(),
 	}
 }
 
@@ -119,11 +120,11 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
-		confirmed, err := r.Prompt.ConfirmWithDefault(fmt.Sprintf(deleteConfirmation, r.EnvironmentName), prompt.No)
+		confirmed, err := r.InputPrompter.GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, r.EnvironmentName))
 		if err != nil {
 			return err
 		}
-		if !confirmed {
+		if strings.EqualFold(confirmed, "no") {
 			return nil
 		}
 	}

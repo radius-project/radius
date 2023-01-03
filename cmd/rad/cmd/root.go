@@ -135,6 +135,7 @@ func initSubCommands() {
 		},
 		Portforward:         &portforward.Impl{},
 		Prompter:            &prompt.Impl{},
+		InputPrompter:       &prompt.BubbleTeaPrompterImpl{},
 		ConfigFileInterface: &framework.ConfigFileInterfaceImpl{},
 		KubernetesInterface: &kubernetes.Impl{},
 		HelmInterface:       &helm.Impl{},

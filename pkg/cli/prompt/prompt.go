@@ -11,6 +11,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/manifoldco/promptui"
 	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
@@ -267,7 +268,10 @@ func (i *BubbleTeaPrompterImpl) GetTextInput(promptMsg string) (string, error) {
 
 // GetListInput prompts user to select from a list
 func (i *BubbleTeaPrompterImpl) GetListInput(items []string, promptMsg string) (string, error) {
-	lm := cli_list.NewListModel(items, promptMsg)
+	fmt.Println(promptMsg)
+	lm := cli_list.NewListModel(items, "")
+
+	lm.List.Styles = list.Styles{}
 	model, err := tea.NewProgram(lm).Run()
 	if err != nil {
 		return "", err
