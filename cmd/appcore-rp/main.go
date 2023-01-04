@@ -86,12 +86,12 @@ func main() {
 	}
 
 	// Configure Applications.Link to run it with Applications.Core RP.
-	var connOpts *hostoptions.HostOptions
+	var linkOpts *hostoptions.HostOptions
 	if runLink && linkConfigFile != "" {
 		logger.Info("Run Applications.Link.")
-		var connSvcs []hosting.Service
-		connSvcs, connOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
-		hostingSvc = append(hostingSvc, connSvcs...)
+		var linkSvcs []hosting.Service
+		linkSvcs, linkOpts = newLinkHosts(linkConfigFile, enableAsyncWorker)
+		hostingSvc = append(hostingSvc, linkSvcs...)
 	}
 
 	if options.Config.StorageProvider.Provider == dataprovider.TypeETCD &&
@@ -102,8 +102,8 @@ func main() {
 		logger.Info("Enabled in-memory etcd")
 		client := hosting.NewAsyncValue[etcdclient.Client]()
 		options.Config.StorageProvider.ETCD.Client = client
-		if connOpts != nil {
-			connOpts.Config.StorageProvider.ETCD.Client = client
+		if linkOpts != nil {
+			linkOpts.Config.StorageProvider.ETCD.Client = client
 		}
 		hostingSvc = append(hostingSvc, data.NewEmbeddedETCDService(data.EmbeddedETCDServiceOptions{ClientConfigSink: client}))
 	}
