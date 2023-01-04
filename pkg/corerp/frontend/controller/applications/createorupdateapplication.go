@@ -26,6 +26,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateApplication)(nil)
@@ -38,17 +39,18 @@ const (
 // CreateOrUpdateApplication is the controller implementation to create or update application resource.
 type CreateOrUpdateApplication struct {
 	ctrl.Operation[*datamodel.Application, datamodel.Application]
+	KubeClient runtimeclient.Client
 }
 
 // NewCreateOrUpdateApplication creates a new instance of CreateOrUpdateApplication.
 func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateApplication{
-		ctrl.NewOperation(opts,
+		Operation: ctrl.NewOperation(opts,
 			ctrl.ResourceOptions[datamodel.Application]{
 				RequestConverter:  converter.ApplicationDataModelFromVersioned,
 				ResponseConverter: converter.ApplicationDataModelToVersioned,
-			},
-		),
+			}),
+		KubeClient: opts.KubeClient,
 	}, nil
 }
 
@@ -61,7 +63,7 @@ func NewCreateOrUpdateApplication(opts ctrl.Options) (ctrl.Controller, error) {
 // | envNS           | appNS              | envNS                         | appNS                         |
 // +-----------------+--------------------+-------------------------------+-------------------------------+
 
-func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, old, newResource *datamodel.Application) (rest.Response, error) {
+func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Context, newResource, old *datamodel.Application) (rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
@@ -130,7 +132,7 @@ func (a *CreateOrUpdateApplication) populateKubernetesNamespace(ctx context.Cont
 	}
 
 	// TODO: Move it to backend controller - https://github.com/project-radius/radius/issues/4742
-	err = a.KubeClient().Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
+	err = a.KubeClient.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: kubeNamespace}})
 	if apierrors.IsAlreadyExists(err) {
 		logger.Info("Using existing namespace", "namespace", kubeNamespace)
 	} else if err != nil {
@@ -159,11 +161,11 @@ func (a *CreateOrUpdateApplication) Run(ctx context.Context, w http.ResponseWrit
 		return r, err
 	}
 
-	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, newResource, old, a.Options()); r != nil || err != nil {
 		return r, err
 	}
 
-	if r, err := a.populateKubernetesNamespace(ctx, old, newResource); r != nil || err != nil {
+	if r, err := a.populateKubernetesNamespace(ctx, newResource, old); r != nil || err != nil {
 		return r, err
 	}
 

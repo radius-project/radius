@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package frontend
+package defaultoperation
 
 import (
 	"context"
@@ -68,7 +68,7 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			reqModel, reqDataModel, _ := loadTestResurce()
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, testHeaderfile, reqModel)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPut, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -104,7 +104,9 @@ func TestDefaultAsyncPut_Create(t *testing.T) {
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
 				RequestConverter:  testResourceDataModelFromVersioned,
 				ResponseConverter: testResourceDataModelToVersioned,
-				RequestValidator:  testValidateRequest,
+				UpdateFilters: []ctrl.UpdateFilter[TestResourceDataModel]{
+					testValidateRequest,
+				},
 			}
 
 			ctl, err := NewDefaultAsyncPut(opts, resourceOpts)
@@ -227,7 +229,7 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			reqDataModel.InternalMetadata.AsyncProvisioningState = tt.curState
 
 			w := httptest.NewRecorder()
-			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, testHeaderfile, reqModel)
+			req, err := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodPatch, resourceTestHeaderFile, reqModel)
 			require.NoError(t, err)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -268,7 +270,9 @@ func TestDefaultAsyncPut_Update(t *testing.T) {
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
 				RequestConverter:  testResourceDataModelFromVersioned,
 				ResponseConverter: testResourceDataModelToVersioned,
-				RequestValidator:  testValidateRequest,
+				UpdateFilters: []ctrl.UpdateFilter[TestResourceDataModel]{
+					testValidateRequest,
+				},
 			}
 
 			ctl, err := NewDefaultAsyncPut(opts, resourceOpts)

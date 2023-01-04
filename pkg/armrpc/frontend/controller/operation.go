@@ -16,13 +16,9 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // Operation is the base operation controller.
@@ -53,29 +49,13 @@ func (b *Operation[P, T]) StorageClient() store.StorageClient {
 	return b.options.StorageClient
 }
 
-// DataProvider gets data storage provider for this controller.
 func (b *Operation[P, T]) DataProvider() dataprovider.DataStorageProvider {
 	return b.options.DataProvider
-}
-
-// SecretClient gets secret client for this controller.
-func (b *Operation[P, T]) SecretClient() rp.SecretValueClient {
-	return b.options.SecretClient
-}
-
-// KubeClient gets Kubernetes client for this controller.
-func (b *Operation[P, T]) KubeClient() runtimeclient.Client {
-	return b.options.KubeClient
 }
 
 // ResourceType gets the resource type for this controller.
 func (b *Operation[P, T]) ResourceType() string {
 	return b.options.ResourceType
-}
-
-// DeploymentProcessor gets the deployment processor for this controller.
-func (b *Operation[P, T]) DeploymentProcessor() deployment.DeploymentProcessor {
-	return b.options.GetDeploymentProcessor()
 }
 
 // DeploymentProcessor gets the deployment processor for this controller.
@@ -228,7 +208,12 @@ func (b *Operation[P, T]) ResponseConverter() conv.ConvertToAPIModel[T] {
 	return b.resourceOptions.ResponseConverter
 }
 
-// RequestValidator returns the request validator function for this controller.
-func (b *Operation[P, T]) RequestValidator() ValidateRequest[T] {
-	return b.resourceOptions.RequestValidator
+// DeleteFilters returns the set of filters to execute on delete operations.
+func (b *Operation[P, T]) DeleteFilters() []DeleteFilter[T] {
+	return b.resourceOptions.DeleteFilters
+}
+
+// DeleteFilters returns the set of filters to execute on update (PUT/PATCH) operations.
+func (b *Operation[P, T]) UpdateFilters() []UpdateFilter[T] {
+	return b.resourceOptions.UpdateFilters
 }

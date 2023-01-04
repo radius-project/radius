@@ -21,11 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const (
-	testAPIVersion        = "2022-03-15-privatepreview"
-	testRequestHeaderFile = "requestheaders.json"
-)
-
 type testDataModel struct {
 	Name string `json:"name"`
 }
@@ -92,7 +87,7 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -121,7 +116,7 @@ func TestGetResourceRun(t *testing.T) {
 
 	t.Run("get existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testRequestHeaderFile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, resourceTestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.

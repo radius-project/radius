@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package frontend
+package defaultoperation
 
 import (
 	"context"
@@ -15,6 +15,7 @@ import (
 	"github.com/golang/mock/gomock"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
+	"github.com/project-radius/radius/pkg/armrpc/rest"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	store "github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -22,17 +23,19 @@ import (
 
 func TestDefaultAsyncDelete(t *testing.T) {
 	deleteCases := []struct {
-		desc     string
-		etag     string
-		curState v1.ProvisioningState
-		getErr   error
-		qErr     error
-		saveErr  error
-		code     int
+		desc             string
+		etag             string
+		curState         v1.ProvisioningState
+		getErr           error
+		qErr             error
+		saveErr          error
+		rejectedByFilter bool
+		code             int
 	}{
-		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &store.ErrNotFound{}, nil, nil, http.StatusNoContent},
-		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, http.StatusConflict},
-		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, http.StatusAccepted},
+		{"async-delete-non-existing-resource-no-etag", "", v1.ProvisioningStateNone, &store.ErrNotFound{}, nil, nil, false, http.StatusNoContent},
+		{"async-delete-existing-resource-blocked-by-filter", "", v1.ProvisioningStateSucceeded, nil, nil, nil, true, http.StatusConflict},
+		{"async-delete-existing-resource-not-in-terminal-state", "", v1.ProvisioningStateUpdating, nil, nil, nil, false, http.StatusConflict},
+		{"async-delete-existing-resource-success", "", v1.ProvisioningStateSucceeded, nil, nil, nil, false, http.StatusAccepted},
 	}
 
 	for _, tt := range deleteCases {
@@ -42,7 +45,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, testHeaderfile, nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(context.Background(), http.MethodDelete, resourceTestHeaderFile, nil)
 			req.Header.Set("If-Match", tt.etag)
 
 			ctx := radiustesting.ARMTestContextFromRequest(req)
@@ -58,7 +61,7 @@ func TestDefaultAsyncDelete(t *testing.T) {
 				}, tt.getErr).
 				Times(1)
 
-			if tt.getErr == nil && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
+			if tt.getErr == nil && !tt.rejectedByFilter && appDataModel.InternalMetadata.AsyncProvisioningState.IsTerminal() {
 				msm.EXPECT().QueueAsyncOperation(gomock.Any(), gomock.Any(), gomock.Any()).
 					Return(tt.qErr).
 					Times(1)
@@ -76,6 +79,14 @@ func TestDefaultAsyncDelete(t *testing.T) {
 			resourceOpts := ctrl.ResourceOptions[TestResourceDataModel]{
 				RequestConverter:  testResourceDataModelFromVersioned,
 				ResponseConverter: testResourceDataModelToVersioned,
+			}
+
+			if tt.rejectedByFilter {
+				resourceOpts.DeleteFilters = []ctrl.DeleteFilter[TestResourceDataModel]{
+					func(ctx context.Context, oldResource *TestResourceDataModel, options *ctrl.Options) (rest.Response, error) {
+						return rest.NewConflictResponse("no way!"), nil
+					},
+				}
 			}
 
 			ctl, err := NewDefaultAsyncDelete(opts, resourceOpts)

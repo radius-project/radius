@@ -324,11 +324,14 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPatch,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt,
+				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
-						RequestValidator:  vol_ctrl.ValidateRequest,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.VolumeResource]{
+							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
+							vol_ctrl.ValidateRequest,
+						},
 					},
 				)
 			},
@@ -338,11 +341,14 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationPut,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncPut(opt,
+				return defaultoperation.NewDefaultAsyncPut(opt,
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
-						RequestValidator:  vol_ctrl.ValidateRequest,
+						UpdateFilters: []frontend_ctrl.UpdateFilter[datamodel.VolumeResource]{
+							rp_frontend.PrepareRadiusResource[*datamodel.VolumeResource],
+							vol_ctrl.ValidateRequest,
+						},
 					},
 				)
 			},
@@ -352,7 +358,7 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			ResourceType: vol_ctrl.ResourceTypeName,
 			Method:       v1.OperationDelete,
 			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
-				return rp_frontend.NewDefaultAsyncDelete(opt,
+				return defaultoperation.NewDefaultAsyncDelete(opt,
 					frontend_ctrl.ResourceOptions[datamodel.VolumeResource]{
 						RequestConverter:  converter.VolumeResourceModelFromVersioned,
 						ResponseConverter: converter.VolumeResourceModelToVersioned,
