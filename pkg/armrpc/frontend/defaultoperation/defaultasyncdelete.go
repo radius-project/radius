@@ -3,17 +3,17 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package frontend
+package defaultoperation
 
 import (
 	"context"
 	"net/http"
 	"time"
 
+	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/rp"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 // DefaultAsyncDelete is the controller implementation to delete async resource.
 type DefaultAsyncDelete[P interface {
 	*T
-	rp.RadiusResourceModel
+	conv.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -32,7 +32,7 @@ type DefaultAsyncDelete[P interface {
 // NewDefaultAsyncDelete creates a new DefaultAsyncDelete.
 func NewDefaultAsyncDelete[P interface {
 	*T
-	rp.RadiusResourceModel
+	conv.ResourceDataModel
 }, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }
@@ -51,6 +51,12 @@ func (e *DefaultAsyncDelete[P, T]) Run(ctx context.Context, w http.ResponseWrite
 
 	if r, err := e.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
 		return r, err
+	}
+
+	for _, filter := range e.DeleteFilters() {
+		if resp, err := filter(ctx, old, e.Options()); resp != nil || err != nil {
+			return resp, err
+		}
 	}
 
 	if r, err := e.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, defaultAsyncDeleteTimeout, &etag); r != nil || err != nil {

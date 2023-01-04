@@ -6,24 +6,11 @@
 package frontend
 
 import (
-	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"net/url"
-	"testing"
-
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/golang/mock/gomock"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
-	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
-	"github.com/project-radius/radius/pkg/armrpc/rest"
-	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 const (
@@ -159,86 +146,4 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *v1.Provisioning
 	}
 
 	return &converted
-}
-
-func testResourceDataModelToVersioned(model *TestResourceDataModel, version string) (conv.VersionedModelInterface, error) {
-	switch version {
-	case testAPIVersion:
-		versioned := &TestResource{}
-		err := versioned.ConvertFrom(model)
-		return versioned, err
-
-	default:
-		return nil, v1.ErrUnsupportedAPIVersion
-	}
-}
-
-func testResourceDataModelFromVersioned(content []byte, version string) (*TestResourceDataModel, error) {
-	switch version {
-	case testAPIVersion:
-		am := &TestResource{}
-		if err := json.Unmarshal(content, am); err != nil {
-			return nil, err
-		}
-		dm, err := am.ConvertTo()
-		return dm.(*TestResourceDataModel), err
-
-	default:
-		return nil, v1.ErrUnsupportedAPIVersion
-	}
-}
-
-func testValidateRequest(ctx context.Context, newResource *TestResourceDataModel, oldResource *TestResourceDataModel, options *controller.Options) (rest.Response, error) {
-	return nil, nil
-}
-
-func loadTestResurce() (*TestResource, *TestResourceDataModel, *TestResource) {
-	reqBody := radiustesting.ReadFixture("resource-request.json")
-	reqModel := &TestResource{}
-	_ = json.Unmarshal(reqBody, reqModel)
-
-	rawDataModel := radiustesting.ReadFixture("resource-datamodel.json")
-	datamodel := &TestResourceDataModel{}
-	_ = json.Unmarshal(rawDataModel, datamodel)
-
-	respBody := radiustesting.ReadFixture("resource-response.json")
-	respModel := &TestResource{}
-	_ = json.Unmarshal(respBody, respModel)
-
-	return reqModel, datamodel, respModel
-}
-
-func setupTest(tb testing.TB) (func(testing.TB), *store.MockStorageClient, *statusmanager.MockStatusManager) {
-	mctrl := gomock.NewController(tb)
-	mds := store.NewMockStorageClient(mctrl)
-	msm := statusmanager.NewMockStatusManager(mctrl)
-
-	return func(tb testing.TB) {
-		mctrl.Finish()
-	}, mds, msm
-}
-
-// TODO: Use Referer header instead of X-Forwarded-Proto by following ARM RPC spec - https://github.com/project-radius/radius/issues/3068
-func getAsyncLocationPath(sCtx *v1.ARMRequestContext, location string, resourceType string, req *http.Request) string {
-	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path: fmt.Sprintf("%s/providers/%s/locations/%s/%s/%s", sCtx.ResourceID.PlaneScope(),
-			sCtx.ResourceID.ProviderNamespace(), location, resourceType, sCtx.OperationID.String()),
-	}
-
-	query := url.Values{}
-	query.Add("api-version", sCtx.APIVersion)
-	dest.RawQuery = query.Encode()
-
-	protocol := req.Header.Get("X-Forwarded-Proto")
-	if protocol != "" {
-		dest.Scheme = protocol
-	}
-
-	if dest.Scheme == "" {
-		dest.Scheme = "http"
-	}
-
-	return dest.String()
 }

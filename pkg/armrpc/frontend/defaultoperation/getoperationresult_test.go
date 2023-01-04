@@ -38,7 +38,7 @@ func TestGetOperationResultRun(t *testing.T) {
 
 	t.Run("get non-existing resource", func(t *testing.T) {
 		w := httptest.NewRecorder()
-		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+		req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 		ctx := radiustesting.ARMTestContextFromRequest(req)
 
 		mStorageClient.
@@ -100,7 +100,7 @@ func TestGetOperationResultRun(t *testing.T) {
 	for _, tt := range opResTestCases {
 		t.Run(tt.desc, func(t *testing.T) {
 			w := httptest.NewRecorder()
-			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, testHeaderfile, nil)
+			req, _ := radiustesting.GetARMTestHTTPRequest(ctx, http.MethodGet, operationStatusTestHeaderFile, nil)
 			ctx := radiustesting.ARMTestContextFromRequest(req)
 
 			osDataModel.Status = tt.provisioningState
