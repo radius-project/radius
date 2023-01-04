@@ -8,7 +8,6 @@ package delete
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/cmd/commonflags"
@@ -124,7 +123,7 @@ func (r *Runner) Run(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		if strings.EqualFold(confirmed, "no") {
+		if !confirmed {
 			return nil
 		}
 	}
