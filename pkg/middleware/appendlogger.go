@@ -24,13 +24,15 @@ func AppendLogValues(h http.Handler) http.Handler {
 
 		values := []interface{}{}
 		values = append(values, radlogger.LogFieldResourceID, id.String())
+		values = append(values, radlogger.LogFieldRootScope, id.RootScope())
+		values = append(values, radlogger.LogFieldRoutingScope, id.RoutingScope())
+		values = append(values, radlogger.LogFieldResourceType, id.Type())
+		values = append(values, radlogger.LogFieldResourceName, id.Name())
+
+		//If present, log the correlation id
+		values = append(values, radlogger.LogCorrelationID, r.Header.Get(radlogger.LogCorrelationID))
 
 		// TODO: populate correlation id and w3c trace parent id - https://github.com/project-radius/core-team/issues/53
-
-		// values = append(values, radlogger.LogFieldSubscriptionID, id.SubscriptionID)
-		// values = append(values, radlogger.LogFieldResourceGroup, id.ResourceGroup)
-		// values = append(values, radlogger.LogFieldResourceType, id.Type())
-		// values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
 
 		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
 		h.ServeHTTP(w, r)
