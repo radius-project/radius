@@ -51,7 +51,7 @@ type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	ConfigFileInterface framework.ConfigFileInterface
 	Output              output.Interface
-	InputPrompter       prompt.BubbleTeaPrompter
+	InputPrompter       prompt.InputPrompter
 	Workspace           *workspaces.Workspace
 	Confirm             bool
 }

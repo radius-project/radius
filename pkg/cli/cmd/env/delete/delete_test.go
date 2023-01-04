@@ -132,7 +132,7 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		promptMock := prompt.NewMockBubbleTeaPrompter(ctrl)
+		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
 			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, "test-env")).
 			Return("yes", nil).
@@ -178,7 +178,7 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		promptMock := prompt.NewMockBubbleTeaPrompter(ctrl)
+		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
 			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, "test-env")).
 			Return("no", nil).

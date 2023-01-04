@@ -34,7 +34,7 @@ type Factory interface {
 	// GetPortforward fetches the portforward interface.
 	GetPortforward() portforward.Interface
 	GetPrompter() prompt.Interface
-	GetInputPrompter() prompt.BubbleTeaPrompter
+	GetInputPrompter() prompt.InputPrompter
 	GetConfigFileInterface() ConfigFileInterface
 	GetKubernetesInterface() kubernetes.Interface
 	GetHelmInterface() helm.Interface
@@ -51,7 +51,7 @@ type Impl struct {
 	Output              output.Interface
 	Portforward         portforward.Interface
 	Prompter            prompt.Interface
-	InputPrompter       prompt.BubbleTeaPrompter
+	InputPrompter       prompt.InputPrompter
 	ConfigFileInterface ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	HelmInterface       helm.Interface
@@ -94,7 +94,7 @@ func (i *Impl) GetPrompter() prompt.Interface {
 }
 
 // GetInputPrompter fetches the interface to bubble tea prompt
-func (i *Impl) GetInputPrompter() prompt.BubbleTeaPrompter {
+func (i *Impl) GetInputPrompter() prompt.InputPrompter {
 	return i.InputPrompter
 }
 

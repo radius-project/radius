@@ -64,7 +64,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Workspace         *workspaces.Workspace
 	Output            output.Interface
-	InputPrompter     prompt.BubbleTeaPrompter
+	InputPrompter     prompt.InputPrompter
 
 	Confirm         bool
 	EnvironmentName string

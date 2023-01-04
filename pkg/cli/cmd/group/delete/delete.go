@@ -47,7 +47,7 @@ type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
 	Output               output.Interface
-	InputPrompter        prompt.BubbleTeaPrompter
+	InputPrompter        prompt.InputPrompter
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 	Confirmation         bool

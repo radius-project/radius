@@ -85,7 +85,7 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		prompter := prompt.NewMockBubbleTeaPrompter(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
 			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
 			Return("yes", nil).
@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		prompter := prompt.NewMockBubbleTeaPrompter(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
 			GetListInput(gomock.Any(), gomock.Any()).
 			Return("no", nil).
@@ -147,7 +147,7 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(0)
 
-		prompter := prompt.NewMockBubbleTeaPrompter(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
 			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
 			Return("no", nil).
