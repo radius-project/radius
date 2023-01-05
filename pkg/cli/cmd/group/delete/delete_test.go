@@ -133,7 +133,7 @@ func Test_Run(t *testing.T) {
 
 			prompter := prompt.NewMockInputPrompter(ctrl)
 			prompter.EXPECT().
-				GetListInput([]string{"yes", "no"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+				GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
 				Return("no", nil).
 				Times(1)
 

@@ -87,7 +87,7 @@ func Test_Run(t *testing.T) {
 
 		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
 			Return("yes", nil).
 			Times(1)
 
@@ -149,7 +149,7 @@ func Test_Run(t *testing.T) {
 
 		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
-			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
 			Return("no", nil).
 			Times(1)
 

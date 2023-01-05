@@ -134,7 +134,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
 			Return("yes", nil).
 			Times(1)
 
@@ -180,7 +180,7 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
-			GetListInput([]string{"yes", "no"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
 			Return("no", nil).
 			Times(1)
 
