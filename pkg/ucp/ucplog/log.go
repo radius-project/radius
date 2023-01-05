@@ -96,7 +96,7 @@ func initRadLoggerConfig() (*zap.Logger, error) {
 	return logger, nil
 }
 
-//NewLogger creates a new logr.Logger with zap logger implementation
+// NewLogger creates a new logr.Logger with zap logger implementation
 func NewLogger(name string) (logr.Logger, func(), error) {
 	if name == "" {
 		name = DefaultLoggerName
@@ -118,19 +118,19 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 	return logger, flushLogs, nil
 }
 
-//NewLogger creates a new logr.Logger with zaptest logger implementation
+// NewTestLogger creates a new logr.Logger with zaptest logger implementation
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
 	log := zapr.NewLogger(zapLogger)
 	return log, nil
 }
 
-//GetLogger gets the logr.Logger from supplied context
+// GetLogger gets the logr.Logger from supplied context
 func GetLogger(ctx context.Context) logr.Logger {
 	return logr.FromContextOrDiscard(ctx)
 }
 
-//WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
+// WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 
