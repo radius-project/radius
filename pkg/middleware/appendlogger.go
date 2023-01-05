@@ -10,6 +10,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Append logger values to the context based on the Resource ID (if present).
@@ -32,7 +33,7 @@ func AppendLogValues(h http.Handler) http.Handler {
 		// values = append(values, radlogger.LogFieldResourceType, id.Type())
 		// values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
 
-		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
+		r = r.WithContext(ucplog.WrapLogContext(r.Context(), values...))
 		h.ServeHTTP(w, r)
 	}
 

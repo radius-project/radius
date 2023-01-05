@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -38,7 +39,7 @@ type azureRoleAssignmentHandler struct {
 
 // Put assigns the selected roles to the identity.
 func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {

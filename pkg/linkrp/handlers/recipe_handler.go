@@ -20,6 +20,7 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -58,7 +59,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, err
 	}
 
-	logger := radlogger.GetLogger(ctx).WithValues(
+	logger := ucplog.GetLogger(ctx).WithValues(
 		radlogger.LogFieldResourceGroup, resourceGroup,
 		radlogger.LogFieldSubscriptionID, subscriptionID,
 	)

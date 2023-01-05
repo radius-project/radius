@@ -19,7 +19,7 @@ func (r *rp) UpdateDeployment(**ctx context.Context**, d *rest.Deployment) (rest
 * Inside a function, create a logger from the input context to log messages.
 
 ```go
-logger := radlogger.GetLogger(ctx)
+logger := ucplog.GetLogger(ctx)
 ```
 
 * Whenever there is more new relevant information that becomes available in a method, add new information fields to the logs. Radius uses a structured format for logging. Add a new constant field under the radlogger package and add it to the logging context.
@@ -30,8 +30,8 @@ LogFieldAppName            = "applicationName"
     ...
 )
 
-ctx = radlogger.WrapLogContext(ctx,
+ctx = ucplog.WrapLogContext(ctx,
     radlogger.LogFieldAppName, id.App.Name(),
     radlogger.LogFieldAppID, id.App.ID)
-logger := radlogger.GetLogger(ctx)
+logger := ucplog.GetLogger(ctx)
 ```

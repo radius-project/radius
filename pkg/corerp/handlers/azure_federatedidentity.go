@@ -21,6 +21,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -81,7 +82,7 @@ type azureFederatedIdentityHandler struct {
 
 // Put creates or updates the federated identity resource of the azure identity.
 func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	// Get dependencies
 	identityProp, ok := options.DependencyProperties[outputresource.LocalIDUserAssignedManagedIdentity]

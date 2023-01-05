@@ -20,7 +20,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/middleware"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -55,7 +55,7 @@ func TestCertValidationUnauthorized(t *testing.T) {
 			Thumbprint:  "934367bf1c97033f877db0f15cb1b586957d313",
 		}
 		ctx := context.Background()
-		log := radlogger.GetLogger(ctx)
+		log := ucplog.GetLogger(ctx)
 		armCertMgr := NewArmCertManager(metadataEndpoint, log)
 		ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
 		r.Use(ClientCertValidator(armCertMgr))
@@ -95,7 +95,7 @@ func TestCertValidationAuthorized(t *testing.T) {
 			Thumbprint:  "934367bf1c97033f877db0f15cb1b586957d313",
 		}
 		ctx := context.Background()
-		log := radlogger.GetLogger(ctx)
+		log := ucplog.GetLogger(ctx)
 		armCertMgr := NewArmCertManager(metadataEndpoint, log)
 		ArmCertStore.Store("934367bf1c97033f877db0f15cb1b586957d313", cert)
 		r.Use(ClientCertValidator(armCertMgr))
