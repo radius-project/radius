@@ -1,5 +1,5 @@
 ## Summary 
-Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the Applications.Core RP but configurations can also be set to run the Applications.Link RP for private preview and dev/test purposes. 
+Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the `Applications.Core RP` but configurations can also be set to run the `Applications.Link RP` for private preview and dev/test purposes. 
 
 If you wanted to locally run Radius with specific configurations, `yaml` files can be created and stored in the `cmd` folder for the corresponding UCP or resource provider. 
 
@@ -23,7 +23,7 @@ The following properties can be specified:
 | workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
 | metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
 
-The following are properties that can be specified on the UCP: 
+The following are properties that can be specified on the `UCP`: 
 | Key | Description |
 |-----|-------------|
 | secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
