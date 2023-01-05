@@ -132,7 +132,7 @@ The following are properties that can be specified on the UCP:
 
 ## Example configuration files 
 
-Below are completed examples of possible configurations. 
+Below are completed examples of possible configurations: 
 
 ### AppCoreRP and AppLinkRP 
 ```yaml
