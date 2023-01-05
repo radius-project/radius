@@ -21,7 +21,6 @@ import (
 
 // Radius uses the Zapr: https://github.com/go-logr/zapr which implements a logr interface
 // for a zap log sink
-
 const (
 	DefaultLoggerName string = "radius"
 	LogLevel          string = "RADIUS_LOG_LEVEL"   // Env variable that determines the log level
@@ -31,6 +30,7 @@ const (
 // Log levels
 const (
 	// More details on verbosity levels can be found here: https://pkg.go.dev/go.uber.org/zap@v1.20.0/zapcore#DebugLevel
+	// We do not want to support levels that introduce a new control flow
 	Error int = 1
 	Warn  int = 2
 	Info  int = 3
@@ -51,7 +51,7 @@ const (
 	DefaultLoggerProfile        = LoggerProfileDev
 )
 
-func InitRadLoggerConfig() (*zap.Logger, error) {
+func initRadLoggerConfig() (*zap.Logger, error) {
 	var cfg zap.Config
 
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
@@ -96,12 +96,13 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	return logger, nil
 }
 
+//NewLogger creates a new logr.Logger with zap logger implementation
 func NewLogger(name string) (logr.Logger, func(), error) {
 	if name == "" {
 		name = DefaultLoggerName
 	}
 
-	zapLogger, err := InitRadLoggerConfig()
+	zapLogger, err := initRadLoggerConfig()
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
@@ -117,16 +118,19 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 	return logger, flushLogs, nil
 }
 
+//NewLogger creates a new logr.Logger with zaptest logger implementation
 func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
 	log := zapr.NewLogger(zapLogger)
 	return log, nil
 }
 
+//GetLogger gets the logr.Logger from supplied context
 func GetLogger(ctx context.Context) logr.Logger {
 	return logr.FromContextOrDiscard(ctx)
 }
 
+//WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
 
@@ -134,6 +138,7 @@ func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	return ctx
 }
 
+//Unwrap returns the underlying zap logger of logr.Logger
 func Unwrap(logger logr.Logger) *zap.Logger {
 	underlier, ok := logger.GetSink().(zapr.Underlier)
 	if ok {
