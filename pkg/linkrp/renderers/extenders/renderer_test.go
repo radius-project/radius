@@ -14,13 +14,13 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
 
 func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
+	logger, err := ucplog.NewTestLogger(t)
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		return context.Background()

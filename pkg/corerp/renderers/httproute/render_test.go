@@ -15,10 +15,10 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -31,7 +31,7 @@ const (
 )
 
 func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
+	logger, err := ucplog.NewTestLogger(t)
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		return context.Background()

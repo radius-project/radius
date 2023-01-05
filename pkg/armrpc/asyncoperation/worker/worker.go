@@ -22,10 +22,10 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
-	"github.com/project-radius/radius/pkg/radlogger"
 	queue "github.com/project-radius/radius/pkg/ucp/queue/client"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"golang.org/x/sync/semaphore"
 )
 
@@ -141,14 +141,14 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 
 			opType, ok := v1.ParseOperationType(op.OperationType)
 			if !ok {
-				opLogger.V(radlogger.Error).Info("failed to parse operation type.")
+				opLogger.V(ucplog.Error).Info("failed to parse operation type.")
 				return
 			}
 
 			asyncCtrl := w.registry.Get(opType)
 
 			if asyncCtrl == nil {
-				opLogger.V(radlogger.Error).Info("cannot process the unknown operation: " + opType.String())
+				opLogger.V(ucplog.Error).Info("cannot process the unknown operation: " + opType.String())
 				if err := w.requestQueue.FinishMessage(ctx, msgreq); err != nil {
 					opLogger.Error(err, "failed to finish the message")
 				}
@@ -156,7 +156,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 			}
 			if msgreq.DequeueCount > w.options.MaxOperationRetryCount {
 				errMsg := fmt.Sprintf("exceeded max retry count to process async operation message: %d", msgreq.DequeueCount)
-				opLogger.V(radlogger.Error).Info(errMsg)
+				opLogger.V(ucplog.Error).Info(errMsg)
 				failed := ctrl.NewFailedResult(v1.ErrorDetails{
 					Code:    v1.CodeInternal,
 					Message: errMsg,
@@ -175,7 +175,7 @@ func (w *AsyncRequestProcessWorker) Start(ctx context.Context) error {
 				return
 			}
 			if dup {
-				opLogger.V(radlogger.Warn).Info("duplicated message detected")
+				opLogger.V(ucplog.Warn).Info("duplicated message detected")
 				return
 			}
 
@@ -215,7 +215,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 			close(done)
 			if err := recover(); err != nil {
 				msg := fmt.Sprintf("recovering from panic %v: %s", err, debug.Stack())
-				logger.V(radlogger.Fatal).Info(msg)
+				logger.V(ucplog.Error).Info(msg)
 
 				// When backend controller has a critical bug such as nil reference, asyncCtrl.Run() is panicking.
 				// If this happens, the message is requeued after message lock time (5 mins).
