@@ -287,9 +287,9 @@ func (i *InputPrompterImpl) GetListInput(items []string, promptMsg string) (stri
 
 // Creates a Yes or No prompts where user has to select either a Yes or No as input
 func YesOrNoPrompt(promptMsg string, prompter InputPrompter) (bool, error) {
-	input, err := prompter.GetListInput([]string{"yes", "no"}, promptMsg)
+	input, err := prompter.GetListInput([]string{"No", "Yes"}, promptMsg)
 	if err != nil {
 		return false, err
 	}
-	return strings.EqualFold("yes", input), nil
+	return strings.EqualFold("Yes", input), nil
 }
