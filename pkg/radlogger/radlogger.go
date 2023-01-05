@@ -25,8 +25,8 @@ import (
 
 const (
 	DefaultLoggerName = "radiusRP"
-	RadLogLevel       = "RADIUS_LOG_LEVEL"   // Env variable that determines the log level
-	RadLogProfile     = "RADIUS_LOG_PROFILE" // Env variable that determines the logger config presets
+	LogLevel          = "RADIUS_LOG_LEVEL"   // Env variable that determines the log level
+	LogProfile        = "RADIUS_LOG_PROFILE" // Env variable that determines the logger config presets
 )
 
 // Log levels
@@ -56,7 +56,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 	var cfg zap.Config
 
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
-	profile := os.Getenv(RadLogProfile)
+	profile := os.Getenv(LogProfile)
 	if profile == "" {
 		profile = DefaultLoggerProfile
 	}
@@ -70,7 +70,7 @@ func InitRadLoggerConfig() (*zap.Logger, error) {
 
 	// Modify the default log level intialized by the profile preset if a custom value
 	// is specified by "RADIUS_LOG_LEVEL" env variable
-	radLogLevel := os.Getenv(RadLogLevel)
+	radLogLevel := os.Getenv(LogLevel)
 	var logLevel int
 	if radLogLevel != "" {
 		if strings.EqualFold(VerbosityLevelVerbose, radLogLevel) {
