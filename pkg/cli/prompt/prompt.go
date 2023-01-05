@@ -253,6 +253,7 @@ type InputPrompterImpl struct{}
 func (i *InputPrompterImpl) GetTextInput(promptMsg string) (string, error) {
 	// TODO: implement text model
 	tm := text.NewTextModel(promptMsg)
+
 	model, err := tea.NewProgram(tm).Run()
 	if err != nil {
 		return "", err
@@ -268,8 +269,7 @@ func (i *InputPrompterImpl) GetTextInput(promptMsg string) (string, error) {
 
 // GetListInput prompts user to select from a list
 func (i *InputPrompterImpl) GetListInput(items []string, promptMsg string) (string, error) {
-	fmt.Println(promptMsg)
-	lm := cli_list.NewListModel(items, "")
+	lm := cli_list.NewListModel(items, promptMsg)
 
 	lm.List.Styles = list.Styles{}
 	model, err := tea.NewProgram(lm).Run()
