@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	deleteConfirmationFmt = "Are you sure you want to delete workspace '%v' from local config [y/N]? This will update config but will not delete any deployed resources."
+	deleteConfirmationFmt = "Are you sure you want to delete workspace '%v' from local config? This will update config but will not delete any deployed resources."
 )
 
 // NewCommand creates an instance of the command and runner for the `rad workspace delete` command.
@@ -50,7 +50,7 @@ type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	ConfigFileInterface framework.ConfigFileInterface
 	Output              output.Interface
-	Prompt              prompt.Interface
+	InputPrompter       prompt.InputPrompter
 	Workspace           *workspaces.Workspace
 	Confirm             bool
 }
@@ -60,7 +60,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		ConfigHolder:        factory.GetConfigHolder(),
-		Prompt:              factory.GetPrompter(),
+		InputPrompter:       factory.GetInputPrompter(),
 		Output:              factory.GetOutput(),
 	}
 }
@@ -93,7 +93,7 @@ func (r *Runner) Run(ctx context.Context) error {
 	// Prompt user to confirm deletion
 	if !r.Confirm {
 		message := fmt.Sprintf(deleteConfirmationFmt, r.Workspace.Name)
-		confirmed, err := r.Prompt.ConfirmWithDefault(message, prompt.No)
+		confirmed, err := prompt.YesOrNoPrompt(message, r.InputPrompter)
 		if err != nil {
 			return err
 		}

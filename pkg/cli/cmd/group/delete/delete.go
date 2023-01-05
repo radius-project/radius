@@ -46,7 +46,7 @@ type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
 	Output               output.Interface
-	Prompter             prompt.Interface
+	InputPrompter        prompt.InputPrompter
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 	Confirmation         bool
@@ -58,7 +58,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
-		Prompter:          factory.GetPrompter(),
+		InputPrompter:     factory.GetInputPrompter(),
 	}
 }
 
@@ -91,10 +91,13 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	// Prompt user to confirm deletion
 	if !r.Confirmation {
-		confirmed, err := r.Prompter.ConfirmWithDefault(fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName), prompt.No)
+		confirmed, err := prompt.YesOrNoPrompt(
+			fmt.Sprintf("Are you sure you want to delete the resource group '%v'? A resource group can be deleted only when empty", r.UCPResourceGroupName),
+			r.InputPrompter)
 		if err != nil {
 			return err
 		}
+
 		if !confirmed {
 			r.Output.LogInfo("resource group %q NOT deleted", r.UCPResourceGroupName)
 			return nil

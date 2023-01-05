@@ -85,17 +85,17 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		prompter := prompt.NewMockInterface(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmationFmt, "test-workspace"), prompt.No).
-			Return(true, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			Return("yes", nil).
 			Times(1)
 
 		runner := &Runner{
 			ConfigHolder:        &framework.ConfigHolder{},
 			ConfigFileInterface: configFile,
 			Output:              outputSink,
-			Prompt:              prompter,
+			InputPrompter:       prompter,
 			Workspace: &workspaces.Workspace{
 				Name: "test-workspace",
 			},
@@ -115,17 +115,17 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(1)
 
-		prompter := prompt.NewMockInterface(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
-			ConfirmWithDefault(gomock.Any(), gomock.Any()).
-			Return(false, nil).
+			GetListInput(gomock.Any(), gomock.Any()).
+			Return("no", nil).
 			Times(0)
 
 		runner := &Runner{
 			ConfigHolder:        &framework.ConfigHolder{},
 			ConfigFileInterface: configFile,
 			Output:              outputSink,
-			Prompt:              prompter,
+			InputPrompter:       prompter,
 			Workspace: &workspaces.Workspace{
 				Name: "test-workspace",
 			},
@@ -147,17 +147,17 @@ func Test_Run(t *testing.T) {
 			Return(nil).
 			Times(0)
 
-		prompter := prompt.NewMockInterface(ctrl)
+		prompter := prompt.NewMockInputPrompter(ctrl)
 		prompter.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmationFmt, "test-workspace"), prompt.No).
-			Return(false, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmationFmt, "test-workspace")).
+			Return("no", nil).
 			Times(1)
 
 		runner := &Runner{
 			ConfigHolder:        &framework.ConfigHolder{},
 			ConfigFileInterface: configFile,
 			Output:              outputSink,
-			Prompt:              prompter,
+			InputPrompter:       prompter,
 			Workspace: &workspaces.Workspace{
 				Name: "test-workspace",
 			},
