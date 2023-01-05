@@ -57,7 +57,7 @@ The following are properties that can be specified on the `UCP`:
 ### queueProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of queue provider. | `apiServer` | 
+| provider | The type of queue provider | `apiServer` | 
 | apiServer |  Object containing properties for Kubernetes APIServer store | [**See below**](#apiserver) |
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
 
@@ -88,7 +88,7 @@ The following are properties that can be specified on the `UCP`:
 ### secretProvider
 | Key | Description | Example |
 |-----|-------------|---------|
-| provider | The type of secret provider. | `etcd` | 
+| provider | The type of secret provider | `etcd` | 
 | etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
 
 ### plane
