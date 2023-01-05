@@ -134,7 +134,7 @@ The following are properties that can be specified on the UCP:
 
 Below are completed examples of possible configurations: 
 
-### AppCoreRP and AppLinkRP 
+### Applications.Core and Applications.Link
 ```yaml
 environment:
   name: self-hosted
