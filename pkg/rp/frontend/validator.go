@@ -9,6 +9,7 @@ import (
 	"context"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/rp"
 )
@@ -17,7 +18,7 @@ import (
 func PrepareRadiusResource[P interface {
 	*T
 	rp.RadiusResourceModel
-}, T any](ctx context.Context, oldResource *T, newResource *T) (rest.Response, error) {
+}, T any](ctx context.Context, newResource *T, oldResource *T, options *controller.Options) (rest.Response, error) {
 	if oldResource == nil {
 		return nil, nil
 	}
