@@ -34,8 +34,8 @@ These settings apply only when `--tag=link-2022-03-15-privatepreview` is specifi
 
 ```yaml $(tag) == 'link-2022-03-15-privatepreview'
 input-file:
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/openapi.json
-  - ../../../swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/extenders.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/openapi.json
+  - ../../../swagger/specification/applications/resource-manager/Applications.Link/preview/2022-03-15-privatepreview/extenders.json
 modelerfour: 
   treat-type-object-as-anything: false
 ```
