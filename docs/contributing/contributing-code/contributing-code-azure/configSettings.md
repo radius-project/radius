@@ -5,7 +5,7 @@ If you wanted to locally run Radius with specific configurations, `yaml` files c
 
 ![Local Config](./configExamples/localConfig.png)
 
-If you wanted to run Radius on Kubernetes with specific configurations, `yaml` files can be created and stored in the `deploy/Chart/charts` folder for `Applications.Core RP`, `Applications.Link RP`, or `UCP`
+If you wanted to run Radius on Kubernetes with specific configurations, `yaml` files can be created and stored in the `deploy/Chart/charts` folder for `Applications.Core RP`, `Applications.Link RP`, or `UCP`.
 
 ![Kubernetes Config](./configExamples/kubeConfig.png)
 
