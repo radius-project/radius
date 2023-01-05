@@ -97,7 +97,7 @@ The following are properties that can be specified on the `UCP`:
 | id | The ID of the UCP plane | `/planes/radius/local` | 
 | type | The type of UCP plane | `System.Planes/radius` |
 | name | The name of the UCP plane | `ucp` |
-| properties | The properties specified on the plane (i.e. resource providers, kind, URL) | [**See below**](#properties) |
+| properties | The properties specified on the plane | [**See below**](#properties) |
 
 ## Available providers
 
