@@ -17,16 +17,16 @@ The following properties can be specified:
 |-----|-------------|---------|
 | environment | Environment name and its role location | [**See below**](#environment) |
 | identity | AAD APP authentication for the resource provider | [**See below**](#identity) |
-| storageprovider | Configuration options for the data storage provider | [**See below**](#storageprovider) |
-| queueprovider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
+| storageProvider | Configuration options for the data storage provider | [**See below**](#storageprovider) |
+| queueProvider | Configuration options for the provider to create and manage the queue client | [**See below**](#queueprovider) |
 | server | Configuration options for the HTTP server bootstrap | [**See below**](#server) |
-| workerserver | Configuration options for the worker server | [**See below**](#workerserver) |
-| metricsprovider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
+| workerServer | Configuration options for the worker server | [**See below**](#workerserver) |
+| metricsProvider | Configuration options of the providers for publishing metrics | [**See below**](#metricsProvider) |
 
 The following are properties that can be specified on the UCP: 
 | Key | Description |
 |-----|-------------|
-| secretprovider | Configuration options for the secret provider | [**See below**](#secretprovider)
+| secretProvider | Configuration options for the secret provider | [**See below**](#secretprovider)
 | plane | Configuration options for the UCP plane | [**See below**](#plane)
  
 
@@ -37,7 +37,6 @@ The following are properties that can be specified on the UCP:
 | location | The role location of the environment | `West US` |
 
 ### identity
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | clientId | Client ID of the Azure AAD App  | `your-client-ID` | 
@@ -48,7 +47,6 @@ The following are properties that can be specified on the UCP:
 | pemCertPath | Path to certificate file | `/var/certs/rp-aad-app.pem` |
 
 ### storageProvider
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | provider | The type of storage provider | `apiServer` | 
@@ -57,7 +55,6 @@ The following are properties that can be specified on the UCP:
 | etcd | Object containing properties for ETCD store | [**See below**](#etcd)|
 
 ### queueProvider
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | provider | The type of queue provider. | `apiServer` | 
@@ -65,7 +62,6 @@ The following are properties that can be specified on the UCP:
 | inMemoryQueue | Object containing properties for InMemory Queue client | |
 
 ### server
-
 | Key | Description | Example | 
 |-----|-------------|---------|
 | host | Domain name of the server | `0.0.0.0` |
@@ -76,7 +72,6 @@ The following are properties that can be specified on the UCP:
 | enableArmAuth | If set, the ARM client authentifictaion is performed (must be `true`/`false`) | `true` |
 
 ### workerServer
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | port | the localhost port which provides system-level info | `2222` |
@@ -84,7 +79,6 @@ The following are properties that can be specified on the UCP:
 | maxOperationRetryCount | The maximum retry count to process async request operation | `2` |
 
 ### metricsProvider
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | enabled | Specified whether to publish metrics (must be `true`/`false`) | `true` |
@@ -92,14 +86,12 @@ The following are properties that can be specified on the UCP:
 | path | The endpoint name where the metrics are posted | `2222` |
 
 ### secretProvider
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | provider | The type of secret provider. | `etcd` | 
 | etcd | Object containing properties for ETCD secret store | [**See below**](#etcd) |  
 
 ### plane
-
 | Key | Description | Example |
 |-----|-------------|---------|
 | id | The ID of the UCP plane | `/planes/radius/local` | 
