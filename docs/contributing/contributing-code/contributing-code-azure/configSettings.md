@@ -1,11 +1,3 @@
----
-type: docs
-title: "Radius resource provider configuration schemas"
-linkTitle: "Configuration schemas"
-description: "Schema docs for the resource provider configuration files"
-weight: 40
----
-
 ## Summary 
 Configuration schemas are used to define the service configuration for the resource provider's execution. The default configurations use the Applications.Core RP but configurations can also be set to run the Applications.Link RP for private preview and dev/test purposes. 
 
@@ -48,9 +40,9 @@ The following are properties that can be specified on the UCP:
 
 | Key | Description | Example |
 |-----|-------------|---------|
-| clientId | Client ID of the Azure AAD App  | `set-client-ID` | 
+| clientId | Client ID of the Azure AAD App  | `your-client-ID` | 
 | instance | The identity provider instance | `https://login.windows.net` |
-| tenantId | Tenant ID of the Azure AAD App | `set-tenant-ID` |
+| tenantId | Tenant ID of the Azure AAD App | `your-tenant-ID` |
 | armEndpoint | ARM endpoint | `https://management.azure.com:443` |
 | audience | The recipient of the certificate | `https://management.core.windows.net` |
 | pemCertPath | Path to certificate file | `/var/certs/rp-aad-app.pem` |
