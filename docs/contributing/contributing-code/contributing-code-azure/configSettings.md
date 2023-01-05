@@ -151,6 +151,63 @@ The following are properties that can be specified on the UCP:
 Below are completed examples of possible configurations. 
 
 ### AppCoreRP and AppLinkRP 
-
+```yaml
+environment:
+  name: self-hosted
+  roleLocation: "global"
+storageProvider:
+  provider: "apiserver"
+  apiserver:
+    incluster: true
+    context: ""
+    namespace: "radius-system"
+queueProvider:
+  provider: "apiserver"
+  apiserver:
+    incluster: true
+    context: ""
+    namespace: "radius-system"
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 2222
+server:
+  host: "0.0.0.0"
+  port: 5443
+workerServer:
+  maxOperationConcurrency: 3
+  maxOperationRetryCount: 2
+```
 
 ### UCP 
+```yaml
+storageProvider:
+  provider: "apiserver"
+  apiserver:
+    incluster: true
+    context: ""
+    namespace: "radius-system"
+secretProvider:
+  provider: "kubernetes"
+planes:
+  - id: "/planes/radius/local"
+    properties:
+      resourceProviders:
+        Applications.Core: "http://appcore-rp.radius-system:5443"
+        Applications.Link: "http://appcore-rp.radius-system:5444"
+      kind: "UCPNative"
+  - id: "/planes/deployments/local"
+    properties:
+      resourceProviders:
+        Microsoft.Resources: "http://de-api.radius-system:6443"
+      kind: "UCPNative"
+  - id: "/planes/aws/aws"
+    properties:
+      kind: "AWS"
+metricsProvider:
+  prometheus:
+    enabled: true
+    path: "/metrics"
+    port: 2222
+```
