@@ -43,6 +43,7 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	"github.com/go-openapi/jsonpointer"
 	corev1 "k8s.io/api/core/v1"
@@ -85,7 +86,7 @@ type ResourceData struct {
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
 	if err != nil {
@@ -170,7 +171,7 @@ func (dp *deploymentProcessor) getResourceRenderer(resourceID resources.ID) (ren
 }
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput, computedValues map[string]any, putOptions *handlers.PutOptions) error {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	or := putOptions.Resource
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", or.LocalID, or.ResourceType))
@@ -225,7 +226,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id.String())
+	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id.String())
 
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
@@ -292,7 +293,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []outputresource.OutputResource) error {
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id)
+	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {
@@ -387,7 +388,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, dependency Resou
 
 // TODO: Revisit to remove the corerp_dm.Environment dependency.
 func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm.Environment) (renderers.EnvironmentOptions, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 	publicEndpointOverride := os.Getenv("RADIUS_PUBLIC_ENDPOINT_OVERRIDE")
 
 	envOpts := renderers.EnvironmentOptions{
@@ -411,7 +412,7 @@ func (dp *deploymentProcessor) getEnvOptions(ctx context.Context, env *corerp_dm
 	// Extract identity info.
 	envOpts.Identity = env.Properties.Compute.Identity
 	if envOpts.Identity == nil {
-		logger.V(radlogger.Debug).Info("environment identity is not specified.")
+		logger.V(ucplog.Debug).Info("environment identity is not specified.")
 	}
 
 	// Get Environment KubernetesMetadata Info

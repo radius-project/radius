@@ -18,7 +18,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/loads"
 	"github.com/go-openapi/spec"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var (
@@ -84,7 +84,7 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 		// Check if specification file pathname is valid and skip global.json.
 		parsed := parseSpecFilePath(path)
 		if parsed == nil {
-			log.V(radlogger.Warn).Info(fmt.Sprintf("failed to parse %s", path))
+			log.V(ucplog.Warn).Info(fmt.Sprintf("failed to parse %s", path))
 			return nil
 		}
 

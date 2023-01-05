@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -41,7 +42,7 @@ type azureUserAssignedManagedIdentityHandler struct {
 }
 
 func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context, options *PutOptions) (map[string]string, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 
 	properties, ok := options.Resource.Resource.(map[string]string)
 	if !ok {

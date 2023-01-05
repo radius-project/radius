@@ -53,6 +53,8 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	if err != nil {
 		return nil, err
 	}
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, existingPlane.Properties.Kind)
+	logger = ucplog.GetLogger(ctx)
 	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
