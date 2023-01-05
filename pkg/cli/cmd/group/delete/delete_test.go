@@ -131,10 +131,10 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			outputSink := &output.MockOutput{}
 
-			prompter := prompt.NewMockInterface(ctrl)
+			prompter := prompt.NewMockInputPrompter(ctrl)
 			prompter.EXPECT().
-				ConfirmWithDefault("Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty", prompt.No).
-				Return(false, nil).
+				GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+				Return("no", nil).
 				Times(1)
 
 			runner := &Runner{
@@ -142,7 +142,7 @@ func Test_Run(t *testing.T) {
 				Workspace:            &workspaces.Workspace{},
 				UCPResourceGroupName: "testrg",
 				Confirmation:         false,
-				Prompter:             prompter,
+				InputPrompter:        prompter,
 				Output:               outputSink,
 			}
 

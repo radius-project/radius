@@ -132,10 +132,10 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmation, "test-env"), prompt.No).
-			Return(true, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return("yes", nil).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -155,7 +155,7 @@ func Test_Show(t *testing.T) {
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Prompt:            promptMock,
+			InputPrompter:     promptMock,
 			Workspace:         workspace,
 			Format:            "table",
 			Output:            outputSink,
@@ -178,10 +178,10 @@ func Test_Show(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		promptMock := prompt.NewMockInterface(ctrl)
+		promptMock := prompt.NewMockInputPrompter(ctrl)
 		promptMock.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmation, "test-env"), prompt.No).
-			Return(false, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return("no", nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
@@ -194,7 +194,7 @@ func Test_Show(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Prompt:          promptMock,
+			InputPrompter:   promptMock,
 			Workspace:       workspace,
 			Format:          "table",
 			Output:          outputSink,
