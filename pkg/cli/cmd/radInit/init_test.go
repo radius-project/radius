@@ -573,7 +573,7 @@ func Test_Run_InstalledRadiusExistingEnvironment_CreateApplication(t *testing.T)
 	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 }
 
-func initParseCloudProvider(setup *setup.MockInterface, prompter *prompt.MockInputPrompter) {
+func initParseCloudProvider(setup *setup.MockInterface, prompter *prompt.MockInterface) {
 	setup.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, prompter).Return(&azure.Provider{
 		SubscriptionID: "test-subscription",
 		ResourceGroup:  "test-rg",
@@ -609,67 +609,67 @@ func getTestKubeConfig() *api.Config {
 	}
 }
 
-func initKubeContextWithKind(prompter *prompt.MockInputPrompter) {
+func initKubeContextWithKind(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectKubeContextPrompt).
 		Return("kind-kind", nil).Times(1)
 }
 
-func initKubeContextSelectionError(prompter *prompt.MockInputPrompter) {
+func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectKubeContextPrompt).
 		Return("", errors.New("cannot read selection")).Times(1)
 }
 
-func initRadiusReinstallNo(prompter *prompt.MockInputPrompter) {
+func initRadiusReinstallNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
 		Return("No", nil).Times(1)
 }
 
-func initRadiusReinstallYes(prompter *prompt.MockInputPrompter) {
+func initRadiusReinstallYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
 		Return("Yes", nil).Times(1)
 }
 
-func initEnvNamePrompt(prompter *prompt.MockInputPrompter) {
+func initEnvNamePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
-func initEnvNamePromptError(prompter *prompt.MockInputPrompter) {
+func initEnvNamePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("", errors.New("unable to read prompt")).Times(1)
 }
 
-func initNamespacePrompt(prompter *prompt.MockInputPrompter) {
+func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
-func initNamespacePromptError(prompter *prompt.MockInputPrompter) {
+func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
-func initAddCloudProviderPromptNo(prompter *prompt.MockInputPrompter) {
+func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
 		Return("No", nil).Times(1)
 }
 
-func initAddCloudProviderPromptYes(prompter *prompt.MockInputPrompter) {
+func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
 		Return("Yes", nil).Times(1)
 }
 
-func initSelectCloudProvider(prompter *prompt.MockInputPrompter) {
+func initSelectCloudProvider(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectCloudProviderPrompt).
 		Return("Azure", nil).Times(1)
@@ -693,25 +693,25 @@ func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClien
 		Return(environments, nil).Times(1)
 }
 
-func initExistingEnvironmentSelection(prompter *prompt.MockInputPrompter, choice string) {
+func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), common.SelectExistingEnvironmentPrompt).
 		Return(choice, nil).Times(1)
 }
 
-func setScaffoldApplicationPromptNo(prompter *prompt.MockInputPrompter) {
+func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
 		Return("No", nil).Times(1)
 }
 
-func setScaffoldApplicationPromptYes(prompter *prompt.MockInputPrompter) {
+func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
 		Return("Yes", nil).Times(1)
 }
 
-func setApplicationNamePrompt(prompter *prompt.MockInputPrompter, applicationName string) {
+func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
 	prompter.EXPECT().
 		GetTextInput(enterApplicationName, gomock.Any()).
 		Return(applicationName, nil).Times(1)

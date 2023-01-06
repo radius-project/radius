@@ -51,7 +51,7 @@ type ValidateInput struct {
 type ValidateMocks struct {
 	Kubernetes                  *kubernetes.MockInterface
 	Namespace                   *namespace.MockInterface
-	Prompter                    *prompt.MockInputPrompter
+	Prompter                    *prompt.MockInterface
 	Helm                        *helm.MockInterface
 	Setup                       *setup.MockInterface
 	ApplicationManagementClient *clients.MockApplicationsManagementClient
@@ -81,7 +81,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 				mocks := ValidateMocks{
 					Kubernetes:                  kubernetes.NewMockInterface(ctrl),
 					Namespace:                   namespace.NewMockInterface(ctrl),
-					Prompter:                    prompt.NewMockInputPrompter(ctrl),
+					Prompter:                    prompt.NewMockInterface(ctrl),
 					Helm:                        helm.NewMockInterface(ctrl),
 					Setup:                       setup.NewMockInterface(ctrl),
 					ApplicationManagementClient: clients.NewMockApplicationsManagementClient(ctrl),
@@ -91,7 +91,7 @@ func SharedValidateValidation(t *testing.T, factory func(framework framework.Fac
 
 				framework.KubernetesInterface = mocks.Kubernetes
 				framework.NamespaceInterface = mocks.Namespace
-				framework.InputPrompter = mocks.Prompter
+				framework.Prompter = mocks.Prompter
 				framework.HelmInterface = mocks.Helm
 				framework.SetupInterface = mocks.Setup
 				framework.ConnectionFactory = &connections.MockFactory{

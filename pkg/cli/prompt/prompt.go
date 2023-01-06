@@ -13,7 +13,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/manifoldco/promptui"
 	cli_list "github.com/project-radius/radius/pkg/cli/prompt/list"
 	"github.com/project-radius/radius/pkg/cli/prompt/text"
 )
@@ -157,88 +156,10 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	return selected, nil
 }
 
-//go:generate mockgen -destination=./mock_prompt.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+//go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
+
+// Interface contains operation to get user inputs for cli
 type Interface interface {
-	RunPrompt(prompter promptui.Prompt) (string, error)
-	RunSelect(selector promptui.Select) (int, string, error)
-
-	// Confirm prompts the user to confirm the answer to a yes/no question.
-	ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error)
-}
-
-type Impl struct{}
-
-// Prompts user for an input
-func (i *Impl) RunPrompt(prompter promptui.Prompt) (string, error) {
-	return prompter.Run()
-}
-
-// Prompts user to select from a list of values
-func (i *Impl) RunSelect(selector promptui.Select) (int, string, error) {
-	return selector.Run()
-}
-
-func (i *Impl) ConfirmWithDefault(prompt string, defaultAns BinaryAnswer) (bool, error) {
-	return ConfirmWithDefault(prompt, defaultAns)
-}
-
-// Creates a Yes or No prompts where user has to enter either a Y or N as input
-func YesOrNoPrompter(label string, defaultValue string, prompter Interface) (string, error) {
-	textPrompt := promptui.Prompt{
-		Label:    label,
-		Default:  defaultValue,
-		Validate: validateYesOrNo,
-	}
-	result, err := prompter.RunPrompt(textPrompt)
-	if errors.Is(err, promptui.ErrAbort) {
-		return result, nil
-	} else if err != nil {
-		return "", err
-	}
-	return result, err
-}
-
-func validateYesOrNo(s string) error {
-	if s == "" || (strings.ToLower(s) != "y" && strings.ToLower(s) != "n") {
-		return errors.New("invalid input")
-	}
-	return nil
-}
-
-// Creates a prompt where a user is asked for a value suggesting a default Val
-func TextPromptWithDefault(label string, defaultVal string, f func(s string) (bool, string, error)) promptui.Prompt {
-	return promptui.Prompt{
-		Label:   label,
-		Default: defaultVal,
-		Validate: func(s string) error {
-			valid, msg, err := f(s)
-			if err != nil {
-				return err
-			}
-			if !valid {
-				return errors.New(msg)
-			}
-			return nil
-		},
-		AllowEdit: true,
-	}
-}
-
-// Creates a prompter which has a list of values to select from
-func SelectionPrompter(label string, items []string) promptui.Select {
-	return promptui.Select{
-		Label: label,
-		Items: items,
-		Searcher: func(input string, index int) bool {
-			return strings.HasPrefix(items[index], input)
-		},
-	}
-}
-
-//go:generate mockgen -destination=./mock_inputprompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt InputPrompter
-
-// InputPrompter contains operation to get user inputs for cli
-type InputPrompter interface {
 	// GetTextInput prompts user for a text input
 	GetTextInput(promptMsg string, defaultPlaceHolder string) (string, error)
 
@@ -246,11 +167,11 @@ type InputPrompter interface {
 	GetListInput(items []string, promptMsg string) (string, error)
 }
 
-// InputPrompterImpl implements BubbleTeaPrompter
-type InputPrompterImpl struct{}
+// Impl implements BubbleTeaPrompter
+type Impl struct{}
 
 // GetTextInput prompts user for a text input
-func (i *InputPrompterImpl) GetTextInput(promptMsg string, defaultPlaceHolder string) (string, error) {
+func (i *Impl) GetTextInput(promptMsg string, defaultPlaceHolder string) (string, error) {
 	// TODO: implement text model
 	tm := text.NewTextModel(promptMsg, defaultPlaceHolder)
 
@@ -268,7 +189,7 @@ func (i *InputPrompterImpl) GetTextInput(promptMsg string, defaultPlaceHolder st
 }
 
 // GetListInput prompts user to select from a list
-func (i *InputPrompterImpl) GetListInput(items []string, promptMsg string) (string, error) {
+func (i *Impl) GetListInput(items []string, promptMsg string) (string, error) {
 	lm := cli_list.NewListModel(items, promptMsg)
 
 	lm.List.Styles = list.Styles{}
@@ -287,7 +208,7 @@ func (i *InputPrompterImpl) GetListInput(items []string, promptMsg string) (stri
 
 // YesOrNoPrompt Creates a Yes or No prompt where user has to select either a Yes or No as input
 // defaultString decides the first(default) value on the list.
-func YesOrNoPrompt(promptMsg string, defaultString string, prompter InputPrompter) (bool, error) {
+func YesOrNoPrompt(promptMsg string, defaultString string, prompter Interface) (bool, error) {
 	var valueList []string
 	if strings.EqualFold("Yes", defaultString) {
 		valueList = []string{"Yes", "No"}

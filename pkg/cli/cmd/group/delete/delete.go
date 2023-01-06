@@ -46,7 +46,7 @@ type Runner struct {
 	ConfigHolder         *framework.ConfigHolder
 	ConnectionFactory    connections.Factory
 	Output               output.Interface
-	InputPrompter        prompt.InputPrompter
+	InputPrompter        prompt.Interface
 	Workspace            *workspaces.Workspace
 	UCPResourceGroupName string
 	Confirmation         bool
@@ -58,7 +58,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
-		InputPrompter:     factory.GetInputPrompter(),
+		InputPrompter:     factory.GetPrompter(),
 	}
 }
 

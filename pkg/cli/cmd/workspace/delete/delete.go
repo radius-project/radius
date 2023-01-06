@@ -50,7 +50,7 @@ type Runner struct {
 	ConfigHolder        *framework.ConfigHolder
 	ConfigFileInterface framework.ConfigFileInterface
 	Output              output.Interface
-	InputPrompter       prompt.InputPrompter
+	InputPrompter       prompt.Interface
 	Workspace           *workspaces.Workspace
 	Confirm             bool
 }
@@ -60,7 +60,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		ConfigHolder:        factory.GetConfigHolder(),
-		InputPrompter:       factory.GetInputPrompter(),
+		InputPrompter:       factory.GetPrompter(),
 		Output:              factory.GetOutput(),
 	}
 }

@@ -131,7 +131,7 @@ func Test_Run(t *testing.T) {
 			appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
 			outputSink := &output.MockOutput{}
 
-			prompter := prompt.NewMockInputPrompter(ctrl)
+			prompter := prompt.NewMockInterface(ctrl)
 			prompter.EXPECT().
 				GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
 				Return("no", nil).

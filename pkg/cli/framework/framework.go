@@ -34,7 +34,6 @@ type Factory interface {
 	// GetPortforward fetches the portforward interface.
 	GetPortforward() portforward.Interface
 	GetPrompter() prompt.Interface
-	GetInputPrompter() prompt.InputPrompter
 	GetConfigFileInterface() ConfigFileInterface
 	GetKubernetesInterface() kubernetes.Interface
 	GetHelmInterface() helm.Interface
@@ -51,7 +50,6 @@ type Impl struct {
 	Output              output.Interface
 	Portforward         portforward.Interface
 	Prompter            prompt.Interface
-	InputPrompter       prompt.InputPrompter
 	ConfigFileInterface ConfigFileInterface
 	KubernetesInterface kubernetes.Interface
 	HelmInterface       helm.Interface
@@ -88,14 +86,9 @@ func (i *Impl) GetPortforward() portforward.Interface {
 	return i.Portforward
 }
 
-// GetPrompter fetches the interface to prompt user for values
+// GetPrompter fetches the interface to bubble tea prompt
 func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
-}
-
-// GetInputPrompter fetches the interface to bubble tea prompt
-func (i *Impl) GetInputPrompter() prompt.InputPrompter {
-	return i.InputPrompter
 }
 
 // GetConfigFileInterface fetches the interface to interace with radius config file
