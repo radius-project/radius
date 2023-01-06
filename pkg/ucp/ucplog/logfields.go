@@ -42,4 +42,7 @@ const (
 
 	// LogFieldUCPHost represents the UCP server host name.
 	LogFieldUCPHost string = "UCPHost"
+
+	// LogFieldUCPHost represents the Resource ID.
+	LogFieldResourceID string = "ResourceID"
 )
