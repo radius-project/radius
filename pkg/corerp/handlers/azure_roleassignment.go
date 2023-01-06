@@ -14,7 +14,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/azure/roleassignment"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -74,7 +74,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
 			roleName, principalID, scope, err)
 	}
-	logger.WithValues(radlogger.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
+	logger.WithValues(logging.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
 	return properties, nil

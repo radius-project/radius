@@ -35,7 +35,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -226,7 +226,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error) {
-	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id.String())
+	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldOperationID, id.String())
 
 	// Deploy
 	logger.Info(fmt.Sprintf("Deploying radius resource: %s", id.Name()))
@@ -293,7 +293,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, id resources.ID, rend
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, id resources.ID, deployedOutputResources []outputresource.OutputResource) error {
-	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldOperationID, id)
+	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldOperationID, id)
 
 	// Loop over each output resource and delete in reverse dependency order - resource deployed last should be deleted first
 	for i := len(deployedOutputResources) - 1; i >= 0; i-- {

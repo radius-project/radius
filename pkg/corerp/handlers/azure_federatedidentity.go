@@ -15,7 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -162,8 +162,8 @@ func (handler *azureFederatedIdentityHandler) Put(ctx context.Context, options *
 	}
 
 	logger.WithValues(
-		radlogger.LogFieldResourceID, identityID,
-		radlogger.LogFieldLocalID, outputresource.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
+		logging.LogFieldResourceID, identityID,
+		logging.LogFieldLocalID, outputresource.LocalIDFederatedIdentity).Info("Created federated identity for Azure AD identity.")
 
 	return map[string]string{}, nil
 }
