@@ -70,7 +70,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return err
 	}
 
-	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.InputPrompterImpl{})
+	namespace, err := common.SelectNamespace(cmd, "default", interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.InputPrompterImpl{})
+	azProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func initSelfHosted(cmd *cobra.Command, args []string, kind EnvKind) error {
 		return fmt.Errorf("unknown environment type: %s", kind)
 	}
 
-	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.InputPrompterImpl{})
+	environmentName, err := common.SelectEnvironmentName(cmd, defaultEnvName, interactive, &prompt.Impl{})
 	if err != nil {
 		return err
 	}
