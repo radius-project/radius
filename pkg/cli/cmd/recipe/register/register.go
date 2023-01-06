@@ -166,7 +166,7 @@ func (r *Runner) Run(ctx context.Context) error {
 
 	isEnvCreated, err := client.CreateEnvironment(ctx, r.Workspace.Environment, v1.LocationGlobal, namespace, "Kubernetes", *envResource.ID, recipeProperties, envResource.Properties.Providers, *envResource.Properties.UseDevRecipes)
 	if err != nil || !isEnvCreated {
-		return &cli.FriendlyError{Message: fmt.Sprintf("failed to update Applications.Core/environments resource %s with recipe: %s", *envResource.ID, err.Error())}
+		return &cli.FriendlyError{Message: fmt.Sprintf("failed to register the recipe %s to the environment %s: %s", r.RecipeName, *envResource.ID, err.Error())}
 	}
 
 	r.Output.LogInfo("Successfully linked recipe %q to environment %q ", r.RecipeName, r.Workspace.Environment)
