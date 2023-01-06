@@ -116,7 +116,7 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 			return "", err
 		}
 		if envStr == "" {
-			return "", fmt.Errorf("EnvironmentName cannot be empty")
+			return "", fmt.Errorf("environmentName cannot be empty")
 		}
 	} else {
 		if envStr == "" {
