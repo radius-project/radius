@@ -33,5 +33,9 @@ LogFieldAppName            = "applicationName"
 ctx = ucplog.WrapLogContext(ctx,
     logging.LogFieldAppName, id.App.Name(),
     logging.LogFieldAppID, id.App.ID)
+<<<<<<< HEAD
 logger := logr.FromContextOrDiscard(ctx)
+=======
+logger := ucplog.GetLogger(ctx)
+>>>>>>> 7621d557 (rename radlogger to logging)
 ```
