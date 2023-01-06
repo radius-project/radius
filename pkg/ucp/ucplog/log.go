@@ -54,7 +54,7 @@ const (
 	DefaultLoggerProfile        = LoggerProfileDev
 )
 
-func initloggingConfig() (*zap.Logger, error) {
+func initLoggingConfig() (*zap.Logger, error) {
 	var cfg zap.Config
 
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
@@ -105,7 +105,7 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 		name = DefaultLoggerName
 	}
 
-	zapLogger, err := initloggingConfig()
+	zapLogger, err := initLoggingConfig()
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
