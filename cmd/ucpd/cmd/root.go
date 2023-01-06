@@ -6,6 +6,7 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -22,7 +23,12 @@ var rootCmd = &cobra.Command{
 	Short: "UCP server",
 	Long:  `Server process for the Univeral Control Plane (UCP).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		logger := ucplog.NewLogger()
+		logger, flush, err := ucplog.NewLogger("ucp")
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer flush()
+
 		ctx := logr.NewContext(cmd.Context(), logger)
 		ctx, cancel := context.WithCancel(ctx)
 
