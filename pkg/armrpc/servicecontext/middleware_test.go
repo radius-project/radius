@@ -16,6 +16,7 @@ import (
 	"github.com/gorilla/mux"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestARMRequestCtx(t *testing.T) {
@@ -93,4 +94,10 @@ func TestARMRequestCtx(t *testing.T) {
 			}
 		})
 	}
+}
+
+func Test_ARMRequestCtx_with_empty_location_causes_panic(t *testing.T) {
+	require.Panics(t, func() {
+		ARMRequestCtx("/some/base/path", "") // Empty location
+	})
 }
