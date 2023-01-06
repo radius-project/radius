@@ -26,7 +26,7 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rediscaches"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/sqldatabases"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -83,7 +83,7 @@ type EnvironmentMetadata struct {
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
-	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, id.String())
+	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
 	renderer, err := dp.getResourceRenderer(id)
@@ -156,7 +156,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
 func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
-	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceID.String())
+	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -277,7 +277,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
-	logger := ucplog.GetLogger(ctx).WithValues(radlogger.LogFieldResourceID, resourceData.ID)
+	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
 
 	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {

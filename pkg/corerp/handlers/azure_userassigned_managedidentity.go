@@ -14,7 +14,7 @@ import (
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -95,8 +95,8 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 
 	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.GetAPIVersionFromUserAgent(msi.UserAgent()))
 	logger.WithValues(
-		radlogger.LogFieldResourceID, *identity.ID,
-		radlogger.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
+		logging.LogFieldResourceID, *identity.ID,
+		logging.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")
 
 	return properties, nil
 }

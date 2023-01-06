@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
@@ -168,24 +168,24 @@ func (r ResourceIdentity) AsLogValues() []any {
 		data := r.Data.(ARMIdentity)
 		id, err := resources.ParseResource(data.ID)
 		if err != nil {
-			return []any{radlogger.LogFieldResourceID, data.ID}
+			return []any{logging.LogFieldResourceID, data.ID}
 		}
 
 		return []any{
-			radlogger.LogFieldResourceID, data.ID,
-			radlogger.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
-			radlogger.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
-			radlogger.LogFieldResourceType, id.Type(),
-			radlogger.LogFieldResourceName, id.QualifiedName(),
+			logging.LogFieldResourceID, data.ID,
+			logging.LogFieldSubscriptionID, id.FindScope(resources.SubscriptionsSegment),
+			logging.LogFieldResourceGroup, id.FindScope(resources.ResourceGroupsSegment),
+			logging.LogFieldResourceType, id.Type(),
+			logging.LogFieldResourceName, id.QualifiedName(),
 		}
 
 	case ProviderKubernetes:
 		data := r.Data.(KubernetesIdentity)
 		return []any{
-			radlogger.LogFieldResourceName, data.Name,
-			radlogger.LogFieldNamespace, data.Namespace,
-			radlogger.LogFieldKind, data.Kind,
-			radlogger.LogFieldResourceKind, resourcekinds.Kubernetes,
+			logging.LogFieldResourceName, data.Name,
+			logging.LogFieldNamespace, data.Namespace,
+			logging.LogFieldKind, data.Kind,
+			logging.LogFieldResourceKind, resourcekinds.Kubernetes,
 		}
 
 	default:
