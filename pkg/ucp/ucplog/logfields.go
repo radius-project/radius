@@ -7,16 +7,39 @@ package ucplog
 
 // Field names for structured logging
 const (
-	LogHTTPStatusCode     string = "statusCode"
-	LogFieldPlaneID       string = "PlaneID"
-	LogFieldPlaneKind     string = "PlaneKind"
-	LogFieldRequestPath   string = "Path"
-	LogFieldHTTPScheme    string = "HTTPScheme"
-	LogFieldPlaneURL      string = "ProxyURL"
-	LogFieldProvider      string = "Provider"
-	LogFieldResourceGroup string = "ResourceGroup"
-	LogFieldHTTPMethod    string = "HttpMethod"
-	LogFieldRequestURL    string = "RequestURL"
+	//HTTP status code of response from downstream as seen by UCP
+	LogHTTPStatusCode string = "statusCode"
+
+	//ID of a resource provider plane
+	LogFieldPlaneID string = "PlaneID"
+
+	//Path of the request URL
+	LogFieldRequestPath string = "Path"
+
+	//Kind of Plane
+	LogFieldPlaneKind string = "PlaneKind"
+
+	//Scheme of HTTP request
+	LogFieldHTTPScheme string = "HTTPScheme"
+
+	//URL to which this request will be proxied to
+	LogFieldPlaneURL string = "ProxyURL"
+
+	//Provider fulfilling the request
+	LogFieldProvider string = "Provider"
+
+	//UCP resource group
+	LogFieldResourceGroup string = "UCPResourceGroup"
+
+	//HTTP request method of request recieved by UCP
+	LogFieldHTTPMethod string = "HttpMethod"
+
+	//HTTP request received by UCP from upstreamgit upstea
+	LogFieldRequestURL string = "RequestURL"
+
+	//HTTP request/ response content-length
 	LogFieldContentLength string = "ContentLength"
-	LogFieldUCPHost       string = "UCPHost"
+
+	//UCP host name
+	LogFieldUCPHost string = "UCPHost"
 )
