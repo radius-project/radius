@@ -42,9 +42,6 @@ func (l *Loader) Name() string {
 
 // SupportedVersions returns supported api version for resource type
 func (l *Loader) SupportedVersions(resourceType string) []string {
-	if versions, ok := l.supportedVersions[getOpenapiKey(resourceType)]; ok {
-		return versions
-	}
 	if versions, ok := l.supportedVersions[resourceType]; ok {
 		return versions
 	}
@@ -53,12 +50,8 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 
 // GetValidator returns the cached validator.
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
-	v, ok := l.validators[getValidatorKey(getOpenapiKey(resourceType), version)]
-	if ok {
-		return &v, true
-	}
 	// ARM types are compared case-insensitively
-	v, ok = l.validators[getValidatorKey(resourceType, version)]
+	v, ok := l.validators[getValidatorKey(resourceType, version)]
 	if ok {
 		return &v, true
 	}
@@ -153,11 +146,6 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 
 func getValidatorKey(resourceType, version string) string {
 	return strings.ToLower(resourceType + "-" + version)
-}
-
-func getOpenapiKey(resourceType string) string {
-	s := strings.Split(resourceType, "/")
-	return s[0] + "/openapi"
 }
 
 func parseSpecFilePath(path string) map[string]string {
