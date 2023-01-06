@@ -37,7 +37,7 @@ func (m *MockInterface) EXPECT() *MockInterfaceMockRecorder {
 }
 
 // ParseAzureProviderArgs mocks base method.
-func (m *MockInterface) ParseAzureProviderArgs(arg0 *cobra.Command, arg1 bool, arg2 prompt.Interface) (*azure.Provider, error) {
+func (m *MockInterface) ParseAzureProviderArgs(arg0 *cobra.Command, arg1 bool, arg2 prompt.InputPrompter) (*azure.Provider, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ParseAzureProviderArgs", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*azure.Provider)

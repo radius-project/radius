@@ -240,7 +240,7 @@ func SelectionPrompter(label string, items []string) promptui.Select {
 // InputPrompter contains operation to get user inputs for cli
 type InputPrompter interface {
 	// GetTextInput prompts user for a text input
-	GetTextInput(promptMsg string) (string, error)
+	GetTextInput(promptMsg string, defaultPlaceHolder string) (string, error)
 
 	// GetListInput prompts user to select from a list
 	GetListInput(items []string, promptMsg string) (string, error)
@@ -250,9 +250,9 @@ type InputPrompter interface {
 type InputPrompterImpl struct{}
 
 // GetTextInput prompts user for a text input
-func (i *InputPrompterImpl) GetTextInput(promptMsg string) (string, error) {
+func (i *InputPrompterImpl) GetTextInput(promptMsg string, defaultPlaceHolder string) (string, error) {
 	// TODO: implement text model
-	tm := text.NewTextModel(promptMsg)
+	tm := text.NewTextModel(promptMsg, defaultPlaceHolder)
 
 	model, err := tea.NewProgram(tm).Run()
 	if err != nil {
@@ -286,8 +286,15 @@ func (i *InputPrompterImpl) GetListInput(items []string, promptMsg string) (stri
 }
 
 // Creates a Yes or No prompts where user has to select either a Yes or No as input
-func YesOrNoPrompt(promptMsg string, prompter InputPrompter) (bool, error) {
-	input, err := prompter.GetListInput([]string{"No", "Yes"}, promptMsg)
+// defaultString decides the first(default) value on the list.
+func YesOrNoPrompt(promptMsg string, defaultString string, prompter InputPrompter) (bool, error) {
+	var valueList []string
+	if strings.EqualFold("Yes", defaultString) {
+		valueList = []string{"Yes", "No"}
+	} else {
+		valueList = []string{"No", "Yes"}
+	}
+	input, err := prompter.GetListInput(valueList, promptMsg)
 	if err != nil {
 		return false, err
 	}
