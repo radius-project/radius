@@ -138,7 +138,7 @@ func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	return ctx
 }
 
-//Unwrap returns the underlying zap logger of logr.Logger
+// Unwrap returns the underlying zap logger of logr.Logger
 func Unwrap(logger logr.Logger) *zap.Logger {
 	underlier, ok := logger.GetSink().(zapr.Underlier)
 	if ok {
