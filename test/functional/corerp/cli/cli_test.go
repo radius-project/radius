@@ -46,8 +46,8 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 	recipeName := "recipeName"
 	recipeTemplate := "testpublicrecipe.azurecr.io/bicep/modules/testTemplate:v1"
 	linkType := "Applications.Link/linkType"
-	t.Run("Validate rad recipe create", func(t *testing.T) {
-		output, err := cli.RecipeCreate(ctx, recipeName, recipeTemplate, linkType)
+	t.Run("Validate rad recipe register", func(t *testing.T) {
+		output, err := cli.RecipeRegister(ctx, recipeName, recipeTemplate, linkType)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully linked recipe")
 	})
@@ -58,7 +58,7 @@ func verifyRecipeCLI(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.Regexp(t, linkType, output)
 		require.Regexp(t, recipeTemplate, output)
 	})
-	t.Run("Validate rad recipe list", func(t *testing.T) {
+	t.Run("Validate rad recipe delete", func(t *testing.T) {
 		output, err := cli.RecipeDelete(ctx, recipeName)
 		require.NoError(t, err)
 		require.Contains(t, output, "Successfully deleted recipe")
