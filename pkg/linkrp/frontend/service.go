@@ -60,6 +60,7 @@ func (s *Service) Run(ctx context.Context) error {
 	err = s.Start(ctx, server.Options{
 		ProviderNamespace: s.ProviderName,
 		Address:           address,
+		Location:          s.Options.Config.Env.RoleLocation,
 		PathBase:          s.Options.Config.Server.PathBase,
 		// set the arm cert manager for managing client certificate
 		ArmCertMgr:    s.ARMCertManager,

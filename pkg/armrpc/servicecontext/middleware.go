@@ -15,6 +15,16 @@ import (
 
 // ARMRequestCtx is the middleware to inject ARMRequestContext to the http request.
 func ARMRequestCtx(pathBase, location string) func(h http.Handler) http.Handler {
+	// We normally don't like to use panics like this, but this issue is NASTY to diagnose when it happens
+	// and it can regress based on changes to our configuration file format.
+	//
+	// The location field is used to the build the URL for an asynchronous operation. If you find that the
+	// URL for an asynchronous operation has a blank segment "someText//someOtherText" then a misconfigured
+	// location is probably the cause.
+	if location == "" {
+		panic("location is required. The location should be set in a configuration file and wired up to the middleware through the host options.")
+	}
+
 	return func(h http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			rpcContext, err := v1.FromARMRequest(r, pathBase, location)
