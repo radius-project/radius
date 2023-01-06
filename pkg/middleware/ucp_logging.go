@@ -19,9 +19,8 @@ func UseLogValues(h http.Handler, basePath string) http.Handler {
 		values := []any{}
 		values = append(values,
 			ucplog.LogFieldHTTPMethod, r.Method,
-			ucplog.LogFieldRequestURL, r.URL.Path,
+			ucplog.LogFieldRequestURL, r.URL,
 			ucplog.LogFieldContentLength, r.ContentLength,
-			ucplog.LogFieldRequestPath, GetRelativePath(basePath, r.URL.Path),
 		)
 		logger := logr.FromContextOrDiscard(r.Context()).WithValues(values...)
 		r = r.WithContext(logr.NewContext(r.Context(), logger))
