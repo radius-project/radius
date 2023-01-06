@@ -80,7 +80,7 @@ type Runner struct {
 	HelmInterface       helm.Interface
 	KubernetesInterface kubernetes.Interface
 	Output              output.Interface
-	Prompter            prompt.InputPrompter
+	Prompter            prompt.Interface
 	SetupInterface      setup.Interface
 
 	Format                  string
@@ -105,7 +105,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConfigHolder:        factory.GetConfigHolder(),
 		Output:              factory.GetOutput(),
 		ConnectionFactory:   factory.GetConnectionFactory(),
-		Prompter:            factory.GetInputPrompter(),
+		Prompter:            factory.GetPrompter(),
 		ConfigFileInterface: factory.GetConfigFileInterface(),
 		KubernetesInterface: factory.GetKubernetesInterface(),
 		HelmInterface:       factory.GetHelmInterface(),
@@ -421,7 +421,7 @@ func installRadius(ctx context.Context, r *Runner) error {
 	return nil
 }
 
-func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.InputPrompter) (string, error) {
+func selectKubeContext(currentContext string, kubeContexts map[string]*api.Context, interactive bool, prompter prompt.Interface) (string, error) {
 	values := []string{}
 	if interactive {
 		// Ensure current context is at the top as the default
@@ -447,12 +447,12 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 }
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
-func selectCloudProvider(prompter prompt.InputPrompter) (string, error) {
+func selectCloudProvider(prompter prompt.Interface) (string, error) {
 	values := []string{AzureCloudProvider, AWSCloudProvider, BackNavigator}
 	return prompter.GetListInput(values, selectCloudProviderPrompt)
 }
 
-func chooseApplicationName(prompter prompt.InputPrompter) (string, error) {
+func chooseApplicationName(prompter prompt.Interface) (string, error) {
 	// We might have to prompt for an application name if the current directory is not a valid application name.
 	// These cases should be rare but just in case...
 	wd, err := os.Getwd()

@@ -63,7 +63,7 @@ type Runner struct {
 	ConnectionFactory connections.Factory
 	Workspace         *workspaces.Workspace
 	Output            output.Interface
-	InputPrompter     prompt.InputPrompter
+	InputPrompter     prompt.Interface
 
 	Confirm         bool
 	EnvironmentName string
@@ -76,7 +76,7 @@ func NewRunner(factory framework.Factory) *Runner {
 		ConnectionFactory: factory.GetConnectionFactory(),
 		ConfigHolder:      factory.GetConfigHolder(),
 		Output:            factory.GetOutput(),
-		InputPrompter:     factory.GetInputPrompter(),
+		InputPrompter:     factory.GetPrompter(),
 	}
 }
 
