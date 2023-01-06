@@ -33,9 +33,9 @@ import (
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
-	recipe_delete "github.com/project-radius/radius/pkg/cli/cmd/recipe/delete"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
 	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
+	recipe_unregister "github.com/project-radius/radius/pkg/cli/cmd/recipe/unregister"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
@@ -163,8 +163,8 @@ func initSubCommands() {
 	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
 	recipeCmd.AddCommand(registerRecipeCmd)
 
-	deleteRecipeCmd, _ := recipe_delete.NewCommand(framework)
-	recipeCmd.AddCommand(deleteRecipeCmd)
+	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
+	recipeCmd.AddCommand(unregisterRecipeCmd)
 
 	providerCmd := provider.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)
