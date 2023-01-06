@@ -34,7 +34,6 @@ func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 
 func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
-	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
@@ -54,7 +53,7 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 		return nil, err
 	}
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, existingPlane.Properties.Kind)
-	logger = ucplog.GetLogger(ctx)
+	logger := ucplog.GetLogger(ctx)
 	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
