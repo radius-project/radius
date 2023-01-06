@@ -6,11 +6,9 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -38,7 +36,7 @@ func ValidateCloudProviderName(name string) error {
 // We also expect the the existing environments to be a non-empty list, callers should check that.
 //
 // If the name returned is empty, it means that that either no environment was found or that the user opted to create a new one.
-func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface, existing []corerp.EnvironmentResource) (string, error) {
+func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.InputPrompter, existing []corerp.EnvironmentResource) (string, error) {
 	selectedName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return "", err
@@ -90,7 +88,7 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactiv
 	}
 	items = append(items, SelectExistingEnvironmentCreateSentinel)
 
-	_, choice, err := prompter.RunSelect(prompt.SelectionPrompter(SelectExistingEnvironmentPrompt, items))
+	choice, err := prompter.GetListInput(items, SelectExistingEnvironmentPrompt)
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +102,7 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactiv
 }
 
 // Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise
-func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
+func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, inputPrompter prompt.InputPrompter) (string, error) {
 	var envStr string
 	var err error
 
@@ -113,9 +111,12 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		return "", err
 	}
 	if interactive && envStr == "" {
-		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault(EnterEnvironmentNamePrompt, defaultVal, prompt.ResourceName))
+		envStr, err = inputPrompter.GetTextInput(EnterEnvironmentNamePrompt, defaultVal)
 		if err != nil {
 			return "", err
+		}
+		if envStr == "" {
+			return "", fmt.Errorf("environmentName cannot be empty")
 		}
 	} else {
 		if envStr == "" {
@@ -132,28 +133,16 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 }
 
 // Gets the namespace value from the user if interactive, otherwise sets it to the namespace flag or default value
-func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
+func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.InputPrompter) (string, error) {
 	var val string
 	var err error
 	if interactive {
-		namespaceSelector := promptui.Prompt{
-			Label:   EnterNamespacePrompt,
-			Default: defaultVal,
-			Validate: func(s string) error {
-				valid, msg, err := prompt.EmptyValidator(s)
-				if err != nil {
-					return err
-				}
-				if !valid {
-					return errors.New(msg)
-				}
-				return nil
-			},
-			AllowEdit: true,
-		}
-		val, err = prompter.RunPrompt(namespaceSelector)
+		val, err = prompter.GetTextInput(EnterNamespacePrompt, defaultVal)
 		if err != nil {
 			return "", err
+		}
+		if val == "" {
+			return "", fmt.Errorf("Namespace cannot be empty")
 		}
 	} else {
 		val, _ = cmd.Flags().GetString("namespace")
