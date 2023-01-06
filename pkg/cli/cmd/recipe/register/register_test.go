@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package create
+package register
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Create Command with parameters",
+			Name:          "Valid Register Command with parameters",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases", "--parameters", "a=b"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -39,7 +39,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Valid Create Command with parameters passed as file",
+			Name:          "Valid Register Command with parameters passed as file",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases", "--parameters", "@testdata/recipeparam.json"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -48,7 +48,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command with fallback workspace",
+			Name:          "Register Command with fallback workspace",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -57,7 +57,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without name",
+			Name:          "Register Command without name",
 			Input:         []string{"--template-path", "test_template", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -66,7 +66,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without template path",
+			Name:          "Register Command without template path",
 			Input:         []string{"--name", "test_recipe", "--link-type", "Applications.Link/mongoDatabases"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -75,7 +75,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Create Command without link-type",
+			Name:          "Register Command without link-type",
 			Input:         []string{"--name", "test_recipe", "--template-path", "test_template"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
