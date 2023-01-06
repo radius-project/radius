@@ -38,19 +38,19 @@ func RegisterPersistentAzureProviderArgs(cmd *cobra.Command) {
 	cmd.PersistentFlags().StringP("provider-azure-tenant-id", "", "", "The tenant id for the service principal")
 }
 
-func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
+func ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.InputPrompter) (*azure.Provider, error) {
 	if interactive {
 		return parseAzureProviderInteractive(cmd, prompter)
 	}
 	return parseAzureProviderNonInteractive(cmd)
 }
 
-func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface) (*azure.Provider, error) {
-	addAzureSPN, err := prompt.YesOrNoPrompter("Add Azure provider for cloud resources [y/N]?", "N", prompter)
+func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.InputPrompter) (*azure.Provider, error) {
+	addAzureSPN, err := prompt.YesOrNoPrompt("Add Azure provider for cloud resources?", "no", prompter)
 	if err != nil {
 		return nil, err
 	}
-	if strings.ToLower(addAzureSPN) == "n" {
+	if !addAzureSPN {
 		return nil, nil
 	}
 
@@ -72,31 +72,37 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 		return nil, err
 	}
 
-	clientID, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
+	clientID, err := prompter.GetTextInput(
 		"Enter the `appId` of the service principal used to create Azure resources:",
-		"",
-		prompt.UUIDv4Validator,
-	))
+		"Enter AppId...",
+	)
 	if err != nil {
 		return nil, err
 	}
+	isValid, errMsg, _ := prompt.UUIDv4Validator(clientID); if !isValid {
+		return nil, fmt.Errorf(errMsg)
+	}
 
-	clientSecret, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
+	clientSecret, err := prompter.GetTextInput(
 		"Enter the `password` of the service principal used to create Azure resources:",
 		"",
-		prompt.EmptyValidator,
-	))
+	)
 	if err != nil {
 		return nil, err
 	}
+	if clientSecret == "" {
+		return nil, fmt.Errorf("Client Secret cannot be Empty")
+	}
 
-	tenantID, err := prompter.RunPrompt(prompt.TextPromptWithDefault(
+	tenantID, err := prompter.GetTextInput(
 		"Enter the `tenant` of the service principal used to create Azure resources:",
 		"",
-		prompt.UUIDv4Validator,
-	))
+	)
 	if err != nil {
 		return nil, err
+	}
+	isValid, errMsg, _ = prompt.UUIDv4Validator(tenantID); if !isValid {
+		return nil, fmt.Errorf(errMsg)
 	}
 
 	return &azure.Provider{
@@ -198,7 +204,7 @@ func parseAzureProviderNonInteractive(cmd *cobra.Command) (*azure.Provider, erro
 	}, nil
 }
 
-func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, prompter prompt.Interface) (azure.Subscription, error) {
+func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, prompter prompt.InputPrompter) (azure.Subscription, error) {
 	subs, err := azure.LoadSubscriptionsFromProfile()
 	if err != nil {
 		// Failed to load subscriptions from the user profile, fall back to online.
@@ -209,12 +215,12 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, pro
 	}
 
 	if subs.Default != nil {
-		confirmed, err := prompt.YesOrNoPrompter(fmt.Sprintf("Use Subscription '%v'? [Y/n]", subs.Default.DisplayName), "Y", prompter)
+		confirmed, err := prompt.YesOrNoPrompt(fmt.Sprintf("Use Subscription '%v'?", subs.Default.DisplayName), "yes", prompter)
 		if err != nil {
 			return azure.Subscription{}, err
 		}
 
-		if strings.ToLower(confirmed) == "y" {
+		if confirmed {
 			return *subs.Default, nil
 		}
 	}
@@ -225,20 +231,22 @@ func selectSubscription(ctx context.Context, authorizer autorest.Authorizer, pro
 		r := strings.ToLower(subs.Subscriptions[j].DisplayName)
 		return l < r
 	})
+	subscriptionMap := make(map[string]azure.Subscription)
 	names := make([]string, 0, len(subs.Subscriptions))
 	for _, s := range subs.Subscriptions {
+		subscriptionMap[s.DisplayName] = s
 		names = append(names, s.DisplayName)
 	}
 
-	index, _, err := prompter.RunSelect(prompt.SelectionPrompter("Select Subscription:", names))
+	name, err := prompter.GetListInput(names, "Select Subscription:")
 	if err != nil {
 		return azure.Subscription{}, err
 	}
 
-	return subs.Subscriptions[index], nil
+	return subscriptionMap[name], nil
 }
 
-func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (string, error) {
+func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.InputPrompter) (string, error) {
 	rgc := clients.NewGroupsClient(sub.SubscriptionID, authorizer)
 	name, err := promptUserForRgName(ctx, rgc, prompter)
 	if err != nil {
@@ -267,7 +275,7 @@ func selectResourceGroup(ctx context.Context, authorizer autorest.Authorizer, su
 	return name, nil
 }
 
-func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.Interface) (subscription.Location, error) {
+func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, sub azure.Subscription, prompter prompt.InputPrompter) (subscription.Location, error) {
 	// Use the display name for the prompt
 	// alphabetize so the list is stable and scannable
 	subc := clients.NewSubscriptionClient(authorizer)
@@ -285,21 +293,20 @@ func promptUserForLocation(ctx context.Context, authorizer autorest.Authorizer, 
 		nameToLocation[*loc.DisplayName] = loc
 	}
 	sort.Strings(names)
-	index, _, err := prompter.RunSelect(prompt.SelectionPrompter(fmt.Sprintf("Select a location, Default: %s", names[0]), names))
+	name, err := prompter.GetListInput(names, fmt.Sprintf("Select a location, Default: %s", names[0]))
 	if err != nil {
 		return subscription.Location{}, err
 	}
-	selected := names[index]
-	return nameToLocation[selected], nil
+	return nameToLocation[name], nil
 }
 
-func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompter prompt.Interface) (string, error) {
+func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompter prompt.InputPrompter) (string, error) {
 	var name string
-	createNewRg, err := prompt.YesOrNoPrompter("Create a new Resource Group? [Y/n]", "Y", prompter)
+	createNewRg, err := prompt.YesOrNoPrompt("Create a new Resource Group? [Y/n]", "Y", prompter)
 	if err != nil {
 		return "", err
 	}
-	if strings.ToLower(createNewRg) == "y" {
+	if createNewRg {
 
 		defaultRgName := "radius-rg"
 		if resp, err := rgc.CheckExistence(ctx, defaultRgName); !resp.HasHTTPStatus(404) || err != nil {
@@ -309,9 +316,12 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompt
 
 		promptStr := fmt.Sprintf("Enter a Resource Group name [%s]:", defaultRgName)
 
-		name, err = prompter.RunPrompt(prompt.TextPromptWithDefault(promptStr, defaultRgName, prompt.EmptyValidator))
+		name, err = prompter.GetTextInput(promptStr, defaultRgName)
 		if err != nil {
 			return "", err
+		}
+		if name == "" {
+			return "", fmt.Errorf("Resource group cannot be empty")
 		}
 	} else {
 		rgListResp, err := rgc.List(ctx, "", nil)
@@ -326,18 +336,17 @@ func promptUserForRgName(ctx context.Context, rgc resources.GroupsClient, prompt
 		}
 
 		defaultRgName, _ := azure.LoadDefaultResourceGroupFromConfig() // ignore errors resulting from being unable to read the config ini file
-		yes, err := prompt.YesOrNoPrompter(fmt.Sprintf("Use default resource group %s [Y/n]", defaultRgName), "Y", prompter)
+		yes, err := prompt.YesOrNoPrompt(fmt.Sprintf("Use default resource group %s", defaultRgName), "Yes", prompter)
 		if err != nil {
 			return "", err
 		}
-		if strings.ToLower(yes) == "y" {
+		if yes {
 			return defaultRgName, nil
 		}
-		index, _, err := prompter.RunSelect(prompt.SelectionPrompter("Select ResourceGroup", names))
+		name, err = prompter.GetListInput(names, "Select ResourceGroup:")
 		if err != nil {
 			return "", err
 		}
-		name = *rgList[index].Name
 	}
 	return name, nil
 }
@@ -355,13 +364,13 @@ func generateRandomName(prefix string, affixes ...string) string {
 
 //go:generate mockgen -destination=./mock_setup.go -package=setup -self_package github.com/project-radius/radius/pkg/cli/setup github.com/project-radius/radius/pkg/cli/setup Interface
 type Interface interface {
-	ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error)
+	ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.InputPrompter) (*azure.Provider, error)
 }
 
 type Impl struct {
 }
 
 // Parses user input from the CLI for Azure Provider arguments
-func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.Interface) (*azure.Provider, error) {
+func (i *Impl) ParseAzureProviderArgs(cmd *cobra.Command, interactive bool, prompter prompt.InputPrompter) (*azure.Provider, error) {
 	return ParseAzureProviderArgs(cmd, interactive, prompter)
 }

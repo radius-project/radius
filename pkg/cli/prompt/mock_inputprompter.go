@@ -49,16 +49,16 @@ func (mr *MockInputPrompterMockRecorder) GetListInput(arg0, arg1 interface{}) *g
 }
 
 // GetTextInput mocks base method.
-func (m *MockInputPrompter) GetTextInput(arg0 string) (string, error) {
+func (m *MockInputPrompter) GetTextInput(arg0, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetTextInput", arg0)
+	ret := m.ctrl.Call(m, "GetTextInput", arg0, arg1)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetTextInput indicates an expected call of GetTextInput.
-func (mr *MockInputPrompterMockRecorder) GetTextInput(arg0 interface{}) *gomock.Call {
+func (mr *MockInputPrompterMockRecorder) GetTextInput(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInputPrompter)(nil).GetTextInput), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetTextInput", reflect.TypeOf((*MockInputPrompter)(nil).GetTextInput), arg0, arg1)
 }

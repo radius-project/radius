@@ -24,9 +24,9 @@ type Model struct {
 }
 
 // NewTextModel returns a new text model with prompt message.
-func NewTextModel(promptMsg string) Model {
+func NewTextModel(promptMsg string, placeHolder string) Model {
 	ti := textinput.New()
-	ti.Placeholder = "Start Typing..."
+	ti.Placeholder = placeHolder
 	ti.Focus()
 	ti.Width = 20
 

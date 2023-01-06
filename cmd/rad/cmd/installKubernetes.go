@@ -51,7 +51,7 @@ func installKubernetes(cmd *cobra.Command, args []string) error {
 	}
 
 	// Configure Azure provider for cloud resources if specified
-	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.Impl{})
+	azureProvider, err := setup.ParseAzureProviderArgs(cmd, interactive, &prompt.InputPrompterImpl{})
 	if err != nil {
 		return err
 	}
