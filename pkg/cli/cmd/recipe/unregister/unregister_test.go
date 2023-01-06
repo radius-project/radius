@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package delete
+package unregister
 
 import (
 	"context"
@@ -30,7 +30,7 @@ func Test_Validate(t *testing.T) {
 	configWithWorkspace := radcli.LoadConfigWithWorkspace(t)
 	testcases := []radcli.ValidateInput{
 		{
-			Name:          "Valid Delete Command",
+			Name:          "Valid Unregister Command",
 			Input:         []string{"--name", "test_recipe"},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -39,7 +39,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with fallback workspace",
+			Name:          "Unregister Command with fallback workspace",
 			Input:         []string{"--name", "test_recipe"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -48,7 +48,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command without name",
+			Name:          "Unregister Command without name",
 			Input:         []string{},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -57,7 +57,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Delete Command with too many args",
+			Name:          "Unregister Command with too many args",
 			Input:         []string{"--name", "foo", "bar", "foo1"},
 			ExpectedValid: false,
 			ConfigHolder: framework.ConfigHolder{
@@ -70,7 +70,7 @@ func Test_Validate(t *testing.T) {
 }
 
 func Test_Run(t *testing.T) {
-	t.Run("Delete recipe from the environment", func(t *testing.T) {
+	t.Run("Unregister recipe from the environment", func(t *testing.T) {
 		t.Run("Success", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
@@ -152,7 +152,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 		})
-		t.Run("Delete recipe that doesn't exist in the environment", func(t *testing.T) {
+		t.Run("Unregister recipe that doesn't exist in the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
@@ -188,7 +188,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.Error(t, err)
 		})
-		t.Run("Delete recipe with no recipes added to the environment", func(t *testing.T) {
+		t.Run("Unregister recipe with no recipes added to the environment", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 
 			envResource := v20220315privatepreview.EnvironmentResource{
