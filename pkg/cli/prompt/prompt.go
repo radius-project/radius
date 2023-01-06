@@ -156,7 +156,7 @@ func SelectWithDefault(prompt string, defaultChoice *string, choices []string) (
 	return selected, nil
 }
 
-//go:generate mockgen -destination=./mock_inputprompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt InputPrompter
+//go:generate mockgen -destination=./mock_prompter.go -package=prompt -self_package github.com/project-radius/radius/pkg/cli/prompt github.com/project-radius/radius/pkg/cli/prompt Interface
 
 // Interface contains operation to get user inputs for cli
 type Interface interface {
