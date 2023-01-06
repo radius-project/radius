@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package create
+package register
 
 import (
 	"context"
@@ -23,12 +23,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// NewCommand creates an instance of the command and runner for the `rad recipe create` command.
+// NewCommand creates an instance of the command and runner for the `rad recipe register` command.
 func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	runner := NewRunner(factory)
 
 	cmd := &cobra.Command{
-		Use:   "create",
+		Use:   "register",
 		Short: "Add a link recipe to an environment.",
 		Long: `Add a link recipe to an environment.
 		You can specify parameters using the '--parameter' flag ('-p' for short). Parameters can be passed as:
@@ -38,13 +38,13 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 		`,
 		Example: `
 		# Add a link recipe to an environment
-		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
+		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases
 		
 		# Specify a parameter
-		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
+		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters throughput=400
 		
 		# specify many parameters using a JSON parameter file
-		rad recipe create --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
+		rad recipe register --name cosmosdb -e env_name -w workspace --template-path template_path --link-type Applications.Link/mongoDatabases --parameters @myfile.json
 		`,
 		Args: cobra.ExactArgs(0),
 		RunE: framework.RunCommand(runner),
@@ -65,7 +65,7 @@ func NewCommand(factory framework.Factory) (*cobra.Command, framework.Runner) {
 	return cmd, runner
 }
 
-// Runner is the runner implementation for the `rad recipe create` command.
+// Runner is the runner implementation for the `rad recipe register` command.
 type Runner struct {
 	ConfigHolder      *framework.ConfigHolder
 	ConnectionFactory connections.Factory
@@ -77,7 +77,7 @@ type Runner struct {
 	Parameters        map[string]map[string]any
 }
 
-// NewRunner creates a new instance of the `rad recipe create` runner.
+// NewRunner creates a new instance of the `rad recipe register` runner.
 func NewRunner(factory framework.Factory) *Runner {
 	return &Runner{
 		ConfigHolder:      factory.GetConfigHolder(),
@@ -86,7 +86,7 @@ func NewRunner(factory framework.Factory) *Runner {
 	}
 }
 
-// Validate runs validation for the `rad recipe create` command.
+// Validate runs validation for the `rad recipe register` command.
 func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	// Validate command line args
 	workspace, err := cli.RequireWorkspace(cmd, r.ConfigHolder.Config, r.ConfigHolder.DirectoryConfig)
@@ -137,7 +137,7 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-// Run runs the `rad recipe create` command.
+// Run runs the `rad recipe register` command.
 func (r *Runner) Run(ctx context.Context) error {
 	client, err := r.ConnectionFactory.CreateApplicationsManagementClient(ctx, *r.Workspace)
 	if err != nil {
