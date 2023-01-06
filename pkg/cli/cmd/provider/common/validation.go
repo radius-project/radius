@@ -36,7 +36,7 @@ func ValidateCloudProviderName(name string) error {
 // We also expect the the existing environments to be a non-empty list, callers should check that.
 //
 // If the name returned is empty, it means that that either no environment was found or that the user opted to create a new one.
-func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.InputPrompter, existing []corerp.EnvironmentResource) (string, error) {
+func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface, existing []corerp.EnvironmentResource) (string, error) {
 	selectedName, err := cmd.Flags().GetString("environment")
 	if err != nil {
 		return "", err
@@ -102,7 +102,7 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactiv
 }
 
 // Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise
-func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, inputPrompter prompt.InputPrompter) (string, error) {
+func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, inputPrompter prompt.Interface) (string, error) {
 	var envStr string
 	var err error
 
@@ -133,7 +133,7 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 }
 
 // Gets the namespace value from the user if interactive, otherwise sets it to the namespace flag or default value
-func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.InputPrompter) (string, error) {
+func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
 	var val string
 	var err error
 	if interactive {
