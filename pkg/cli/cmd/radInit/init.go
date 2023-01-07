@@ -45,7 +45,6 @@ const (
 	enterApplicationName          = "Choose an application name"
 	selectKubeContextPrompt       = "Select the kubeconfig context to install Radius into"
 	selectCloudProviderPrompt     = "Select your cloud provider"
-	defaultKubeContext            = "default"
 	kubernetesKind                = "kubernetes"
 )
 
@@ -278,6 +277,8 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 					}
 				case AWSCloudProvider:
 					r.Output.LogInfo("AWS is not supported")
+				case BackNavigator:
+					break
 				default:
 					return &cli.FriendlyError{Message: "Unsupported Cloud Provider"}
 				}
@@ -425,7 +426,6 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 	values := []string{}
 	if interactive {
 		// Ensure current context is at the top as the default
-		values = append(values, defaultKubeContext)
 		values = append(values, currentContext)
 		for k := range kubeContexts {
 			if k != currentContext {
@@ -435,10 +435,6 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		kubeContext, err := prompter.GetListInput(values, selectKubeContextPrompt)
 		if err != nil {
 			return "", err
-		}
-		// if default is selected return currentContext as the value is appended with (current)
-		if strings.EqualFold(kubeContext, defaultKubeContext) {
-			return currentContext, nil
 		}
 		return kubeContext, nil
 	}

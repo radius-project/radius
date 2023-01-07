@@ -22,12 +22,12 @@ var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	QuitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
 
 type item string
 
-func (i item) FilterValue() string { return "" }
+func (i item) FilterValue() string { return string(i) }
 
 type itemHandler struct{}
 
@@ -75,6 +75,7 @@ func NewListModel(choices []string, promptMsg string) ListModel {
 	l := list.New(items, itemHandler{}, defaultWidth, listHeight)
 	l.Title = promptMsg
 	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
 
 	return ListModel{
@@ -105,11 +106,13 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			i, ok := m.List.SelectedItem().(item)
-			if ok {
-				m.Choice = string(i)
+			if m.List.FilterState() != list.Filtering {
+				i, ok := m.List.SelectedItem().(item)
+				if ok {
+					m.Choice = string(i)
+				}
+				return m, tea.Quit
 			}
-			return m, tea.Quit
 		}
 	}
 
@@ -121,11 +124,11 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the view after user selection.
 func (m ListModel) View() string {
 	if m.Choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("Selected Value: %s", m.Choice))
+		return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.List.Title, m.Choice))
 	}
 
 	if m.Quitting {
-		return quitTextStyle.Render("Quitting...")
+		return QuitTextStyle.Render("Quitting...")
 	}
 
 	return "\n" + m.List.View()

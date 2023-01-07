@@ -10,6 +10,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/project-radius/radius/pkg/cli/prompt/list"
 )
 
 type (
@@ -18,9 +19,10 @@ type (
 
 // Model is text model for bubble tea.
 type Model struct {
-	textInput textinput.Model
-	promptMsg string
-	err       error
+	textInput    textinput.Model
+	promptMsg    string
+	valueEntered bool
+	err          error
 }
 
 // NewTextModel returns a new text model with prompt message.
@@ -31,9 +33,10 @@ func NewTextModel(promptMsg string, placeHolder string) Model {
 	ti.Width = 20
 
 	return Model{
-		textInput: ti,
-		promptMsg: promptMsg,
-		err:       nil,
+		textInput:    ti,
+		promptMsg:    promptMsg,
+		valueEntered: false,
+		err:          nil,
 	}
 }
 
@@ -49,7 +52,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEnter:
+			m.valueEntered = true
+			return m, tea.Quit
+		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
 		}
 
@@ -64,6 +70,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders a view with user selected value.
 func (m Model) View() string {
+	if m.valueEntered {
+		if m.textInput.Value() == "" {
+			return list.QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Placeholder))
+		} else {
+			return list.QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Value()))
+		}
+		
+	}
 	return fmt.Sprintf("%s\n\n%s\n\n%s", m.promptMsg, m.textInput.View(), "(esc to quit)")
 }
 
