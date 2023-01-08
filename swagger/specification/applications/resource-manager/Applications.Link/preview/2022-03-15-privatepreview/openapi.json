@@ -1703,9 +1703,6 @@
         }
       },
       "description": "Basic properties of a Dapr component object.",
-      "required": [
-        "componentName"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2248,8 +2245,7 @@
       },
       "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "required": [
-        "name",
-        "parameters"
+        "name"
       ]
     },
     "RecipeDaprPubSubProperties": {
@@ -2726,10 +2722,7 @@
           "description": "Properties of an output resource"
         }
       },
-      "description": "Status of a resource.",
-      "required": [
-        "outputResources"
-      ]
+      "description": "Status of a resource."
     },
     "SqlDatabaseProperties": {
       "type": "object",
