@@ -7,39 +7,39 @@ package ucplog
 
 // Field names for structured logging
 const (
-	//HTTP status code of response from downstream as seen by UCP
-	LogHTTPStatusCode string = "statusCode"
+	// LogHTTPStatusCode represents the HTTP status code of response from downstream as seen by UCP.
+	LogHTTPStatusCode string = "StatusCode"
 
-	//ID of a resource provider plane
+	// LogFieldPlaneID represents the ID of a resource provider plane.
 	LogFieldPlaneID string = "PlaneID"
 
-	//Path of the request URL
+	// LogFieldRequestPath represents the path of the request URL.
 	LogFieldRequestPath string = "Path"
 
-	//Kind of Plane
+	// LogFieldPlaneKind represents the kind of plane.
 	LogFieldPlaneKind string = "PlaneKind"
 
-	//Scheme of HTTP request
+	// LogFieldHTTPScheme represents the scheme of HTTP request.
 	LogFieldHTTPScheme string = "HTTPScheme"
 
-	//URL to which this request will be proxied to
+	// LogFieldPlaneURL represents the URL to which this request will be proxied to.
 	LogFieldPlaneURL string = "ProxyURL"
 
-	//Provider fulfilling the request
+	// LogFieldProvider represents the Resource Provider fulfilling the request.
 	LogFieldProvider string = "Provider"
 
-	//UCP resource group
+	// LogFieldResourceGroup represents the UCP resource group.
 	LogFieldResourceGroup string = "UCPResourceGroup"
 
-	//HTTP request method of request recieved by UCP
+	// LogFieldHTTPMethod represents the HTTP request method of request recieved by UCP from client.
 	LogFieldHTTPMethod string = "HttpMethod"
 
-	//HTTP request received by UCP from upstreamgit upstea
+	// LogFieldRequestURL represents the HTTP request URL of request received by UCP from client.
 	LogFieldRequestURL string = "RequestURL"
 
-	//HTTP request/ response content-length
+	// LogFieldContentLength represents the content-length of the HTTP request/ response received by UCP.
 	LogFieldContentLength string = "ContentLength"
 
-	//UCP host name
+	// LogFieldUCPHost represents the UCP server host name.
 	LogFieldUCPHost string = "UCPHost"
 )
