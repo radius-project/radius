@@ -37,7 +37,10 @@ const (
 	//Verbose = 4
 	Debug int = 9
 	//Trace   = 10
-	DefaultLogLevel     int    = Info
+	DefaultLogLevel int = Info
+)
+
+const (
 	VerbosityLevelInfo  string = "info"
 	VerbosityLevelDebug string = "debug"
 	VerbosityLevelError string = "error"
@@ -86,7 +89,7 @@ func initRadLoggerConfig() (*zap.Logger, error) {
 		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
 	}
 	cfg.EncoderConfig.CallerKey = zapcore.OmitKey
-	cfg.EncoderConfig.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	// Build the logger config based on profile and custom presets
 	logger, err := cfg.Build()
 	if err != nil {
