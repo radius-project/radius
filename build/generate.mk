@@ -18,6 +18,8 @@ generate-cadl-installed:
 generate-openapi-spec:
 	@echo  "Generating openapi specs for link resources from cadl models."
 	cd cadl/Applications.Link && npx cadl compile .
+	cd cadl/UCP/ && npx cadl compile . --option @azure-tools/cadl-autorest.emitter-output-dir={cwd}/../../swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/
+
 .PHONY: generate-node-installed
 generate-node-installed:
 	@echo "$(ARROW) Detecting node..."

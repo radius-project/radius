@@ -1,0 +1,155 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+// Currently, our spec is not approved by ARM so this is a workaround that the CADL team gave us
+// so that we can preface our paths with {rootScope}
+// To generate {rootScope} in the path, use the tag --import "./aksrootscope.cadl" while compiling
+
+import "@cadl-lang/openapi";
+import "@cadl-lang/rest";
+import "@azure-tools/cadl-autorest";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-azure-core";
+
+namespace Azure.ResourceManager.Radius;
+
+using Cadl.Http;
+using Cadl.Rest;
+using OpenAPI;
+using Autorest;
+using Azure.Core;
+using Azure.ResourceManager.Foundations;
+
+// Skip generation of ListBySubscription
+interface PlaneResourceListBySubscription<TResource> {}
+
+model PlaneParentScope<TResource, TRootParams> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...ParentKeysOf<TResource>;
+}
+
+model CredentialParentScope<TResource, TRootParams> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...TRootParams,
+  ...ParentKeysOf<TResource>;
+}
+
+model ResourceGroupParentScope<TResource, TRootParams> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...ParentKeysOf<TResource>;
+  ...TRootParams,
+}
+
+model ResourceGroupCommonParameters<TResource> {
+  ...ApiVersionParameter;
+}
+
+model ResourceGroupInstanceParameters<TResource, TRootParams> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...TRootParams,
+  ...KeysOf<TResource>,
+}
+
+model PlaneInstanceParameters<TResource, TRootParams> {
+  ...ResourceGroupCommonParameters<TResource>;
+  ...KeysOf<TResource>,
+  ...TRootParams,
+}
+
+interface ResourceGroupResourceOperations<
+TResource extends ArmResource, 
+TProperties extends object, 
+TRootParams>
+  extends Azure.ResourceManager.Radius.ResourceRead<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceCreate<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceDelete<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    ResourceGroupListByParent<TResource, TRootParams> {}
+
+interface PlaneResourceOperations<
+TResource extends ArmResource, 
+TProperties extends object, 
+TRootParams>
+  extends Azure.ResourceManager.Radius.ResourceRead<
+      TResource,
+      PlaneInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceCreate<
+      TResource,
+      PlaneInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceDelete<
+      TResource,
+      PlaneInstanceParameters<TResource, TRootParams>
+    >,
+    PlaneListByParent<TResource, TRootParams> {}
+
+interface CredentialResourceOperations<
+TResource extends ArmResource, 
+TProperties extends object, 
+TRootParams>
+  extends Azure.ResourceManager.Radius.ResourceRead<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceCreate<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    Azure.ResourceManager.Radius.ResourceDelete<
+      TResource,
+      ResourceGroupInstanceParameters<TResource, TRootParams>
+    >,
+    CredentialListByParent<TResource, TRootParams> {}
+
+interface ResourceGroupListByParent<TResource extends ArmResource, TRootParams> {
+  @get
+  //@pageable
+  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @autoRoute
+  @list(TResource)
+  @segmentOf(TResource)
+  @armResourceList(TResource)
+  ListByRootScope(
+    ...ResourceGroupParentScope<TResource, TRootParams>,
+  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+}
+model Nil2 {}
+
+interface PlaneListByParent<TResource extends ArmResource, TRootParams> {
+  @get
+  //@pageable
+  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @autoRoute
+  @list(TResource)
+  @segmentOf(TResource)
+  @armResourceList(TResource)
+  ListByRootScope(
+    ...PlaneParentScope<TResource, TRootParams>,
+  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+}
+model Nil3 {}
+
+interface CredentialListByParent<TResource extends ArmResource, TRootParams> {
+  @get
+  //@pageable
+  @doc("Lists information about all {name}s in the given root scope", TResource)
+  @autoRoute
+  @list(TResource)
+  @segmentOf(TResource)
+  @armResourceList(TResource)
+  ListByRootScope(
+    ...CredentialParentScope<TResource, TRootParams>,
+  ): ArmResponse<ResourceListResult<TResource>> | ErrorResponse;
+}
+model Nil4 {}

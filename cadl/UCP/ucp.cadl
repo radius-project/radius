@@ -1,0 +1,199 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+import "@cadl-lang/openapi";
+
+import "../aksrootscope.cadl";
+import "../customRootScope.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Versioning;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+using Azure.ResourceManager.Foundations;
+using OpenAPI;
+
+@armProviderNamespace
+@service({
+    title: "UCP Management APIs",
+    version: "2022-03-15-privatepreview",
+  })
+@doc("REST APIs for UCP")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Ucp;
+
+@doc("UCP ResourceGroup.")
+model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
+    @doc("DaprSecretStore name")
+    @maxLength(63)
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @key("resourceGroupName")
+    @path
+    @segment("resourcegroups")
+    @extension("x-ms-parameter-location", "method")
+    name: string;
+}
+
+@doc("Basic properties of a UCP resource.")
+model BasicResourceProperties {
+    @doc("Provisioning state of the redis cache link at the time the operation was called")
+    @visibility("read")
+    provisioningState?: ProvisioningState;
+}
+
+enum CredentialStorageKind {
+    Internal,
+}
+
+@doc("UCP PlaneResource.")
+model PlaneResource is TrackedResource<PlaneResourceProperties> {
+    @key("planeType")
+    @doc("The plane type.")
+    @segment("planes")
+    @path()
+    name: string;
+}
+
+@doc("Plane kinds supported.")
+enum PlaneKind {
+    UCPNative,
+    Azure,
+    AWS
+}
+
+@doc("Plane properties.")
+model PlaneResourceProperties extends BasicResourceProperties {
+    @doc("The kind of plane")
+    kind: PlaneKind;
+
+    @doc("URL to forward requests to for non UCP Native Plane")
+    url?: string;
+    // TODO try record here
+    @doc("Resource Providers for UCP Native Plane")
+    resourceProviders?: Record<string>
+}
+
+@doc("Service Principal credential storage properties")
+model AzureServicePrincipalProperties {
+    @doc("clientId when the CredentialKind is ServicePrincipal")
+    clientId: string;
+    @doc("secret when the CredentialKind is ServicePrincipal")
+    @extension("x-ms-secret", true)
+    secret: string;
+    @doc("tenantId when the CredentialKind is ServicePrincipal")
+    tenantId: string;
+    @doc("The storage properties")
+    storage: CredentialStorageProperties;
+}
+
+@doc("AWS credential storage properties")
+model AWSCredentialProperties {
+    @doc("Access key ID for AWS identity")
+    @extension("x-ms-secret", true)
+    accessKeyId: string;
+    @doc("Secret Access Key for AWS identity")
+    @extension("x-ms-secret", true)
+    secretAccessKey: string;
+    @doc("The storage properties")
+    storage: CredentialStorageProperties;
+}
+
+model AWSCredentialResource is TrackedResource<AWSCredentialProperties> {
+    @key("credentialName")
+    @doc("The plane type.")
+    @path
+    @segment("providers/System.AWS/credentials")
+    name: string;
+}
+
+model AzureCredentialResource is TrackedResource<AzureServicePrincipalProperties> {
+    @key("credentialName")
+    @doc("The plane type.")
+    @path
+    @segment("providers/System.Azure/credentials")
+    name: string;
+}
+
+@doc("Credential storage properties")
+@discriminator("kind")
+model CredentialStorageProperties {
+}
+
+@doc("Internal credential storage properties")
+model InternalCredentialStorageProperties extends CredentialStorageProperties {
+    kind: "Internal";
+    @doc("The name of secret stored.")
+    @visibility("read")
+    secretName: string
+}
+
+@doc("Custom root scope")
+model PlaneNameParameter {
+  @doc("The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}")
+  @minLength(1)
+  @path
+  @extension("x-ms-skip-url-encoding", true)
+  @extension("x-ms-parameter-location", "client")
+  planeName: string;
+}
+
+
+@doc("Provisioning state of the link at the time the operation was called")
+enum ProvisioningState {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@armResourceOperations
+interface Planes
+  extends Radius.PlaneResourceOperations<
+      PlaneResource,
+      PlaneResourceProperties,
+      PlaneNameParameter
+    > {}
+
+model Root<PlaneResource> {
+    ...KeysOf<PlaneResource>,
+    ...PlaneNameParameter
+}
+
+@armResourceOperations
+interface ResourceGroups
+  extends ResourceGroupResourceOperations<
+      ResourceGroupResource,
+      BasicResourceProperties,
+      Root<PlaneResource>
+    > {}
+
+// TODO remove resource group from these APIS
+@armResourceOperations
+interface AzureCredential
+  extends CredentialResourceOperations<
+      AzureCredentialResource,
+      AzureServicePrincipalProperties,
+      Root<PlaneResource>
+    > {}
+
+#suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Interface types must use PascalCaseCadl()"
+@armResourceOperations
+interface AWSCredential
+    extends CredentialResourceOperations<
+        AWSCredentialResource,
+        AWSCredentialProperties,
+        Root<PlaneResource>
+        > {}
+

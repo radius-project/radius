@@ -74,14 +74,6 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
-			name:     "test_invalid_credential_kind",
-			filename: "invalid-kind-aws-credential.json",
-			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
-			expected: armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:       setupEmptyMocks,
-			err:      nil,
-		},
-		{
 			name:     "test_credential_created",
 			filename: "aws-credential.json",
 			url:      "/planes/aws/awscloud/providers/System.AWS/credentials/default?api-version=2022-09-01-privatepreview",
@@ -131,7 +123,7 @@ func Test_Credential(t *testing.T) {
 }
 
 func getAwsResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponse(&v20220901privatepreview.CredentialResource{
+	return armrpc_rest.NewOKResponse(&v20220901privatepreview.AWSCredentialResource{
 		Location: to.Ptr("west-us-2"),
 		ID:       to.Ptr("/planes/aws/awscloud/providers/System.AWS/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -140,8 +132,8 @@ func getAwsResponse() armrpc_rest.Response {
 			"env": to.Ptr("dev"),
 		},
 		Properties: &v20220901privatepreview.AWSCredentialProperties{
-			AccessKeyID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:        to.Ptr("aws.com.iam"),
+			AccessKeyID:     to.Ptr("00000000-0000-0000-0000-000000000000"),
+			SecretAccessKey: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
 				SecretName: to.Ptr("aws-awscloud-default"),

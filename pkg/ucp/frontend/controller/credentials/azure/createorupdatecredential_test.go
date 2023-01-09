@@ -74,14 +74,6 @@ func Test_Credential(t *testing.T) {
 			err:      nil,
 		},
 		{
-			name:     "test_invalid_credential_kind",
-			filename: "invalid-kind-azure-credential.json",
-			url:      "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
-			expected: armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"),
-			fn:       setupEmptyMocks,
-			err:      nil,
-		},
-		{
 			name:     "test_credential_created",
 			filename: "azure-credential.json",
 			url:      "/planes/azure/azurecloud/providers/System.Azure/credentials/default?api-version=2022-09-01-privatepreview",
@@ -130,7 +122,7 @@ func Test_Credential(t *testing.T) {
 }
 
 func getAzureCredentialResponse() armrpc_rest.Response {
-	return armrpc_rest.NewOKResponse(&v20220901privatepreview.CredentialResource{
+	return armrpc_rest.NewOKResponse(&v20220901privatepreview.AzureCredentialResource{
 		Location: to.Ptr("west-us-2"),
 		ID:       to.Ptr("/planes/azure/azurecloud/providers/System.Azure/credentials/default"),
 		Name:     to.Ptr("default"),
@@ -141,7 +133,6 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 		Properties: &v20220901privatepreview.AzureServicePrincipalProperties{
 			ClientID: to.Ptr("00000000-0000-0000-0000-000000000000"),
 			TenantID: to.Ptr("00000000-0000-0000-0000-000000000000"),
-			Kind:     to.Ptr("azure.com.serviceprincipal"),
 			Storage: &v20220901privatepreview.InternalCredentialStorageProperties{
 				Kind:       to.Ptr(v20220901privatepreview.CredentialStorageKindInternal),
 				SecretName: to.Ptr("azure-azurecloud-default"),

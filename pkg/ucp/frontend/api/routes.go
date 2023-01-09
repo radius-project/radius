@@ -213,9 +213,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
+						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -226,9 +226,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AzureCredential]{
+						RequestConverter:  converter.AzureCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AzureCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -251,9 +251,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationList,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewListResources(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
+						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 					},
 				)
 			},
@@ -264,9 +264,9 @@ func Register(ctx context.Context, router *mux.Router, ctrlOpts ctrl.Options) er
 			Method:       v1.OperationGet,
 			HandlerFactory: func(opt ctrl.Options) (frontend_ctrl.Controller, error) {
 				return defaultoperation.NewGetResource(opt.CommonControllerOptions,
-					frontend_ctrl.ResourceOptions[datamodel.Credential]{
-						RequestConverter:  converter.CredentialDataModelFromVersioned,
-						ResponseConverter: converter.CredentialDataModelToVersioned,
+					frontend_ctrl.ResourceOptions[datamodel.AWSCredential]{
+						RequestConverter:  converter.AWSCredentialDataModelFromVersioned,
+						ResponseConverter: converter.AWSCredentialDataModelToVersioned,
 					},
 				)
 			},

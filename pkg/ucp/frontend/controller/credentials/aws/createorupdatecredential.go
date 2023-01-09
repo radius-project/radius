@@ -45,17 +45,13 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	apiVersion := ctrl.GetAPIVersion(req)
-	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
+	newResource, err := converter.AWSCredentialDataModelFromVersioned(body, apiVersion)
 	if errors.Is(err, v1.ErrUnsupportedAPIVersion) ||
 		errors.Is(err, v1.ErrInvalidModelConversion) ||
 		errors.Is(err, &v1.ErrModelConversion{}) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	} else if err != nil {
 		return nil, err
-	}
-
-	if newResource.Properties.Kind != datamodel.AWSCredentialKind {
-		return armrpc_rest.NewBadRequestResponse("Invalid Credential Kind"), nil
 	}
 
 	id, err := resources.Parse(path)
@@ -71,7 +67,7 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	logger := logr.FromContextOrDiscard(ctx)
 
 	// Check if the credential already exists in database
-	existingResource := datamodel.Credential{}
+	existingResource := datamodel.AWSCredential{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
 	if err != nil && !errors.Is(err, &store.ErrNotFound{}) {
 		return nil, err
@@ -98,7 +94,7 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	}
 
 	// Return a versioned response of the credential
-	versioned, err := converter.CredentialDataModelToVersioned(newResource, apiVersion)
+	versioned, err := converter.AWSCredentialDataModelToVersioned(newResource, apiVersion)
 	if err != nil {
 		return nil, err
 	}

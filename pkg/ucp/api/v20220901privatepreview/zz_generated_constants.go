@@ -14,7 +14,26 @@ const (
 	moduleVersion = "v0.0.1"
 )
 
-// CredentialStorageKind - credential store kinds supported.
+// CreatedByType - The type of identity that created the resource.
+type CreatedByType string
+
+const (
+	CreatedByTypeApplication CreatedByType = "Application"
+	CreatedByTypeKey CreatedByType = "Key"
+	CreatedByTypeManagedIdentity CreatedByType = "ManagedIdentity"
+	CreatedByTypeUser CreatedByType = "User"
+)
+
+// PossibleCreatedByTypeValues returns the possible values for the CreatedByType const type.
+func PossibleCreatedByTypeValues() []CreatedByType {
+	return []CreatedByType{	
+		CreatedByTypeApplication,
+		CreatedByTypeKey,
+		CreatedByTypeManagedIdentity,
+		CreatedByTypeUser,
+	}
+}
+
 type CredentialStorageKind string
 
 const (
@@ -43,6 +62,32 @@ func PossiblePlaneKindValues() []PlaneKind {
 		PlaneKindAWS,
 		PlaneKindAzure,
 		PlaneKindUCPNative,
+	}
+}
+
+// ProvisioningState - Provisioning state of the link at the time the operation was called
+type ProvisioningState string
+
+const (
+	ProvisioningStateAccepted ProvisioningState = "Accepted"
+	ProvisioningStateCanceled ProvisioningState = "Canceled"
+	ProvisioningStateDeleting ProvisioningState = "Deleting"
+	ProvisioningStateFailed ProvisioningState = "Failed"
+	ProvisioningStateProvisioning ProvisioningState = "Provisioning"
+	ProvisioningStateSucceeded ProvisioningState = "Succeeded"
+	ProvisioningStateUpdating ProvisioningState = "Updating"
+)
+
+// PossibleProvisioningStateValues returns the possible values for the ProvisioningState const type.
+func PossibleProvisioningStateValues() []ProvisioningState {
+	return []ProvisioningState{	
+		ProvisioningStateAccepted,
+		ProvisioningStateCanceled,
+		ProvisioningStateDeleting,
+		ProvisioningStateFailed,
+		ProvisioningStateProvisioning,
+		ProvisioningStateSucceeded,
+		ProvisioningStateUpdating,
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/clients_new/generated"
+	"github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	corerpv20220315 "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp"
 	ucpv20220901 "github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
@@ -423,9 +424,17 @@ func (amc *ARMApplicationsManagementClient) ListEnvironmentsAll(ctx context.Cont
 				return []corerpv20220315.EnvironmentResource{}, err
 			}
 
-			applicationList := nextPage.EnvironmentResourceList.Value
-			for _, application := range applicationList {
-				envResourceList = append(envResourceList, *application)
+			pager := envClient.NewListByScopePager(&v20220315privatepreview.EnvironmentsClientListByScopeOptions{})
+			for pager.More() {
+				nextPage, err := pager.NextPage(ctx)
+				if err != nil {
+					return []v20220315privatepreview.EnvironmentResource{}, err
+				}
+
+				applicationList := nextPage.EnvironmentResourceList.Value
+				for _, application := range applicationList {
+					envResourceList = append(envResourceList, *application)
+				}
 			}
 		}
 	}
@@ -484,7 +493,7 @@ func (amc *ARMApplicationsManagementClient) CreateUCPGroup(ctx context.Context, 
 		return false, err
 	}
 
-	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeType, planeName, resourceGroupName, resourceGroup, resourceGroupOptions)
+	_, err = resourcegroupClient.CreateOrUpdate(ctx, planeType, resourceGroupName, resourceGroup, resourceGroupOptions)
 	if err != nil {
 		return false, err
 	}
@@ -502,7 +511,7 @@ func (amc *ARMApplicationsManagementClient) DeleteUCPGroup(ctx context.Context, 
 		return false, err
 	}
 
-	_, err = resourcegroupClient.Delete(ctxWithResp, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	_, err = resourcegroupClient.Delete(ctxWithResp, planeType, resourceGroupName, resourceGroupOptions)
 	if err != nil {
 		return false, err
 	}
@@ -518,7 +527,7 @@ func (amc *ARMApplicationsManagementClient) ShowUCPGroup(ctx context.Context, pl
 		return ucpv20220901.ResourceGroupResource{}, err
 	}
 
-	resp, err := resourcegroupClient.Get(ctx, planeType, planeName, resourceGroupName, resourceGroupOptions)
+	resp, err := resourcegroupClient.Get(ctx, planeType, resourceGroupName, resourceGroupOptions)
 	if err != nil {
 		return ucpv20220901.ResourceGroupResource{}, err
 	}
@@ -534,15 +543,19 @@ func (amc *ARMApplicationsManagementClient) ListUCPGroup(ctx context.Context, pl
 		return resourceGroupResources, err
 	}
 
-	resp, err := resourcegroupClient.List(ctx, planeType, planeName, resourceGroupOptions)
-	if err != nil {
-		return resourceGroupResources, err
-	}
+	pager := resourcegroupClient.NewListByRootScopePager(planeType, resourceGroupOptions)
 
-	resourceGroupList := resp.ResourceGroupResourceList.Value
-	for _, resourceGroup := range resourceGroupList {
-		resourceGroupResources = append(resourceGroupResources, *resourceGroup)
+	for pager.More() {
+		resp, err := pager.NextPage(ctx)
+		if err != nil {
+			return resourceGroupResources, err
+		}
 
+		resourceGroupList := resp.Value
+		for _, resourceGroup := range resourceGroupList {
+			resourceGroupResources = append(resourceGroupResources, *resourceGroup)
+
+		}
 	}
 
 	return resourceGroupResources, nil

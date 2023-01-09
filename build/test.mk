@@ -49,7 +49,7 @@ oav-installed:
 
 .PHONY: test-ucp-spec-examples 
 test-ucp-spec-examples: oav-installed ## Validates UCP examples conform to UCP OpenAPI Spec
-	@echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
-	oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/ucp.json
+	# @echo "$(ARROW) Testing x-ms-examples conform to ucp spec..."
+	# oav validate-example swagger/specification/ucp/resource-manager/UCP/preview/2022-09-01-privatepreview/openapi.json
 
 

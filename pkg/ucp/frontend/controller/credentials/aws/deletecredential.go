@@ -44,7 +44,7 @@ func (p *DeleteCredential) Run(ctx context.Context, w http.ResponseWriter, req *
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 	// Check if the resource being deleted exists or not.
-	existingResource := datamodel.Credential{}
+	existingResource := datamodel.AWSCredential{}
 	etag, err := p.GetResource(ctx, resourceID.String(), &existingResource)
 	if errors.Is(err, &store.ErrNotFound{}) {
 		return armrpc_rest.NewNoContentResponse(), nil

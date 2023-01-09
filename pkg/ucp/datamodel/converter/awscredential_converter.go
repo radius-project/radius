@@ -14,10 +14,10 @@ import (
 )
 
 // CredentialDataModelToVersioned converts version agnostic credential datamodel to versioned model.
-func CredentialDataModelToVersioned(model *datamodel.Credential, version string) (v1.VersionedModelInterface, error) {
+func AWSCredentialDataModelToVersioned(model *datamodel.AWSCredential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		versioned := &v20220901privatepreview.CredentialResource{}
+		versioned := &v20220901privatepreview.AWSCredentialResource{}
 		if err := versioned.ConvertFrom(model); err != nil {
 			return nil, err
 		}
@@ -29,10 +29,10 @@ func CredentialDataModelToVersioned(model *datamodel.Credential, version string)
 }
 
 // CredentialDataModelFromVersioned converts versioned credential model to datamodel.
-func CredentialDataModelFromVersioned(content []byte, version string) (*datamodel.Credential, error) {
+func AWSCredentialDataModelFromVersioned(content []byte, version string) (*datamodel.AWSCredential, error) {
 	switch version {
 	case v20220901privatepreview.Version:
-		vm := &v20220901privatepreview.CredentialResource{}
+		vm := &v20220901privatepreview.AWSCredentialResource{}
 		if err := json.Unmarshal(content, vm); err != nil {
 			return nil, err
 		}
@@ -40,7 +40,7 @@ func CredentialDataModelFromVersioned(content []byte, version string) (*datamode
 		if err != nil {
 			return nil, err
 		}
-		return dm.(*datamodel.Credential), nil
+		return dm.(*datamodel.AWSCredential), nil
 
 	default:
 		return nil, v1.ErrUnsupportedAPIVersion
