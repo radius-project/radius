@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"

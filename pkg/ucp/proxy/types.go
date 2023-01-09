@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/rest"
 	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
