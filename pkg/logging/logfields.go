@@ -2,7 +2,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 // ------------------------------------------------------------
-package radlogger
+package logging
 
 // Field names for structured logging
 const (

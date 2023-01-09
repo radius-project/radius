@@ -13,7 +13,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -34,13 +34,13 @@ func ClientCertValidator(armCertMgr *ArmCertManager) func(http.Handler) http.Han
 			}
 			clientRequestThumbprint := r.Header.Get(IngressCertThumbprintHeader)
 			if clientRequestThumbprint == "" {
-				log.V(radlogger.Debug).Info("X-SSL-Client-Thumbprint header is missing")
+				log.V(ucplog.Debug).Info("X-SSL-Client-Thumbprint header is missing")
 				handleErr(r.Context(), w, r)
 				return
 			}
 			isValid := IsValidThumbprint(clientRequestThumbprint)
 			if !isValid {
-				log.V(radlogger.Debug).Info("Thumbprint validating failed")
+				log.V(ucplog.Debug).Info("Thumbprint validating failed")
 				handleErr(r.Context(), w, r)
 				return
 			}
@@ -50,7 +50,7 @@ func ClientCertValidator(armCertMgr *ArmCertManager) func(http.Handler) http.Han
 }
 
 func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-	logger := radlogger.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	resp := rest.NewClientAuthenticationFailedARMResponse()
 	err := resp.Apply(req.Context(), w, req)
 	if err != nil {

@@ -16,16 +16,16 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"github.com/stretchr/testify/require"
 )
 
 func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
+	logger, err := ucplog.NewTestLogger(t)
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		return context.Background()

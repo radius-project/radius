@@ -21,10 +21,10 @@ import (
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
 
 	link_backend "github.com/project-radius/radius/pkg/linkrp/backend"
@@ -72,7 +72,7 @@ func main() {
 	}
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := radlogger.NewLogger("applications.core")
+	logger, flush, err := ucplog.NewLogger("applications.core")
 	if err != nil {
 		log.Fatal(err)
 	}

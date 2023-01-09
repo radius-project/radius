@@ -17,12 +17,12 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	azvolrenderer "github.com/project-radius/radius/pkg/corerp/renderers/volume/azure"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/go-logr/logr"
@@ -64,7 +64,7 @@ var (
 )
 
 func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
+	logger, err := ucplog.NewTestLogger(t)
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		return context.Background()

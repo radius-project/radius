@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -69,7 +70,7 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 	}
 
 	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, newResource.Properties.Kind)
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	// Check if the plane already exists
 	planeExists := true

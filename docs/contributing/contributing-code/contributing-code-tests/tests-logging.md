@@ -4,7 +4,7 @@ The Radius tests redirect the Resource Provider logger output to the testing err
 
 ```go
 func createContext(t *testing.T) context.Context {
-	logger, err := radlogger.NewTestLogger(t)
+	logger, err := ucplog.NewTestLogger(t)
 	if err != nil {
 		t.Log("Unable to initialize logger")
 		return context.Background()

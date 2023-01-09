@@ -9,11 +9,11 @@ import (
 	"context"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	appsv1 "k8s.io/api/apps/v1"
@@ -202,7 +202,7 @@ func mergeMaps(ctx context.Context, mergeMap map[string]string, newInputMap map[
 
 // Reject custom user entries that would affect Radius reserved keys
 func rejectReservedEntries(ctx context.Context, inputMap map[string]string) map[string]string {
-	logger := radlogger.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	for k := range inputMap {
 		if strings.HasPrefix(k, kubernetes.RadiusDevPrefix) {

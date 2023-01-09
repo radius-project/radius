@@ -12,12 +12,12 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/aws"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/secret"
@@ -146,7 +146,7 @@ func (c *BaseController) DeleteResource(ctx context.Context, id string, etag str
 
 // Responds with an HTTP 500
 func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	var response armrpc_rest.Response
 	// Try to use the ARM format to send back the error info
@@ -175,7 +175,7 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 				},
 			})
 		} else {
-			logger.V(radlogger.Debug).Error(err, "unhandled error")
+			logger.V(ucplog.Debug).Error(err, "unhandled error")
 			response = armrpc_rest.NewInternalServerErrorARMResponse(v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    v1.CodeInternal,

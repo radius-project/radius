@@ -18,12 +18,12 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
 	"github.com/project-radius/radius/pkg/linkrp/backend"
 	"github.com/project-radius/radius/pkg/linkrp/frontend"
-	"github.com/project-radius/radius/pkg/radlogger"
 	metricsservice "github.com/project-radius/radius/pkg/telemetry/metrics/service"
 	metricshostoptions "github.com/project-radius/radius/pkg/telemetry/metrics/service/hostoptions"
 	"github.com/project-radius/radius/pkg/ucp/data"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/hosting"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	etcdclient "go.etcd.io/etcd/client/v3"
 )
 
@@ -47,7 +47,7 @@ func main() {
 	}
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := radlogger.NewLogger("applications.link")
+	logger, flush, err := ucplog.NewLogger("applications.link")
 	if err != nil {
 		log.Fatal(err)
 	}

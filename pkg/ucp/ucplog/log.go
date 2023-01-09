@@ -54,7 +54,7 @@ const (
 	DefaultLoggerProfile        = LoggerProfileDev
 )
 
-func initRadLoggerConfig() (*zap.Logger, error) {
+func initLoggingConfig() (*zap.Logger, error) {
 	var cfg zap.Config
 
 	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
@@ -105,7 +105,7 @@ func NewLogger(name string) (logr.Logger, func(), error) {
 		name = DefaultLoggerName
 	}
 
-	zapLogger, err := initRadLoggerConfig()
+	zapLogger, err := initLoggingConfig()
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
@@ -126,11 +126,6 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	zapLogger := zaptest.NewLogger(t)
 	log := zapr.NewLogger(zapLogger)
 	return log, nil
-}
-
-// GetLogger gets the logr.Logger from supplied context
-func GetLogger(ctx context.Context) logr.Logger {
-	return logr.FromContextOrDiscard(ctx)
 }
 
 // WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
