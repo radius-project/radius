@@ -52,7 +52,7 @@ enum PlaneKind {
 // }
 
 @doc("UCP ResourceGroup.")
-model ResourceGroupResource extends TrackedResource<BasicResourceProperties> {
+model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
 }
 
 @doc("Basic properties of a UCP resource.")
@@ -81,5 +81,12 @@ model CredentialResourceProperties extends BasicResourceProperties {
 }
 
 model CredentialStorageProperties {
-
 }
+
+@armResourceOperations
+interface ResourceGroup
+  extends Radius.RootScopeResourceOperations<
+      ResourceGroupResource,
+      BasicResourceProperties,
+      RootScopeParam
+    > {}
