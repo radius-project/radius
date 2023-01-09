@@ -84,7 +84,7 @@ func Test_Run(t *testing.T) {
 		appManagementClient.EXPECT().ListUCPGroup(gomock.Any(), gomock.Any(), gomock.Any()).Return(resourceGroups, nil).Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},

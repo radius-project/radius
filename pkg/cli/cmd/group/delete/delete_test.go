@@ -80,14 +80,14 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "deleting resource group %q ...\n",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 				output.LogOutput{
 					Format: "resource group %q deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -112,14 +112,14 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "deleting resource group %q ...\n",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 				output.LogOutput{
 					Format: "resource group %q does not exist or has already been deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -133,8 +133,8 @@ func Test_Run(t *testing.T) {
 
 			prompter := prompt.NewMockInterface(ctrl)
 			prompter.EXPECT().
-				ConfirmWithDefault("Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty", prompt.No).
-				Return(false, nil).
+				GetListInput([]string{"No", "Yes"}, "Are you sure you want to delete the resource group 'testrg'? A resource group can be deleted only when empty").
+				Return("no", nil).
 				Times(1)
 
 			runner := &Runner{
@@ -142,17 +142,17 @@ func Test_Run(t *testing.T) {
 				Workspace:            &workspaces.Workspace{},
 				UCPResourceGroupName: "testrg",
 				Confirmation:         false,
-				Prompter:             prompter,
+				InputPrompter:        prompter,
 				Output:               outputSink,
 			}
 
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "resource group %q NOT deleted",
-					Params: []interface{}{"testrg"},
+					Params: []any{"testrg"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)

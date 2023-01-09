@@ -92,7 +92,6 @@ func Test_ResourceName_Normalize(t *testing.T) {
 	}
 }
 
-//
 func Test_APIServer_Client(t *testing.T) {
 	// The APIServer tests require installation of the Kubernetes test environment binaries.
 	// Our Makefile knows how to download the the amd64 version of these on MacOS.

@@ -82,7 +82,7 @@ func getDeploymentProcessorOutputs() (renderers.RendererOutput, deployment.Deplo
 				},
 			},
 		},
-		ComputedValues: map[string]interface{}{
+		ComputedValues: map[string]any{
 			daprpubsubbrokers.TopicNameKey: rendererOutput.ComputedValues[daprpubsubbrokers.TopicNameKey].Value,
 			renderers.ComponentNameKey:     rendererOutput.ComputedValues[renderers.ComponentNameKey].Value,
 		},

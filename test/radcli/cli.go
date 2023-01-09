@@ -253,10 +253,10 @@ func (cli *CLI) Recipelist(ctx context.Context) (string, error) {
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, linkType string) (string, error) {
+func (cli *CLI) RecipeRegister(ctx context.Context, recipeName, templatePath, linkType string) (string, error) {
 	args := []string{
 		"recipe",
-		"create",
+		"register",
 		"--name", recipeName,
 		"--template-path", templatePath,
 		"--link-type", linkType,
@@ -264,10 +264,10 @@ func (cli *CLI) RecipeCreate(ctx context.Context, recipeName, templatePath, link
 	return cli.RunCommand(ctx, args)
 }
 
-func (cli *CLI) RecipeDelete(ctx context.Context, recipeName string) (string, error) {
+func (cli *CLI) RecipeUnregister(ctx context.Context, recipeName string) (string, error) {
 	args := []string{
 		"recipe",
-		"delete",
+		"unregister",
 		"--name", recipeName,
 	}
 	return cli.RunCommand(ctx, args)

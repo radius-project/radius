@@ -27,7 +27,7 @@ const (
 type TableFormatter struct {
 }
 
-func (f *TableFormatter) Format(obj interface{}, writer io.Writer, options FormatterOptions) error {
+func (f *TableFormatter) Format(obj any, writer io.Writer, options FormatterOptions) error {
 	if len(options.Columns) == 0 {
 		return errors.New("no columns were defined, table format is not supported for this command")
 	}

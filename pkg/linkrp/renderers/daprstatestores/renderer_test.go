@@ -171,7 +171,7 @@ func Test_Render_Generic_Success(t *testing.T) {
 			Mode:    datamodel.LinkModeValues,
 			Type:    stateStoreType,
 			Version: daprStateStoreVersion,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 		},
@@ -187,18 +187,18 @@ func Test_Render_Generic_Success(t *testing.T) {
 	require.Equal(t, kubernetes.NormalizeResourceName(resourceName), result.ComputedValues[renderers.ComponentNameKey].Value)
 
 	expected := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": daprVersion,
 			"kind":       k8sKind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": "radius-test",
 				"name":      kubernetes.NormalizeResourceName(resourceName),
 				"labels":    kubernetes.MakeDescriptiveLabels(applicationName, resourceName, ResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    stateStoreType,
 				"version": daprStateStoreVersion,
-				"metadata": []map[string]interface{}{
+				"metadata": []map[string]any{
 					{
 						"name":  "foo",
 						"value": "bar",
@@ -253,7 +253,7 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeValues,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 			Version: daprStateStoreVersion,
@@ -282,7 +282,7 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 				Environment: environmentID,
 			},
 			Mode: datamodel.LinkModeValues,
-			Metadata: map[string]interface{}{
+			Metadata: map[string]any{
 				"foo": "bar",
 			},
 			Type: stateStoreType,

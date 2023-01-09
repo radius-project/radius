@@ -18,7 +18,7 @@ type Object struct {
 	Metadata
 
 	// Data is the payload of the object. It will be marshaled to and from JSON for storage.
-	Data interface{}
+	Data any
 }
 
 // ObjectQueryResult represents the result of Query().
@@ -29,6 +29,6 @@ type ObjectQueryResult struct {
 	Items []Object
 }
 
-func (o *Object) As(out interface{}) error {
+func (o *Object) As(out any) error {
 	return DecodeMap(o.Data, out)
 }

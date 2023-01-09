@@ -9,8 +9,6 @@
 
 package generated
 
-
-
 import (
 	"encoding/json"
 	"fmt"
@@ -20,8 +18,6 @@ import (
 	"strings"
 	"time"
 )
-
-
 
 const (
 	utcLayoutJSON = `"2006-01-02T15:04:05.999999999"`
@@ -66,8 +62,7 @@ func (t *timeRFC3339) Parse(layout, value string) error {
 	return err
 }
 
-
-func populateTimeRFC3339(m map[string]interface{}, k string, t *time.Time) {
+func populateTimeRFC3339(m map[string]any, k string, t *time.Time) {
 	if t == nil {
 		return
 	} else if azcore.IsNullValue(t) {

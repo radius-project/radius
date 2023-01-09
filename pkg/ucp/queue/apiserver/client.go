@@ -202,7 +202,7 @@ func newMessageLabelSelector(now time.Time, name string) (labels.Selector, error
 }
 
 // getQueueMessage fetches the first item which is the message in the current queue. We can
-// determine whether the message is leased by another client by checking if `NextVisibleAt``
+// determine whether the message is leased by another client by checking if `NextVisibleAt“
 // value is less than `now`.
 func (c *Client) getQueueMessage(ctx context.Context, now time.Time) (*v1alpha1.QueueMessage, error) {
 	ql := &v1alpha1.QueueMessageList{}

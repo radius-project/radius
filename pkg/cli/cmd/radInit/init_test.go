@@ -8,14 +8,12 @@ package radInit
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
-	"github.com/manifoldco/promptui"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/cli/azure"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -118,7 +116,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.StringPtr("cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, common.SelectExistingEnvironmentCreateSentinel)
@@ -152,7 +150,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.StringPtr("cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -164,7 +162,7 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Init Command With Cloud Provider (Reinstall))",
+			Name:          "Init Command With Cloud Provider (Reinstall)",
 			Input:         []string{},
 			ExpectedValid: true,
 			ConfigHolder: framework.ConfigHolder{
@@ -200,36 +198,6 @@ func Test_Validate(t *testing.T) {
 			},
 		},
 		{
-			Name:          "Initialize with existing environment create application",
-			Input:         []string{},
-			ExpectedValid: true,
-			ConfigHolder: framework.ConfigHolder{
-				ConfigFilePath: "",
-				Config:         config,
-			},
-			CreateTempDirectory: "test-app", // Valid app name
-			ConfigureMocks: func(mocks radcli.ValidateMocks) {
-				// Radius is already installed, no reinstall
-				initGetKubeContextSuccess(mocks.Kubernetes)
-				initKubeContextWithKind(mocks.Prompter)
-				initHelmMockRadiusInstalled(mocks.Helm)
-				initRadiusReinstallNo(mocks.Prompter)
-
-				// Configure an existing environment - but then choose to create a new one
-				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
-					{
-						Name: to.StringPtr("cool-existing-env"),
-					},
-				})
-				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
-
-				// No need to choose env settings since we're using existing
-
-				// Create Application
-				setScaffoldApplicationPromptYes(mocks.Prompter)
-			},
-		},
-		{
 			Name:          "Initialize with existing environment create application - initial appname is invalid",
 			Input:         []string{},
 			ExpectedValid: true,
@@ -248,7 +216,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - but then choose to create a new one
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.StringPtr("cool-existing-env"),
+						Name: to.Ptr("cool-existing-env"),
 					},
 				})
 				initExistingEnvironmentSelection(mocks.Prompter, "cool-existing-env")
@@ -313,7 +281,7 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - this will be chosen automatically
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.StringPtr("default"),
+						Name: to.Ptr("default"),
 					},
 				})
 
@@ -337,10 +305,10 @@ func Test_Validate(t *testing.T) {
 				// Configure an existing environment - user has to choose
 				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{
 					{
-						Name: to.StringPtr("dev"),
+						Name: to.Ptr("dev"),
 					},
 					{
-						Name: to.StringPtr("prod"),
+						Name: to.Ptr("prod"),
 					},
 				})
 
@@ -605,8 +573,8 @@ func Test_Run_InstalledRadiusExistingEnvironment_CreateApplication(t *testing.T)
 	require.FileExists(t, filepath.Join(directory, ".rad", "rad.yaml"))
 }
 
-func initParseCloudProvider(setup *setup.MockInterface, promper *prompt.MockInterface) {
-	setup.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, promper).Return(&azure.Provider{
+func initParseCloudProvider(setup *setup.MockInterface, prompter *prompt.MockInterface) {
+	setup.EXPECT().ParseAzureProviderArgs(gomock.Any(), true, prompter).Return(&azure.Provider{
 		SubscriptionID: "test-subscription",
 		ResourceGroup:  "test-rg",
 		ServicePrincipal: &azure.ServicePrincipal{
@@ -643,67 +611,68 @@ func getTestKubeConfig() *api.Config {
 
 func initKubeContextWithKind(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(matchesSelect(selectKubeContextPrompt)).
-		Return(2, "", nil).Times(1)
+		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		Return("kind-kind", nil).Times(1)
 }
 
 func initKubeContextSelectionError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(matchesSelect(selectKubeContextPrompt)).
-		Return(-1, "", errors.New("cannot read selection")).Times(1)
+		GetListInput(gomock.Any(), selectKubeContextPrompt).
+		Return("", errors.New("cannot read selection")).Times(1)
 }
 
 func initRadiusReinstallNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmReinstallRadiusPrompt)).
-		Return("N", nil).Times(1)
+		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
+		Return("No", nil).Times(1)
 }
 
 func initRadiusReinstallYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmReinstallRadiusPrompt)).
-		Return("Y", nil).Times(1)
+		GetListInput(gomock.Any(), confirmReinstallRadiusPrompt).
+		Return("Yes", nil).Times(1)
 }
 
 func initEnvNamePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(common.EnterEnvironmentNamePrompt)).
+		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initEnvNamePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(common.EnterEnvironmentNamePrompt)).
+		GetTextInput(common.EnterEnvironmentNamePrompt, gomock.Any()).
 		Return("", errors.New("unable to read prompt")).Times(1)
 }
 
 func initNamespacePrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(common.EnterNamespacePrompt)).
+		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
 		Return("default", nil).Times(1)
 }
 
 func initNamespacePromptError(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(common.EnterNamespacePrompt)).
+		GetTextInput(common.EnterNamespacePrompt, gomock.Any()).
 		Return("", errors.New("Unable to read namespace")).Times(1)
 }
 
 func initAddCloudProviderPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmCloudProviderPrompt)).
-		Return("N", nil).Times(1)
+		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
+		Return("No", nil).Times(1)
 }
 
 func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmCloudProviderPrompt)).
-		Return("Y", nil).Times(1)
+		GetListInput(gomock.Any(), confirmCloudProviderPrompt).
+		Return("Yes", nil).Times(1)
 }
 
 func initSelectCloudProvider(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunSelect(matchesSelect(selectCloudProviderPrompt)).Return(0, "", nil).Times(1)
+		GetListInput(gomock.Any(), selectCloudProviderPrompt).
+		Return("Azure", nil).Times(1)
 }
 
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
@@ -726,70 +695,24 @@ func setExistingEnvironments(clientMock *clients.MockApplicationsManagementClien
 
 func initExistingEnvironmentSelection(prompter *prompt.MockInterface, choice string) {
 	prompter.EXPECT().
-		RunSelect(matchesSelect(common.SelectExistingEnvironmentPrompt)).
-		Return(-1, choice, nil).Times(1) // We ignore the index, so this is ok.
+		GetListInput(gomock.Any(), common.SelectExistingEnvironmentPrompt).
+		Return(choice, nil).Times(1)
 }
 
 func setScaffoldApplicationPromptNo(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmSetupApplicationPrompt)).
-		Return("N", nil).Times(1)
+		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
+		Return("No", nil).Times(1)
 }
 
 func setScaffoldApplicationPromptYes(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(confirmSetupApplicationPrompt)).
-		Return("Y", nil).Times(1)
+		GetListInput(gomock.Any(), confirmSetupApplicationPrompt).
+		Return("Yes", nil).Times(1)
 }
 
 func setApplicationNamePrompt(prompter *prompt.MockInterface, applicationName string) {
 	prompter.EXPECT().
-		RunPrompt(matchesPrompt(enterApplicationName)).
+		GetTextInput(enterApplicationName, gomock.Any()).
 		Return(applicationName, nil).Times(1)
-}
-
-var _ gomock.Matcher = (*PromptMatcher)(nil)
-
-func matchesPrompt(message string) *PromptMatcher {
-	return &PromptMatcher{Message: message}
-}
-
-type PromptMatcher struct {
-	Message string
-}
-
-func (m *PromptMatcher) Matches(x interface{}) bool {
-	p, ok := x.(promptui.Prompt)
-	if !ok {
-		return false
-	}
-
-	return p.Label == m.Message
-}
-
-func (m *PromptMatcher) String() string {
-	return fmt.Sprintf("promptui.Prompt { Label: \"%s\"}", m.Message)
-}
-
-var _ gomock.Matcher = (*SelectMatcher)(nil)
-
-func matchesSelect(message string) *SelectMatcher {
-	return &SelectMatcher{Message: message}
-}
-
-type SelectMatcher struct {
-	Message string
-}
-
-func (m *SelectMatcher) Matches(x interface{}) bool {
-	p, ok := x.(promptui.Select)
-	if !ok {
-		return false
-	}
-
-	return p.Label == m.Message
-}
-
-func (m *SelectMatcher) String() string {
-	return fmt.Sprintf("promptui.Select { Label: \"%s\"}", m.Message)
 }

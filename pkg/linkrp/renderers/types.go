@@ -67,7 +67,7 @@ type ComputedValueReference struct {
 	LocalID string
 
 	// Value specifies a static value to copy to computed values.
-	Value interface{}
+	Value any
 
 	// PropertyReference specifies a property key to look up in the resource's *persisted properties*.
 	PropertyReference string

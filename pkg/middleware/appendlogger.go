@@ -22,7 +22,7 @@ func AppendLogValues(h http.Handler) http.Handler {
 			return
 		}
 
-		values := []interface{}{}
+		values := []any{}
 		values = append(values, radlogger.LogFieldResourceID, id.String())
 
 		// TODO: populate correlation id and w3c trace parent id - https://github.com/project-radius/core-team/issues/53

@@ -51,7 +51,7 @@ func TestDaprPubSubBroker_ConvertVersionedToDataModel(t *testing.T) {
 			require.Equal(t, []outputresource.OutputResource(nil), convertedResource.Properties.Status.OutputResources)
 		case *RecipeDaprPubSubProperties:
 			if payload == "daprpubsubbrokerresource_recipe2.json" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, convertedResource.Properties.Recipe.Parameters)
 			} else {
 				require.Equal(t, "redis-test", convertedResource.Properties.Recipe.Name)
@@ -97,7 +97,7 @@ func TestDaprPubSubBroker_ConvertDataModelToVersioned(t *testing.T) {
 			require.Equal(t, "bar", v.Metadata["foo"])
 		case *RecipeDaprPubSubProperties:
 			if payload == "daprpubsubbrokerresourcedatamodel_recipe2" {
-				parameters := map[string]interface{}{"port": float64(6081)}
+				parameters := map[string]any{"port": float64(6081)}
 				require.Equal(t, parameters, resource.Properties.Recipe.Parameters)
 			} else {
 				require.Equal(t, "redis-test", resource.Properties.Recipe.Name)

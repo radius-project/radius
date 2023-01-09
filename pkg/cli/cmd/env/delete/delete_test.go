@@ -99,7 +99,7 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -119,7 +119,7 @@ func Test_Show(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Environment deleted",
 			},
@@ -134,8 +134,8 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmation, "test-env"), prompt.No).
-			Return(true, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return("yes", nil).
 			Times(1)
 
 		appManagementClient := clients.NewMockApplicationsManagementClient(ctrl)
@@ -145,7 +145,7 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -155,7 +155,7 @@ func Test_Show(t *testing.T) {
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
 			ConnectionFactory: &connections.MockFactory{ApplicationsManagementClient: appManagementClient},
-			Prompt:            promptMock,
+			InputPrompter:     promptMock,
 			Workspace:         workspace,
 			Format:            "table",
 			Output:            outputSink,
@@ -165,7 +165,7 @@ func Test_Show(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Environment deleted",
 			},
@@ -180,12 +180,12 @@ func Test_Show(t *testing.T) {
 
 		promptMock := prompt.NewMockInterface(ctrl)
 		promptMock.EXPECT().
-			ConfirmWithDefault(fmt.Sprintf(deleteConfirmation, "test-env"), prompt.No).
-			Return(false, nil).
+			GetListInput([]string{"No", "Yes"}, fmt.Sprintf(deleteConfirmation, "test-env")).
+			Return("no", nil).
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -194,7 +194,7 @@ func Test_Show(t *testing.T) {
 		}
 		outputSink := &output.MockOutput{}
 		runner := &Runner{
-			Prompt:          promptMock,
+			InputPrompter:   promptMock,
 			Workspace:       workspace,
 			Format:          "table",
 			Output:          outputSink,
@@ -221,7 +221,7 @@ func Test_Show(t *testing.T) {
 			Times(1)
 
 		workspace := &workspaces.Workspace{
-			Connection: map[string]interface{}{
+			Connection: map[string]any{
 				"kind":    "kubernetes",
 				"context": "kind-kind",
 			},
@@ -241,10 +241,10 @@ func Test_Show(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Environment '%s' does not exist or has already been deleted.",
-				Params: []interface{}{"test-env"},
+				Params: []any{"test-env"},
 			},
 		}
 

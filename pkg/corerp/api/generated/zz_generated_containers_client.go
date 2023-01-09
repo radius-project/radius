@@ -26,9 +26,9 @@ import (
 // ContainersClient contains the methods for the Containers group.
 // Don't use this type directly, use NewContainersClient() instead.
 type ContainersClient struct {
-	host string
+	host      string
 	rootScope string
-	pl runtime.Pipeline
+	pl        runtime.Pipeline
 }
 
 // NewContainersClient creates a new instance of ContainersClient with the specified values.
@@ -49,8 +49,8 @@ func NewContainersClient(rootScope string, credential azcore.TokenCredential, op
 	}
 	client := &ContainersClient{
 		rootScope: rootScope,
-		host: ep,
-pl: pl,
+		host:      ep,
+		pl:        pl,
 	}
 	return client, nil
 }
@@ -195,7 +195,7 @@ func (client *ContainersClient) getHandleResponse(resp *http.Response) (Containe
 // NewListByScopePager - List all containers in the given scope.
 // Generated from API version 2022-03-15-privatepreview
 // options - ContainersClientListByScopeOptions contains the optional parameters for the ContainersClient.ListByScope method.
-func (client *ContainersClient) NewListByScopePager(options *ContainersClientListByScopeOptions) (*runtime.Pager[ContainersClientListByScopeResponse]) {
+func (client *ContainersClient) NewListByScopePager(options *ContainersClientListByScopeOptions) *runtime.Pager[ContainersClientListByScopeResponse] {
 	return runtime.NewPager(runtime.PagingHandler[ContainersClientListByScopeResponse]{
 		More: func(page ContainersClientListByScopeResponse) bool {
 			return page.NextLink != nil && len(*page.NextLink) > 0
@@ -295,4 +295,3 @@ func (client *ContainersClient) updateHandleResponse(resp *http.Response) (Conta
 	}
 	return result, nil
 }
-

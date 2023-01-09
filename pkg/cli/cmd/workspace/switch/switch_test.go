@@ -78,7 +78,7 @@ func Test_Run(t *testing.T) {
 			Items: map[string]workspaces.Workspace{
 				"current-workspace": {
 					Environment: "test-env",
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 			},
 		})
@@ -96,10 +96,10 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Default environment is already set to %v",
-				Params: []interface{}{"current-workspace"},
+				Params: []any{"current-workspace"},
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
@@ -115,7 +115,7 @@ func Test_Run(t *testing.T) {
 			Items: map[string]workspaces.Workspace{
 				"new-workspace": {
 					Environment: "test-env",
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 			},
 		})
@@ -137,10 +137,10 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Switching default workspace to %v",
-				Params: []interface{}{"new-workspace"},
+				Params: []any{"new-workspace"},
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)
@@ -156,11 +156,11 @@ func Test_Run(t *testing.T) {
 			Items: map[string]workspaces.Workspace{
 				"current-workspace": {
 					Environment: "test-env",
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 				"new-workspace": {
 					Environment: "test-env",
-					Connection:  map[string]interface{}{},
+					Connection:  map[string]any{},
 				},
 			},
 		})
@@ -182,10 +182,10 @@ func Test_Run(t *testing.T) {
 		err := runner.Run(context.Background())
 		require.NoError(t, err)
 
-		expected := []interface{}{
+		expected := []any{
 			output.LogOutput{
 				Format: "Switching default workspace from %v to %v",
-				Params: []interface{}{"current-workspace", "new-workspace"},
+				Params: []any{"current-workspace", "new-workspace"},
 			},
 		}
 		require.Equal(t, expected, outputSink.Writes)

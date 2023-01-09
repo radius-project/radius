@@ -6,11 +6,9 @@
 package common
 
 import (
-	"errors"
 	"fmt"
 	"strings"
 
-	"github.com/manifoldco/promptui"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/output"
 	"github.com/project-radius/radius/pkg/cli/prompt"
@@ -90,7 +88,7 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactiv
 	}
 	items = append(items, SelectExistingEnvironmentCreateSentinel)
 
-	_, choice, err := prompter.RunSelect(prompt.SelectionPrompter(SelectExistingEnvironmentPrompt, items))
+	choice, err := prompter.GetListInput(items, SelectExistingEnvironmentPrompt)
 	if err != nil {
 		return "", err
 	}
@@ -104,7 +102,7 @@ func SelectExistingEnvironment(cmd *cobra.Command, defaultVal string, interactiv
 }
 
 // Selects the environment flag name from user if interactive or sets it from flags or to the default value otherwise
-func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, prompter prompt.Interface) (string, error) {
+func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bool, inputPrompter prompt.Interface) (string, error) {
 	var envStr string
 	var err error
 
@@ -113,9 +111,12 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 		return "", err
 	}
 	if interactive && envStr == "" {
-		envStr, err = prompter.RunPrompt(prompt.TextPromptWithDefault(EnterEnvironmentNamePrompt, defaultVal, prompt.ResourceName))
+		envStr, err = inputPrompter.GetTextInput(EnterEnvironmentNamePrompt, defaultVal)
 		if err != nil {
 			return "", err
+		}
+		if envStr == "" {
+			return "", fmt.Errorf("environmentName cannot be empty")
 		}
 	} else {
 		if envStr == "" {
@@ -136,24 +137,12 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 	var val string
 	var err error
 	if interactive {
-		namespaceSelector := promptui.Prompt{
-			Label:   EnterNamespacePrompt,
-			Default: defaultVal,
-			Validate: func(s string) error {
-				valid, msg, err := prompt.EmptyValidator(s)
-				if err != nil {
-					return err
-				}
-				if !valid {
-					return errors.New(msg)
-				}
-				return nil
-			},
-			AllowEdit: true,
-		}
-		val, err = prompter.RunPrompt(namespaceSelector)
+		val, err = prompter.GetTextInput(EnterNamespacePrompt, defaultVal)
 		if err != nil {
 			return "", err
+		}
+		if val == "" {
+			return "", fmt.Errorf("Namespace cannot be empty")
 		}
 	} else {
 		val, _ = cmd.Flags().GetString("namespace")

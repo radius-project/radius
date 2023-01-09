@@ -86,7 +86,7 @@ func (i *Impl) GetPortforward() portforward.Interface {
 	return i.Portforward
 }
 
-// GetPrompter fetches the interface to prompt user for values
+// GetPrompter fetches the interface to bubble tea prompt
 func (i *Impl) GetPrompter() prompt.Interface {
 	return i.Prompter
 }

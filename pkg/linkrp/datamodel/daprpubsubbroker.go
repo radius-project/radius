@@ -29,12 +29,12 @@ func (daprPubSub *DaprPubSubBroker) ResourceTypeName() string {
 type DaprPubSubBrokerProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState v1.ProvisioningState   `json:"provisioningState,omitempty"`
-	Topic             string                 `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
-	Mode              LinkMode               `json:"mode"`
-	Metadata          map[string]interface{} `json:"metadata,omitempty"`
-	Recipe            LinkRecipe             `json:"recipe"`
-	Resource          string                 `json:"resource,omitempty"`
-	Type              string                 `json:"type,omitempty"`
-	Version           string                 `json:"version,omitempty"`
+	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
+	Topic             string               `json:"topic,omitempty"` // Topic name of the Azure ServiceBus resource. Provided by the user.
+	Mode              LinkMode             `json:"mode"`
+	Metadata          map[string]any       `json:"metadata,omitempty"`
+	Recipe            LinkRecipe           `json:"recipe"`
+	Resource          string               `json:"resource,omitempty"`
+	Type              string               `json:"type,omitempty"`
+	Version           string               `json:"version,omitempty"`
 }

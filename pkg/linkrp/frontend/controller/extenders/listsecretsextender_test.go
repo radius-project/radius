@@ -37,7 +37,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 	ctx := context.Background()
 
 	_, extenderDataModel, _ := getTestModels20220315privatepreview()
-	expectedSecrets := map[string]interface{}{
+	expectedSecrets := map[string]any{
 		"accountSid": "sid",
 		"authToken:": "token",
 	}
@@ -107,7 +107,7 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 		_ = resp.Apply(ctx, w, req)
 		require.Equal(t, 200, w.Result().StatusCode)
 
-		actualOutput := &map[string]interface{}{}
+		actualOutput := &map[string]any{}
 		_ = json.Unmarshal(w.Body.Bytes(), actualOutput)
 
 		require.Equal(t, expectedSecrets["accountSid"], (*actualOutput)["accountSid"])

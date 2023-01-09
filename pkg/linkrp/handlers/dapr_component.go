@@ -79,12 +79,12 @@ func (handler *daprComponentHandler) Put(ctx context.Context, resource *outputre
 
 func (handler *daprComponentHandler) PatchNamespace(ctx context.Context, namespace string) error {
 	ns := &unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": "v1",
 			"kind":       "Namespace",
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"name": namespace,
-				"labels": map[string]interface{}{
+				"labels": map[string]any{
 					kubernetes.LabelManagedBy: kubernetes.LabelManagedByRadiusRP,
 				},
 			},
@@ -106,10 +106,10 @@ func (handler *daprComponentHandler) Delete(ctx context.Context, resource *outpu
 	}
 
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": identity.APIVersion,
 			"kind":       identity.Kind,
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": identity.Namespace,
 				"name":      identity.Name,
 			},

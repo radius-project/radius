@@ -18,7 +18,7 @@ func Test_Transform_Success(t *testing.T) {
 	ctx := context.Background()
 	redisTransformer := AzureTransformer{}
 
-	testComputedValues := map[string]interface{}{
+	testComputedValues := map[string]any{
 		renderers.Host: "test-hostname",
 		renderers.Port: "1234",
 	}
@@ -36,14 +36,14 @@ func Test_Transform_Error(t *testing.T) {
 
 	testCases := []struct {
 		description        string
-		primaryKey         interface{}
-		computedValues     map[string]interface{}
+		primaryKey         any
+		computedValues     map[string]any
 		expectedErrMessage string
 	}{
 		{
 			"Invalid primary key format",
 			1234,
-			map[string]interface{}{
+			map[string]any{
 				renderers.Host: "test-hostname",
 				renderers.Port: "1234",
 			},
@@ -52,7 +52,7 @@ func Test_Transform_Error(t *testing.T) {
 		{
 			"Missing hostname",
 			"test-password",
-			map[string]interface{}{
+			map[string]any{
 				renderers.Port: "1234",
 			},
 			"hostname is required to build Redis connection string",
@@ -60,7 +60,7 @@ func Test_Transform_Error(t *testing.T) {
 		{
 			"Missing port",
 			"test-password",
-			map[string]interface{}{
+			map[string]any{
 				renderers.Host: "test-hostname",
 			},
 			"port is required to build Redis connection string",

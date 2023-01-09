@@ -32,14 +32,14 @@ func Test_ListAWSResources(t *testing.T) {
 	firstTestResource := CreateKinesisStreamTestResource(uuid.NewString())
 	secondTestResource := CreateKinesisStreamTestResource(uuid.NewString())
 
-	firstTestResourceResponseBody := map[string]interface{}{
+	firstTestResourceResponseBody := map[string]any{
 		"RetentionPeriodHours": 178,
 		"ShardCount":           3,
 	}
 	firstTestResourceResponseBodyBytes, err := json.Marshal(firstTestResourceResponseBody)
 	require.NoError(t, err)
 
-	secondTestResourceResponseBody := map[string]interface{}{
+	secondTestResourceResponseBody := map[string]any{
 		"RetentionPeriodHours": 180,
 		"ShardCount":           2,
 	}
@@ -73,22 +73,22 @@ func Test_ListAWSResources(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
-		"value": []interface{}{
-			map[string]interface{}{
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
+		"value": []any{
+			map[string]any{
 				"id":   firstTestResource.SingleResourcePath,
 				"name": aws.String(firstTestResource.ResourceName),
 				"type": firstTestResource.ResourceType,
-				"properties": map[string]interface{}{
+				"properties": map[string]any{
 					"RetentionPeriodHours": float64(178),
 					"ShardCount":           float64(3),
 				},
 			},
-			map[string]interface{}{
+			map[string]any{
 				"id":   secondTestResource.SingleResourcePath,
 				"name": aws.String(secondTestResource.ResourceName),
 				"type": secondTestResource.ResourceType,
-				"properties": map[string]interface{}{
+				"properties": map[string]any{
 					"RetentionPeriodHours": float64(180),
 					"ShardCount":           float64(2),
 				},
@@ -120,8 +120,8 @@ func Test_ListAWSResourcesEmpty(t *testing.T) {
 	actualResponse, err := awsController.Run(ctx, nil, request)
 	require.NoError(t, err)
 
-	expectedResponse := armrpc_rest.NewOKResponse(map[string]interface{}{
-		"value": []interface{}{},
+	expectedResponse := armrpc_rest.NewOKResponse(map[string]any{
+		"value": []any{},
 	})
 
 	require.Equal(t, expectedResponse, actualResponse)

@@ -50,7 +50,7 @@ func listApplications(cmd *cobra.Command, args []string) error {
 	return printOutput(cmd, applicationList, false)
 }
 
-func printOutput(cmd *cobra.Command, obj interface{}, isLegacy bool) error {
+func printOutput(cmd *cobra.Command, obj any, isLegacy bool) error {
 	format, err := cli.RequireOutput(cmd)
 	if err != nil {
 		return err

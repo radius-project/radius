@@ -58,7 +58,7 @@ func (e *CreateOrUpdateHTTPRoute) Run(ctx context.Context, w http.ResponseWriter
 		return r, err
 	}
 
-	if r, err := rp_frontend.PrepareRadiusResource(ctx, old, newResource); r != nil || err != nil {
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, newResource, old, e.Options()); r != nil || err != nil {
 		return r, err
 	}
 

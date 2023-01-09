@@ -83,7 +83,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 	}
 
 	defer resp.Body.Close()
-	var jsonBody map[string]interface{}
+	var jsonBody map[string]any
 	if json.NewDecoder(resp.Body).Decode(&jsonBody) != nil {
 		return "", nil
 	}

@@ -21,7 +21,7 @@ func TestRedisCacheDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
-		apiModelType  interface{}
+		apiModelType  any
 		err           error
 	}{
 		{
@@ -95,7 +95,7 @@ func TestRedisCacheSecretsDataModelToVersioned(t *testing.T) {
 	testset := []struct {
 		dataModelFile string
 		apiVersion    string
-		apiModelType  interface{}
+		apiModelType  any
 		err           error
 	}{
 		{

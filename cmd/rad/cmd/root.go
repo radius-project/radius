@@ -33,9 +33,9 @@ import (
 	group "github.com/project-radius/radius/pkg/cli/cmd/group"
 	provider "github.com/project-radius/radius/pkg/cli/cmd/provider"
 	"github.com/project-radius/radius/pkg/cli/cmd/radInit"
-	recipe_create "github.com/project-radius/radius/pkg/cli/cmd/recipe/create"
-	recipe_delete "github.com/project-radius/radius/pkg/cli/cmd/recipe/delete"
 	recipe_list "github.com/project-radius/radius/pkg/cli/cmd/recipe/list"
+	recipe_register "github.com/project-radius/radius/pkg/cli/cmd/recipe/register"
+	recipe_unregister "github.com/project-radius/radius/pkg/cli/cmd/recipe/unregister"
 	resource_delete "github.com/project-radius/radius/pkg/cli/cmd/resource/delete"
 	resource_list "github.com/project-radius/radius/pkg/cli/cmd/resource/list"
 	resource_show "github.com/project-radius/radius/pkg/cli/cmd/resource/show"
@@ -91,7 +91,7 @@ func prettyPrintRPError(err error) string {
 	return err.Error()
 }
 
-func prettyPrintJSON(o interface{}) (string, error) {
+func prettyPrintJSON(o any) (string, error) {
 	b, err := json.MarshalIndent(o, "", "  ")
 	if err != nil {
 		return "", err
@@ -160,11 +160,11 @@ func initSubCommands() {
 	listRecipeCmd, _ := recipe_list.NewCommand(framework)
 	recipeCmd.AddCommand(listRecipeCmd)
 
-	createRecipeCmd, _ := recipe_create.NewCommand(framework)
-	recipeCmd.AddCommand(createRecipeCmd)
+	registerRecipeCmd, _ := recipe_register.NewCommand(framework)
+	recipeCmd.AddCommand(registerRecipeCmd)
 
-	deleteRecipeCmd, _ := recipe_delete.NewCommand(framework)
-	recipeCmd.AddCommand(deleteRecipeCmd)
+	unregisterRecipeCmd, _ := recipe_unregister.NewCommand(framework)
+	recipeCmd.AddCommand(unregisterRecipeCmd)
 
 	providerCmd := provider.NewCommand(framework)
 	RootCmd.AddCommand(providerCmd)

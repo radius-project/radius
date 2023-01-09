@@ -100,10 +100,10 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "Resource '%s' of type '%s' does not exist or has already been deleted",
-					Params: []interface{}{"test-container", "containers"},
+					Params: []any{"test-container", "containers"},
 				},
 			}
 			require.Equal(t, expected, outputSink.Writes)
@@ -132,7 +132,7 @@ func Test_Run(t *testing.T) {
 			err := runner.Run(context.Background())
 			require.NoError(t, err)
 
-			expected := []interface{}{
+			expected := []any{
 				output.LogOutput{
 					Format: "Resource deleted",
 				},

@@ -46,7 +46,7 @@ type responseWriterInterceptor struct {
 	statusCode int
 }
 
-//Customized response writer to fetch the response status in the middleware
+// Customized response writer to fetch the response status in the middleware
 func (w *responseWriterInterceptor) WriteHeader(statusCode int) {
 	w.statusCode = statusCode
 	w.ResponseWriter.WriteHeader(statusCode)

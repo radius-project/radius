@@ -91,7 +91,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]interface{})
+	properties := resource.Resource.(map[string]any)
 
 	err := handler.deleteDaprStateStore(ctx, properties)
 	if err != nil {
@@ -108,27 +108,27 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 	}
 
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      kubernetes.NormalizeResourceName(properties[ResourceName]),
 				"labels":    kubernetes.MakeDescriptiveLabels(properties[ApplicationName], properties[ResourceName], DaprStateStoreResourceType),
 			},
-			"spec": map[string]interface{}{
+			"spec": map[string]any{
 				"type":    "state.azure.tablestorage",
 				"version": "v1",
-				"metadata": []interface{}{
-					map[string]interface{}{
+				"metadata": []any{
+					map[string]any{
 						"name":  "accountName",
 						"value": accountName,
 					},
-					map[string]interface{}{
+					map[string]any{
 						"name":  "accountKey",
 						"value": accountKey,
 					},
-					map[string]interface{}{
+					map[string]any{
 						"name":  "tableName",
 						"value": "dapr",
 					},
@@ -177,12 +177,12 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]interface{}) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]any) error {
 	item := unstructured.Unstructured{
-		Object: map[string]interface{}{
+		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
 			"kind":       properties[KubernetesKindKey],
-			"metadata": map[string]interface{}{
+			"metadata": map[string]any{
 				"namespace": properties[KubernetesNamespaceKey],
 				"name":      properties[ResourceName],
 			},

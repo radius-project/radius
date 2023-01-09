@@ -15,7 +15,7 @@ func init() {
 	resourceCmd.PersistentFlags().StringP("workspace", "w", "", "The workspace name")
 }
 
-func NewResourceCommand() *cobra.Command{
+func NewResourceCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "resource",
 		Short: "Manage resources",
