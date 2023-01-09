@@ -186,7 +186,7 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 	// Do not use the Del/Set methods on header as it can change the header casing to canonical form
 	resp.Header[headerName] = []string{val}
 
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Converting %s header from %s to %s", headerName, header[0], val))
 	return nil
 }

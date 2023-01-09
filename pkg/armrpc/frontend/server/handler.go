@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -129,7 +130,7 @@ func ConfigureDefaultHandlers(
 
 // Responds with an HTTP 500
 func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	logger.V(ucplog.Debug).Error(err, "unhandled error")
 
 	var response rest.Response

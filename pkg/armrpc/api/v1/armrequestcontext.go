@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -169,7 +170,7 @@ type ARMRequestContext struct {
 
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
-	log := ucplog.GetLogger(r.Context())
+	log := logr.FromContextOrDiscard(r.Context())
 	path := strings.TrimPrefix(r.URL.Path, pathBase)
 	azID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {

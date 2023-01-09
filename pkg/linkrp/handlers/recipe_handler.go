@@ -14,13 +14,13 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -59,7 +59,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, err
 	}
 
-	logger := ucplog.GetLogger(ctx).WithValues(
+	logger := logr.FromContextOrDiscard(ctx).WithValues(
 		logging.LogFieldResourceGroup, resourceGroup,
 		logging.LogFieldSubscriptionID, subscriptionID,
 	)

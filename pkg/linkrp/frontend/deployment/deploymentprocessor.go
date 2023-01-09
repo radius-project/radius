@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -33,7 +34,6 @@ import (
 	rp_util "github.com/project-radius/radius/pkg/rp/util"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -83,7 +83,7 @@ type EnvironmentMetadata struct {
 }
 
 func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
-	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, id.String())
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
 	renderer, err := dp.getResourceRenderer(id)
@@ -156,7 +156,7 @@ func (dp *deploymentProcessor) getResourceRenderer(id resources.ID) (renderers.R
 // Deploys rendered output resources in order of dependencies
 // returns updated outputresource properties and computed values
 func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error) {
-	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceID.String())
 	// Deploy
 	logger.Info("Deploying radius resource")
 
@@ -225,7 +225,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 }
 
 func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id resources.ID, outputResource *outputresource.OutputResource, rendererOutput renderers.RendererOutput) (computedValues map[string]any, err error) {
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Deploying output resource: LocalID: %s, resource type: %q\n", outputResource.LocalID, outputResource.ResourceType))
 
 	outputResourceModel, err := dp.appmodel.LookupOutputResourceModel(outputResource.ResourceType)
@@ -277,7 +277,7 @@ func (dp *deploymentProcessor) deployOutputResource(ctx context.Context, id reso
 }
 
 func (dp *deploymentProcessor) Delete(ctx context.Context, resourceData ResourceData) error {
-	logger := ucplog.GetLogger(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, resourceData.ID)
 
 	orderedOutputResources, err := outputresource.OrderOutputResources(resourceData.OutputResources)
 	if err != nil {

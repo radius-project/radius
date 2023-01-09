@@ -50,7 +50,7 @@ func ClientCertValidator(armCertMgr *ArmCertManager) func(http.Handler) http.Han
 }
 
 func handleErr(ctx context.Context, w http.ResponseWriter, req *http.Request) {
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	resp := rest.NewClientAuthenticationFailedARMResponse()
 	err := resp.Apply(req.Context(), w, req)
 	if err != nil {
