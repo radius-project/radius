@@ -1,0 +1,85 @@
+// ------------------------------------------------------------
+// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+// ------------------------------------------------------------
+
+import "@cadl-lang/rest";
+import "@cadl-lang/versioning";
+import "@azure-tools/cadl-azure-core";
+import "@azure-tools/cadl-azure-resource-manager";
+import "@azure-tools/cadl-providerhub";
+
+import "@cadl-lang/openapi";
+
+import "../customRootScope.cadl";
+import "../aksrootscope.cadl";
+
+using Cadl.Http;
+using Cadl.Rest;
+using Cadl.Versioning;
+using Azure.ResourceManager;
+using Azure.ResourceManager.Radius;
+using OpenAPI;
+
+@service({
+    title: "UCP Management APIs",
+    version: "2022-03-15-privatepreview",
+  })
+@doc("REST APIs for UCP")
+@versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
+namespace Ucp;
+
+@doc("Plane kinds supported.")
+enum PlaneKind {
+    UCPNative,
+    Azure,
+    AWS
+}
+
+// model PlaneResourceProperties extends BasicResourceProperties {
+//     @doc("URL to forward requests to for non UCP Native Plane")
+//     url: string;
+//     //         "resourceProviders": {
+//     //     "description": "Resource Providers for UCP Native Plane",
+//     //     "type": "object",
+//     //     "additionalProperties": {
+//     //       "type": "string"
+//     //     }
+//     //   }
+//     @doc("Resource Providers for UCP Native Plane")
+//     resourceProviders: string[]; // TODO additional properties
+    
+// }
+
+@doc("UCP ResourceGroup.")
+model ResourceGroupResource extends TrackedResource<BasicResourceProperties> {
+}
+
+@doc("Basic properties of a UCP resource.")
+model BasicResourceProperties {
+}
+
+enum CredentialStorageKind {
+    Internal,
+}
+
+@doc("Credential to a plane instance")
+model CredentialResource extends TrackedResource<CredentialResourceProperties> {
+    kind: CredentialStorageKind;
+}
+
+@discriminator("Internal")
+model InternalCredentialStorageProperties extends CredentialResourceProperties {
+    @visibility("read")
+    @doc("The name of secret stored.")
+    secretName: string
+}
+
+model CredentialResourceProperties extends BasicResourceProperties {
+    kind: string;
+    storage: CredentialStorageProperties;
+}
+
+model CredentialStorageProperties {
+
+}
