@@ -125,11 +125,6 @@ func NewTestLogger(t *testing.T) (logr.Logger, error) {
 	return log, nil
 }
 
-// GetLogger gets the logr.Logger from supplied context
-func GetLogger(ctx context.Context) logr.Logger {
-	return logr.FromContextOrDiscard(ctx)
-}
-
 // WrapLogContext modifies the log context in provided context to include the keyValues provided, and returns this modified context
 func WrapLogContext(ctx context.Context, keyValues ...any) context.Context {
 	logger := logr.FromContextOrDiscard(ctx)
