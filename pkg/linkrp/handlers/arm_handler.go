@@ -13,10 +13,11 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
 	"github.com/Azure/go-autorest/autorest"
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
@@ -60,7 +61,7 @@ func (handler *armHandler) Delete(ctx context.Context, resource *outputresource.
 		return err
 	}
 
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldArmResourceID, id)
 	logger.Info("Deleting ARM resource")
 	parsed, err := ucpresources.ParseResource(id)
 	if err != nil {
@@ -102,7 +103,7 @@ func getByID(ctx context.Context, auth autorest.Authorizer, id, apiVersion strin
 		return nil, err
 	}
 
-	logger := radlogger.GetLogger(ctx).WithValues(radlogger.LogFieldArmResourceID, id)
+	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldArmResourceID, id)
 	logger.Info("Fetching arm resource by id")
 	rc := clients.NewGenericResourceClient(parsed.FindScope(ucpresources.SubscriptionsSegment), auth)
 	resource, err := rc.GetByID(ctx, id, apiVersion)

@@ -14,12 +14,13 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -58,9 +59,9 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, err
 	}
 
-	logger := radlogger.GetLogger(ctx).WithValues(
-		radlogger.LogFieldResourceGroup, resourceGroup,
-		radlogger.LogFieldSubscriptionID, subscriptionID,
+	logger := logr.FromContextOrDiscard(ctx).WithValues(
+		logging.LogFieldResourceGroup, resourceGroup,
+		logging.LogFieldSubscriptionID, subscriptionID,
 	)
 	logger.Info(fmt.Sprintf("Deploying recipe: %q, template: %q", recipe.Name, recipe.TemplatePath))
 

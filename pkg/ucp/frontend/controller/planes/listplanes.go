@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -16,7 +17,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/datamodel/converter"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*ListPlanes)(nil)
@@ -33,7 +33,7 @@ func NewListPlanes(opts ctrl.Options) (armrpc_controller.Controller, error) {
 
 func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(e.Options.BasePath, req.URL.Path)
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	query := store.Query{
 		RootScope:    path,

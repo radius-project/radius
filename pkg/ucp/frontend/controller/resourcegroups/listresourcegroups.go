@@ -9,6 +9,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -18,7 +19,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*ListResourceGroups)(nil)
@@ -35,7 +35,7 @@ func NewListResourceGroups(opts ctrl.Options) (armrpc_controller.Controller, err
 
 func (r *ListResourceGroups) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(r.Options.BasePath, req.URL.Path)
-	logger := ucplog.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	var query store.Query
 	planeType, planeName, _, err := resources.ExtractPlanesPrefixFromURLPath(path)
 	if err != nil {
