@@ -19,7 +19,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/defaultoperation"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 const (
@@ -131,7 +130,7 @@ func ConfigureDefaultHandlers(
 // Responds with an HTTP 500
 func handleError(ctx context.Context, w http.ResponseWriter, req *http.Request, err error) {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.V(ucplog.Debug).Error(err, "unhandled error")
+	logger.Error(err, "unhandled error")
 
 	var response rest.Response
 	// Try to use the ARM format to send back the error info
