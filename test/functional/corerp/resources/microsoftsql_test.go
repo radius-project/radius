@@ -21,12 +21,14 @@ func Test_MicrosoftSQL(t *testing.T) {
 
 	var adminUsername, adminPassword string
 	mssqlresourceid := "mssqlresourceid=" + os.Getenv("MSSQL_RESOURCE_ID")
-
+	if mssqlresourceid == "" {
+		t.Error("failed to get mssqlresource id from the environment")
+	}
 	if os.Getenv("MSSQL_USERNAME") != "" && os.Getenv("MSSQL_PASSWORD") != "" {
 		adminUsername = "adminUsername=" + os.Getenv("MSSQL_USERNAME")
 		adminPassword = "adminPassword=" + os.Getenv("MSSQL_PASSWORD")
 	} else {
-		t.Error("Username or password is missing")
+		t.Error("failed to get msql username or password  from the environment")
 	}
 
 	appNamespace := "default-corerp-resources-microsoft-sql"

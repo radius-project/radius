@@ -61,6 +61,9 @@ func Test_DaprPubSubServiceBus(t *testing.T) {
 	name := "corerp-resources-dapr-pubsub-servicebus"
 
 	namespaceresourceid := "namespaceresourceid=" + os.Getenv("SERVICEBUS_RESOURCE_ID")
+	if namespaceresourceid == "" {
+		t.Error("failed to get the namespace id from the environment")
+	}
 	appNamespace := "default-corerp-resources-dapr-pubsub-servicebus"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{

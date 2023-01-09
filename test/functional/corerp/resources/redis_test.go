@@ -70,6 +70,9 @@ func Test_RedisAzure(t *testing.T) {
 	template := "testdata/corerp-resources-redis-azure.bicep"
 	name := "corerp-resources-redis-azure"
 	redisresourceid := "redisresourceid=" + os.Getenv("REDIS_RESOURCE_ID")
+	if redisresourceid == "" {
+		t.Error("failed to get the redis resource id from the environment")
+	}
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{

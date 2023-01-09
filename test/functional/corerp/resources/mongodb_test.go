@@ -22,6 +22,9 @@ func Test_MongoDB(t *testing.T) {
 	name := "corerp-resources-mongodb"
 
 	mongodbresourceid := "mongodbresourceid=" + os.Getenv("MONGODB_RESOURCE_ID")
+	if mongodbresourceid == "" {
+		t.Error("failed to get the mongoDB resource id from the environment")
+	}
 	appNamespace := "default-corerp-resources-mongodb"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{

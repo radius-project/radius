@@ -112,5 +112,3 @@ output sqlServerId string = server::db.id
 output tableStorageAccId string = storageAccount::tableServices::table.id
 output namespace string = namespace.id
 output mongoDatabaseId string = account::dbinner.id
-output msqlUserName string = adminUsername
-output msqlPassword string = adminPassword

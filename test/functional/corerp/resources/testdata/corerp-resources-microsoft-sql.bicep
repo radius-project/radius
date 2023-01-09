@@ -16,6 +16,7 @@ param environment string = 'test'
 param adminUsername string
 
 @description('Specifies the SQL password.')
+@secure()
 param adminPassword string
 
 param mssqlresourceid string
