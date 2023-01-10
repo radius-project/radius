@@ -1,0 +1,22 @@
+
+@doc("Plane kinds supported.")
+enum PlaneKind {
+    UCPNative,
+    Azure,
+    AWS
+}
+
+// model PlaneResourceProperties extends BasicResourceProperties {
+//     @doc("URL to forward requests to for non UCP Native Plane")
+//     url: string;
+//     //         "resourceProviders": {
+//     //     "description": "Resource Providers for UCP Native Plane",
+//     //     "type": "object",
+//     //     "additionalProperties": {
+//     //       "type": "string"
+//     //     }
+//     //   }
+//     @doc("Resource Providers for UCP Native Plane")
+//     resourceProviders: string[]; // TODO additional properties
+    
+// }

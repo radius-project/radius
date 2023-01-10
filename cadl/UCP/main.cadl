@@ -5,3 +5,4 @@ import "@azure-tools/cadl-azure-core";
 import "@azure-tools/cadl-azure-resource-manager";
 
 import "./ucp.cadl";
+import "./customPlaneScope.cadl";

@@ -14,13 +14,16 @@ import "@cadl-lang/openapi";
 import "../customRootScope.cadl";
 import "../aksrootscope.cadl";
 
+
 using Cadl.Http;
 using Cadl.Rest;
 using Cadl.Versioning;
 using Azure.ResourceManager;
 using Azure.ResourceManager.Radius;
+using Azure.ResourceManager.Foundations;
 using OpenAPI;
 
+@armProviderNamespace
 @service({
     title: "UCP Management APIs",
     version: "2022-03-15-privatepreview",
@@ -29,30 +32,10 @@ using OpenAPI;
 @versionedDependency(Azure.ResourceManager.Versions.v1_0_Preview_1)
 namespace Ucp;
 
-@doc("Plane kinds supported.")
-enum PlaneKind {
-    UCPNative,
-    Azure,
-    AWS
-}
-
-// model PlaneResourceProperties extends BasicResourceProperties {
-//     @doc("URL to forward requests to for non UCP Native Plane")
-//     url: string;
-//     //         "resourceProviders": {
-//     //     "description": "Resource Providers for UCP Native Plane",
-//     //     "type": "object",
-//     //     "additionalProperties": {
-//     //       "type": "string"
-//     //     }
-//     //   }
-//     @doc("Resource Providers for UCP Native Plane")
-//     resourceProviders: string[]; // TODO additional properties
-    
-// }
+interface Operations extends Azure.ResourceManager.Operations {}
 
 @doc("UCP ResourceGroup.")
-model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
+model ResourceGroupResource extends TrackedResource<BasicResourceProperties> {
 }
 
 @doc("Basic properties of a UCP resource.")
@@ -63,30 +46,105 @@ enum CredentialStorageKind {
     Internal,
 }
 
-@doc("Credential to a plane instance")
-model CredentialResource extends TrackedResource<CredentialResourceProperties> {
-    kind: CredentialStorageKind;
+@doc("UCP PlaneResource.")
+model PlaneResource extends TrackedResource<PlaneResourceProperties> {
 }
 
+@doc("Plane kinds supported.")
+enum PlaneKind {
+    UCPNative,
+    Azure,
+    AWS
+}
+
+@doc("Plane properties.")
+model PlaneResourceProperties {
+    @doc("The kind of plane")
+    kind: PlaneKind;
+
+    @doc("URL to forward requests to for non UCP Native Plane")
+    url: string;
+    // TODO this requires additionalProperties
+    @doc("Resource Providers for UCP Native Plane")
+    resourceProviders: string[]
+}
+
+@doc("Credential to a plane instance")
+model CredentialResource is TrackedResource<CredentialResourceProperties> {
+    @doc("The name of the Credential Resource")
+    @maxLength(63)
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @key("credential")
+    @path
+    @segment("internal")
+    @extension("x-ms-parameter-location", "method")
+    name: string;
+}
+
+@doc("Internal credential storage properties")
 @discriminator("Internal")
 model InternalCredentialStorageProperties extends CredentialResourceProperties {
-    @visibility("read")
     @doc("The name of secret stored.")
+    @visibility("read")
     secretName: string
 }
 
+@doc("Credential properties")
 model CredentialResourceProperties extends BasicResourceProperties {
+    @doc("Provisioning state of the redis cache link at the time the operation was called")
+    @visibility("read")
+    provisioningState?: ProvisioningState;
+    @doc("The kind of secret")
     kind: string;
+    @doc("The storage properties")
     storage: CredentialStorageProperties;
 }
 
+@doc("Provisioning state of the link at the time the operation was called")
+enum ProvisioningState {
+  Succeeded,
+  Failed,
+  Canceled,
+  Provisioning,
+  Updating,
+  Deleting,
+  Accepted,
+}
+
+@doc("Credential storage properties")
 model CredentialStorageProperties {
+    @doc("Credential store kinds supported.")
+    kind: CredentialStorageKind;
+}
+
+@doc("Service Principal credential storage properties")
+@discriminator("azure.com.serviceprincipal")
+model AzureServicePrincipalProperties extends CredentialResourceProperties {
+    @doc("clientId when the CredentialKind is ServicePrincipal")
+    clientId: string;
+    @doc("secret when the CredentialKind is ServicePrincipal")
+    @extension("x-ms-secret", true)
+    secret: string;
+    @doc("tenantId when the CredentialKind is ServicePrincipal")
+    tenantId: string;
+}
+
+@doc("AWS credential storage properties")
+@discriminator("aws.com.iam")
+model AwsCredentialProperties extends CredentialResourceProperties {
+    @doc("Access key ID for AWS identity")
+    @extension("x-ms-secret", true)
+    accessKeyId: string;
+    @doc("Secret Access Key for AWS identity")
+    @extension("x-ms-secret", true)
+    secretAccessKey: string;
 }
 
 @armResourceOperations
-interface ResourceGroup
-  extends Radius.RootScopeResourceOperations<
-      ResourceGroupResource,
-      BasicResourceProperties,
-      RootScopeParam
+interface Planes
+  extends PlaneResourceOperations<
+      PlaneResource,
+      PlaneResourceProperties,
+      PlaneParam
     > {}
+    
