@@ -20,6 +20,7 @@ import (
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/radlogger"
+	radresource "github.com/project-radius/radius/pkg/ucp/resources"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 )
@@ -30,7 +31,7 @@ const deploymentPrefix = "recipe"
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.ContextMeta) ([]string, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -46,7 +47,7 @@ type azureRecipeHandler struct {
 // DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers) (deployedResources []string, err error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.ContextMeta) (deployedResources []string, err error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
@@ -88,6 +89,17 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, err
 	}
 
+	// if the recipe template has the context parameter defined then add it to the parameter for deployment
+	parameters := map[string]interface{}{}
+	_, isContextParamterDefined := recipeData["parameters"].(map[string]interface{})["context"]
+	if isContextParamterDefined {
+		linkContext, err := createContextParameter(&contextMeta)
+		if err != nil {
+			return nil, err
+		}
+		parameters["context"] = *linkContext
+	}
+
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -97,8 +109,9 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		deploymentName,
 		resources.Deployment{
 			Properties: &resources.DeploymentProperties{
-				Template: recipeData,
-				Mode:     resources.DeploymentModeIncremental,
+				Template:   recipeData,
+				Parameters: parameters,
+				Mode:       resources.DeploymentModeIncremental,
 			},
 		},
 	)
@@ -200,4 +213,30 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 		return "", "", conv.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
+}
+
+// createContextParameter creates the context parameter for the recipe with the link, environment and application info
+func createContextParameter(contextMeta *datamodel.ContextMeta) (*datamodel.Context, error) {
+	linkContext := datamodel.Context{}
+	linkContext.Link.ID = contextMeta.LinkID.String()
+	linkContext.Link.Name = contextMeta.LinkID.Name()
+	linkContext.Link.Type = strings.ToLower(contextMeta.LinkID.Type())
+	if contextMeta.ApplicationID != "" {
+		parsedApp, err := radresource.ParseResource(contextMeta.ApplicationID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse ApplicationID : %q while building the context parameter", contextMeta.ApplicationID)
+		}
+		linkContext.Application.ID = contextMeta.ApplicationID
+		linkContext.Application.Name = parsedApp.Name()
+		linkContext.Runtime.Kubernetes.ApplicationNamespace = contextMeta.ApplicationNamespace
+	}
+	linkContext.Environment.ID = contextMeta.EnvironmentID
+	parsedEnv, err := radresource.ParseResource(contextMeta.EnvironmentID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse EnvironmentID : %q while building the context parameter", contextMeta.EnvironmentID)
+	}
+	linkContext.Environment.Name = parsedEnv.Name()
+	linkContext.Runtime.Kubernetes.EnvironmentNamespace = contextMeta.EnvironmentNamespace
+	linkContext.Timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	return &linkContext, nil
 }

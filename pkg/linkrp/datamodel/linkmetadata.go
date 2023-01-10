@@ -7,6 +7,7 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // LinkMetadata represents internal DataModel properties common to all link types.
@@ -46,6 +47,46 @@ type LinkRecipe struct {
 	Name string `json:"name,omitempty"`
 	// Parameters are key/value parameters to pass into the recipe at deployment
 	Parameters map[string]any `json:"parameters,omitempty"`
+}
+
+type ContextMeta struct {
+	ApplicationID        string
+	EnvironmentID        string
+	LinkID               resources.ID
+	EnvironmentNamespace string
+	ApplicationNamespace string
+}
+
+type Context struct {
+	Link        Link        `json:"link:omitempty"`
+	Application Application `json:"application,omitempty"`
+	Environment Environment `json:"environment,omitempty"`
+	Timestamp   string      `json:"timestamp,omitempty"`
+	Runtime     Runtime     `json:"runtime,omitempty"`
+}
+type Link struct {
+	Name string `json:"name:omitempty"`
+	ID   string `json:"id:omitempty"`
+	Type string `json:"type:omitempty"`
+}
+
+type Application struct {
+	Name string `json:"name:omitempty"`
+	ID   string `json:"id:omitempty"`
+}
+
+type Environment struct {
+	Name string `json:"name:omitempty"`
+	ID   string `json:"id:omitempty"`
+}
+
+type Runtime struct {
+	Kubernetes Kubernetes `json:"kubernetes,omitempty"`
+}
+
+type Kubernetes struct {
+	ApplicationNamespace string `json:"applicationNamespace,omitempty"`
+	EnvironmentNamespace string `json:"EnvironmentNamespace,omitempty"`
 }
 
 type LinkMode string
