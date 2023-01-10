@@ -10,10 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/storage/mgmt/storage"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -61,16 +61,20 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to parse Storage Account resource id: %w", err)
 	}
 
-	sac := clients.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-	account, err := sac.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], storage.AccountExpand(""))
+	client, err := clientv2.NewAccountsClient(parsedID.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
-		if clients.Is404Error(err) {
+		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to create Storage Account client: %w", err)
+	}
+
+	account, err := client.GetProperties(ctx, parsedID.FindScope(resources.ResourceGroupsSegment), properties[StorageAccountNameKey], nil)
+	if err != nil {
+		if clientv2.Is404Error(err) {
 			return resourcemodel.ResourceIdentity{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", properties[StorageAccountNameKey]))
 		}
 		return resourcemodel.ResourceIdentity{}, nil, fmt.Errorf("failed to get Storage Account: %w", err)
 	}
 
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clients.GetAPIVersionFromUserAgent(storage.UserAgent()))
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *account.ID, clientv2.AccountsClientAPIVersion)
 
 	key, err := handler.findStorageKey(ctx, *account.ID)
 	if err != nil {
@@ -145,32 +149,36 @@ func (handler *daprStateStoreAzureStorageHandler) createDaprStateStore(ctx conte
 	return err
 }
 
-func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, id string) (*storage.AccountKey, error) {
+func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Context, id string) (*armstorage.AccountKey, error) {
 	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, err
 	}
 
-	sc := clients.NewAccountsClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-
-	keys, err := sc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), "")
+	client, err := clientv2.NewAccountsClient(parsed.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
-		if clients.Is404Error(err) {
+		return nil, fmt.Errorf("failed to create Storage Account client: %w", err)
+	}
+
+	resp, err := client.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), &armstorage.AccountsClientListKeysOptions{
+		Expand: nil,
+	})
+	if err != nil {
+		if clientv2.Is404Error(err) {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure Storage Account %q does not exist", parsed.Name()))
 		}
 		return nil, fmt.Errorf("failed to access keys of storage account: %w", err)
 	}
 
 	// Since we're doing this programmatically, let's make sure we can find a key with write access.
-	if keys.Keys == nil || len(*keys.Keys) == 0 {
+	if resp.Keys == nil || len(resp.Keys) == 0 {
 		return nil, fmt.Errorf("listkeys returned an empty or nil list of keys")
 	}
 
 	// Don't rely on the order the keys are in, we need Full access
-	for _, k := range *keys.Keys {
-		if strings.EqualFold(string(k.Permissions), string(storage.KeyPermissionFull)) {
-			key := k
-			return &key, nil
+	for _, key := range resp.Keys {
+		if strings.EqualFold(string(*key.Permissions), string(armstorage.KeyPermissionFull)) {
+			return key, nil
 		}
 	}
 

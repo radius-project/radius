@@ -279,7 +279,6 @@ func (ri ID) Name() string {
 
 // ValidateResourceType validates that the resource ID type segment matches the expected type.
 func (ri ID) ValidateResourceType(t KnownType) error {
-
 	if len(ri.typeSegments) != len(t.Types) {
 		return invalidType(ri.id)
 	}
