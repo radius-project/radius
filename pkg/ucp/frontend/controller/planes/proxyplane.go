@@ -23,7 +23,10 @@ import (
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
-const PlanesPath = "/planes"
+const (
+	PlanesPath = "/planes"
+	RefererKey = "Referer"
+)
 
 var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
 
@@ -154,15 +157,25 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		UCPHost: req.Host + p.Options.BasePath,
 	}
 
-	url, err := url.Parse(newURL.Path)
+	uri, err := url.Parse(newURL.Path)
 	if err != nil {
 		return nil, err
 	}
 
 	// Preserving the query strings on the incoming url on the newly constructed url
-	url.RawQuery = newURL.Query().Encode()
-	req.URL = url
+	uri.RawQuery = newURL.Query().Encode()
+	req.URL = uri
 	req.Header.Set("X-Forwarded-Proto", httpScheme)
+
+	// Set Referer header
+	refererURL := url.URL{
+		Scheme:   httpScheme,
+		Host:     req.Host,
+		Path:     p.Options.BasePath + newURL.Path,
+		RawQuery: uri.RawQuery,
+	}
+	req.Header.Set(RefererKey, refererURL.String())
+	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
 	sender := proxy.NewARMProxy(options, downstream, nil)
