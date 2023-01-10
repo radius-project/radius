@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -19,7 +20,6 @@ import (
 	"github.com/project-radius/radius/pkg/corerp/datamodel/converter"
 	"github.com/project-radius/radius/pkg/corerp/frontend/controller/util"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
 	"oras.land/oras-go/v2/registry/remote"
@@ -114,7 +114,7 @@ func (e *CreateOrUpdateEnvironment) Run(ctx context.Context, w http.ResponseWrit
 func getDevRecipes(ctx context.Context) (map[string]datamodel.EnvironmentRecipeProperties, error) {
 	recipes := map[string]datamodel.EnvironmentRecipeProperties{}
 
-	logger := radlogger.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 	reg, err := remote.NewRegistry(DevRecipesACRPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create client to registry %s -  %s", DevRecipesACRPath, err.Error())

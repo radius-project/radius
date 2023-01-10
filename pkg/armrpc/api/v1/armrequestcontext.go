@@ -15,11 +15,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-logr/logr"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/project-radius/radius/pkg/ucp/resources"
-
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // The below contants are the headers in request from ARM.
@@ -170,7 +170,7 @@ type ARMRequestContext struct {
 
 // FromARMRequest extracts proxy request headers from http.Request.
 func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestContext, error) {
-	log := radlogger.GetLogger(r.Context())
+	log := logr.FromContextOrDiscard(r.Context())
 	refererUri := r.Header.Get(RefererHeader)
 	refererURL, err := url.Parse(refererUri)
 	if refererUri == "" || err != nil {
@@ -179,13 +179,13 @@ func FromARMRequest(r *http.Request, pathBase, location string) (*ARMRequestCont
 	path := strings.TrimPrefix(refererURL.Path, pathBase)
 	rID, err := resources.ParseByMethod(path, r.Method)
 	if err != nil {
-		log.V(radlogger.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
+		log.V(ucplog.Debug).Info(fmt.Sprintf("URL was not a valid resource id: %v", refererURL.Path))
 		// do not stop extracting headers. handler needs to care invalid resource id.
 	}
 
 	queryItemCount, err := getQueryItemCount(r.URL.Query().Get(TopParameterName))
 	if err != nil {
-		log.V(radlogger.Debug).Info(fmt.Sprintf("Error parsing top query parameter: %v", r.URL.Query()))
+		log.V(ucplog.Debug).Info(fmt.Sprintf("Error parsing top query parameter: %v", r.URL.Query()))
 		return nil, err
 	}
 

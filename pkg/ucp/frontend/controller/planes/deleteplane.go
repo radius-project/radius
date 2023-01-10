@@ -10,6 +10,7 @@ import (
 	"fmt"
 	http "net/http"
 
+	"github.com/go-logr/logr"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -34,7 +35,6 @@ func NewDeletePlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 
 func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	path := middleware.GetRelativePath(p.Options.BasePath, req.URL.Path)
-	logger := ucplog.GetLogger(ctx)
 	resourceId, err := resources.ParseScope(path)
 	if err != nil {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
@@ -53,6 +53,8 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	if err != nil {
 		return nil, err
 	}
+	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, existingPlane.Properties.Kind)
+	logger := logr.FromContextOrDiscard(ctx)
 	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil

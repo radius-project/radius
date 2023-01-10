@@ -8,8 +8,9 @@ package middleware
 import (
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/radlogger"
+	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 // Append logger values to the context based on the Resource ID (if present).
@@ -23,16 +24,16 @@ func AppendLogValues(h http.Handler) http.Handler {
 		}
 
 		values := []any{}
-		values = append(values, radlogger.LogFieldResourceID, id.String())
+		values = append(values, logging.LogFieldResourceID, id.String())
 
 		// TODO: populate correlation id and w3c trace parent id - https://github.com/project-radius/core-team/issues/53
 
-		// values = append(values, radlogger.LogFieldSubscriptionID, id.SubscriptionID)
-		// values = append(values, radlogger.LogFieldResourceGroup, id.ResourceGroup)
-		// values = append(values, radlogger.LogFieldResourceType, id.Type())
-		// values = append(values, radlogger.LogFieldResourceName, id.QualifiedName())
+		// values = append(values, logging.LogFieldSubscriptionID, id.SubscriptionID)
+		// values = append(values, logging.LogFieldResourceGroup, id.ResourceGroup)
+		// values = append(values, logging.LogFieldResourceType, id.Type())
+		// values = append(values, logging.LogFieldResourceName, id.QualifiedName())
 
-		r = r.WithContext(radlogger.WrapLogContext(r.Context(), values...))
+		r = r.WithContext(ucplog.WrapLogContext(r.Context(), values...))
 		h.ServeHTTP(w, r)
 	}
 

@@ -16,8 +16,8 @@ import (
 	"github.com/Azure/go-autorest/autorest"
 	"github.com/google/uuid"
 
+	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/azure/clients"
-	"github.com/project-radius/radius/pkg/radlogger"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -27,7 +27,7 @@ import (
 // '/subscriptions/{subscription-id}/resourceGroups/{resource-group-name}/providers/{resource-provider}/{resource-type}/{resource-name}'
 // roleNameOrID - Name of the role ('Reader') or definition id ('acdd72a7-3385-48ef-bd42-f606fba81ae7') for the role to be assigned.
 func Create(ctx context.Context, auth autorest.Authorizer, subscriptionID, principalID, scope, roleNameOrID string) (*authorization.RoleAssignment, error) {
-	logger := radlogger.GetLogger(ctx)
+	logger := logr.FromContextOrDiscard(ctx)
 
 	roleDefinitionID, err := GetRoleDefinitionID(ctx, auth, subscriptionID, scope, roleNameOrID)
 	if err != nil {
