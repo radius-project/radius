@@ -72,11 +72,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		return nil, err
 	}
 
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldPlaneID, planeID,
-		ucplog.LogFieldPlaneKind, plane.Properties.Kind)
-	logger = logr.FromContextOrDiscard(req.Context())
-
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		// Check if the resource group exists
 		id, err := resources.Parse(newURL.Path)
@@ -129,8 +124,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 			return nil, err
 		}
 		ctx = ucplog.WrapLogContext(ctx,
-			ucplog.LogFieldPlaneURL, proxyURL,
-			ucplog.LogFieldProvider, resourceID.ProviderNamespace())
+			ucplog.LogFieldPlaneURL, proxyURL)
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded

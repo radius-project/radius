@@ -43,29 +43,29 @@ func noopResponder(r *http.Response) error {
 
 func logUpstreamRequest(r *http.Request) {
 	logger := logr.FromContextOrDiscard(r.Context())
-	logger.Info("preparing proxy request for", "url", r.URL.String(), "method", r.Method)
+	logger.Info("preparing proxy request")
 }
 
 func logDownstreamRequest(r *http.Request) {
 	logger := logr.FromContextOrDiscard(r.Context())
-	logger.Info("sending proxy request to downstream", "url", r.URL.String(), "method", r.Method)
+	logger.Info("sending proxy request to downstream")
 }
 
 func logDownstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
-	logger.Info("received proxy response from downstream", "status", r.Status)
+	logger.Info("received proxy response from downstream")
 
 	return nil
 }
 
 func logUpstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
-	logger.Info("sending proxy response to upstream", "status", r.Status)
+	logger.Info("sending proxy response to upstream")
 
 	return nil
 }
 
 func logConnectionError(w http.ResponseWriter, r *http.Request, err error) {
 	logger := logr.FromContextOrDiscard(r.Context())
-	logger.Error(err, "connection failed to downstream", "url", r.URL.String(), "method", r.Method)
+	logger.Error(err, "connection failed to downstream")
 }

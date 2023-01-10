@@ -19,7 +19,7 @@ func UseLogValues(h http.Handler, basePath string) http.Handler {
 		values := []any{}
 		values = append(values,
 			ucplog.LogFieldHTTPMethod, r.Method,
-			ucplog.LogFieldRequestURL, r.URL,
+			ucplog.LogFieldRequestPath, r.URL,
 			ucplog.LogFieldContentLength, r.ContentLength,
 			ucplog.LogFieldCorrelationID, r.Header.Get(ucplog.LogFieldCorrelationID),
 		)

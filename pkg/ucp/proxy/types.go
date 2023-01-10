@@ -158,9 +158,6 @@ func convertHeaderToUCPIDs(ctx context.Context, headerName string, header []stri
 		return fmt.Errorf("Plane Kind unknown. Cannot convert response header")
 	}
 	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldPlaneKind, requestInfo.PlaneKind,
-		ucplog.LogFieldPlaneID, requestInfo.PlaneID,
-		ucplog.LogFieldPlaneURL, requestInfo.PlaneURL,
 		ucplog.LogFieldUCPHost, requestInfo.UCPHost,
 		ucplog.LogFieldHTTPScheme, requestInfo.HTTPScheme,
 	)
