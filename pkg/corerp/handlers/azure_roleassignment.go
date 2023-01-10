@@ -10,10 +10,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/authorization/mgmt/authorization"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/azure/roleassignment"
 	"github.com/project-radius/radius/pkg/logging"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -68,7 +67,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 
 	// Assign Key Vault Secrets User role to grant managed identity read-only access to the keyvault for secrets.
 	// Assign Key Vault Crypto User role to grant managed identity permissions to perform operations using encryption keys.
-	roleAssignment, err := roleassignment.Create(ctx, handler.arm.Auth, parsedScope.FindScope(resources.SubscriptionsSegment), principalID, scope, roleName)
+	roleAssignment, err := roleassignment.Create(ctx, handler.arm, parsedScope.FindScope(resources.SubscriptionsSegment), principalID, scope, roleName)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to assign '%s' role to the managed identity '%s' within resource '%s' scope : %w",
@@ -76,7 +75,7 @@ func (handler *azureRoleAssignmentHandler) Put(ctx context.Context, options *Put
 	}
 	logger.WithValues(logging.LogFieldLocalID, outputresource.LocalIDRoleAssignmentKVKeys).Info(fmt.Sprintf("Created %s role assignment for %s to access %s", roleName, principalID, scope))
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clients.GetAPIVersionFromUserAgent(authorization.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, *roleAssignment.ID, clientv2.RoleAssignmentClientAPIVersion)
 	return properties, nil
 }
 
@@ -86,5 +85,5 @@ func (handler *azureRoleAssignmentHandler) Delete(ctx context.Context, options *
 	if err != nil {
 		return err
 	}
-	return roleassignment.Delete(ctx, handler.arm.Auth, roleID)
+	return roleassignment.Delete(ctx, handler.arm, roleID)
 }

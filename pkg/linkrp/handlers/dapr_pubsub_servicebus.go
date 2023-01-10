@@ -10,11 +10,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/servicebus/mgmt/servicebus"
-
+	armservicebus "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -63,7 +62,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 		return resourcemodel.ResourceIdentity{}, nil, err
 	}
 
-	var namespace *servicebus.SBNamespace
+	var namespace *armservicebus.SBNamespace
 
 	// This is mostly called for the side-effect of verifying that the servicebus namespace exists.
 	namespace, err = handler.GetNamespaceByID(ctx, properties[ServiceBusNamespaceIDKey])
@@ -72,7 +71,7 @@ func (handler *daprPubSubServiceBusHandler) Put(ctx context.Context, resource *o
 	}
 
 	// Use the identity of the namespace as the thing to monitor.
-	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clients.GetAPIVersionFromUserAgent(servicebus.UserAgent()))
+	outputResourceIdentity = resourcemodel.NewARMIdentity(&resource.ResourceType, *namespace.ID, clientv2.ServiceBusClientAPIVersion)
 
 	cs, err := handler.GetConnectionString(ctx, *namespace.ID)
 	if err != nil {
@@ -159,24 +158,27 @@ func (handler *daprPubSubServiceBusHandler) DeleteDaprPubSub(ctx context.Context
 	return nil
 }
 
-func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*servicebus.SBNamespace, error) {
+func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Context, id string) (*armservicebus.SBNamespace, error) {
 	parsed, err := resources.ParseResource(id)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse servicebus queue resource id: '%s':%w", id, err)
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
+	client, err := clientv2.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create servicebus namespace client:%w", err)
+	}
 
 	// Check if a service bus namespace exists in the resource group for this application
-	namespace, err := sbc.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name)
+	resp, err := client.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name, nil)
 	if err != nil {
-		if clients.Is404Error(err) {
+		if clientv2.Is404Error(err) {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", id))
 		}
 		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
 	}
 
-	return &namespace, nil
+	return &resp.SBNamespace, nil
 }
 
 func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.Context, id string) (*string, error) {
@@ -185,11 +187,14 @@ func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.
 		return nil, err
 	}
 
-	sbc := clients.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), handler.arm.Auth)
-
-	accessKeys, err := sbc.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey)
+	client, err := clientv2.NewServiceBusNamespacesClient(parsed.FindScope(resources.SubscriptionsSegment), &handler.arm.ClientOptions)
 	if err != nil {
-		if clients.Is404Error(err) {
+		return nil, fmt.Errorf("failed to create servicebus namespace client:%w", err)
+	}
+
+	accessKeys, err := client.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey, nil)
+	if err != nil {
+		if clientv2.Is404Error(err) {
 			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", parsed.Name()))
 		}
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)

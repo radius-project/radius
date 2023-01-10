@@ -14,16 +14,16 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 )
 
-// DeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
+// ResourceDeploymentOperationsClient is an operations client which takes in a resourceID as the destination to query.
 // It is used by both Azure and UCP clients.
-type DeploymentOperationsClient struct {
+type ResourceDeploymentOperationsClient struct {
 	client   *armresources.DeploymentOperationsClient
 	pipeline *runtime.Pipeline
 	baseURI  string
 }
 
-// NewDeploymentsClient creates an instance of the DeploymentsClient.
-func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*DeploymentOperationsClient, error) {
+// NewResourceDeploymentOperationsClient creates an instance of the DeploymentsClient.
+func NewResourceDeploymentOperationsClient(subscriptionID string, options *Options) (*ResourceDeploymentOperationsClient, error) {
 	baseURI := DefaultBaseURI
 	if options.BaseURI != "" {
 		baseURI = options.BaseURI
@@ -39,7 +39,7 @@ func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*De
 		return nil, err
 	}
 
-	return &DeploymentOperationsClient{
+	return &ResourceDeploymentOperationsClient{
 		client:   client,
 		pipeline: &pipeline,
 		baseURI:  baseURI,
@@ -50,7 +50,7 @@ func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*De
 // Parameters:
 // resourceId - the resourceId to deploy to. NOTE, must start with a '/'. Ex: "/resourcegroups/{resourceGroupName}/deployments/{deploymentName}/operations
 // top - the number of results to return.
-func (client *DeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
+func (client *ResourceDeploymentOperationsClient) List(ctx context.Context, resourceGroupName string, deploymentName string, resourceID string, top *int32) (*armresources.DeploymentOperationsListResult, error) {
 	result := &armresources.DeploymentOperationsListResult{
 		Value:    make([]*armresources.DeploymentOperation, 0),
 		NextLink: to.Ptr(""),

@@ -11,8 +11,12 @@ import (
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	armauthorization "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/authorization/armauthorization/v2"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armsubscriptions"
+	armservicebus "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/storage/armstorage"
 )
 
 var defaultClientOptions = &arm.ClientOptions{
@@ -65,4 +69,44 @@ func NewCustomActionClient(subscriptionID string, options *Options) (*CustomActi
 		pipeline: &pipeline,
 		baseURI:  baseURI,
 	}, nil
+}
+
+// NewSubscriptionsClient creates a new generic client to handle subscriptions.
+func NewSubscriptionsClient(options *Options) (*armsubscriptions.Client, error) {
+	return armsubscriptions.NewClient(options.Cred, defaultClientOptions)
+}
+
+// NewGenericResourceClient creates a new generic client to handle resources.
+func NewGenericResourceClient(subscriptionID string, options *Options) (*armresources.Client, error) {
+	return armresources.NewClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewAccountsClient creates a new accounts client to handle storage accounts.
+func NewAccountsClient(subscriptionID string, options *Options) (*armstorage.AccountsClient, error) {
+	return armstorage.NewAccountsClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewRoleDefinitionsClient creates a new role definitions client to handle role definitions.
+func NewRoleDefinitionsClient(options *Options) (*armauthorization.RoleDefinitionsClient, error) {
+	return armauthorization.NewRoleDefinitionsClient(options.Cred, defaultClientOptions)
+}
+
+// NewRoleAssignmentsClient creates a new role assignments client to handle role assignments.
+func NewRoleAssignmentsClient(subscriptionID string, options *Options) (*armauthorization.RoleAssignmentsClient, error) {
+	return armauthorization.NewRoleAssignmentsClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewServiceBusNamespacesClient creates a new service bus namespaces client to handle service bus namespaces.
+func NewServiceBusNamespacesClient(subscriptionID string, options *Options) (*armservicebus.NamespacesClient, error) {
+	return armservicebus.NewNamespacesClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewDeploymentsClient creates a new deployments client to handle deployments.
+func NewDeploymentsClient(subscriptionID string, options *Options) (*armresources.DeploymentsClient, error) {
+	return armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
+// NewResourceGroupsClient creates a new resource groups client to handle resource groups.
+func NewResourceGroupsClient(subscriptionID string, options *Options) (*armresources.ResourceGroupsClient, error) {
+	return armresources.NewResourceGroupsClient(subscriptionID, options.Cred, defaultClientOptions)
 }

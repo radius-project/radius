@@ -9,7 +9,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/msi/mgmt/msi"
 	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/msi/armmsi"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/go-logr/logr"
@@ -93,7 +92,7 @@ func (handler *azureUserAssignedManagedIdentityHandler) Put(ctx context.Context,
 	properties[UserAssignedIdentityClientIDKey] = to.String(identity.Properties.ClientID)
 	properties[UserAssignedIdentityTenantIDKey] = to.String(identity.Properties.TenantID)
 
-	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.GetAPIVersionFromUserAgent(msi.UserAgent()))
+	options.Resource.Identity = resourcemodel.NewARMIdentity(&options.Resource.ResourceType, properties[UserAssignedIdentityIDKey], clientv2.MSIClientAPIVersion)
 	logger.WithValues(
 		logging.LogFieldResourceID, *identity.ID,
 		logging.LogFieldLocalID, outputresource.LocalIDUserAssignedManagedIdentity).Info("Created managed identity for KeyVault access")

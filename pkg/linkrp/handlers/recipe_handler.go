@@ -13,11 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
@@ -90,40 +91,38 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 	}
 
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
-	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
+	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
-	dplResp, err := dClient.CreateOrUpdate(
+	poller, err := client.BeginCreateOrUpdate(
 		ctx,
 		resourceGroup,
 		deploymentName,
-		resources.Deployment{
-			Properties: &resources.DeploymentProperties{
+		armresources.Deployment{
+			Properties: &armresources.DeploymentProperties{
 				Template: recipeData,
-				Mode:     resources.DeploymentModeIncremental,
+				Mode:     to.Ptr(armresources.DeploymentModeIncremental),
 			},
 		},
+		&armresources.DeploymentsClientBeginCreateOrUpdateOptions{},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	err = dplResp.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
+	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := dplResp.Result(dClient)
-	if err != nil {
-		return nil, err
-	}
-
-	// return error if the Provisioning is not success
-	if resp.Properties.ProvisioningState != resources.ProvisioningStateSucceeded {
+	if *resp.Properties.ProvisioningState != armresources.ProvisioningStateSucceeded {
 		return nil, fmt.Errorf("failed to deploy the recipe %q, template path: %q, deployment: %q", recipe.Name, recipe.TemplatePath, deploymentName)
 	}
 
-	// Get list of output resources deployed
-	for _, id := range *resp.Properties.OutputResources {
+	for _, id := range resp.Properties.OutputResources {
 		deployedResources = append(deployedResources, *id.ID)
 	}
 
