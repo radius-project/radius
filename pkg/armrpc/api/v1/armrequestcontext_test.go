@@ -20,25 +20,31 @@ import (
 func TestFromARMRequest(t *testing.T) {
 	headerTests := []struct {
 		desc       string
-		headerFile string
+		refererUrl string
 		resourceID string
 	}{
 		{
 			"With referer header",
-			"./testdata/armrpcheaders.json",
+			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
 		},
 		{
 			"Without referer header",
-			"./testdata/armrpcheaders-without-referer.json",
+			"",
 			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
 		},
 	}
 
 	for _, tt := range headerTests {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest(tt.headerFile)
+			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
 			require.NoError(t, err)
+
+			if tt.refererUrl == "" {
+				req.Header.Del(RefererHeader)
+			} else {
+				req.Header.Set(RefererHeader, tt.refererUrl)
+			}
 
 			rid, err := resources.ParseResource(tt.resourceID)
 			require.NoError(t, err)
@@ -133,7 +139,7 @@ func getTestHTTPRequest(headerFile string) (*http.Request, error) {
 		return nil, err
 	}
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["X-Fd-Originalurl"]), nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	for k, v := range parsed {
 		req.Header.Add(k, v)
 	}
