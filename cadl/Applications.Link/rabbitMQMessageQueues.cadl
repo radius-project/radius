@@ -91,6 +91,7 @@ model RabbitMQMessageQueueProperties extends BasicResourceProperties {
 #suppress "@azure-tools/cadl-azure-core/casing-style" "The names of Model types must use camelCase"
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
 @doc("Lists secrets values for the specified RabbitMQMessageQueue resource")
+@post
 @route("/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets")
 op RabbitMQMessageQueues_listSecrets(
   ...ApiVersionParameter,
