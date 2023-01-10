@@ -17,17 +17,24 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+const (
+	testHostname = "http://localhost:1010"
+)
+
 func TestLowercaseURLPath(t *testing.T) {
 	tests := []struct {
-		armid    string
-		expected string
+		armid         string
+		refererHeader string
+		expected      string
 	}{
 		{
 			"/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourceGroups/proxy-rg/providers/Microsoft.Kubernetes/connectedClusters/mvm2a",
+			testHostname + "/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourceGroups/proxy-rg/providers/Microsoft.Kubernetes/connectedClusters/mvm2a",
 			"/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourcegroups/proxy-rg/providers/microsoft.kubernetes/connectedclusters/mvm2a",
 		},
 		{
 			"/SubscriptionS/1F43AEF5-7868-4c56-8a7f-cb6822a75c0e/RESOURCEGroups/proxy-rg/providers/Microsoft.Kubernetes/connectedClusters/mvm2a",
+			"",
 			"/subscriptions/1f43aef5-7868-4c56-8a7f-cb6822a75c0e/resourcegroups/proxy-rg/providers/microsoft.kubernetes/connectedclusters/mvm2a",
 		},
 	}
@@ -43,14 +50,16 @@ func TestLowercaseURLPath(t *testing.T) {
 
 		handler := LowercaseURLPath(r)
 
-		hostname := "http://localhost:1010"
+		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, testHostname+tt.armid, nil)
+		if tt.refererHeader != "" {
+			req.Header.Add(v1.RefererHeader, tt.refererHeader)
+		}
 
-		req, _ := http.NewRequestWithContext(context.Background(), http.MethodPost, hostname+tt.armid, nil)
 		handler.ServeHTTP(w, req)
 
 		parsed := strings.Split(w.Body.String(), "|")
 
 		assert.Equal(t, tt.expected, parsed[0])
-		assert.Equal(t, tt.armid, parsed[1][len(hostname):])
+		assert.Equal(t, tt.armid, parsed[1][len(testHostname):])
 	}
 }
