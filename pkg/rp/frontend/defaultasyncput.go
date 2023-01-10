@@ -63,7 +63,7 @@ func (e *DefaultAsyncPut[P, T]) Run(ctx context.Context, w http.ResponseWriter, 
 		return r, err
 	}
 
-	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, defaultAsyncPutTimeout, &etag); r != nil || err != nil {
+	if r, err := e.PrepareAsyncOperation(ctx, newResource, v1.ProvisioningStateAccepted, e.AsyncOperationTimeout, &etag); r != nil || err != nil {
 		return r, err
 	}
 

@@ -272,7 +272,7 @@ func (d *Driver) formatProviderConfigs(configuration recipes.Configuration, subj
 
 	_, ok = configuration.Providers["aws"]
 	if ok {
-		providerConfig.Az = &clients.Az{
+		providerConfig.AWS = &clients.AWS{
 			Type: "AWS",
 			Value: clients.Value{
 				Scope: configuration.Providers["aws"]["scope"].(string),
