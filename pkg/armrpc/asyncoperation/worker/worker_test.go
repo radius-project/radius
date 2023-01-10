@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -134,7 +133,7 @@ func TestErrorHandling(t *testing.T) {
 		expectedArmErr v1.ErrorDetails
 	}{
 		{
-			err:            conv.NewClientErrInvalidRequest("client error"),
+			err:            v1.NewClientErrInvalidRequest("client error"),
 			expectedArmErr: v1.ErrorDetails{Code: v1.CodeInvalid, Message: "client error"},
 		},
 		{

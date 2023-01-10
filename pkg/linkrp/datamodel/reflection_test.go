@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/mitchellh/mapstructure"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
 
 type RadiusResource struct {
-	Resource conv.DataModelInterface
+	Resource v1.DataModelInterface
 }
 
 func Test_TestReflectionIsCool(t *testing.T) {

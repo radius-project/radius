@@ -9,7 +9,6 @@ import (
 	"context"
 	"testing"
 
-	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -20,7 +19,6 @@ import (
 	"github.com/stretchr/testify/require"
 	appsv1 "k8s.io/api/apps/v1"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 )
 
@@ -29,11 +27,11 @@ var _ renderers.Renderer = (*noop)(nil)
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *noop) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the manualscale extension can modify it
 	deployment := appsv1.Deployment{}
 	resources := []outputresource.OutputResource{outputresource.NewKubernetesOutputResource(resourcekinds.Deployment, outputresource.LocalIDDeployment, &deployment, deployment.ObjectMeta)}
@@ -111,7 +109,7 @@ func Test_Render_NoExtension(t *testing.T) {
 func makeResource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {
 	resource := datamodel.ContainerResource{
 		BaseResource: v1.BaseResource{
-			TrackedResource: apiv1.TrackedResource{
+			TrackedResource: v1.TrackedResource{
 				ID:   "/subscriptions/test-sub-id/resourceGroups/test-group/providers/Applications.Core/containers/test-container",
 				Name: "test-container",
 				Type: "Applications.Core/containers",

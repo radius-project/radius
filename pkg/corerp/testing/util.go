@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
 	"github.com/project-radius/radius/pkg/ucp/store"
 )
@@ -46,7 +46,7 @@ func NewTestContext(t *testing.T) *TestContext {
 }
 
 // FakeStoreObject creates store.Object for datamodel.
-func FakeStoreObject(dm conv.DataModelInterface) *store.Object {
+func FakeStoreObject(dm v1.DataModelInterface) *store.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
 		return nil

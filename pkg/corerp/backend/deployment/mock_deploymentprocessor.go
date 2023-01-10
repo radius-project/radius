@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	renderers "github.com/project-radius/radius/pkg/corerp/renderers"
 	rp "github.com/project-radius/radius/pkg/rp"
 	outputresource "github.com/project-radius/radius/pkg/rp/outputresource"
@@ -84,7 +84,7 @@ func (mr *MockDeploymentProcessorMockRecorder) FetchSecrets(arg0, arg1 interface
 }
 
 // Render mocks base method.
-func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (m *MockDeploymentProcessor) Render(arg0 context.Context, arg1 resources.ID, arg2 v1.DataModelInterface) (renderers.RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(renderers.RendererOutput)

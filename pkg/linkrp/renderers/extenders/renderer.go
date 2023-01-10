@@ -8,7 +8,7 @@ package extenders
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -24,10 +24,10 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.Extender)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties

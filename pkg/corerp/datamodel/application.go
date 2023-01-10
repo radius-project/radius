@@ -6,13 +6,12 @@
 package datamodel
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-var _ conv.DataModelInterface = (*Application)(nil)
+var _ v1.DataModelInterface = (*Application)(nil)
 
 // Application represents Application resource.
 type Application struct {

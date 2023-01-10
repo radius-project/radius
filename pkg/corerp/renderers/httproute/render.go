@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -27,14 +27,14 @@ import (
 type Renderer struct {
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) (radiusResourceIDs []resources.ID, resourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, resourceIDs []resources.ID, err error) {
 	return nil, nil, nil
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	route, ok := dm.(*datamodel.HTTPRoute)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 	outputResources := []outputresource.OutputResource{}
 
@@ -72,7 +72,7 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 func (r *Renderer) makeService(route *datamodel.HTTPRoute, options renderers.RenderOptions) (outputresource.OutputResource, error) {
 	appId, err := resources.ParseResource(route.Properties.Application)
 	if err != nil {
-		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
+		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), route.Properties.Application))
 	}
 
 	typeParts := strings.Split(ResourceType, "/")

@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -47,10 +47,10 @@ type objectValues struct {
 type KeyVaultRenderer struct {
 }
 
-func (r *KeyVaultRenderer) Render(ctx context.Context, resource conv.DataModelInterface, options *renderers.RenderOptions) (*renderers.RendererOutput, error) {
+func (r *KeyVaultRenderer) Render(ctx context.Context, resource v1.DataModelInterface, options *renderers.RenderOptions) (*renderers.RendererOutput, error) {
 	dm, ok := resource.(*datamodel.VolumeResource)
 	if !ok {
-		return nil, conv.ErrInvalidModelConversion
+		return nil, v1.ErrInvalidModelConversion
 	}
 
 	properties := dm.Properties.AzureKeyVault

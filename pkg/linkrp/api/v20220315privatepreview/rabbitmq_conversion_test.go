@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 	"github.com/stretchr/testify/require"
@@ -93,7 +93,7 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 		versionedResource := &RabbitMQMessageQueueResource{}
 		err := json.Unmarshal(testData.Payload, versionedResource)
 		require.NoError(t, err)
-		var expectedErr conv.ErrClientRP
+		var expectedErr v1.ErrClientRP
 		description := testData.Description
 		if description == "unsupported_mode" {
 			expectedErr.Code = "BadRequest"
@@ -114,11 +114,11 @@ func TestRabbitMQMessageQueue_ConvertVersionedToDataModel_InvalidRequest(t *test
 
 func TestRabbitMQMessageQueue_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src conv.DataModelInterface
+		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, conv.ErrInvalidModelConversion},
-		{nil, conv.ErrInvalidModelConversion},
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {
@@ -162,11 +162,11 @@ func TestRabbitMQSecrets_ConvertDataModelToVersioned(t *testing.T) {
 
 func TestRabbitMQSecrets_ConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src conv.DataModelInterface
+		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, conv.ErrInvalidModelConversion},
-		{nil, conv.ErrInvalidModelConversion},
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {
