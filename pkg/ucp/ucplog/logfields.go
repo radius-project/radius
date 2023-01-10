@@ -45,4 +45,7 @@ const (
 
 	// LogFieldUCPHost represents the Resource ID.
 	LogFieldResourceID string = "ResourceID"
+
+	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
+	LogFieldCorrelationID string = "X-Correlation-ID"
 )
