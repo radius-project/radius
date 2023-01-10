@@ -246,7 +246,7 @@ func selectSubscription(ctx context.Context, prompter prompt.Interface, armConfi
 		names = append(names, s.DisplayName)
 	}
 
-	name, err := prompter.GetListInput(names, "Select Subscription:")
+	name, err := prompter.GetListInput(names, "Select Subscription")
 	if err != nil {
 		return azure.Subscription{}, err
 	}
