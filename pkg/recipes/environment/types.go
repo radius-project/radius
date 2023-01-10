@@ -52,6 +52,12 @@ func (r *EnvironmentLoader) Load(ctx context.Context, recipe recipes.Recipe) (*r
 		}
 	}
 
+	if environment.Properties.Providers != nil && environment.Properties.Providers.Aws != nil {
+		configuration.Providers["aws"] = map[string]interface{}{
+			"scope": *environment.Properties.Providers.Aws.Scope,
+		}
+	}
+
 	if environment.Properties.Providers != nil && environment.Properties.Providers.Azure != nil {
 		configuration.Providers["azure"] = map[string]interface{}{
 			"scope": *environment.Properties.Providers.Azure.Scope,
