@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/project-radius/radius/pkg/ucp/resources"
+	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 func workaround28169(r *http.Request) {
@@ -53,14 +54,14 @@ func logDownstreamRequest(r *http.Request) {
 
 func logDownstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
-	logger.Info("received proxy response from downstream")
+	logger.Info("received proxy response from downstream", ucplog.LogHTTPStatusCode, r.StatusCode)
 
 	return nil
 }
 
 func logUpstreamResponse(r *http.Response) error {
 	logger := logr.FromContextOrDiscard(r.Request.Context())
-	logger.Info("sending proxy response to upstream")
+	logger.Info("sending proxy response to upstream", ucplog.LogHTTPStatusCode, r.StatusCode)
 
 	return nil
 }
