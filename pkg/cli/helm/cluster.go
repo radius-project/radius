@@ -20,7 +20,7 @@ import (
 )
 
 const (
-	ContourChartDefaultVersion = "7.4.6"
+	ContourChartDefaultVersion = "7.10.2"
 	DaprDefaultVersion         = "1.6.0"
 )
 
