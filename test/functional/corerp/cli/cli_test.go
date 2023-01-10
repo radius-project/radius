@@ -83,7 +83,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		require.NoError(t, err)
 		expected := regexp.MustCompile(`RESOURCE      ` + showSpacing + `  TYPE\n` + appName + `  applications.core/applications\n`)
 		match := expected.MatchString(output)
-		require.Equal(t, true, match)
+		require.Equal(t, true, match, "output: %s", output)
 	})
 
 	t.Run("Validate rad resource list", func(t *testing.T) {
@@ -108,7 +108,7 @@ func verifyCLIBasics(ctx context.Context, t *testing.T, test corerp.CoreRPTest) 
 		// and it takes very long to get a feedback from CI.
 		expected := regexp.MustCompile(`RESOURCE  ` + showSpacing + `  TYPE\n` + containerName + `  applications.core/containers\n`)
 		match := expected.MatchString(output)
-		require.Equal(t, true, match)
+		require.Equal(t, true, match, "output: %s", output)
 	})
 
 	t.Run("Validate rad resoure logs containers", func(t *testing.T) {
