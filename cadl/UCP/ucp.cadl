@@ -35,11 +35,22 @@ namespace Ucp;
 interface Operations extends Azure.ResourceManager.Operations {}
 
 @doc("UCP ResourceGroup.")
-model ResourceGroupResource extends TrackedResource<BasicResourceProperties> {
+model ResourceGroupResource is TrackedResource<BasicResourceProperties> {
+    @doc("DaprSecretStore name")
+    @maxLength(63)
+    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+    @key("resourceGroupName")
+    @path
+    @segment("resourcegroups")
+    @extension("x-ms-parameter-location", "method")
+    name: string;
 }
 
 @doc("Basic properties of a UCP resource.")
 model BasicResourceProperties {
+    @doc("Provisioning state of the redis cache link at the time the operation was called")
+    @visibility("read")
+    provisioningState?: ProvisioningState;
 }
 
 enum CredentialStorageKind {
@@ -74,9 +85,9 @@ model CredentialResource is TrackedResource<CredentialResourceProperties> {
     @doc("The name of the Credential Resource")
     @maxLength(63)
     @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
-    @key("credential")
+    @key("credentialName")
     @path
-    @segment("internal")
+    @segment("credentials")
     @extension("x-ms-parameter-location", "method")
     name: string;
 }
@@ -91,9 +102,6 @@ model InternalCredentialStorageProperties extends CredentialResourceProperties {
 
 @doc("Credential properties")
 model CredentialResourceProperties extends BasicResourceProperties {
-    @doc("Provisioning state of the redis cache link at the time the operation was called")
-    @visibility("read")
-    provisioningState?: ProvisioningState;
     @doc("The kind of secret")
     kind: string;
     @doc("The storage properties")
@@ -140,6 +148,15 @@ model AwsCredentialProperties extends CredentialResourceProperties {
     secretAccessKey: string;
 }
 
+model AWSProvider {
+    @doc("AWS Provider")
+    @extension("x-ms-parameter-location", "method")
+    @path
+    @segment("providers")
+    @extension("x-ms-parameter-location", "method")
+    provider: string;
+}
+
 @armResourceOperations
 interface Planes
   extends PlaneResourceOperations<
@@ -148,3 +165,28 @@ interface Planes
       PlaneParam
     > {}
     
+@armResourceOperations
+interface ResourceGroups
+  extends PlaneResourceOperations<
+      ResourceGroupResource,
+      BasicResourceProperties,
+      PlaneParam
+    > {}
+
+@armResourceOperations
+interface AzureCredentials
+  extends CredentialResourceOperations<
+      CredentialResource,
+      CredentialResourceProperties,
+      PlaneParam,
+      AzureProvider
+    > {}
+
+@armResourceOperations
+interface AwsCredentials
+    extends CredentialResourceOperations<
+        CredentialResource,
+        CredentialResourceProperties,
+        PlaneParam,
+        AWSProvider
+    > {}

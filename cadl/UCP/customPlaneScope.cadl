@@ -40,6 +40,17 @@ model PlaneResourceInstanceParameters<TResource, TRootParams> {
   ...KeysOf<TResource>;
 }
 
+model CredentialResourceCommonParameters<TResource, TRootParams, TProvider> {
+  ...ApiVersionParameter;
+  ...TRootParams;
+  ...TProvider;
+}
+
+model CredentialResourceInstanceParameters<TResource, TRootParams, TProvider> {
+  ...CredentialResourceCommonParameters<TResource, TRootParams, TProvider>;
+  ...KeysOf<TResource>;
+}
+
 interface PlaneResourceOperations<TResource extends ArmResource, TProperties extends object, TRootParams>
   extends Azure.ResourceManager.Radius.ResourceRead<
       TResource,
@@ -53,6 +64,21 @@ interface PlaneResourceOperations<TResource extends ArmResource, TProperties ext
       TResource,
       PlaneResourceInstanceParameters<TResource, TRootParams>
     > {} // UCPResourceListByParent<TResource, TRootParams>
+
+interface CredentialResourceOperations<TResource extends ArmResource, TProperties extends object, TRootParams, TProvider>
+  extends Azure.ResourceManager.Radius.ResourceRead<
+      TResource,
+      CredentialResourceInstanceParameters<TResource, TRootParams, TProvider>
+    >,
+    Azure.ResourceManager.Radius.ResourceCreate<
+      TResource,
+      CredentialResourceInstanceParameters<TResource, TRootParams, TProvider>
+    >,
+    Azure.ResourceManager.Radius.ResourceDelete<
+      TResource,
+      CredentialResourceInstanceParameters<TResource, TRootParams, TProvider>
+    > {} // UCPResourceListByParent<TResource, TRootParams>
+
 
 // interface UCPResourceListByParent<TResource extends ArmResource, TRootParams> {
 //   @get

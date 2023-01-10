@@ -6,3 +6,6 @@ import "@azure-tools/cadl-azure-resource-manager";
 
 import "./ucp.cadl";
 import "./customPlaneScope.cadl";
+import "./awscredentials.cadl";
+import "./azurecredentials.cadl";
+
