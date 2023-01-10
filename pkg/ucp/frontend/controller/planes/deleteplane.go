@@ -7,6 +7,7 @@ package planes
 import (
 	"context"
 	"errors"
+	"fmt"
 	http "net/http"
 
 	"github.com/go-logr/logr"
@@ -53,6 +54,6 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	}
 	logger := logr.FromContextOrDiscard(ctx)
 	restResponse := armrpc_rest.NewNoContentResponse()
-	logger.Info("Successfully deleted plane %s", resourceId.String())
+	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))
 	return restResponse, nil
 }

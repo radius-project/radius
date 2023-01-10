@@ -141,7 +141,6 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []any 
 }
 
 func deletePlane(t *testing.T, roundTripper http.RoundTripper, url string) {
-	t.Skip()
 	deleteRgRequest, err := http.NewRequest(
 		http.MethodDelete,
 		url,
