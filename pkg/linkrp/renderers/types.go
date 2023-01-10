@@ -47,6 +47,7 @@ type RendererOutput struct {
 	SecretValues         map[string]rp.SecretValueReference
 	RecipeData           datamodel.RecipeData
 	EnvironmentProviders coreDatamodel.Providers // represents providers mapped to the linked environment needed to deploy the recipe
+	ContextMeta          datamodel.ContextMeta   // represents the meta to create the context parameters for the recipe deployment
 }
 
 // ComputedValueReference represents a non-secret value that can accessed once the output resources

@@ -409,7 +409,13 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-
+		testRendererOutput.ContextMeta = datamodel.ContextMeta{
+			LinkID:               mongoLinkResourceID,
+			ApplicationID:        testResource.Properties.Application,
+			EnvironmentID:        testResource.Properties.Environment,
+			EnvironmentNamespace: "radius-test",
+			ApplicationNamespace: "radius-test",
+		}
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
 		mocks.db.EXPECT().Get(gomock.Any(), gomock.Any()).Times(1).Return(buildEnvironmentResource("", nil), nil)
@@ -420,6 +426,7 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
+		require.Equal(t, testRendererOutput.ContextMeta, rendererOutput.ContextMeta)
 	})
 
 	t.Run("verify render success with recipe", func(t *testing.T) {
@@ -653,7 +660,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Verify deploy success with recipe", func(t *testing.T) {
 		resources := []string{cosmosAccountID, cosmosMongoID}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(2).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, nil)
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
@@ -666,7 +673,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Verify deploy failure with recipe", func(t *testing.T) {
 		deploymentName := "recipe" + strconv.FormatInt(time.Now().UnixNano(), 10)
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return([]string{}, fmt.Errorf("failed to deploy recipe - %s", deploymentName))
 
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
@@ -724,7 +731,7 @@ func Test_Deploy(t *testing.T) {
 
 	t.Run("Recipe deployment - invalid resource id", func(t *testing.T) {
 		resources := []string{"invalid-id"}
-		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
+		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
 		expectedErr := conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
