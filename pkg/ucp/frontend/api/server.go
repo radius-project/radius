@@ -192,7 +192,6 @@ func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.Sto
 
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
-	logger.Info("Initializing server...")
 	service, err := s.Initialize(ctx)
 	if err != nil {
 		return err

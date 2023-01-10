@@ -66,6 +66,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	_, err = p.GetResource(ctx, planeID.String(), &plane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
+			logger.Error(err, "plane %q does not exist", planeID.String())
 			return armrpc_rest.NewNotFoundResponse(planeID), nil
 		}
 		return nil, err
@@ -92,7 +93,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
-				logger.Error(err, "resource group does not exist")
+				logger.Error(err, "resource group %q does not exist", rgID.String())
 				return armrpc_rest.NewNotFoundResponse(rgID), nil
 			}
 			return nil, err
@@ -104,7 +105,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-
 	ctx = ucplog.WrapLogContext(ctx,
 		ucplog.LogFieldResourceID, resourceID)
 	logger = logr.FromContextOrDiscard(ctx)
@@ -112,8 +112,8 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
 		err = fmt.Errorf("invalid resourceID specified with no provider")
-		logger.Error(err, "resourceID does not have provider")
-		return armrpc_rest.NewBadRequestResponse(err.Error()), err
+		logger.Error(err, "resourceID %q does not have provider", resourceID.String())
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	// Lookup the resource providers configured to determine the URL to proxy to
@@ -182,7 +182,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
 	logger = logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("proxying request target : %s", proxyURL))
+	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
 	// The upstream response has already been sent at this point. Therefore, return nil response here
 	return nil, nil

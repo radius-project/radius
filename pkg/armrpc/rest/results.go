@@ -61,7 +61,6 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 
 	bytes, err := json.MarshalIndent(r.Body, "", "  ")
 	if err != nil {
-		logger.Error(err, "An occured occured while marshalling the response")
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
@@ -78,7 +77,6 @@ func (r *OKResponse) Apply(ctx context.Context, w http.ResponseWriter, req *http
 	w.WriteHeader(http.StatusOK)
 	_, err = w.Write(bytes)
 	if err != nil {
-		logger.Error(err, "An occured occured while writing marshalled %T bytes to output: %s", r.Body, err)
 		return fmt.Errorf("error writing marshaled %T bytes to output: %s", r.Body, err)
 	}
 	return nil
