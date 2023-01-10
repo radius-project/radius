@@ -17,8 +17,6 @@ const (
 )
 
 func Test_AllPlanes_LIST(t *testing.T) {
-	t.Skip("This functionality is currently broken. See https://github.com/project-radius/radius/issues/4877")
-
 	server := testserver.Start(t)
 	defer server.Close()
 
