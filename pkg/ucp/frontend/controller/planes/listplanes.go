@@ -10,6 +10,7 @@ import (
 	http "net/http"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/middleware"
@@ -48,7 +49,9 @@ func (e *ListPlanes) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
-	var ok = armrpc_rest.NewOKResponse(listOfPlanes)
+	var ok = armrpc_rest.NewOKResponse(&v1.PaginatedList{
+			Value: listOfPlanes,
+		})
 	return ok, nil
 }
 

@@ -29,7 +29,7 @@ func Test_Plane_Operations(t *testing.T) {
 
 		// By default, we configure default planes (radius and deployments planes) in UCP. Verify that by calling List Planes
 		planes := listPlanes(t, roundTripper, fmt.Sprintf("%s/planes?api-version=%s", url, apiVersion))
-		require.Equal(t, 3, len(planes))
+		require.Equal(t, 3, len(planes.Value))
 
 		t.Cleanup(func() {
 			deletePlane(t, roundTripper, planeURL)
@@ -117,7 +117,7 @@ func getPlane(t *testing.T, roundTripper http.RoundTripper, url string) (rest.Pl
 	return plane, result.StatusCode
 }
 
-func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []any {
+func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) v20220901privatepreview.PlanesClientListResponse {
 	listRequest, err := http.NewRequest(
 		http.MethodGet,
 		url,
@@ -133,10 +133,8 @@ func listPlanes(t *testing.T, roundTripper http.RoundTripper, url string) []any 
 	defer body.Close()
 	payload, err := io.ReadAll(body)
 	require.NoError(t, err)
-	var listOfPlanes []any
-	err = json.Unmarshal(payload, &listOfPlanes)
-	require.NoError(t, err)
-
+	listOfPlanes := v20220901privatepreview.PlanesClientListResponse{}
+	require.NoError(t, json.Unmarshal(payload, &listOfPlanes))
 	return listOfPlanes
 }
 
