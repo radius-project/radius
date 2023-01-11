@@ -7,20 +7,27 @@ package text
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type (
 	errMsg error
 )
 
+var (
+	QuitTextStyle = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+)
+
 // Model is text model for bubble tea.
 type Model struct {
-	textInput textinput.Model
-	promptMsg string
-	err       error
+	textInput    textinput.Model
+	promptMsg    string
+	valueEntered bool
+	err          error
 }
 
 // NewTextModel returns a new text model with prompt message.
@@ -31,9 +38,10 @@ func NewTextModel(promptMsg string, placeHolder string) Model {
 	ti.Width = 20
 
 	return Model{
-		textInput: ti,
-		promptMsg: promptMsg,
-		err:       nil,
+		textInput:    ti,
+		promptMsg:    promptMsg,
+		valueEntered: false,
+		err:          nil,
 	}
 }
 
@@ -49,8 +57,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEnter:
+			m.valueEntered = true
 			return m, tea.Quit
+		case tea.KeyCtrlC, tea.KeyEsc:
+			os.Exit(1)
 		}
 
 	// We handle errors just like any other message
@@ -64,6 +75,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // View renders a view with user selected value.
 func (m Model) View() string {
+	if m.valueEntered {
+		if m.textInput.Value() == "" {
+			return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Placeholder))
+		} else {
+			return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Value()))
+		}
+
+	}
 	return fmt.Sprintf("%s\n\n%s\n\n%s", m.promptMsg, m.textInput.View(), "(esc to quit)")
 }
 

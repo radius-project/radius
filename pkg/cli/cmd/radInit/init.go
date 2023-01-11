@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	AzureCloudProvider = "Azure"
-	AWSCloudProvider   = "AWS"
-	BackNavigator      = "[back]"
+	azureCloudProvider = "Azure"
+	awsCloudProvider   = "AWS"
+	backNavigator      = "[back]"
 
 	confirmCloudProviderPrompt    = "Add cloud providers for cloud resources?"
 	confirmReinstallRadiusPrompt  = "Would you like to reinstall Radius control plane and configure cloud providers?"
@@ -45,7 +45,6 @@ const (
 	enterApplicationName          = "Choose an application name"
 	selectKubeContextPrompt       = "Select the kubeconfig context to install Radius into"
 	selectCloudProviderPrompt     = "Select your cloud provider"
-	defaultKubeContext            = "default"
 	kubernetesKind                = "kubernetes"
 )
 
@@ -271,13 +270,15 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 				switch cloudProvider {
-				case AzureCloudProvider:
+				case azureCloudProvider:
 					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						return err
 					}
-				case AWSCloudProvider:
+				case awsCloudProvider:
 					r.Output.LogInfo("AWS is not supported")
+				case backNavigator:
+					break
 				default:
 					return &cli.FriendlyError{Message: "Unsupported Cloud Provider"}
 				}
@@ -425,7 +426,6 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 	values := []string{}
 	if interactive {
 		// Ensure current context is at the top as the default
-		values = append(values, defaultKubeContext)
 		values = append(values, currentContext)
 		for k := range kubeContexts {
 			if k != currentContext {
@@ -436,10 +436,6 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 		if err != nil {
 			return "", err
 		}
-		// if default is selected return currentContext as the value is appended with (current)
-		if strings.EqualFold(kubeContext, defaultKubeContext) {
-			return currentContext, nil
-		}
 		return kubeContext, nil
 	}
 
@@ -448,7 +444,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
 func selectCloudProvider(prompter prompt.Interface) (string, error) {
-	values := []string{AzureCloudProvider, AWSCloudProvider, BackNavigator}
+	values := []string{azureCloudProvider, awsCloudProvider, backNavigator}
 	return prompter.GetListInput(values, selectCloudProviderPrompt)
 }
 
