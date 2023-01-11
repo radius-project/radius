@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -140,11 +141,11 @@ func TestConstructCosmosDBQuery(t *testing.T) {
 		},
 		{
 			desc:        "root-scope-subscription-id-and-resource-group",
-			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup", ScopeRecursive: false},
+			storeQuery:  store.Query{RootScope: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup", ScopeRecursive: false},
 			queryString: "SELECT * FROM c WHERE c.rootScope = @rootScope",
 			params: []cosmosapi.QueryParam{{
 				Name:  "@rootScope",
-				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourceGroups/testGroup",
+				Value: "/subscriptions/00000000-0000-0000-1000-000000000001/resourcegroups/testgroup",
 			}},
 			err: nil,
 		},
@@ -229,10 +230,10 @@ func TestSave(t *testing.T) {
 	client := mustGetTestClient(t)
 
 	ucpRootScope := fmt.Sprintf("/planes/radius/local/resourcegroups/%s", randomResourceGroups[0])
-	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-ucp-resource")
+	ucpResource := getTestEnvironmentModel(ucpRootScope, "test-UCP-resource")
 
 	armResourceRootScope := fmt.Sprintf("/subscriptions/%s/resourcegroups/%s", randomSubscriptionIDs[0], randomResourceGroups[0])
-	armResource := getTestEnvironmentModel(armResourceRootScope, "test-resource")
+	armResource := getTestEnvironmentModel(armResourceRootScope, "test-Resource")
 
 	setupTest := func(tb testing.TB, resource *datamodel.Environment) (func(tb testing.TB), *store.Object) {
 		// Prepare DB object
@@ -601,8 +602,8 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 	ucpResources := []string{}
 	armResources := []string{}
 
-	ucpRootScope := "/planes/radius/local/resourcegroups/test-rg"
-	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-rg"
+	ucpRootScope := "/planes/radius/local/resourcegroups/test-RG"
+	armResourceRootScope := "/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/test-RG"
 
 	setupTest := func(tb testing.TB) func(tb testing.TB) {
 		// 50 UCP - 50 ARM
@@ -610,7 +611,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 			ucpEnv := buildAndSaveTestModel(ctx, t, ucpRootScope, fmt.Sprintf("ucp-env-%d", i))
 			ucpResources = append(ucpResources, ucpEnv.ID)
 
-			armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-env-%d", i))
+			armEnv := buildAndSaveTestModel(ctx, t, armResourceRootScope, fmt.Sprintf("test-ENV-%d", i))
 			armResources = append(armResources, armEnv.ID)
 		}
 
@@ -641,7 +642,7 @@ func TestPaginationTokenAndQueryItemCount(t *testing.T) {
 			itemCount: "",
 		},
 		"ucp-resource-10-query-item-count": {
-			rootScope: ucpRootScope,
+			rootScope: strings.ToLower(ucpRootScope), // case-insensitive query
 			itemCount: "10",
 		},
 		"arm-resource-10-query-item-count": {
