@@ -10,9 +10,9 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
-	azclients "github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/armauth"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	aztoken "github.com/project-radius/radius/pkg/azure/tokencredentials"
 	"github.com/project-radius/radius/pkg/cli"
 	"github.com/project-radius/radius/pkg/cli/clients"
@@ -54,14 +54,26 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 		return nil, err
 	}
 
-	// Poll faster than the default, many deployments are quick
-	dc := azclients.NewResourceDeploymentClientWithBaseURI(connection.Endpoint())
-	dc.PollingDelay = 5 * time.Second
-	dc.Sender = connection.Client()
+	arm, err := armauth.GetArmConfig()
+	if err != nil {
+		return nil, err
+	}
 
-	op := azclients.NewResourceDeploymentOperationsClientWithBaseURI(connection.Endpoint())
-	op.PollingDelay = 5 * time.Second
-	op.Sender = connection.Client()
+	dc, err := clientv2.NewResourceDeploymentsClient(workspace.ProviderConfig.Azure.SubscriptionID, &clientv2.Options{
+		Cred:    arm.ClientOptions.Cred,
+		BaseURI: connection.Endpoint(),
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	doc, err := clientv2.NewResourceDeploymentOperationsClient(workspace.ProviderConfig.Azure.SubscriptionID, &clientv2.Options{
+		Cred:    arm.ClientOptions.Cred,
+		BaseURI: connection.Endpoint(),
+	})
+	if err != nil {
+		return nil, err
+	}
 
 	// This client wants a resource group name, but we store the ID instead, so compute that.
 	id, err := resources.ParseScope(workspace.Scope)
@@ -70,11 +82,11 @@ func (i *impl) CreateDeploymentClient(ctx context.Context, workspace workspaces.
 	}
 
 	return &deployment.ResourceDeploymentClient{
-		Client:              dc,
-		OperationsClient:    op,
-		RadiusResourceGroup: id.FindScope(resources.ResourceGroupsSegment),
-		AzProvider:          workspace.ProviderConfig.Azure,
-		AWSProvider:         workspace.ProviderConfig.AWS,
+		ResourceDeploymentsClient:          dc,
+		ResourceDeploymentOperationsClient: doc,
+		RadiusResourceGroup:                id.FindScope(resources.ResourceGroupsSegment),
+		AzProvider:                         workspace.ProviderConfig.Azure,
+		AWSProvider:                        workspace.ProviderConfig.AWS,
 	}, nil
 }
 

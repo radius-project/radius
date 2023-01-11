@@ -106,6 +106,11 @@ func NewDeploymentsClient(subscriptionID string, options *Options) (*armresource
 	return armresources.NewDeploymentsClient(subscriptionID, options.Cred, defaultClientOptions)
 }
 
+// NewDeploymentOperationsClient creates a new deployment operations client to handle deployment related operations.
+func NewDeploymentOperationsClient(subscriptionID string, options *Options) (*armresources.DeploymentOperationsClient, error) {
+	return armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
+}
+
 // NewResourceGroupsClient creates a new resource groups client to handle resource groups.
 func NewResourceGroupsClient(subscriptionID string, options *Options) (*armresources.ResourceGroupsClient, error) {
 	return armresources.NewResourceGroupsClient(subscriptionID, options.Cred, defaultClientOptions)
