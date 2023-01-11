@@ -11,11 +11,15 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/project-radius/radius/pkg/cli/prompt/list"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type (
 	errMsg error
+)
+
+var (
+	QuitTextStyle = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
 
 // Model is text model for bubble tea.
@@ -73,9 +77,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (m Model) View() string {
 	if m.valueEntered {
 		if m.textInput.Value() == "" {
-			return list.QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Placeholder))
+			return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Placeholder))
 		} else {
-			return list.QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Value()))
+			return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.promptMsg, m.textInput.Value()))
 		}
 
 	}

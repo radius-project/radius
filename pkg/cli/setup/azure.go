@@ -69,7 +69,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	}
 
 	clientID, err := prompter.GetTextInput(
-		"Enter the `appId` of the service principal used to create Azure resources:",
+		"Enter the `appId` of the service principal used to create Azure resources",
 		"Enter AppId...",
 	)
 	if err != nil {
@@ -81,7 +81,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	}
 
 	clientSecret, err := prompter.GetTextInput(
-		"Enter the `password` of the service principal used to create Azure resources:",
+		"Enter the `password` of the service principal used to create Azure resources",
 		"",
 	)
 	if err != nil {
@@ -92,7 +92,7 @@ func parseAzureProviderInteractive(cmd *cobra.Command, prompter prompt.Interface
 	}
 
 	tenantID, err := prompter.GetTextInput(
-		"Enter the `tenant` of the service principal used to create Azure resources:",
+		"Enter the `tenant` of the service principal used to create Azure resources",
 		"",
 	)
 	if err != nil {
@@ -386,7 +386,7 @@ func promptUserForRgName(ctx context.Context, client *armresources.ResourceGroup
 		if yes {
 			return defaultRgName, nil
 		}
-		name, err = prompter.GetListInput(names, "Select ResourceGroup:")
+		name, err = prompter.GetListInput(names, "Select ResourceGroup")
 		if err != nil {
 			return "", err
 		}

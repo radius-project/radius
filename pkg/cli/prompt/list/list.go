@@ -23,7 +23,7 @@ var (
 	titleStyle        = lipgloss.NewStyle().PaddingLeft(2)
 	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
 	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	QuitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
 )
 
 type item string
@@ -123,7 +123,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the view after user selection.
 func (m ListModel) View() string {
 	if m.Choice != "" {
-		return QuitTextStyle.Render(fmt.Sprintf("%s: %s", m.List.Title, m.Choice))
+		return quitTextStyle.Render(fmt.Sprintf("%s: %s", m.List.Title, m.Choice))
 	}
 
 	return "\n" + m.List.View()

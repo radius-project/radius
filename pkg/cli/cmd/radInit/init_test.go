@@ -187,7 +187,7 @@ func Test_Validate(t *testing.T) {
 
 				// Add azure provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
-				initSelectAzureCloudProvider(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, "Azure")
 				initParseCloudProvider(mocks.Setup, mocks.Prompter)
 
 				// Don't add any other cloud providers
@@ -414,7 +414,7 @@ func Test_Validate(t *testing.T) {
 				initEnvNamePrompt(mocks.Prompter)
 				initNamespacePrompt(mocks.Prompter)
 				// Oops! I don't need to add cloud provider, navigate back to reinstall prompt
-				initSelectCloudProviderBack(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, "[back]")
 				initAddCloudProviderPromptNo(mocks.Prompter)
 
 				// No application
@@ -699,16 +699,10 @@ func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 		Return("Yes", nil).Times(1)
 }
 
-func initSelectAzureCloudProvider(prompter *prompt.MockInterface) {
+func initSelectCloudProvider(prompter *prompt.MockInterface, value string) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectCloudProviderPrompt).
-		Return("Azure", nil).Times(1)
-}
-
-func initSelectCloudProviderBack(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetListInput(gomock.Any(), selectCloudProviderPrompt).
-		Return("[back]", nil).Times(1)
+		Return(value, nil).Times(1)
 }
 
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
