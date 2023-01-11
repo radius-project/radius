@@ -57,3 +57,9 @@ type ETCDOptions struct {
 	// We need a way to share state between the etcd service and the things that want to consume it. This is that.
 	Client *hosting.AsyncValue[etcdclient.Client] `yaml:"-"`
 }
+
+// LoggingOptions represents the logger.
+type LoggingOptions struct {
+	Json     string `yaml:"json"`
+	LogLevel string `yaml:"logLevel"`
+}

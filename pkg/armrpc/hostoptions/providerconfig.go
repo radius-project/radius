@@ -21,6 +21,7 @@ type ProviderConfig struct {
 	WorkerServer    *WorkerServerOptions                `yaml:"workerServer,omitempty"`
 	MetricsProvider provider.MetricsProviderOptions     `yaml:"metricsProvider"`
 	UCP             UCPConfig                           `yaml:"ucp"`
+	Logging         dataprovider.LoggingOptions         `yaml:"logging"`
 
 	// FeatureFlags includes the list of feature flags.
 	FeatureFlags []string `yaml:"featureFlags"`
