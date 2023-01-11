@@ -68,7 +68,121 @@
     }
   ],
   "paths": {
-    "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes": {
+    "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
+      "get": {
+        "operationId": "MongoDatabases_ListSecrets",
+        "description": "Lists secrets values for the specified MongoDatabase resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "mongoDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the MongoDatabase link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/MongoDatabaseListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
+      "get": {
+        "operationId": "RabbitMqMessageQueues_ListSecrets",
+        "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
+      "get": {
+        "operationId": "RedisCaches_ListSecrets",
+        "description": "Lists secrets values for the specified RedisCache resource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheListSecretsResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/daprInvokeHttpRoutes": {
       "get": {
         "tags": [
           "DaprInvokeHttpRoute"
@@ -78,9 +192,6 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -102,7 +213,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}": {
+    "/daprInvokeHttpRoutes/{daprInvokeHttpRouteName}/{rootScope}": {
       "get": {
         "tags": [
           "DaprInvokeHttpRoute"
@@ -114,9 +225,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprInvokeHttpRouteName",
             "in": "path",
             "required": true,
@@ -125,6 +233,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -153,9 +264,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprInvokeHttpRouteName",
             "in": "path",
             "required": true,
@@ -164,6 +272,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "name": "resource",
@@ -214,9 +325,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprInvokeHttpRouteName",
             "in": "path",
             "required": true,
@@ -225,6 +333,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -253,7 +364,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprPubSubBrokers": {
+    "/daprPubSubBrokers": {
       "get": {
         "tags": [
           "DaprPubSubBroker"
@@ -263,9 +374,6 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -287,7 +395,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprPubSubBrokers/{daprPubSubBrokerName}": {
+    "/daprPubSubBrokers/{daprPubSubBrokerName}/{rootScope}": {
       "get": {
         "tags": [
           "DaprPubSubBroker"
@@ -299,9 +407,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
@@ -310,6 +415,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -338,9 +446,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
@@ -349,6 +454,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "name": "resource",
@@ -399,9 +507,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprPubSubBrokerName",
             "in": "path",
             "required": true,
@@ -410,6 +515,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -438,7 +546,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprSecretStores": {
+    "/daprSecretStores": {
       "get": {
         "tags": [
           "DaprSecretStore"
@@ -448,9 +556,6 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -472,7 +577,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprSecretStores/{daprSecretStoreName}": {
+    "/daprSecretStores/{daprSecretStoreName}/{rootScope}": {
       "get": {
         "tags": [
           "DaprSecretStore"
@@ -484,9 +589,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
@@ -495,6 +597,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -523,9 +628,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
@@ -534,6 +636,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "name": "resource",
@@ -584,9 +689,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprSecretStoreName",
             "in": "path",
             "required": true,
@@ -595,6 +697,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -623,7 +728,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprStateStores": {
+    "/daprStateStores": {
       "get": {
         "tags": [
           "DaprStateStore"
@@ -633,9 +738,6 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -657,7 +759,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/daprStateStores/{daprStateStoreName}": {
+    "/daprStateStores/{daprStateStoreName}/{rootScope}": {
       "get": {
         "tags": [
           "DaprStateStore"
@@ -669,9 +771,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
@@ -680,6 +779,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -708,9 +810,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
@@ -719,6 +818,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "name": "resource",
@@ -769,9 +871,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "daprStateStoreName",
             "in": "path",
             "required": true,
@@ -780,6 +879,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -808,7 +910,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/mongoDatabases": {
+    "/mongoDatabases": {
       "get": {
         "tags": [
           "MongoDatabases"
@@ -818,9 +920,6 @@
         "parameters": [
           {
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -842,7 +941,7 @@
         }
       }
     },
-    "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}": {
+    "/mongoDatabases/{mongoDatabaseName}/{rootScope}": {
       "get": {
         "tags": [
           "MongoDatabases"
@@ -854,9 +953,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
@@ -865,6 +961,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -893,9 +992,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
@@ -904,6 +1000,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
           },
           {
             "name": "resource",
@@ -954,9 +1053,6 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
             "name": "mongoDatabaseName",
             "in": "path",
             "required": true,
@@ -965,669 +1061,9 @@
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
-      "get": {
-        "operationId": "MongoDatabases_ListSecrets",
-        "description": "Lists secrets values for the specified MongoDatabase resource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
             "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "mongoDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/MongoDatabaseListSecretsResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues": {
-      "get": {
-        "tags": [
-          "RabbitMQMessageQueues"
-        ],
-        "operationId": "RabbitMqMessageQueues_ListByRootScope",
-        "description": "Lists information about all RabbitMQMessageQueueResources in the given root scope",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}": {
-      "get": {
-        "tags": [
-          "RabbitMQMessageQueues"
-        ],
-        "operationId": "RabbitMqMessageQueues_Get",
-        "description": "Retrieves information about a RabbitMQMessageQueueResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "rabbitMQMessageQueueName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "RabbitMQMessageQueues"
-        ],
-        "operationId": "RabbitMqMessageQueues_CreateOrUpdate",
-        "description": "Creates or updates a RabbitMQMessageQueueResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "rabbitMQMessageQueueName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/RabbitMQMessageQueueResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "RabbitMQMessageQueues"
-        ],
-        "operationId": "RabbitMqMessageQueues_Delete",
-        "description": "Deletes an existing RabbitMQMessageQueueResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "rabbitMQMessageQueueName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
-      "get": {
-        "operationId": "RabbitMqMessageQueues_ListSecrets",
-        "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "rabbitMQMessageQueueName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RabbitMQListSecretsResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/redisCaches": {
-      "get": {
-        "tags": [
-          "RedisCaches"
-        ],
-        "operationId": "RedisCaches_ListByRootScope",
-        "description": "Lists information about all RedisCacheResources in the given root scope",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}": {
-      "get": {
-        "tags": [
-          "RedisCaches"
-        ],
-        "operationId": "RedisCaches_Get",
-        "description": "Retrieves information about a RedisCacheResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "redisCacheName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "RedisCaches"
-        ],
-        "operationId": "RedisCaches_CreateOrUpdate",
-        "description": "Creates or updates a RedisCacheResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "redisCacheName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/RedisCacheResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "RedisCaches"
-        ],
-        "operationId": "RedisCaches_Delete",
-        "description": "Deletes an existing RedisCacheResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "redisCacheName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
-      "get": {
-        "operationId": "RedisCaches_ListSecrets",
-        "description": "Lists secrets values for the specified RedisCache resource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "redisCacheName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/RedisCacheListSecretsResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/sqlDatabases": {
-      "get": {
-        "tags": [
-          "SqlDatabases"
-        ],
-        "operationId": "SqlDatabases_ListByRootScope",
-        "description": "Lists information about all SqlDatabaseResources in the given root scope",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResourceListResult"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        },
-        "x-ms-pageable": {
-          "nextLinkName": "nextLink"
-        }
-      }
-    },
-    "/{rootScope}/providers/Applications.Link/sqlDatabases/{sqlDatabaseName}": {
-      "get": {
-        "tags": [
-          "SqlDatabases"
-        ],
-        "operationId": "SqlDatabases_Get",
-        "description": "Retrieves information about a SqlDatabaseResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "sqlDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "SqlDatabases"
-        ],
-        "operationId": "SqlDatabases_CreateOrUpdate",
-        "description": "Creates or updates a SqlDatabaseResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "sqlDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/SqlDatabaseResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "SqlDatabases"
-        ],
-        "operationId": "SqlDatabases_Delete",
-        "description": "Deletes an existing SqlDatabaseResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/RootScopeParam"
-          },
-          {
-            "name": "sqlDatabaseName",
-            "in": "path",
-            "required": true,
-            "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
           }
         ],
         "responses": {
@@ -1684,6 +1120,546 @@
         },
         "x-ms-pageable": {
           "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/rabbitMQMessageQueues": {
+      "get": {
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "operationId": "RabbitMqMessageQueues_ListByRootScope",
+        "description": "Lists information about all RabbitMQMessageQueueResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/{rootScope}": {
+      "get": {
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "operationId": "RabbitMqMessageQueues_Get",
+        "description": "Retrieves information about a RabbitMQMessageQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "operationId": "RabbitMqMessageQueues_CreateOrUpdate",
+        "description": "Creates or updates a RabbitMQMessageQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/RabbitMQMessageQueueResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RabbitMQMessageQueues"
+        ],
+        "operationId": "RabbitMqMessageQueues_Delete",
+        "description": "Deletes an existing RabbitMQMessageQueueResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "rabbitMQMessageQueueName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RabbitMQMessageQueue link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/redisCaches": {
+      "get": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_ListByRootScope",
+        "description": "Lists information about all RedisCacheResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/redisCaches/{redisCacheName}/{rootScope}": {
+      "get": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_Get",
+        "description": "Retrieves information about a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_CreateOrUpdate",
+        "description": "Creates or updates a RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/RedisCacheResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "RedisCaches"
+        ],
+        "operationId": "RedisCaches_Delete",
+        "description": "Deletes an existing RedisCacheResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "redisCacheName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the RedisCache link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/sqlDatabases": {
+      "get": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_ListByRootScope",
+        "description": "Lists information about all SqlDatabaseResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/sqlDatabases/{sqlDatabaseName}/{rootScope}": {
+      "get": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_Get",
+        "description": "Retrieves information about a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_CreateOrUpdate",
+        "description": "Creates or updates a SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/SqlDatabaseResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "SqlDatabases"
+        ],
+        "operationId": "SqlDatabases_Delete",
+        "description": "Deletes an existing SqlDatabaseResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "sqlDatabaseName",
+            "in": "path",
+            "required": true,
+            "description": "The name of the SqlDatabase link resource",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/RootScopeParam"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
         }
       }
     }

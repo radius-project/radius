@@ -56,6 +56,37 @@
     }
   ],
   "paths": {
+    "/planes": {
+      "get": {
+        "tags": [
+          "Planes"
+        ],
+        "operationId": "Planes_ListByRootScope",
+        "description": "Lists information about all PlaneResources in the given root scope",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/PlaneResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
     "/planes/{planeType}/{planeName}": {
       "get": {
         "tags": [
@@ -68,10 +99,14 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           }
         ],
         "responses": {
@@ -100,10 +135,14 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           },
           {
             "name": "resource",
@@ -154,10 +193,14 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           }
         ],
         "responses": {
@@ -186,42 +229,33 @@
         }
       }
     },
-    "/planes/{planeType}/{planeName}//providers/System.AWS/credentials/{credentialName}/internal/{credential}": {
+    "/planes/{planeType}/{planeName}/resourcegroups": {
       "get": {
         "tags": [
-          "AwsCredentials"
+          "ResourceGroups"
         ],
-        "operationId": "AwsCredentials_Get",
-        "description": "Retrieves information about a CredentialResource",
+        "operationId": "ResourceGroups_ListByRootScope",
+        "description": "Lists information about all ResourceGroupResources in the given root scope",
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
+            "name": "planeType",
             "in": "path",
             "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
+            "description": "The plane type.",
             "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           }
         ],
         "responses": {
           "200": {
             "description": "ARM operation completed successfully.",
             "schema": {
-              "$ref": "#/definitions/CredentialResource"
+              "$ref": "#/definitions/ResourceGroupResourceListResult"
             }
           },
           "default": {
@@ -230,297 +264,9 @@
               "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
-        }
-      },
-      "put": {
-        "tags": [
-          "AwsCredentials"
-        ],
-        "operationId": "AwsCredentials_CreateOrUpdate",
-        "description": "Creates or updates a CredentialResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AwsCredentials"
-        ],
-        "operationId": "AwsCredentials_Delete",
-        "description": "Deletes an existing CredentialResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AWSCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      }
-    },
-    "/planes/{planeType}/{planeName}//providers/System.Azure/credentials/{credentialName}/internal/{credential}": {
-      "get": {
-        "tags": [
-          "AzureCredentials"
-        ],
-        "operationId": "AzureCredentials_Get",
-        "description": "Retrieves information about a CredentialResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "put": {
-        "tags": [
-          "AzureCredentials"
-        ],
-        "operationId": "AzureCredentials_CreateOrUpdate",
-        "description": "Creates or updates a CredentialResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          },
-          {
-            "name": "resource",
-            "in": "body",
-            "required": true,
-            "description": "Resource create parameters.",
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "ARM operation completed successfully.",
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          },
-          "201": {
-            "description": "ARM create operation completed successfully.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            },
-            "schema": {
-              "$ref": "#/definitions/CredentialResource"
-            }
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "AzureCredentials"
-        ],
-        "operationId": "AzureCredentials_Delete",
-        "description": "Deletes an existing CredentialResource",
-        "parameters": [
-          {
-            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeType"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.planeName"
-          },
-          {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.AzureCredentialParam.credentialName"
-          },
-          {
-            "name": "credential",
-            "in": "path",
-            "required": true,
-            "description": "The name of the Credential Resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
-            "maxLength": 63,
-            "x-ms-parameter-location": "method",
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Resource deleted successfully."
-          },
-          "202": {
-            "description": "Resource deletion accepted.",
-            "headers": {
-              "Retry-After": {
-                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
-                "type": "integer",
-                "format": "int32"
-              }
-            }
-          },
-          "204": {
-            "description": "Resource deleted successfully."
-          },
-          "default": {
-            "description": "An unexpected error response.",
-            "schema": {
-              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
-            }
-          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
         }
       }
     },
@@ -536,13 +282,24 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.resourceGroupName"
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
           }
         ],
         "responses": {
@@ -571,13 +328,24 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.resourceGroupName"
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
           },
           {
             "name": "resource",
@@ -628,13 +396,512 @@
             "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeType"
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.planeName"
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
           },
           {
-            "$ref": "#/parameters/Azure.ResourceManager.Radius.ResourceGroupParam.resourceGroupName"
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials": {
+      "get": {
+        "tags": [
+          "AwsCredentials"
+        ],
+        "operationId": "AwsCredentials_ListByRootScope",
+        "description": "Lists information about all AwsCredentialResources in the given root scope",
+        "parameters": [
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials/{credentialName}": {
+      "get": {
+        "tags": [
+          "AwsCredentials"
+        ],
+        "operationId": "AwsCredentials_Get",
+        "description": "Retrieves information about a AwsCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AwsCredentials"
+        ],
+        "operationId": "AwsCredentials_CreateOrUpdate",
+        "description": "Creates or updates a AwsCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/AwsCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AwsCredentials"
+        ],
+        "operationId": "AwsCredentials_Delete",
+        "description": "Deletes an existing AwsCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Resource deleted successfully."
+          },
+          "202": {
+            "description": "Resource deletion accepted.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            }
+          },
+          "204": {
+            "description": "Resource deleted successfully."
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      }
+    },
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.Azure/credentials": {
+      "get": {
+        "tags": [
+          "AzureCredentials"
+        ],
+        "operationId": "AzureCredentials_ListByRootScope",
+        "description": "Lists information about all AzureCredentialResources in the given root scope",
+        "parameters": [
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResourceListResult"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        },
+        "x-ms-pageable": {
+          "nextLinkName": "nextLink"
+        }
+      }
+    },
+    "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.Azure/credentials/{credentialName}": {
+      "get": {
+        "tags": [
+          "AzureCredentials"
+        ],
+        "operationId": "AzureCredentials_Get",
+        "description": "Retrieves information about a AzureCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "AzureCredentials"
+        ],
+        "operationId": "AzureCredentials_CreateOrUpdate",
+        "description": "Creates or updates a AzureCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "name": "resource",
+            "in": "body",
+            "required": true,
+            "description": "Resource create parameters.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "ARM operation completed successfully.",
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "201": {
+            "description": "ARM create operation completed successfully.",
+            "headers": {
+              "Retry-After": {
+                "description": "The Retry-After header can indicate how long the client should wait before polling the operation status.",
+                "type": "integer",
+                "format": "int32"
+              }
+            },
+            "schema": {
+              "$ref": "#/definitions/AzureCredentialResource"
+            }
+          },
+          "default": {
+            "description": "An unexpected error response.",
+            "schema": {
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "AzureCredentials"
+        ],
+        "operationId": "AzureCredentials_Delete",
+        "description": "Deletes an existing AzureCredentialResource",
+        "parameters": [
+          {
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
+          },
+          {
+            "name": "planeType",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
+          },
+          {
+            "$ref": "#/parameters/Azure.ResourceManager.Radius.PlaneParam"
+          },
+          {
+            "name": "resourceGroupName",
+            "in": "path",
+            "required": true,
+            "description": "DaprSecretStore name",
+            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "maxLength": 63,
+            "x-ms-parameter-location": "method",
+            "type": "string"
+          },
+          {
+            "name": "credentialName",
+            "in": "path",
+            "required": true,
+            "description": "The plane type.",
+            "type": "string"
           }
         ],
         "responses": {
@@ -727,6 +994,92 @@
         }
       ]
     },
+    "AwsCredentialResource": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AwsCredentialProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AwsCredentialResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AwsCredentialResource"
+          },
+          "x-cadl-name": "AwsCredentialResource[]",
+          "description": "The AwsCredentialResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a AwsCredentialResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
+    "AzureCredentialResource": {
+      "type": "object",
+      "properties": {
+        "properties": {
+          "$ref": "#/definitions/AzureServicePrincipalProperties",
+          "description": "The resource-specific properties for this resource.",
+          "x-ms-client-flatten": true,
+          "x-ms-mutability": [
+            "read",
+            "create"
+          ]
+        }
+      },
+      "description": "Concrete tracked resource types can be created by aliasing this type using a specific property type.",
+      "allOf": [
+        {
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
+        }
+      ]
+    },
+    "AzureCredentialResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/AzureCredentialResource"
+          },
+          "x-cadl-name": "AzureCredentialResource[]",
+          "description": "The AzureCredentialResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a AzureCredentialResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
     "AzureServicePrincipalProperties": {
       "type": "object",
       "properties": {
@@ -764,37 +1117,18 @@
     },
     "BasicResourceProperties": {
       "type": "object",
-      "properties": {},
-      "description": "Basic properties of a UCP resource."
-    },
-    "CredentialResource": {
-      "type": "object",
-      "properties": {
-        "properties": {
-          "$ref": "#/definitions/CredentialResourceProperties",
-          "description": "The resource-specific properties for this resource.",
-          "x-ms-client-flatten": true,
-          "x-ms-mutability": [
-            "read",
-            "create"
-          ]
-        }
-      },
-      "description": "Credential to a plane instance",
-      "allOf": [
-        {
-          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
-        }
-      ]
-    },
-    "CredentialResourceProperties": {
-      "type": "object",
       "properties": {
         "provisioningState": {
           "$ref": "#/definitions/ProvisioningState",
           "description": "Provisioning state of the redis cache link at the time the operation was called",
           "readOnly": true
-        },
+        }
+      },
+      "description": "Basic properties of a UCP resource."
+    },
+    "CredentialResourceProperties": {
+      "type": "object",
+      "properties": {
         "kind": {
           "type": "string",
           "description": "The kind of secret"
@@ -896,6 +1230,29 @@
         }
       ]
     },
+    "PlaneResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PlaneResource"
+          },
+          "x-cadl-name": "PlaneResource[]",
+          "description": "The PlaneResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a PlaneResource list operation.",
+      "required": [
+        "value"
+      ]
+    },
     "PlaneResourceProperties": {
       "type": "object",
       "properties": {
@@ -921,6 +1278,11 @@
         "kind",
         "url",
         "resourceProviders"
+      ],
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasicResourceProperties"
+        }
       ]
     },
     "ProvisioningState": {
@@ -959,111 +1321,34 @@
           "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
         }
       ]
+    },
+    "ResourceGroupResourceListResult": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/ResourceGroupResource"
+          },
+          "x-cadl-name": "ResourceGroupResource[]",
+          "description": "The ResourceGroupResource items on this page"
+        },
+        "nextLink": {
+          "type": "string",
+          "format": "uri",
+          "description": "The link to the next page of items",
+          "x-cadl-name": "Rest.ResourceLocation"
+        }
+      },
+      "description": "The response of a ResourceGroupResource list operation.",
+      "required": [
+        "value"
+      ]
     }
   },
   "parameters": {
-    "Azure.ResourceManager.Radius.AWSCredentialParam.credentialName": {
-      "name": "credentialName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.AWSCredentialParam.planeName": {
+    "Azure.ResourceManager.Radius.PlaneParam": {
       "name": "planeName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.AWSCredentialParam.planeType": {
-      "name": "planeType",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.AzureCredentialParam.credentialName": {
-      "name": "credentialName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.AzureCredentialParam.planeName": {
-      "name": "planeName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.AzureCredentialParam.planeType": {
-      "name": "planeType",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.PlaneParam.planeName": {
-      "name": "planeName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.PlaneParam.planeType": {
-      "name": "planeType",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.ResourceGroupParam.planeName": {
-      "name": "planeName",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.ResourceGroupParam.planeType": {
-      "name": "planeType",
-      "in": "path",
-      "required": true,
-      "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",
-      "minLength": 1,
-      "x-ms-parameter-location": "client",
-      "x-ms-skip-url-encoding": true,
-      "type": "string"
-    },
-    "Azure.ResourceManager.Radius.ResourceGroupParam.resourceGroupName": {
-      "name": "resourceGroupName",
       "in": "path",
       "required": true,
       "description": "The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}",

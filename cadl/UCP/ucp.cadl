@@ -58,7 +58,12 @@ enum CredentialStorageKind {
 }
 
 @doc("UCP PlaneResource.")
-model PlaneResource extends TrackedResource<PlaneResourceProperties> {
+model PlaneResource is TrackedResource<PlaneResourceProperties> {
+    @key("planeType")
+    @doc("The plane type.")
+    @segment("planes")
+    @path()
+    name: string;
 }
 
 @doc("Plane kinds supported.")
@@ -69,7 +74,7 @@ enum PlaneKind {
 }
 
 @doc("Plane properties.")
-model PlaneResourceProperties {
+model PlaneResourceProperties extends BasicResourceProperties {
     @doc("The kind of plane")
     kind: PlaneKind;
 
@@ -80,15 +85,33 @@ model PlaneResourceProperties {
     resourceProviders: string[]
 }
 
-@doc("Credential to a plane instance")
-model CredentialResource is TrackedResource<CredentialResourceProperties> {
-    @doc("The name of the Credential Resource")
-    @maxLength(63)
-    @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+// @doc("Credential to a plane instance")
+// model CredentialResource is TrackedResource<CredentialResourceProperties> {
+//     @doc("The name of the Credential Resource")
+//     @maxLength(63)
+//     @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+//     @key("credentialName")
+//     @path
+//     @segment("credentials")
+//     @extension("x-ms-parameter-location", "method")
+//     name: string;
+// }
+
+@parentResource(ResourceGroupResource)
+model AwsCredentialResource is TrackedResource<AwsCredentialProperties> {
     @key("credentialName")
+    @doc("The plane type.")
     @path
-    @segment("credentials")
-    @extension("x-ms-parameter-location", "method")
+    @segment("providers/System.AWS/credentials")
+    name: string;
+}
+
+@parentResource(ResourceGroupResource)
+model AzureCredentialResource is TrackedResource<AzureServicePrincipalProperties> {
+    @key("credentialName")
+    @doc("The plane type.")
+    @path
+    @segment("providers/System.Azure/credentials")
     name: string;
 }
 
@@ -148,45 +171,39 @@ model AwsCredentialProperties extends CredentialResourceProperties {
     secretAccessKey: string;
 }
 
-model AWSProvider {
-    @doc("AWS Provider")
-    @extension("x-ms-parameter-location", "method")
-    @path
-    @segment("providers")
-    @extension("x-ms-parameter-location", "method")
-    provider: string;
-}
-
 @armResourceOperations
 interface Planes
-  extends PlaneResourceOperations<
+  extends Radius.RootScopeResourceOperations<
       PlaneResource,
       PlaneResourceProperties,
-      PlaneParam
+      PlaneNameParameter
     > {}
+
+model Root<PlaneResource> {
+    ...KeysOf<PlaneResource>,
+    ...PlaneNameParameter
+}
     
 @armResourceOperations
 interface ResourceGroups
-  extends PlaneResourceOperations<
+  extends ResourceGroupResourceOperations<
       ResourceGroupResource,
       BasicResourceProperties,
-      PlaneParam
+      Root<PlaneResource>
     > {}
 
 @armResourceOperations
 interface AzureCredentials
-  extends CredentialResourceOperations<
-      CredentialResource,
-      CredentialResourceProperties,
-      PlaneParam,
-      AzureProvider
+  extends ResourceGroupResourceOperations<
+      AzureCredentialResource,
+      AzureServicePrincipalProperties,
+      Root<PlaneResource>
     > {}
 
 @armResourceOperations
 interface AwsCredentials
-    extends CredentialResourceOperations<
-        CredentialResource,
-        CredentialResourceProperties,
-        PlaneParam,
-        AWSProvider
+    extends ResourceGroupResourceOperations<
+        AwsCredentialResource,
+        AwsCredentialProperties,
+        Root<PlaneResource>
     > {}

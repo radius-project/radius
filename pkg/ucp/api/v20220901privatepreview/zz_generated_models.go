@@ -9,14 +9,24 @@
 
 package v20220901privatepreview
 
-// AWSCredentialClientCreateOrUpdateOptions contains the optional parameters for the AWSCredentialClient.CreateOrUpdate method.
-type AWSCredentialClientCreateOrUpdateOptions struct {
-	// placeholder for future optional parameters
+import "time"
+
+// AwsCredentialPropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetAwsCredentialProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AwsCredentialProperties
+type AwsCredentialPropertiesClassification interface {
+	// GetAwsCredentialProperties returns the AwsCredentialProperties content of the underlying type.
+	GetAwsCredentialProperties() *AwsCredentialProperties
 }
 
-type AWSCredentialProperties struct {
+// AwsCredentialProperties - AWS credential storage properties
+type AwsCredentialProperties struct {
 	// REQUIRED; Access key ID for AWS identity
 	AccessKeyID *string `json:"accessKeyId,omitempty"`
+
+	// REQUIRED; Discriminator property for AwsCredentialProperties.
+	AwsComIam *string `json:"aws.com.iam,omitempty"`
 
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
@@ -24,36 +34,109 @@ type AWSCredentialProperties struct {
 	// REQUIRED; Secret Access Key for AWS identity
 	SecretAccessKey *string `json:"secretAccessKey,omitempty"`
 
-	// REQUIRED; Credential storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+	// REQUIRED; The storage properties
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
-// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AWSCredentialProperties.
-func (a *AWSCredentialProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
-	return &CredentialResourceProperties{
-		Kind: a.Kind,
-		Storage: a.Storage,
-	}
+// GetAwsCredentialProperties implements the AwsCredentialPropertiesClassification interface for type AwsCredentialProperties.
+func (a *AwsCredentialProperties) GetAwsCredentialProperties() *AwsCredentialProperties { return a }
+
+// AwsCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
+type AwsCredentialResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// The resource-specific properties for this resource.
+	Properties AwsCredentialPropertiesClassification `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// AWSCredentialsClientDeleteOptions contains the optional parameters for the AWSCredentialsClient.Delete method.
-type AWSCredentialsClientDeleteOptions struct {
-	// placeholder for future optional parameters
+// AwsCredentialResourceListResult - The response of a AwsCredentialResource list operation.
+type AwsCredentialResourceListResult struct {
+	// REQUIRED; The AwsCredentialResource items on this page
+	Value []*AwsCredentialResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// AWSCredentialsClientGetOptions contains the optional parameters for the AWSCredentialsClient.Get method.
-type AWSCredentialsClientGetOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AWSCredentialsClientListOptions contains the optional parameters for the AWSCredentialsClient.List method.
-type AWSCredentialsClientListOptions struct {
-	// placeholder for future optional parameters
-}
-
-// AzureCredentialClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialClient.CreateOrUpdate
+// AwsCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialsClient.CreateOrUpdate
 // method.
-type AzureCredentialClientCreateOrUpdateOptions struct {
+type AwsCredentialsClientCreateOrUpdateOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsCredentialsClientDeleteOptions contains the optional parameters for the AwsCredentialsClient.Delete method.
+type AwsCredentialsClientDeleteOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsCredentialsClientGetOptions contains the optional parameters for the AwsCredentialsClient.Get method.
+type AwsCredentialsClientGetOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AwsCredentialsClientListByRootScopeOptions contains the optional parameters for the AwsCredentialsClient.ListByRootScope
+// method.
+type AwsCredentialsClientListByRootScopeOptions struct {
+	// placeholder for future optional parameters
+}
+
+// AzureCredentialResource - Concrete tracked resource types can be created by aliasing this type using a specific property
+// type.
+type AzureCredentialResource struct {
+	// REQUIRED; The geo-location where the resource lives
+	Location *string `json:"location,omitempty"`
+
+	// The resource-specific properties for this resource.
+	Properties AzureServicePrincipalPropertiesClassification `json:"properties,omitempty"`
+
+	// Resource tags.
+	Tags map[string]*string `json:"tags,omitempty"`
+
+	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
+	ID *string `json:"id,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the resource
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
+	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
+	Type *string `json:"type,omitempty" azure:"ro"`
+}
+
+// AzureCredentialResourceListResult - The response of a AzureCredentialResource list operation.
+type AzureCredentialResourceListResult struct {
+	// REQUIRED; The AzureCredentialResource items on this page
+	Value []*AzureCredentialResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
+}
+
+// AzureCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AzureCredentialsClient.CreateOrUpdate
+// method.
+type AzureCredentialsClientCreateOrUpdateOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -67,12 +150,26 @@ type AzureCredentialsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// AzureCredentialsClientListOptions contains the optional parameters for the AzureCredentialsClient.List method.
-type AzureCredentialsClientListOptions struct {
+// AzureCredentialsClientListByRootScopeOptions contains the optional parameters for the AzureCredentialsClient.ListByRootScope
+// method.
+type AzureCredentialsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
+// AzureServicePrincipalPropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetAzureServicePrincipalProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *AzureServicePrincipalProperties
+type AzureServicePrincipalPropertiesClassification interface {
+	// GetAzureServicePrincipalProperties returns the AzureServicePrincipalProperties content of the underlying type.
+	GetAzureServicePrincipalProperties() *AzureServicePrincipalProperties
+}
+
+// AzureServicePrincipalProperties - Service Principal credential storage properties
 type AzureServicePrincipalProperties struct {
+	// REQUIRED; Discriminator property for AzureServicePrincipalProperties.
+	AzureComServiceprincipal *string `json:"azure.com.serviceprincipal,omitempty"`
+
 	// REQUIRED; clientId when the CredentialKind is ServicePrincipal
 	ClientID *string `json:"clientId,omitempty"`
 
@@ -82,55 +179,23 @@ type AzureServicePrincipalProperties struct {
 	// REQUIRED; secret when the CredentialKind is ServicePrincipal
 	Secret *string `json:"secret,omitempty"`
 
-	// REQUIRED; Credential storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
+	// REQUIRED; The storage properties
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 
 	// REQUIRED; tenantId when the CredentialKind is ServicePrincipal
 	TenantID *string `json:"tenantId,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
-// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type AzureServicePrincipalProperties.
-func (a *AzureServicePrincipalProperties) GetCredentialResourceProperties() *CredentialResourceProperties {
-	return &CredentialResourceProperties{
-		Kind: a.Kind,
-		Storage: a.Storage,
-	}
-}
+// GetAzureServicePrincipalProperties implements the AzureServicePrincipalPropertiesClassification interface for type AzureServicePrincipalProperties.
+func (a *AzureServicePrincipalProperties) GetAzureServicePrincipalProperties() *AzureServicePrincipalProperties { return a }
 
-// CredentialResource - Credential to a plane instance
-type CredentialResource struct {
-	// REQUIRED; The geo-location where the resource lives
-	Location *string `json:"location,omitempty"`
-
-	// REQUIRED; Credential properties
-	Properties CredentialResourcePropertiesClassification `json:"properties,omitempty"`
-
-	// Resource tags.
-	Tags map[string]*string `json:"tags,omitempty"`
-
-	// READ-ONLY; Fully qualified resource ID for the resource. Ex - /subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}/providers/{resourceProviderNamespace}/{resourceType}/{resourceName}
-	ID *string `json:"id,omitempty" azure:"ro"`
-
-	// READ-ONLY; The name of the resource
-	Name *string `json:"name,omitempty" azure:"ro"`
-
-	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
-	Type *string `json:"type,omitempty" azure:"ro"`
-}
-
-// CredentialResourceList - The list of credentials.
-type CredentialResourceList struct {
-	// The list of credentials.
-	Value []*CredentialResource `json:"value,omitempty"`
-}
-
-// CredentialResourcePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetCredentialResourceProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *AWSCredentialProperties, *AzureServicePrincipalProperties, *CredentialResourceProperties
-type CredentialResourcePropertiesClassification interface {
-	// GetCredentialResourceProperties returns the CredentialResourceProperties content of the underlying type.
-	GetCredentialResourceProperties() *CredentialResourceProperties
+// BasicResourceProperties - Basic properties of a UCP resource.
+type BasicResourceProperties struct {
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // CredentialResourceProperties - Credential properties
@@ -138,30 +203,18 @@ type CredentialResourceProperties struct {
 	// REQUIRED; The kind of secret
 	Kind *string `json:"kind,omitempty"`
 
-	// REQUIRED; Credential storage properties
-	Storage CredentialStoragePropertiesClassification `json:"storage,omitempty"`
-}
+	// REQUIRED; The storage properties
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 
-// GetCredentialResourceProperties implements the CredentialResourcePropertiesClassification interface for type CredentialResourceProperties.
-func (c *CredentialResourceProperties) GetCredentialResourceProperties() *CredentialResourceProperties { return c }
-
-// CredentialStoragePropertiesClassification provides polymorphic access to related types.
-// Call the interface's GetCredentialStorageProperties() method to access the common type.
-// Use a type switch to determine the concrete type.  The possible types are:
-// - *CredentialStorageProperties, *InternalCredentialStorageProperties
-type CredentialStoragePropertiesClassification interface {
-	// GetCredentialStorageProperties returns the CredentialStorageProperties content of the underlying type.
-	GetCredentialStorageProperties() *CredentialStorageProperties
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // CredentialStorageProperties - Credential storage properties
 type CredentialStorageProperties struct {
-	// REQUIRED; credential store kinds supported.
+	// REQUIRED; Credential store kinds supported.
 	Kind *CredentialStorageKind `json:"kind,omitempty"`
 }
-
-// GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type CredentialStorageProperties.
-func (c *CredentialStorageProperties) GetCredentialStorageProperties() *CredentialStorageProperties { return c }
 
 // ErrorAdditionalInfo - The resource management error additional info.
 type ErrorAdditionalInfo struct {
@@ -197,27 +250,97 @@ type ErrorResponse struct {
 	Error *ErrorDetail `json:"error,omitempty"`
 }
 
+// InternalCredentialStoragePropertiesClassification provides polymorphic access to related types.
+// Call the interface's GetInternalCredentialStorageProperties() method to access the common type.
+// Use a type switch to determine the concrete type.  The possible types are:
+// - *InternalCredentialStorageProperties
+type InternalCredentialStoragePropertiesClassification interface {
+	// GetInternalCredentialStorageProperties returns the InternalCredentialStorageProperties content of the underlying type.
+	GetInternalCredentialStorageProperties() *InternalCredentialStorageProperties
+}
+
+// InternalCredentialStorageProperties - Internal credential storage properties
 type InternalCredentialStorageProperties struct {
-	// REQUIRED; credential store kinds supported.
-	Kind *CredentialStorageKind `json:"kind,omitempty"`
+	// REQUIRED; Discriminator property for InternalCredentialStorageProperties.
+	Internal *string `json:"Internal,omitempty"`
+
+	// REQUIRED; The kind of secret
+	Kind *string `json:"kind,omitempty"`
+
+	// REQUIRED; The storage properties
+	Storage *CredentialStorageProperties `json:"storage,omitempty"`
 
 	// READ-ONLY; The name of secret stored.
 	SecretName *string `json:"secretName,omitempty" azure:"ro"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
-// GetCredentialStorageProperties implements the CredentialStoragePropertiesClassification interface for type InternalCredentialStorageProperties.
-func (i *InternalCredentialStorageProperties) GetCredentialStorageProperties() *CredentialStorageProperties {
-	return &CredentialStorageProperties{
-		Kind: i.Kind,
-	}
+// GetInternalCredentialStorageProperties implements the InternalCredentialStoragePropertiesClassification interface for type
+// InternalCredentialStorageProperties.
+func (i *InternalCredentialStorageProperties) GetInternalCredentialStorageProperties() *InternalCredentialStorageProperties { return i }
+
+// Operation - Details of a REST API operation, returned from the Resource Provider Operations API
+type Operation struct {
+	// Localized display information for this particular operation.
+	Display *OperationDisplay `json:"display,omitempty"`
+
+	// READ-ONLY; Enum. Indicates the action type. "Internal" refers to actions that are for internal only APIs.
+	ActionType *ActionType `json:"actionType,omitempty" azure:"ro"`
+
+	// READ-ONLY; Whether the operation applies to data-plane. This is "true" for data-plane operations and "false" for ARM/control-plane
+// operations.
+	IsDataAction *bool `json:"isDataAction,omitempty" azure:"ro"`
+
+	// READ-ONLY; The name of the operation, as per Resource-Based Access Control (RBAC). Examples: "Microsoft.Compute/virtualMachines/write",
+// "Microsoft.Compute/virtualMachines/capture/action"
+	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; The intended executor of the operation; as in Resource Based Access Control (RBAC) and audit logs UX. Default
+// value is "user,system"
+	Origin *Origin `json:"origin,omitempty" azure:"ro"`
 }
 
-// PlaneResource - UCP Plane.
+// OperationDisplay - Localized display information for this particular operation.
+type OperationDisplay struct {
+	// READ-ONLY; The short, localized friendly description of the operation; suitable for tool tips and detailed views.
+	Description *string `json:"description,omitempty" azure:"ro"`
+
+	// READ-ONLY; The concise, localized friendly name for the operation; suitable for dropdowns. E.g. "Create or Update Virtual
+// Machine", "Restart Virtual Machine".
+	Operation *string `json:"operation,omitempty" azure:"ro"`
+
+	// READ-ONLY; The localized friendly form of the resource provider name, e.g. "Microsoft Monitoring Insights" or "Microsoft
+// Compute".
+	Provider *string `json:"provider,omitempty" azure:"ro"`
+
+	// READ-ONLY; The localized friendly name of the resource type related to this operation. E.g. "Virtual Machines" or "Job
+// Schedule Collections".
+	Resource *string `json:"resource,omitempty" azure:"ro"`
+}
+
+// OperationListResult - A list of REST API operations supported by an Azure Resource Provider. It contains an URL link to
+// get the next set of results.
+type OperationListResult struct {
+	// READ-ONLY; URL to get the next set of operation list results (if there are any).
+	NextLink *string `json:"nextLink,omitempty" azure:"ro"`
+
+	// READ-ONLY; List of operations supported by the resource provider
+	Value []*Operation `json:"value,omitempty" azure:"ro"`
+}
+
+// OperationsClientListOptions contains the optional parameters for the OperationsClient.List method.
+type OperationsClientListOptions struct {
+	// placeholder for future optional parameters
+}
+
+// PlaneResource - UCP PlaneResource.
 type PlaneResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
 
-	// REQUIRED; UCP Plane properties
+	// The resource-specific properties for this resource.
 	Properties *PlaneResourceProperties `json:"properties,omitempty"`
 
 	// Resource tags.
@@ -229,26 +352,35 @@ type PlaneResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// PlaneResourceList - The list of planes.
-type PlaneResourceList struct {
-	// The list of planes.
+// PlaneResourceListResult - The response of a PlaneResource list operation.
+type PlaneResourceListResult struct {
+	// REQUIRED; The PlaneResource items on this page
 	Value []*PlaneResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
-// PlaneResourceProperties - UCP Plane properties
+// PlaneResourceProperties - Plane properties.
 type PlaneResourceProperties struct {
-	// REQUIRED; Plane kinds supported.
+	// REQUIRED; The kind of plane
 	Kind *PlaneKind `json:"kind,omitempty"`
 
-	// Resource Providers for UCP Native Plane
-	ResourceProviders map[string]*string `json:"resourceProviders,omitempty"`
+	// REQUIRED; Resource Providers for UCP Native Plane
+	ResourceProviders []*string `json:"resourceProviders,omitempty"`
 
-	// URL to forward requests to for non UCP Native Plane
+	// REQUIRED; URL to forward requests to for non UCP Native Plane
 	URL *string `json:"url,omitempty"`
+
+	// READ-ONLY; Provisioning state of the redis cache link at the time the operation was called
+	ProvisioningState *ProvisioningState `json:"provisioningState,omitempty" azure:"ro"`
 }
 
 // PlanesClientCreateOrUpdateOptions contains the optional parameters for the PlanesClient.CreateOrUpdate method.
@@ -266,8 +398,8 @@ type PlanesClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// PlanesClientListOptions contains the optional parameters for the PlanesClient.List method.
-type PlanesClientListOptions struct {
+// PlanesClientListByRootScopeOptions contains the optional parameters for the PlanesClient.ListByRootScope method.
+type PlanesClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
 }
 
@@ -279,6 +411,9 @@ type Resource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
@@ -287,6 +422,9 @@ type Resource struct {
 type ResourceGroupResource struct {
 	// REQUIRED; The geo-location where the resource lives
 	Location *string `json:"location,omitempty"`
+
+	// The resource-specific properties for this resource.
+	Properties *BasicResourceProperties `json:"properties,omitempty"`
 
 	// Resource tags.
 	Tags map[string]*string `json:"tags,omitempty"`
@@ -297,14 +435,20 @@ type ResourceGroupResource struct {
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
 
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
+
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`
 }
 
-// ResourceGroupResourceList - The list of resource groups.
-type ResourceGroupResourceList struct {
-	// The list of resource groups.
+// ResourceGroupResourceListResult - The response of a ResourceGroupResource list operation.
+type ResourceGroupResourceListResult struct {
+	// REQUIRED; The ResourceGroupResource items on this page
 	Value []*ResourceGroupResource `json:"value,omitempty"`
+
+	// The link to the next page of items
+	NextLink *string `json:"nextLink,omitempty"`
 }
 
 // ResourceGroupsClientCreateOrUpdateOptions contains the optional parameters for the ResourceGroupsClient.CreateOrUpdate
@@ -323,9 +467,31 @@ type ResourceGroupsClientGetOptions struct {
 	// placeholder for future optional parameters
 }
 
-// ResourceGroupsClientListOptions contains the optional parameters for the ResourceGroupsClient.List method.
-type ResourceGroupsClientListOptions struct {
+// ResourceGroupsClientListByRootScopeOptions contains the optional parameters for the ResourceGroupsClient.ListByRootScope
+// method.
+type ResourceGroupsClientListByRootScopeOptions struct {
 	// placeholder for future optional parameters
+}
+
+// SystemData - Metadata pertaining to creation and last modification of the resource.
+type SystemData struct {
+	// The timestamp of resource creation (UTC).
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+
+	// The identity that created the resource.
+	CreatedBy *string `json:"createdBy,omitempty"`
+
+	// The type of identity that created the resource.
+	CreatedByType *CreatedByType `json:"createdByType,omitempty"`
+
+	// The timestamp of resource last modification (UTC)
+	LastModifiedAt *time.Time `json:"lastModifiedAt,omitempty"`
+
+	// The identity that last modified the resource.
+	LastModifiedBy *string `json:"lastModifiedBy,omitempty"`
+
+	// The type of identity that last modified the resource.
+	LastModifiedByType *CreatedByType `json:"lastModifiedByType,omitempty"`
 }
 
 // TrackedResource - The resource model definition for an Azure Resource Manager tracked top level resource which has 'tags'
@@ -342,6 +508,9 @@ type TrackedResource struct {
 
 	// READ-ONLY; The name of the resource
 	Name *string `json:"name,omitempty" azure:"ro"`
+
+	// READ-ONLY; Azure Resource Manager metadata containing createdBy and modifiedBy information.
+	SystemData *SystemData `json:"systemData,omitempty" azure:"ro"`
 
 	// READ-ONLY; The type of the resource. E.g. "Microsoft.Compute/virtualMachines" or "Microsoft.Storage/storageAccounts"
 	Type *string `json:"type,omitempty" azure:"ro"`

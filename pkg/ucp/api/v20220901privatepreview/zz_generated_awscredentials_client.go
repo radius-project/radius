@@ -20,20 +20,23 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 )
 
-// AWSCredentialsClient contains the methods for the AWSCredentials group.
-// Don't use this type directly, use NewAWSCredentialsClient() instead.
-type AWSCredentialsClient struct {
+// AwsCredentialsClient contains the methods for the AwsCredentials group.
+// Don't use this type directly, use NewAwsCredentialsClient() instead.
+type AwsCredentialsClient struct {
 	host string
+	planeName string
 	pl runtime.Pipeline
 }
 
-// NewAWSCredentialsClient creates a new instance of AWSCredentialsClient with the specified values.
+// NewAwsCredentialsClient creates a new instance of AwsCredentialsClient with the specified values.
+// planeName - The scope in which the resource is present. For Azure resource this would be /subscriptions/{subscriptionID}/resourceGroup/{resourcegroupID}
 // credential - used to authorize requests. Usually a credential from azidentity.
 // options - pass nil to accept the default values.
-func NewAWSCredentialsClient(credential azcore.TokenCredential, options *arm.ClientOptions) (*AWSCredentialsClient, error) {
+func NewAwsCredentialsClient(planeName string, credential azcore.TokenCredential, options *arm.ClientOptions) (*AwsCredentialsClient, error) {
 	if options == nil {
 		options = &arm.ClientOptions{}
 	}
@@ -45,46 +48,116 @@ func NewAWSCredentialsClient(credential azcore.TokenCredential, options *arm.Cli
 	if err != nil {
 		return nil, err
 	}
-	client := &AWSCredentialsClient{
+	client := &AwsCredentialsClient{
+		planeName: planeName,
 		host: ep,
 pl: pl,
 	}
 	return client, nil
 }
 
-// Delete - Delete credential resource for this plane instance
+// CreateOrUpdate - Creates or updates a AwsCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-09-01-privatepreview
-// planeType - The type of the plane
-// planeName - The name of the plane
-// credentialName - The name of the credential
-// options - AWSCredentialsClientDeleteOptions contains the optional parameters for the AWSCredentialsClient.Delete method.
-func (client *AWSCredentialsClient) Delete(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientDeleteOptions) (AWSCredentialsClientDeleteResponse, error) {
-	req, err := client.deleteCreateRequest(ctx, planeType, planeName, credentialName, options)
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The plane type.
+// resourceGroupName - DaprSecretStore name
+// credentialName - The plane type.
+// resource - Resource create parameters.
+// options - AwsCredentialsClientCreateOrUpdateOptions contains the optional parameters for the AwsCredentialsClient.CreateOrUpdate
+// method.
+func (client *AwsCredentialsClient) CreateOrUpdate(ctx context.Context, planeType string, resourceGroupName string, credentialName string, resource AwsCredentialResource, options *AwsCredentialsClientCreateOrUpdateOptions) (AwsCredentialsClientCreateOrUpdateResponse, error) {
+	req, err := client.createOrUpdateCreateRequest(ctx, planeType, resourceGroupName, credentialName, resource, options)
 	if err != nil {
-		return AWSCredentialsClientDeleteResponse{}, err
+		return AwsCredentialsClientCreateOrUpdateResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return AWSCredentialsClientDeleteResponse{}, err
+		return AwsCredentialsClientCreateOrUpdateResponse{}, err
 	}
-	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusNoContent) {
-		return AWSCredentialsClientDeleteResponse{}, runtime.NewResponseError(resp)
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusCreated) {
+		return AwsCredentialsClientCreateOrUpdateResponse{}, runtime.NewResponseError(resp)
 	}
-	return AWSCredentialsClientDeleteResponse{}, nil
+	return client.createOrUpdateHandleResponse(resp)
 }
 
-// deleteCreateRequest creates the Delete request.
-func (client *AWSCredentialsClient) deleteCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientDeleteOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
+// createOrUpdateCreateRequest creates the CreateOrUpdate request.
+func (client *AwsCredentialsClient) createOrUpdateCreateRequest(ctx context.Context, planeType string, resourceGroupName string, credentialName string, resource AwsCredentialResource, options *AwsCredentialsClientCreateOrUpdateOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
+	if credentialName == "" {
+		return nil, errors.New("parameter credentialName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{credentialName}", url.PathEscape(credentialName))
+	req, err := runtime.NewRequest(ctx, http.MethodPut, runtime.JoinPaths(client.host, urlPath))
+	if err != nil {
+		return nil, err
+	}
+	reqQP := req.Raw().URL.Query()
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
+	req.Raw().URL.RawQuery = reqQP.Encode()
+	req.Raw().Header["Accept"] = []string{"application/json"}
+	return req, runtime.MarshalAsJSON(req, resource)
+}
+
+// createOrUpdateHandleResponse handles the CreateOrUpdate response.
+func (client *AwsCredentialsClient) createOrUpdateHandleResponse(resp *http.Response) (AwsCredentialsClientCreateOrUpdateResponse, error) {
+	result := AwsCredentialsClientCreateOrUpdateResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return AwsCredentialsClientCreateOrUpdateResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
+		return AwsCredentialsClientCreateOrUpdateResponse{}, err
+	}
+	return result, nil
+}
+
+// Delete - Deletes an existing AwsCredentialResource
+// If the operation fails it returns an *azcore.ResponseError type.
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The plane type.
+// resourceGroupName - DaprSecretStore name
+// credentialName - The plane type.
+// options - AwsCredentialsClientDeleteOptions contains the optional parameters for the AwsCredentialsClient.Delete method.
+func (client *AwsCredentialsClient) Delete(ctx context.Context, planeType string, resourceGroupName string, credentialName string, options *AwsCredentialsClientDeleteOptions) (AwsCredentialsClientDeleteResponse, error) {
+	req, err := client.deleteCreateRequest(ctx, planeType, resourceGroupName, credentialName, options)
+	if err != nil {
+		return AwsCredentialsClientDeleteResponse{}, err
+	}
+	resp, err := client.pl.Do(req)
+	if err != nil {
+		return AwsCredentialsClientDeleteResponse{}, err
+	}
+	if !runtime.HasStatusCode(resp, http.StatusOK, http.StatusAccepted, http.StatusNoContent) {
+		return AwsCredentialsClientDeleteResponse{}, runtime.NewResponseError(resp)
+	}
+	return client.deleteHandleResponse(resp)
+}
+
+// deleteCreateRequest creates the Delete request.
+func (client *AwsCredentialsClient) deleteCreateRequest(ctx context.Context, planeType string, resourceGroupName string, credentialName string, options *AwsCredentialsClientDeleteOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials/{credentialName}"
+	if planeType == "" {
+		return nil, errors.New("parameter planeType cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
+	}
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -94,45 +167,60 @@ func (client *AWSCredentialsClient) deleteCreateRequest(ctx context.Context, pla
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
-// Get - Get name of the secret that is holding credentials for the plane instance
+// deleteHandleResponse handles the Delete response.
+func (client *AwsCredentialsClient) deleteHandleResponse(resp *http.Response) (AwsCredentialsClientDeleteResponse, error) {
+	result := AwsCredentialsClientDeleteResponse{}
+	if val := resp.Header.Get("Retry-After"); val != "" {
+		retryAfter32, err := strconv.ParseInt(val, 10, 32)
+		retryAfter := int32(retryAfter32)
+		if err != nil {
+			return AwsCredentialsClientDeleteResponse{}, err
+		}
+		result.RetryAfter = &retryAfter
+	}
+	return result, nil
+}
+
+// Get - Retrieves information about a AwsCredentialResource
 // If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-09-01-privatepreview
-// planeType - The type of the plane
-// planeName - The name of the plane
-// credentialName - The name of the credential
-// options - AWSCredentialsClientGetOptions contains the optional parameters for the AWSCredentialsClient.Get method.
-func (client *AWSCredentialsClient) Get(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientGetOptions) (AWSCredentialsClientGetResponse, error) {
-	req, err := client.getCreateRequest(ctx, planeType, planeName, credentialName, options)
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The plane type.
+// resourceGroupName - DaprSecretStore name
+// credentialName - The plane type.
+// options - AwsCredentialsClientGetOptions contains the optional parameters for the AwsCredentialsClient.Get method.
+func (client *AwsCredentialsClient) Get(ctx context.Context, planeType string, resourceGroupName string, credentialName string, options *AwsCredentialsClientGetOptions) (AwsCredentialsClientGetResponse, error) {
+	req, err := client.getCreateRequest(ctx, planeType, resourceGroupName, credentialName, options)
 	if err != nil {
-		return AWSCredentialsClientGetResponse{}, err
+		return AwsCredentialsClientGetResponse{}, err
 	}
 	resp, err := client.pl.Do(req)
 	if err != nil {
-		return AWSCredentialsClientGetResponse{}, err
+		return AwsCredentialsClientGetResponse{}, err
 	}
 	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return AWSCredentialsClientGetResponse{}, runtime.NewResponseError(resp)
+		return AwsCredentialsClientGetResponse{}, runtime.NewResponseError(resp)
 	}
 	return client.getHandleResponse(resp)
 }
 
 // getCreateRequest creates the Get request.
-func (client *AWSCredentialsClient) getCreateRequest(ctx context.Context, planeType string, planeName string, credentialName string, options *AWSCredentialsClientGetOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials/{credentialName}"
+func (client *AwsCredentialsClient) getCreateRequest(ctx context.Context, planeType string, resourceGroupName string, credentialName string, options *AwsCredentialsClientGetOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials/{credentialName}"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	if credentialName == "" {
 		return nil, errors.New("parameter credentialName cannot be empty")
 	}
@@ -142,69 +230,83 @@ func (client *AWSCredentialsClient) getCreateRequest(ctx context.Context, planeT
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
 // getHandleResponse handles the Get response.
-func (client *AWSCredentialsClient) getHandleResponse(resp *http.Response) (AWSCredentialsClientGetResponse, error) {
-	result := AWSCredentialsClientGetResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.CredentialResource); err != nil {
-		return AWSCredentialsClientGetResponse{}, err
+func (client *AwsCredentialsClient) getHandleResponse(resp *http.Response) (AwsCredentialsClientGetResponse, error) {
+	result := AwsCredentialsClientGetResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResource); err != nil {
+		return AwsCredentialsClientGetResponse{}, err
 	}
 	return result, nil
 }
 
-// List - List the credentials for this plane instance
-// If the operation fails it returns an *azcore.ResponseError type.
-// Generated from API version 2022-09-01-privatepreview
-// planeType - The type of the plane
-// planeName - The name of the plane
-// options - AWSCredentialsClientListOptions contains the optional parameters for the AWSCredentialsClient.List method.
-func (client *AWSCredentialsClient) List(ctx context.Context, planeType string, planeName string, options *AWSCredentialsClientListOptions) (AWSCredentialsClientListResponse, error) {
-	req, err := client.listCreateRequest(ctx, planeType, planeName, options)
-	if err != nil {
-		return AWSCredentialsClientListResponse{}, err
-	}
-	resp, err := client.pl.Do(req)
-	if err != nil {
-		return AWSCredentialsClientListResponse{}, err
-	}
-	if !runtime.HasStatusCode(resp, http.StatusOK) {
-		return AWSCredentialsClientListResponse{}, runtime.NewResponseError(resp)
-	}
-	return client.listHandleResponse(resp)
+// NewListByRootScopePager - Lists information about all AwsCredentialResources in the given root scope
+// Generated from API version 2022-03-15-privatepreview
+// planeType - The plane type.
+// resourceGroupName - DaprSecretStore name
+// options - AwsCredentialsClientListByRootScopeOptions contains the optional parameters for the AwsCredentialsClient.ListByRootScope
+// method.
+func (client *AwsCredentialsClient) NewListByRootScopePager(planeType string, resourceGroupName string, options *AwsCredentialsClientListByRootScopeOptions) (*runtime.Pager[AwsCredentialsClientListByRootScopeResponse]) {
+	return runtime.NewPager(runtime.PagingHandler[AwsCredentialsClientListByRootScopeResponse]{
+		More: func(page AwsCredentialsClientListByRootScopeResponse) bool {
+			return page.NextLink != nil && len(*page.NextLink) > 0
+		},
+		Fetcher: func(ctx context.Context, page *AwsCredentialsClientListByRootScopeResponse) (AwsCredentialsClientListByRootScopeResponse, error) {
+			var req *policy.Request
+			var err error
+			if page == nil {
+				req, err = client.listByRootScopeCreateRequest(ctx, planeType, resourceGroupName, options)
+			} else {
+				req, err = runtime.NewRequest(ctx, http.MethodGet, *page.NextLink)
+			}
+			if err != nil {
+				return AwsCredentialsClientListByRootScopeResponse{}, err
+			}
+			resp, err := client.pl.Do(req)
+			if err != nil {
+				return AwsCredentialsClientListByRootScopeResponse{}, err
+			}
+			if !runtime.HasStatusCode(resp, http.StatusOK) {
+				return AwsCredentialsClientListByRootScopeResponse{}, runtime.NewResponseError(resp)
+			}
+			return client.listByRootScopeHandleResponse(resp)
+		},
+	})
 }
 
-// listCreateRequest creates the List request.
-func (client *AWSCredentialsClient) listCreateRequest(ctx context.Context, planeType string, planeName string, options *AWSCredentialsClientListOptions) (*policy.Request, error) {
-	urlPath := "/planes/{planeType}/{planeName}/providers/System.AWS/credentials"
+// listByRootScopeCreateRequest creates the ListByRootScope request.
+func (client *AwsCredentialsClient) listByRootScopeCreateRequest(ctx context.Context, planeType string, resourceGroupName string, options *AwsCredentialsClientListByRootScopeOptions) (*policy.Request, error) {
+	urlPath := "/planes/{planeType}/{planeName}/resourcegroups/{resourceGroupName}/providers/System.AWS/credentials"
 	if planeType == "" {
 		return nil, errors.New("parameter planeType cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{planeType}", url.PathEscape(planeType))
-	if planeName == "" {
-		return nil, errors.New("parameter planeName cannot be empty")
+	urlPath = strings.ReplaceAll(urlPath, "{planeName}", client.planeName)
+	if resourceGroupName == "" {
+		return nil, errors.New("parameter resourceGroupName cannot be empty")
 	}
-	urlPath = strings.ReplaceAll(urlPath, "{planeName}", url.PathEscape(planeName))
+	urlPath = strings.ReplaceAll(urlPath, "{resourceGroupName}", url.PathEscape(resourceGroupName))
 	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}
 	reqQP := req.Raw().URL.Query()
-	reqQP.Set("api-version", "2022-09-01-privatepreview")
+	reqQP.Set("api-version", "2022-03-15-privatepreview")
 	req.Raw().URL.RawQuery = reqQP.Encode()
 	req.Raw().Header["Accept"] = []string{"application/json"}
 	return req, nil
 }
 
-// listHandleResponse handles the List response.
-func (client *AWSCredentialsClient) listHandleResponse(resp *http.Response) (AWSCredentialsClientListResponse, error) {
-	result := AWSCredentialsClientListResponse{}
-	if err := runtime.UnmarshalAsJSON(resp, &result.CredentialResourceList); err != nil {
-		return AWSCredentialsClientListResponse{}, err
+// listByRootScopeHandleResponse handles the ListByRootScope response.
+func (client *AwsCredentialsClient) listByRootScopeHandleResponse(resp *http.Response) (AwsCredentialsClientListByRootScopeResponse, error) {
+	result := AwsCredentialsClientListByRootScopeResponse{}
+	if err := runtime.UnmarshalAsJSON(resp, &result.AwsCredentialResourceListResult); err != nil {
+		return AwsCredentialsClientListByRootScopeResponse{}, err
 	}
 	return result, nil
 }
