@@ -8,6 +8,7 @@ package list
 import (
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -27,7 +28,7 @@ var (
 
 type item string
 
-func (i item) FilterValue() string { return "" }
+func (i item) FilterValue() string { return string(i) }
 
 type itemHandler struct{}
 
@@ -75,6 +76,7 @@ func NewListModel(choices []string, promptMsg string) ListModel {
 	l := list.New(items, itemHandler{}, defaultWidth, listHeight)
 	l.Title = promptMsg
 	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(true)
 	l.Styles.Title = titleStyle
 
 	return ListModel{
@@ -100,16 +102,16 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		switch keypress := msg.String(); keypress {
-		case "ctrl+c":
-			m.Quitting = true
-			return m, tea.Quit
-
+		case "ctrl+c", "esc", "q":
+			os.Exit(1)
 		case "enter":
-			i, ok := m.List.SelectedItem().(item)
-			if ok {
-				m.Choice = string(i)
+			if m.List.FilterState() != list.Filtering {
+				i, ok := m.List.SelectedItem().(item)
+				if ok {
+					m.Choice = string(i)
+				}
+				return m, tea.Quit
 			}
-			return m, tea.Quit
 		}
 	}
 
@@ -121,11 +123,7 @@ func (m ListModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // View renders the view after user selection.
 func (m ListModel) View() string {
 	if m.Choice != "" {
-		return quitTextStyle.Render(fmt.Sprintf("Selected Value: %s", m.Choice))
-	}
-
-	if m.Quitting {
-		return quitTextStyle.Render("Quitting...")
+		return quitTextStyle.Render(fmt.Sprintf("%s: %s", m.List.Title, m.Choice))
 	}
 
 	return "\n" + m.List.View()

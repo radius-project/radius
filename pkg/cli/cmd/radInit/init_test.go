@@ -187,7 +187,7 @@ func Test_Validate(t *testing.T) {
 
 				// Add azure provider
 				initAddCloudProviderPromptYes(mocks.Prompter)
-				initSelectCloudProvider(mocks.Prompter)
+				initSelectCloudProvider(mocks.Prompter, "Azure")
 				initParseCloudProvider(mocks.Setup, mocks.Prompter)
 
 				// Don't add any other cloud providers
@@ -389,6 +389,36 @@ func Test_Validate(t *testing.T) {
 				// Choose default name and cancel out of namespace prompt
 				initEnvNamePrompt(mocks.Prompter)
 				initNamespacePromptError(mocks.Prompter)
+			},
+		},
+		{
+			Name:          "Init Command Navigate back while configuring cloud provider",
+			Input:         []string{},
+			ExpectedValid: true,
+			ConfigHolder: framework.ConfigHolder{
+				ConfigFilePath: "",
+				Config:         config,
+			},
+			ConfigureMocks: func(mocks radcli.ValidateMocks) {
+				// Radius is already installed, no reinstall
+				initGetKubeContextSuccess(mocks.Kubernetes)
+				initKubeContextWithKind(mocks.Prompter)
+				initHelmMockRadiusInstalled(mocks.Helm)
+				// Reinstall radius to configure cloud provider
+				initRadiusReinstallYes(mocks.Prompter)
+				initAddCloudProviderPromptYes(mocks.Prompter)
+				// No existing environment, users will be prompted to create a new one
+				setExistingEnvironments(mocks.ApplicationManagementClient, []corerp.EnvironmentResource{})
+
+				// Choose default name and namespace
+				initEnvNamePrompt(mocks.Prompter)
+				initNamespacePrompt(mocks.Prompter)
+				// Oops! I don't need to add cloud provider, navigate back to reinstall prompt
+				initSelectCloudProvider(mocks.Prompter, "[back]")
+				initAddCloudProviderPromptNo(mocks.Prompter)
+
+				// No application
+				setScaffoldApplicationPromptNo(mocks.Prompter)
 			},
 		},
 	}
@@ -669,10 +699,10 @@ func initAddCloudProviderPromptYes(prompter *prompt.MockInterface) {
 		Return("Yes", nil).Times(1)
 }
 
-func initSelectCloudProvider(prompter *prompt.MockInterface) {
+func initSelectCloudProvider(prompter *prompt.MockInterface, value string) {
 	prompter.EXPECT().
 		GetListInput(gomock.Any(), selectCloudProviderPrompt).
-		Return("Azure", nil).Times(1)
+		Return(value, nil).Times(1)
 }
 
 func initHelmMockRadiusInstalled(helmMock *helm.MockInterface) {
