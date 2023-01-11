@@ -176,13 +176,13 @@ func constructCosmosDBQuery(query store.Query) (*cosmosapi.Query, error) {
 		whereParam = whereParam + "STARTSWITH(c.rootScope, @rootScope, true)"
 		queryParams = append(queryParams, cosmosapi.QueryParam{
 			Name:  "@rootScope",
-			Value: query.RootScope,
+			Value: strings.ToLower(query.RootScope),
 		})
 	} else {
 		whereParam = whereParam + "c.rootScope = @rootScope"
 		queryParams = append(queryParams, cosmosapi.QueryParam{
 			Name:  "@rootScope",
-			Value: query.RootScope,
+			Value: strings.ToLower(query.RootScope),
 		})
 	}
 
@@ -387,8 +387,8 @@ func (c *CosmosDBStorageClient) Save(ctx context.Context, obj *store.Object, opt
 
 	entity := &ResourceEntity{
 		ID:           docID,
-		ResourceID:   parsed.String(),
-		RootScope:    parsed.RootScope(),
+		ResourceID:   strings.ToLower(parsed.String()),
+		RootScope:    strings.ToLower(parsed.RootScope()),
 		PartitionKey: partitionKey,
 		Entity:       obj.Data,
 	}
