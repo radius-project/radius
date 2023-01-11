@@ -24,7 +24,7 @@ type ResourceDataModel interface {
 	// SetProvisioningState sets the provisioning state of the resource.
 	SetProvisioningState(state ProvisioningState)
 	// UpdateMetadata updates and populates metadata to the resource.
-	UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseResource)
+	UpdateMetadata(ctx *ARMRequestContext, oldResource ResourceDataModel)
 }
 
 // VersionedModelInterface is the interface for versioned models.
