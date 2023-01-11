@@ -74,7 +74,7 @@ func Test_Environment_Selection(t *testing.T) {
 			interactive: true,
 			expectedEnv: testEnvName,
 			err:         nil,
-			mockSetup:   setupEnvNameTextPrompt,
+			mockSetup:   func(m *prompt.MockInterface) {setupEnvNameTextPrompt(m, testEnvName)},
 		},
 		{
 			name:        "environment name interactive",
@@ -83,7 +83,7 @@ func Test_Environment_Selection(t *testing.T) {
 			interactive: true,
 			expectedEnv: defaultTestValue,
 			err:         nil,
-			mockSetup:   setupEmptyEnvNameTextPrompt,
+			mockSetup:   func(m *prompt.MockInterface) {setupEnvNameTextPrompt(m, "")},
 		},
 	}
 	for _, tt := range tests {
@@ -104,14 +104,8 @@ func Test_Environment_Selection(t *testing.T) {
 	}
 }
 
-func setupEnvNameTextPrompt(prompter *prompt.MockInterface) {
+func setupEnvNameTextPrompt(prompter *prompt.MockInterface, value string) {
 	prompter.EXPECT().
 		GetTextInput(EnterEnvironmentNamePrompt, gomock.Any()).
-		Return(testEnvName, nil).Times(1)
-}
-
-func setupEmptyEnvNameTextPrompt(prompter *prompt.MockInterface) {
-	prompter.EXPECT().
-		GetTextInput(EnterEnvironmentNamePrompt, gomock.Any()).
-		Return("", nil).Times(1)
+		Return(value, nil).Times(1)
 }
