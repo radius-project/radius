@@ -22,7 +22,6 @@ import (
 	"github.com/project-radius/radius/pkg/ucp/planes"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*CreateOrUpdatePlane)(nil)
@@ -69,13 +68,11 @@ func (p *CreateOrUpdatePlane) Run(ctx context.Context, w http.ResponseWriter, re
 		Type: planes.PlaneTypePrefix + "/" + planeType,
 	}
 
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, newResource.Properties.Kind)
-	logger := logr.FromContextOrDiscard(ctx)
-
 	// Check if the plane already exists
 	planeExists := true
 	existingResource := datamodel.Plane{}
 	etag, err := p.GetResource(ctx, newResource.TrackedResource.ID, &existingResource)
+	logger := logr.FromContextOrDiscard(ctx)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
 			planeExists = false

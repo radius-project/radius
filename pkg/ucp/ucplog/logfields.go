@@ -8,31 +8,22 @@ package ucplog
 // Field names for structured logging
 const (
 	// LogHTTPStatusCode represents the HTTP status code of response from downstream as seen by UCP.
-	LogHTTPStatusCode string = "StatusCode"
-
-	// LogFieldPlaneID represents the ID of a resource provider plane.
-	LogFieldPlaneID string = "PlaneID"
+	LogHTTPStatusCode string = "ResponseStatusCode"
 
 	// LogFieldRequestPath represents the path of the request URL.
-	LogFieldRequestPath string = "Path"
-
-	// LogFieldPlaneKind represents the kind of plane.
-	LogFieldPlaneKind string = "PlaneKind"
+	LogFieldRequestPath string = "RequestPath"
 
 	// LogFieldHTTPScheme represents the scheme of HTTP request.
-	LogFieldHTTPScheme string = "HTTPScheme"
+	LogFieldHTTPScheme string = "RequestScheme"
 
 	// LogFieldPlaneURL represents the URL to which this request will be proxied to.
 	LogFieldPlaneURL string = "ProxyURL"
-
-	// LogFieldProvider represents the Resource Provider fulfilling the request.
-	LogFieldProvider string = "Provider"
 
 	// LogFieldResourceGroup represents the UCP resource group.
 	LogFieldResourceGroup string = "UCPResourceGroup"
 
 	// LogFieldHTTPMethod represents the HTTP request method of request recieved by UCP from client.
-	LogFieldHTTPMethod string = "HttpMethod"
+	LogFieldHTTPMethod string = "RequestMethod"
 
 	// LogFieldRequestURL represents the HTTP request URL of request received by UCP from client.
 	LogFieldRequestURL string = "RequestURL"
@@ -42,4 +33,10 @@ const (
 
 	// LogFieldUCPHost represents the UCP server host name.
 	LogFieldUCPHost string = "UCPHost"
+
+	// LogFieldUCPHost represents the Resource ID.
+	LogFieldResourceID string = "ResourceID"
+
+	// LogFieldCorrelationID represents the X-Correlation-ID that may be present in the incoming request.
+	LogFieldCorrelationID string = "X-Correlation-ID"
 )
