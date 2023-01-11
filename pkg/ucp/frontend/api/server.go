@@ -113,7 +113,7 @@ func (s *Service) Initialize(ctx context.Context) (*http.Server, error) {
 		s.options.Configure(r)
 	}
 
-	err = s.ConfigureDefaultPlanes(ctx, db, s.options.InitialPlanes)
+	err = s.configureDefaultPlanes(ctx, db, s.options.InitialPlanes)
 	if err != nil {
 		return nil, err
 	}
@@ -159,8 +159,8 @@ func (s *Service) initializeSecretClient(ctx context.Context) (secret.Client, er
 	return secretClient, nil
 }
 
-// ConfigureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
-func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
+// configureDefaultPlanes reads the configuration file specified by the env var to configure default planes into UCP
+func (s *Service) configureDefaultPlanes(ctx context.Context, dbClient store.StorageClient, planes []rest.Plane) error {
 
 	for _, plane := range planes {
 		body, err := json.Marshal(plane)
@@ -192,7 +192,6 @@ func (s *Service) ConfigureDefaultPlanes(ctx context.Context, dbClient store.Sto
 
 func (s *Service) Run(ctx context.Context) error {
 	logger := logr.FromContextOrDiscard(ctx)
-
 	service, err := s.Initialize(ctx)
 	if err != nil {
 		return err
