@@ -35,9 +35,9 @@ import (
 )
 
 const (
-	AzureCloudProvider = "Azure"
-	AWSCloudProvider   = "AWS"
-	BackNavigator      = "[back]"
+	azureCloudProvider = "Azure"
+	awsCloudProvider   = "AWS"
+	backNavigator      = "[back]"
 
 	confirmCloudProviderPrompt    = "Add cloud providers for cloud resources?"
 	confirmReinstallRadiusPrompt  = "Would you like to reinstall Radius control plane and configure cloud providers?"
@@ -270,14 +270,14 @@ func (r *Runner) Validate(cmd *cobra.Command, args []string) error {
 					return &cli.FriendlyError{Message: "Error reading cloud provider"}
 				}
 				switch cloudProvider {
-				case AzureCloudProvider:
+				case azureCloudProvider:
 					r.AzureCloudProvider, err = r.SetupInterface.ParseAzureProviderArgs(cmd, true, r.Prompter)
 					if err != nil {
 						return err
 					}
-				case AWSCloudProvider:
+				case awsCloudProvider:
 					r.Output.LogInfo("AWS is not supported")
-				case BackNavigator:
+				case backNavigator:
 					break
 				default:
 					return &cli.FriendlyError{Message: "Unsupported Cloud Provider"}
@@ -444,7 +444,7 @@ func selectKubeContext(currentContext string, kubeContexts map[string]*api.Conte
 
 // Selects the cloud provider, returns -1 if back and -2 if not supported
 func selectCloudProvider(prompter prompt.Interface) (string, error) {
-	values := []string{AzureCloudProvider, AWSCloudProvider, BackNavigator}
+	values := []string{azureCloudProvider, awsCloudProvider, backNavigator}
 	return prompter.GetListInput(values, selectCloudProviderPrompt)
 }
 

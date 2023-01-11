@@ -17,18 +17,18 @@ import (
 )
 
 const (
-	DefaultTestValue = "default"
-	TestEnvName      = "env0"
-	InvalidEnvName   = "&^*env"
+	defaultTestValue = "default"
+	testEnvName      = "env0"
+	invalidEnvName   = "&^*env"
 )
 
 func Test_Environment_Selection(t *testing.T) {
 	testCmd := &cobra.Command{}
-	testCmd.Flags().String("environment", TestEnvName, "Environment flag")
+	testCmd.Flags().String("environment", testEnvName, "Environment flag")
 	testEmptyEnvCmd := &cobra.Command{}
 	testEmptyEnvCmd.Flags().String("environment", "", "Environment flag")
 	testInvalidEnvNameCmd := &cobra.Command{}
-	testInvalidEnvNameCmd.Flags().String("environment", InvalidEnvName, "Environment flag")
+	testInvalidEnvNameCmd.Flags().String("environment", invalidEnvName, "Environment flag")
 
 	tests := []struct {
 		name        string
@@ -42,46 +42,46 @@ func Test_Environment_Selection(t *testing.T) {
 		{
 			name:        "Select environment non interactive",
 			cmd:         testCmd,
-			defaultVal:  DefaultTestValue,
+			defaultVal:  defaultTestValue,
 			interactive: false,
-			expectedEnv: TestEnvName,
+			expectedEnv: testEnvName,
 		},
 		{
 			name:        "Default environment non interactive",
 			cmd:         testEmptyEnvCmd,
-			defaultVal:  DefaultTestValue,
+			defaultVal:  defaultTestValue,
 			interactive: false,
-			expectedEnv: DefaultTestValue,
+			expectedEnv: defaultTestValue,
 		},
 		{
 			name:        "Undefined environment flag non interactive",
 			cmd:         &cobra.Command{},
-			defaultVal:  DefaultTestValue,
+			defaultVal:  defaultTestValue,
 			interactive: false,
 			err:         errors.New("flag accessed but not defined: environment"),
 		},
 		{
 			name:        "Invalid environment name non interactive",
 			cmd:         testInvalidEnvNameCmd,
-			defaultVal:  InvalidEnvName,
+			defaultVal:  invalidEnvName,
 			interactive: false,
-			err:         fmt.Errorf("%s %s. Use --environment option to specify the valid name", InvalidEnvName, prompt.InvalidResourceNameMessage),
+			err:         fmt.Errorf("%s %s. Use --environment option to specify the valid name", invalidEnvName, prompt.InvalidResourceNameMessage),
 		},
 		{
 			name:        "environment name interactive",
 			cmd:         testEmptyEnvCmd,
-			defaultVal:  DefaultTestValue,
+			defaultVal:  defaultTestValue,
 			interactive: true,
-			expectedEnv: TestEnvName,
+			expectedEnv: testEnvName,
 			err:         nil,
 			mockSetup:   setupEnvNameTextPrompt,
 		},
 		{
 			name:        "environment name interactive",
 			cmd:         testEmptyEnvCmd,
-			defaultVal:  DefaultTestValue,
+			defaultVal:  defaultTestValue,
 			interactive: true,
-			expectedEnv: DefaultTestValue,
+			expectedEnv: defaultTestValue,
 			err:         nil,
 			mockSetup:   setupEmptyEnvNameTextPrompt,
 		},
@@ -107,7 +107,7 @@ func Test_Environment_Selection(t *testing.T) {
 func setupEnvNameTextPrompt(prompter *prompt.MockInterface) {
 	prompter.EXPECT().
 		GetTextInput(EnterEnvironmentNamePrompt, gomock.Any()).
-		Return(TestEnvName, nil).Times(1)
+		Return(testEnvName, nil).Times(1)
 }
 
 func setupEmptyEnvNameTextPrompt(prompter *prompt.MockInterface) {
