@@ -46,6 +46,7 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 		return versions
 	}
 
+	// using the openapi key here as all the link resource app models are defines as part of openapi.json.
 	if versions, ok := l.supportedVersions[getOpenapiKey(resourceType)]; ok {
 		return versions
 	}
@@ -59,6 +60,8 @@ func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	if ok {
 		return &v, true
 	}
+
+	// using the openapi key here as all the link resource app models are defines as part of openapi.json.
 	v, ok = l.validators[getValidatorKey(getOpenapiKey(resourceType), version)]
 	if ok {
 		return &v, true
@@ -156,6 +159,7 @@ func getValidatorKey(resourceType, version string) string {
 	return strings.ToLower(resourceType + "-" + version)
 }
 
+// getOpenapiKey returns Applications.Link/openapi or Applications.Core/openapi based on the resource type.
 func getOpenapiKey(resourceType string) string {
 	s := strings.Split(resourceType, "/")
 	return s[0] + "/openapi"
