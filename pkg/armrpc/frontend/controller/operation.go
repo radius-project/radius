@@ -132,10 +132,12 @@ func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request
 	}
 
 	if newResource != nil {
-		P(newResource).UpdateMetadata(serviceCtx, P(oldResource).GetBaseResource())
 		var oldSystemData *v1.SystemData
 		if oldResource != nil {
 			oldSystemData = P(oldResource).GetSystemData()
+			P(newResource).UpdateMetadata(serviceCtx, P(oldResource).GetBaseResource())
+		} else {
+			P(newResource).UpdateMetadata(serviceCtx, nil)
 		}
 
 		*P(newResource).GetSystemData() = v1.UpdateSystemData(oldSystemData, serviceCtx.SystemData())

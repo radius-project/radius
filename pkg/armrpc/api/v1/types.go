@@ -155,11 +155,13 @@ func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseR
 		b.ID = oldResource.ID
 		b.Name = oldResource.Name
 		b.Type = oldResource.Type
+		b.UpdatedAPIVersion = ctx.APIVersion
 	} else {
 		b.ID = ctx.ResourceID.String()
 		b.Name = ctx.ResourceID.Name()
 		b.Type = ctx.ResourceID.Type()
-		b.CreatedAPIVersion = b.UpdatedAPIVersion
+		b.CreatedAPIVersion = ctx.APIVersion
+		b.UpdatedAPIVersion = ctx.APIVersion
 	}
 
 	b.Location = ctx.Location
