@@ -43,7 +43,7 @@ func (e testDataModel) ProvisioningState() v1.ProvisioningState {
 func (e testDataModel) SetProvisioningState(state v1.ProvisioningState) {
 }
 
-func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource v1.ResourceDataModel) {
+func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
 }
 
 type testVersionedModel struct {

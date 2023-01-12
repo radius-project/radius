@@ -150,12 +150,11 @@ func (b *BaseResource) ResourceTypeName() string {
 }
 
 // UpdateMetadata updates the default metadata with new request context and metadata in old resource.
-func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource ResourceDataModel) {
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseResource) {
 	if oldResource != nil {
-		br := oldResource.GetBaseResource()
-		b.ID = br.ID
-		b.Name = br.Name
-		b.Type = br.Type
+		b.ID = oldResource.ID
+		b.Name = oldResource.Name
+		b.Type = oldResource.Type
 	} else {
 		b.ID = ctx.ResourceID.String()
 		b.Name = ctx.ResourceID.Name()

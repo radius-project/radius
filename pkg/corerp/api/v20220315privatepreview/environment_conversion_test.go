@@ -315,10 +315,6 @@ func (f *fakeResource) GetSystemData() *v1.SystemData {
 	return nil
 }
 
-func (f *fakeResource) GetBaseResource() *v1.BaseResource {
-	return nil
-}
-
 func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
 	return v1.ProvisioningStateAccepted
 }
@@ -326,7 +322,7 @@ func (f *fakeResource) ProvisioningState() v1.ProvisioningState {
 func (f *fakeResource) SetProvisioningState(state v1.ProvisioningState) {
 }
 
-func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource v1.ResourceDataModel) {
+func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext) {
 }
 
 func TestConvertFromValidation(t *testing.T) {
