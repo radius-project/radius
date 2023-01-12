@@ -15,7 +15,6 @@ import (
 
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -71,7 +70,7 @@ type TestResourceProperties struct {
 	PropertyB         *string               `json:"propertyB,omitempty"`
 }
 
-func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -96,10 +95,10 @@ func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
 	return converted, nil
 }
 
-func (dst *TestResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(dm.ID)
@@ -135,7 +134,7 @@ func fromProvisioningStateDataModel(state v1.ProvisioningState) *v1.Provisioning
 	return &converted
 }
 
-func testResourceDataModelToVersioned(model *TestResourceDataModel, version string) (conv.VersionedModelInterface, error) {
+func testResourceDataModelToVersioned(model *TestResourceDataModel, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case testAPIVersion:
 		versioned := &TestResource{}

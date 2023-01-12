@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
@@ -34,13 +34,13 @@ type Properties struct {
 	Resource string `json:"resource"`
 }
 
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprPubSubBroker)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 	if resource.Properties.Mode == "" {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("Mode not specified for Dapr Pub/Sub component")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("Mode not specified for Dapr Pub/Sub component")
 	}
 	if r.PubSubs == nil {
 		return renderers.RendererOutput{}, errors.New("must support either kubernetes or ARM")
@@ -48,7 +48,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	mode := resource.Properties.Mode
 	pubSubFunc, ok := r.PubSubs[string(mode)]
 	if !ok {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.PubSubs)))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.PubSubs)))
 	}
 
 	var applicationName string

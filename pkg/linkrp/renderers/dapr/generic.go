@@ -8,7 +8,7 @@ package dapr
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -21,15 +21,15 @@ type DaprGeneric struct {
 
 func (daprGeneric DaprGeneric) Validate() error {
 	if daprGeneric.Type == nil || *daprGeneric.Type == "" {
-		return conv.NewClientErrInvalidRequest("No type specified for generic Dapr component")
+		return v1.NewClientErrInvalidRequest("No type specified for generic Dapr component")
 	}
 
 	if daprGeneric.Version == nil || *daprGeneric.Version == "" {
-		return conv.NewClientErrInvalidRequest("No Dapr component version specified for generic Dapr component")
+		return v1.NewClientErrInvalidRequest("No Dapr component version specified for generic Dapr component")
 	}
 
 	if daprGeneric.Metadata == nil {
-		return conv.NewClientErrInvalidRequest(fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type))
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("No metadata specified for Dapr component of type %s", *daprGeneric.Type))
 	}
 
 	return nil

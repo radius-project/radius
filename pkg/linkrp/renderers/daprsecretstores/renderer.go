@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -32,16 +32,16 @@ type Renderer struct {
 	SecretStores map[string]SecretStoreFunc
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprSecretStore)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
 	secretStoreFunc := r.SecretStores[string(properties.Mode)]
 	if secretStoreFunc == nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid secret store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.SecretStores)))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid secret store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.SecretStores)))
 	}
 	var applicationName string
 	if properties.Application != "" {

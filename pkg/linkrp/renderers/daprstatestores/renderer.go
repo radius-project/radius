@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -32,10 +32,10 @@ type Renderer struct {
 	StateStores map[string]StateStoreFunc
 }
 
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprStateStore)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
@@ -45,7 +45,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 	stateStoreFunc := r.StateStores[string(properties.Mode)]
 	if stateStoreFunc == nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.StateStores)))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(r.StateStores)))
 	}
 
 	var applicationName string

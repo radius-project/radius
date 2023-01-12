@@ -9,7 +9,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
@@ -51,7 +51,7 @@ type ComputedValueReference struct {
 	JSONPointer string
 
 	// Transformer transforms datamodel resource with the computed values.
-	Transformer func(conv.DataModelInterface, map[string]any) error
+	Transformer func(v1.DataModelInterface, map[string]any) error
 }
 
 // SecretValueReference represents a secret value that can accessed on the output resources
@@ -108,7 +108,7 @@ type DeploymentOutput struct {
 // DeploymentDataModel is the interface that wraps existing data models
 // and enables us to use in generic deployment backend controllers.
 type DeploymentDataModel interface {
-	conv.DataModelInterface
+	v1.DataModelInterface
 
 	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
 
@@ -184,7 +184,7 @@ func BuildExternalOutputResources(outputResources []outputresource.OutputResourc
 // RadiusResourceModel represents the interface of radius resource type.
 // TODO: Replace DeploymentDataModel with RadiusResourceModel later when link rp leverages generic.
 type RadiusResourceModel interface {
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 
 	ApplyDeploymentOutput(deploymentOutput DeploymentOutput)
 	OutputResources() []outputresource.OutputResource

@@ -15,7 +15,6 @@ import (
 
 	"github.com/go-logr/logr"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 
 	corerp_dm "github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -55,7 +54,7 @@ import (
 
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/corerp/backend/deployment github.com/project-radius/radius/pkg/corerp/backend/deployment DeploymentProcessor
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (rp.DeploymentOutput, error)
 	Delete(ctx context.Context, id resources.ID, outputResources []outputresource.OutputResource) error
 	FetchSecrets(ctx context.Context, resourceData ResourceData) (map[string]any, error)
@@ -79,7 +78,7 @@ type deploymentProcessor struct {
 
 type ResourceData struct {
 	ID              resources.ID // resource ID
-	Resource        conv.DataModelInterface
+	Resource        v1.DataModelInterface
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
@@ -87,7 +86,7 @@ type ResourceData struct {
 	RecipeData      link_dm.RecipeData // Relevant only for links created with recipes to find relevant connections created by that recipe
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 	logger.Info(fmt.Sprintf("Rendering resource: %s", resourceID.Name()))
 	renderer, err := dp.getResourceRenderer(resourceID)
@@ -153,7 +152,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, resourceID resources.
 			return renderers.RendererOutput{}, fmt.Errorf("output resource %q does not have a provider specified", or.LocalID)
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -494,7 +493,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	resource, err := sc.Get(ctx, resourceID.String())
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
-			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
+			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource %q does not exist", resourceID.String()))
 		}
 		return ResourceData{}, fmt.Errorf(errMsg, resourceID.String(), err)
 	}
@@ -584,12 +583,12 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource conv.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)
 		if err != nil {
-			return ResourceData{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
+			return ResourceData{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("application ID %q for the resource %q is not a valid id. Error: %s", applicationID, resourceID.String(), err.Error()))
 		}
 		appID = &parsedID
 	} else if strings.EqualFold(resourceID.ProviderNamespace(), resources.LinkRPNamespace) {

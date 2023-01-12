@@ -14,7 +14,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +29,7 @@ func Test_HandlerErrModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	err := &conv.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
+	err := &v1.ErrModelConversion{PropertyName: "namespace", ValidValue: "63 characters or less"}
 	handleError(context.Background(), responseWriter, req, err)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
@@ -53,7 +52,7 @@ func Test_HandlerErrInvalidModelConversion(t *testing.T) {
 
 	req := httptest.NewRequest(handlerTest.method, handlerTest.url, nil)
 	responseWriter := httptest.NewRecorder()
-	handleError(context.Background(), responseWriter, req, conv.ErrInvalidModelConversion)
+	handleError(context.Background(), responseWriter, req, v1.ErrInvalidModelConversion)
 
 	bodyBytes, e := io.ReadAll(responseWriter.Body)
 	require.NoError(t, e)

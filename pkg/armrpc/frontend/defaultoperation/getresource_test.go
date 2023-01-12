@@ -13,7 +13,6 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -33,6 +32,10 @@ func (e testDataModel) GetSystemData() *v1.SystemData {
 	return nil
 }
 
+func (e testDataModel) GetBaseResource() *v1.BaseResource {
+	return nil
+}
+
 func (e testDataModel) ProvisioningState() v1.ProvisioningState {
 	return v1.ProvisioningStateAccepted
 }
@@ -40,24 +43,24 @@ func (e testDataModel) ProvisioningState() v1.ProvisioningState {
 func (e testDataModel) SetProvisioningState(state v1.ProvisioningState) {
 }
 
-func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext) {
+func (e testDataModel) UpdateMetadata(ctx *v1.ARMRequestContext, oldResource *v1.BaseResource) {
 }
 
 type testVersionedModel struct {
 	Name string `json:"name"`
 }
 
-func (v *testVersionedModel) ConvertFrom(src conv.DataModelInterface) error {
+func (v *testVersionedModel) ConvertFrom(src v1.DataModelInterface) error {
 	dm := src.(*testDataModel)
 	v.Name = dm.Name
 	return nil
 }
 
-func (v *testVersionedModel) ConvertTo() (conv.DataModelInterface, error) {
+func (v *testVersionedModel) ConvertTo() (v1.DataModelInterface, error) {
 	return nil, nil
 }
 
-func resourceToVersioned(model *testDataModel, version string) (conv.VersionedModelInterface, error) {
+func resourceToVersioned(model *testDataModel, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case testAPIVersion:
 		versioned := &testVersionedModel{}

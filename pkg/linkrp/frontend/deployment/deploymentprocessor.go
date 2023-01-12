@@ -13,7 +13,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/model"
@@ -40,7 +40,7 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/linkrp/frontend/deployment github.com/project-radius/radius/pkg/linkrp/frontend/deployment DeploymentProcessor
 
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
@@ -68,7 +68,7 @@ type DeploymentOutput struct {
 
 type ResourceData struct {
 	ID              resources.ID
-	Resource        conv.DataModelInterface
+	Resource        v1.DataModelInterface
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
@@ -82,7 +82,7 @@ type EnvironmentMetadata struct {
 	Providers          coreDatamodel.Providers
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource conv.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 
@@ -136,7 +136,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 			return renderers.RendererOutput{}, err
 		}
 		if !dp.appmodel.IsProviderSupported(or.ResourceType.Provider) {
-			return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
+			return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("provider %s is not configured. Cannot support resource type %s", or.ResourceType.Provider, or.ResourceType.Type))
 		}
 	}
 
@@ -186,7 +186,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 			if rendererOutput.RecipeData.Provider == resourcemodel.ProviderAzure {
 				parsedID, err := resources.ParseResource(id)
 				if err != nil {
-					return DeploymentOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
+					return DeploymentOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id %q of the resource deployed by recipe %q for resource %q: %s", id, rendererOutput.RecipeData.Name, resourceID.String(), err.Error()))
 				}
 
 				if outputResource.ProviderResourceType == parsedID.Type() {
@@ -359,7 +359,7 @@ func (dp *deploymentProcessor) fetchSecret(ctx context.Context, outputResources 
 }
 
 // getMetadataFromResource returns the environment id and the recipe name to look up environment metadata
-func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource conv.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
+func (dp *deploymentProcessor) getMetadataFromResource(ctx context.Context, resourceID resources.ID, resource v1.DataModelInterface) (basicResource *rp.BasicResourceProperties, recipe datamodel.LinkRecipe, err error) {
 	resourceType := strings.ToLower(resourceID.Type())
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceType):

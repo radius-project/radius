@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -24,7 +23,7 @@ var (
 // DefaultAsyncDelete is the controller implementation to delete async resource.
 type DefaultAsyncDelete[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -32,7 +31,7 @@ type DefaultAsyncDelete[P interface {
 // NewDefaultAsyncDelete creates a new DefaultAsyncDelete.
 func NewDefaultAsyncDelete[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &DefaultAsyncDelete[P, T]{ctrl.NewOperation[P](opts, resourceOpts)}, nil
 }

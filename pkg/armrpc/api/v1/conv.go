@@ -3,9 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package conv
-
-import v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
+package v1
 
 // TODO: Remove DataModelInterface when we migrate Controller to Operation base struct for controller
 // DataModelInterface is the interface for version agnostic datamodel.
@@ -18,13 +16,15 @@ type DataModelInterface interface {
 type ResourceDataModel interface {
 	DataModelInterface
 	// GetSystemData gets SystemData from the resource.
-	GetSystemData() *v1.SystemData
+	GetSystemData() *SystemData
+	// GetBaseResource gets BaseResource from the resource.
+	GetBaseResource() *BaseResource
 	// ProvisioningState gets the provisioning state of the resource.
-	ProvisioningState() v1.ProvisioningState
+	ProvisioningState() ProvisioningState
 	// SetProvisioningState sets the provisioning state of the resource.
-	SetProvisioningState(state v1.ProvisioningState)
+	SetProvisioningState(state ProvisioningState)
 	// UpdateMetadata updates and populates metadata to the resource.
-	UpdateMetadata(ctx *v1.ARMRequestContext)
+	UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseResource)
 }
 
 // VersionedModelInterface is the interface for versioned models.

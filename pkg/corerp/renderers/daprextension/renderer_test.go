@@ -9,7 +9,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -28,11 +27,11 @@ import (
 type noop struct {
 }
 
-func (r *noop) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *noop) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
-func (r *noop) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *noop) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Return a deployment so the Dapr extension can modify it
 	deployment := appsv1.Deployment{}
 
@@ -179,8 +178,8 @@ func Test_Render_Fail_AppIDFromRouteConflict(t *testing.T) {
 
 	_, err := renderer.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, "the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: \"routeappId\", Extension: \"testappId\"", err.(*v1.ErrClientRP).Message)
 }
 
 func makeresource(t *testing.T, properties datamodel.ContainerProperties) *datamodel.ContainerResource {

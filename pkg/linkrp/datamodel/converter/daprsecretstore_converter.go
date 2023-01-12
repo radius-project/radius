@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // DaprSecretStoreDataModelFromVersioned converts version agnostic DaprSecretStore datamodel to versioned model.
-func DaprSecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version string) (conv.VersionedModelInterface, error) {
+func DaprSecretStoreDataModelToVersioned(model *datamodel.DaprSecretStore, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.DaprSecretStoreResource{}

@@ -9,7 +9,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -67,11 +67,11 @@ func TestVolumeConvertDataModelToVersioned(t *testing.T) {
 
 func TestVolumeConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src conv.DataModelInterface
+		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, conv.ErrInvalidModelConversion},
-		{nil, conv.ErrInvalidModelConversion},
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {

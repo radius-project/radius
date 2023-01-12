@@ -144,19 +144,38 @@ type BaseResource struct {
 	SystemData SystemData `json:"systemData,omitempty"`
 }
 
-// UpdateMetadata updates the default metadata with new request context and systemdata in old resource.
-func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext) {
-	b.ID = ctx.ResourceID.String()
-	b.Name = ctx.ResourceID.Name()
-	b.Type = ctx.ResourceID.Type()
+// ResourceTypeName returns resource type name.
+func (b *BaseResource) ResourceTypeName() string {
+	return b.Type
+}
+
+// UpdateMetadata updates the default metadata with new request context and metadata in old resource.
+func (b *BaseResource) UpdateMetadata(ctx *ARMRequestContext, oldResource *BaseResource) {
+	if oldResource != nil {
+		b.ID = oldResource.ID
+		b.Name = oldResource.Name
+		b.Type = oldResource.Type
+		b.UpdatedAPIVersion = ctx.APIVersion
+	} else {
+		b.ID = ctx.ResourceID.String()
+		b.Name = ctx.ResourceID.Name()
+		b.Type = ctx.ResourceID.Type()
+		b.CreatedAPIVersion = ctx.APIVersion
+		b.UpdatedAPIVersion = ctx.APIVersion
+	}
+
 	b.Location = ctx.Location
 	b.TenantID = ctx.HomeTenantID
-	b.CreatedAPIVersion = b.UpdatedAPIVersion
 }
 
 // GetSystemdata gets systemdata.
 func (b *BaseResource) GetSystemData() *SystemData {
 	return &b.SystemData
+}
+
+// GetBaseResource gets internal base resource.
+func (b *BaseResource) GetBaseResource() *BaseResource {
+	return b
 }
 
 // ProvisioningState gets the provisioning state.

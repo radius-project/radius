@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 	"github.com/stretchr/testify/require"
@@ -79,11 +78,11 @@ func TestResourceGroupConvertDataModelToVersioned(t *testing.T) {
 
 func TestResourceGroupConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src conv.DataModelInterface
+		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, conv.ErrInvalidModelConversion},
-		{nil, conv.ErrInvalidModelConversion},
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {

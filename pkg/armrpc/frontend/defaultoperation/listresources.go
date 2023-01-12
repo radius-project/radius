@@ -9,7 +9,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -19,7 +18,7 @@ import (
 // ListResources is the controller implementation to get the list of resources in resource group.
 type ListResources[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -27,7 +26,7 @@ type ListResources[P interface {
 // NewListResources creates a new ListResources instance.
 func NewListResources[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any](opts ctrl.Options, ctrlOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &ListResources[P, T]{
 		ctrl.NewOperation[P](opts, ctrlOpts),

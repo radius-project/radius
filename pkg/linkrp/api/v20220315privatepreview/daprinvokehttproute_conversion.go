@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -15,7 +14,7 @@ import (
 )
 
 // ConvertTo converts from the versioned DaprInvokeHttpRoute resource to version-agnostic datamodel.
-func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *DaprInvokeHTTPRouteResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.DaprInvokeHttpRoute{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -47,10 +46,10 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprInvokeHttpRoute resource.
-func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprHttpRoute, ok := src.(*datamodel.DaprInvokeHttpRoute)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(daprHttpRoute.ID)

@@ -12,7 +12,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -632,8 +631,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" does not exist", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Data store access error", func(t *testing.T) {
@@ -675,8 +674,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "application ID \"invalid-app-id\" for the resource \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/containers/test-resource\" is not a valid id. Error: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Missing application id", func(t *testing.T) {
@@ -716,8 +715,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, resourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "linked \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" has invalid Applications.Core/applications resource type.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "linked \"/subscriptions/test-subscription/resourceGroups/test-resource-group/providers/Applications.Core/app/test-application\" has invalid Applications.Core/applications resource type.", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {

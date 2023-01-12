@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	armservicebus "github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/servicebus/armservicebus/v2"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -173,7 +173,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetNamespaceByID(ctx context.Con
 	resp, err := client.Get(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.TypeSegments()[0].Name, nil)
 	if err != nil {
 		if clientv2.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", id))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", id))
 		}
 		return nil, fmt.Errorf("failed to get servicebus namespace:%w", err)
 	}
@@ -195,7 +195,7 @@ func (handler *daprPubSubServiceBusBaseHandler) GetConnectionString(ctx context.
 	accessKeys, err := client.ListKeys(ctx, parsed.FindScope(resources.ResourceGroupsSegment), parsed.Name(), RootManageSharedAccessKey, nil)
 	if err != nil {
 		if clientv2.Is404Error(err) {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", parsed.Name()))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("provided Azure ServiceBus Namespace %q does not exist", parsed.Name()))
 		}
 		return nil, fmt.Errorf("failed to retrieve connection strings: %w", err)
 	}

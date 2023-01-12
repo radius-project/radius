@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -20,7 +19,7 @@ const (
 )
 
 // ConvertTo converts from the versioned Environment resource to version-agnostic datamodel.
-func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *EnvironmentResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	converted := &datamodel.Environment{
@@ -84,10 +83,10 @@ func (src *EnvironmentResource) ConvertTo() (conv.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Environment resource.
-func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *EnvironmentResource) ConvertFrom(src v1.DataModelInterface) error {
 	env, ok := src.(*datamodel.Environment)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(env.ID)
@@ -103,7 +102,7 @@ func (dst *EnvironmentResource) ConvertFrom(src conv.DataModelInterface) error {
 
 	dst.Properties.Compute = fromEnvironmentComputeDataModel(&env.Properties.Compute)
 	if dst.Properties.Compute == nil {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	if env.Properties.Recipes != nil {
@@ -148,7 +147,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.Envi
 		}
 
 		if !kubernetes.IsValidObjectName(to.String(v.Namespace)) {
-			return nil, &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
+			return nil, &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"}
 		}
 
 		var identity *rp.IdentitySettings
@@ -169,7 +168,7 @@ func toEnvironmentComputeDataModel(h EnvironmentComputeClassification) (*rp.Envi
 			Identity: identity,
 		}, nil
 	default:
-		return nil, conv.ErrInvalidModelConversion
+		return nil, v1.ErrInvalidModelConversion
 	}
 }
 
@@ -207,7 +206,7 @@ func toEnvironmentComputeKindDataModel(kind string) (rp.EnvironmentComputeKind, 
 	case EnvironmentComputeKindKubernetes:
 		return rp.KubernetesComputeKind, nil
 	default:
-		return rp.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
+		return rp.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}
 	}
 }
 

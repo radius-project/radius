@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	link "github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -27,7 +27,7 @@ type Renderer struct {
 }
 
 // GetDependencyIDs returns dependencies for the container datamodel passed in
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	radiusDependencyIDs, azureDependencyIDs, err := r.Inner.GetDependencyIDs(ctx, dm)
 	if err != nil {
 		return nil, nil, err
@@ -48,17 +48,17 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 	parsed, err := resources.ParseResource(extension.Provides)
 	if err != nil {
-		return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
+		return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 	}
 
 	return append(radiusDependencyIDs, parsed), azureDependencyIDs, nil
 }
 
 // Render augments the container's kubernetes output resource with value for dapr sidecar extension.
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 	dependencies := options.Dependencies
 	output, err := r.Inner.Render(ctx, resource, options)
@@ -125,10 +125,10 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	return output, nil
 }
 
-func (r *Renderer) findExtension(dm conv.DataModelInterface) (*datamodel.DaprSidecarExtension, error) {
+func (r *Renderer) findExtension(dm v1.DataModelInterface) (*datamodel.DaprSidecarExtension, error) {
 	container, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
-		return nil, conv.ErrInvalidModelConversion
+		return nil, v1.ErrInvalidModelConversion
 	}
 
 	for _, t := range container.Properties.Extensions {
@@ -147,7 +147,7 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 	if extension.Provides != "" {
 		routeDependency, ok := dependencies[extension.Provides]
 		if !ok {
-			return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to find dependency with id %q", extension.Provides))
+			return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to find dependency with id %q", extension.Provides))
 		}
 		route, ok := routeDependency.Resource.(*link.DaprInvokeHttpRoute)
 		if !ok {
@@ -158,7 +158,7 @@ func (r *Renderer) resolveAppId(extension *datamodel.DaprSidecarExtension, depen
 
 	appID := extension.AppID
 	if appID != "" && routeAppID != "" && appID != routeAppID {
-		return "", conv.NewClientErrInvalidRequest(fmt.Sprintf("the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: %q, Extension: %q", routeAppID, appID))
+		return "", v1.NewClientErrInvalidRequest(fmt.Sprintf("the appId specified on a daprInvokeHttpRoutes must match the appId specified on the extension. Route: %q, Extension: %q", routeAppID, appID))
 	}
 
 	if routeAppID != "" {

@@ -8,7 +8,6 @@ package v20220315privatepreview
 import (
 	"errors"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -17,7 +16,7 @@ import (
 )
 
 // ConvertTo converts from the versioned DaprPubSubBroker resource to version-agnostic datamodel.
-func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *DaprPubSubBrokerResource) ConvertTo() (v1.DataModelInterface, error) {
 	daprPubSubproperties := datamodel.DaprPubSubBrokerProperties{
 		BasicResourceProperties: rp.BasicResourceProperties{
 			Environment: to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
@@ -44,7 +43,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 	switch v := src.Properties.(type) {
 	case *ResourceDaprPubSubProperties:
 		if v.Resource == nil {
-			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
+			return nil, v1.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
 		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Resource = to.String(v.Resource)
@@ -53,7 +52,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		converted.Properties.Metadata = v.Metadata
 	case *ValuesDaprPubSubProperties:
 		if v.Type == nil || v.Version == nil || v.Metadata == nil {
-			return nil, conv.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
+			return nil, v1.NewClientErrInvalidRequest("type/version/metadata are required properties for mode 'values'")
 		}
 		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Type = to.String(v.Type)
@@ -61,7 +60,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		converted.Properties.Metadata = v.Metadata
 	case *RecipeDaprPubSubProperties:
 		if v.Recipe == nil {
-			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
+			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
 		converted.Properties.Mode = datamodel.LinkModeRecipe
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
@@ -76,10 +75,10 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned DaprPubSubBroker resource.
-func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *DaprPubSubBrokerResource) ConvertFrom(src v1.DataModelInterface) error {
 	daprPubSub, ok := src.(*datamodel.DaprPubSubBroker)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(daprPubSub.ID)

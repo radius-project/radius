@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -24,7 +23,7 @@ import (
 // Operation is the base operation controller.
 type Operation[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any] struct {
 	options Options
 
@@ -34,7 +33,7 @@ type Operation[P interface {
 // NewOperation creates BaseController instance.
 func NewOperation[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any](options Options, resourceOptions ResourceOptions[T]) Operation[P, T] {
 	return Operation[P, T]{options, resourceOptions}
 }
@@ -133,10 +132,12 @@ func (c *Operation[P, T]) PrepareResource(ctx context.Context, req *http.Request
 	}
 
 	if newResource != nil {
-		P(newResource).UpdateMetadata(serviceCtx)
 		var oldSystemData *v1.SystemData
 		if oldResource != nil {
 			oldSystemData = P(oldResource).GetSystemData()
+			P(newResource).UpdateMetadata(serviceCtx, P(oldResource).GetBaseResource())
+		} else {
+			P(newResource).UpdateMetadata(serviceCtx, nil)
 		}
 
 		*P(newResource).GetSystemData() = v1.UpdateSystemData(oldSystemData, serviceCtx.SystemData())
@@ -199,12 +200,12 @@ func (c *Operation[P, T]) ConstructAsyncResponse(ctx context.Context, method, et
 }
 
 // RequestConverter returns the request converter function for this controller.
-func (b *Operation[P, T]) RequestConverter() conv.ConvertToDataModel[T] {
+func (b *Operation[P, T]) RequestConverter() v1.ConvertToDataModel[T] {
 	return b.resourceOptions.RequestConverter
 }
 
 // ResponseConverter returns the response converter function for this controller.
-func (b *Operation[P, T]) ResponseConverter() conv.ConvertToAPIModel[T] {
+func (b *Operation[P, T]) ResponseConverter() v1.ConvertToAPIModel[T] {
 	return b.resourceOptions.ResponseConverter
 }
 

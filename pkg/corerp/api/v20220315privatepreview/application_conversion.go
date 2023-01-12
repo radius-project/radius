@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -15,7 +14,7 @@ import (
 )
 
 // ConvertTo converts from the versioned Application resource to version-agnostic datamodel.
-func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *ApplicationResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 	// TODO: Improve the validation.
 	converted := &datamodel.Application{
@@ -55,11 +54,11 @@ func (src *ApplicationResource) ConvertTo() (conv.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Application resource.
-func (dst *ApplicationResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *ApplicationResource) ConvertFrom(src v1.DataModelInterface) error {
 	// TODO: Improve the validation.
 	app, ok := src.(*datamodel.Application)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(app.ID)

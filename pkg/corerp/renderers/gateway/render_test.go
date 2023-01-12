@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -422,8 +421,8 @@ func Test_Render_Fails_SSLPassthroughWithRoutePath(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
@@ -463,8 +462,8 @@ func Test_Render_Fails_SSLPassthroughWithMultipleRoutes(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "cannot support multiple routes with sslPassthrough set to true")
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "cannot support multiple routes with sslPassthrough set to true")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
@@ -494,8 +493,8 @@ func Test_Render_Fails_SSLPassthroughFalse(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "only sslPassthrough is supported for TLS currently")
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "only sslPassthrough is supported for TLS currently")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)
@@ -515,8 +514,8 @@ func Test_Render_Fails_WithNoRoute(t *testing.T) {
 
 	output, err := r.Render(context.Background(), resource, renderers.RenderOptions{Dependencies: dependencies, Environment: environmentOptions})
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, v1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "must have at least one route when declaring a Gateway resource")
+	require.Equal(t, err.(*v1.ErrClientRP).Code, v1.CodeInvalid)
+	require.Equal(t, err.(*v1.ErrClientRP).Message, "must have at least one route when declaring a Gateway resource")
 	require.Len(t, output.Resources, 0)
 	require.Empty(t, output.SecretValues)
 	require.Empty(t, output.ComputedValues)

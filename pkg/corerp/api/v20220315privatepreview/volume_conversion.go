@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -16,7 +15,7 @@ import (
 )
 
 // ConvertTo converts from the versioned HTTPRoute resource to version-agnostic datamodel.
-func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *VolumeResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.VolumeResource{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -69,10 +68,10 @@ func (src *VolumeResource) ConvertTo() (conv.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned VolumeResource resource.
-func (dst *VolumeResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *VolumeResource) ConvertFrom(src v1.DataModelInterface) error {
 	resource, ok := src.(*datamodel.VolumeResource)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = azto.Ptr(resource.ID)

@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
 // PlaneDataModelToVersioned converts version agnostic environment datamodel to versioned model.
-func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (conv.VersionedModelInterface, error) {
+func PlaneDataModelToVersioned(model *datamodel.Plane, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
 		versioned := &v20220901privatepreview.PlaneResource{}

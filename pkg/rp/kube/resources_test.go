@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/ucp/dataprovider"
@@ -23,7 +23,7 @@ const (
 	testEnvID = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env"
 )
 
-func fakeStoreObject(dm conv.DataModelInterface) *store.Object {
+func fakeStoreObject(dm v1.DataModelInterface) *store.Object {
 	b, err := json.Marshal(dm)
 	if err != nil {
 		return nil

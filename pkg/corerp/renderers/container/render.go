@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -64,10 +64,10 @@ type Renderer struct {
 	RoleAssignmentMap map[datamodel.IAMKind]RoleAssignmentData
 }
 
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
-		return nil, nil, conv.ErrInvalidModelConversion
+		return nil, nil, v1.ErrInvalidModelConversion
 	}
 	properties := resource.Properties
 
@@ -78,7 +78,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 	for _, connection := range properties.Connections {
 		resourceID, err := resources.ParseResource(connection.Source)
 		if err != nil {
-			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
+			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
 		// Non-radius Azure connections that are accessible from Radius container resource.
@@ -101,7 +101,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 
 		resourceID, err := resources.ParseResource(provides)
 		if err != nil {
-			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
+			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
 		if resourceID.IsRadiusRPResource() {
@@ -115,7 +115,7 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 		case datamodel.Persistent:
 			resourceID, err := resources.ParseResource(volume.Persistent.Source)
 			if err != nil {
-				return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
+				return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
 			if resourceID.IsRadiusRPResource() {
@@ -129,15 +129,15 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 }
 
 // Render is the WorkloadRenderer implementation for containerized workload.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	appId, err := resources.ParseResource(resource.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s ", err.Error()))
 	}
 
 	outputResources := []outputresource.OutputResource{}
@@ -200,7 +200,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		if provides := port.Provides; provides != "" {
 			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
-				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
+				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
 			routeName := resourceId.Name()
@@ -357,7 +357,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					return []outputresource.OutputResource{}, nil, fmt.Errorf("unable to create secretstore volume spec for volume: %s - %w", volumeName, err)
 				}
 			default:
-				return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", vol.Properties.Kind, volumeName, GetSupportedKinds()))
+				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported volume kind: %s for volume: %s. Supported kinds are: %v", vol.Properties.Kind, volumeName, GetSupportedKinds()))
 			}
 
 			// Add the volume mount to the Container spec
@@ -375,14 +375,14 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 					id := properties.OutputResources[value.(string)].Data.(resourcemodel.ARMIdentity).ID
 					r, err := resources.ParseResource(id)
 					if err != nil {
-						return []outputresource.OutputResource{}, nil, conv.NewClientErrInvalidRequest(err.Error())
+						return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 					}
 					value = r.Name()
 				}
 				secretData[key] = []byte(value.(string))
 			}
 		default:
-			return []outputresource.OutputResource{}, secretData, conv.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
+			return []outputresource.OutputResource{}, secretData, v1.NewClientErrInvalidRequest(fmt.Sprintf("Only ephemeral or persistent volumes are supported. Got kind: %v", volumeProperties.Kind))
 		}
 	}
 
@@ -423,7 +423,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 
 		computedValues[handlers.IdentityProperties] = rp.ComputedValueReference{
 			Value: options.Environment.Identity,
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
 				ei, err := handlers.GetMapValue[*rp.IdentitySettings](cv, handlers.IdentityProperties)
 				if err != nil {
 					return err
@@ -444,7 +444,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 		computedValues[handlers.UserAssignedIdentityIDKey] = rp.ComputedValueReference{
 			LocalID:           outputresource.LocalIDUserAssignedManagedIdentity,
 			PropertyReference: handlers.UserAssignedIdentityIDKey,
-			Transformer: func(r conv.DataModelInterface, cv map[string]any) error {
+			Transformer: func(r v1.DataModelInterface, cv map[string]any) error {
 				resourceID, err := handlers.GetMapValue[string](cv, handlers.UserAssignedIdentityIDKey)
 				if err != nil {
 					return err
@@ -618,7 +618,7 @@ func (r Renderer) makeHealthProbe(p datamodel.HealthProbeProperties) (*corev1.Pr
 		}
 		r.setContainerHealthProbeConfig(&probeSpec, c)
 	default:
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("health probe kind unsupported: %v", p.Kind))
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("health probe kind unsupported: %v", p.Kind))
 	}
 	return &probeSpec, nil
 }
@@ -716,25 +716,25 @@ func (r Renderer) makeRoleAssignmentsForResource(ctx context.Context, connection
 		// by internal bugs in Radius.
 		roleAssignmentData, ok := r.RoleAssignmentMap[connection.IAM.Kind]
 		if !ok {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("RBAC is not supported for connection kind %q", connection.IAM.Kind))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("RBAC is not supported for connection kind %q", connection.IAM.Kind))
 		}
 
 		// The dependency will have already been fetched by the system.
 		dependency, ok := dependencies[connection.Source]
 		if !ok {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("connection source %q was not found in the dependencies collection", connection.Source))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("connection source %q was not found in the dependencies collection", connection.Source))
 		}
 
 		// Find the matching output resource based on LocalID
 		target, ok := dependency.OutputResources[roleAssignmentData.LocalID]
 		if !ok {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, connection.Source))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q was not found in the outputs of dependency %q", roleAssignmentData.LocalID, connection.Source))
 		}
 
 		// Now we know the resource ID to assign roles against.
 		arm, ok := target.Data.(resourcemodel.ARMIdentity)
 		if !ok {
-			return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target))
+			return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("output resource %q must be an ARM resource to support role assignments. Was: %+v", roleAssignmentData.LocalID, target))
 		}
 		armResourceIdentifier = arm.ID
 

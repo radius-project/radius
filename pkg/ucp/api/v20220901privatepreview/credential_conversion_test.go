@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -87,23 +86,23 @@ func TestCredentialConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "credentialresource-other.json",
-			err:      conv.ErrInvalidModelConversion,
+			err:      v1.ErrInvalidModelConversion,
 		},
 		{
 			filename: "credentialresource-empty-properties.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"},
 		},
 		{
 			filename: "credentialresource-empty-storage.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"},
 		},
 		{
 			filename: "credentialresource-empty-storage-kind.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"},
 		},
 		{
 			filename: "credentialresource-invalid-storagekind.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())},
 		},
 	}
 	for _, tt := range conversionTests {

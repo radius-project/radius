@@ -11,7 +11,7 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -28,10 +28,10 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.MongoDatabase)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	_, err := renderers.ValidateApplicationID(resource.Properties.Application)
@@ -65,13 +65,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 			SecretValues: getProvidedSecretValues(resource.Properties),
 		}, nil
 	default:
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("unsupported mode %s", resource.Properties.Mode))
 	}
 }
 
 func RenderAzureRecipe(resource *datamodel.MongoDatabase, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	if options.RecipeProperties.LinkType != resource.ResourceTypeName() {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("link type %q of provided recipe %q is incompatible with %q resource type. Recipe link type must match link resource type.",
 			options.RecipeProperties.LinkType, options.RecipeProperties.Name, ResourceType))
 	}
 
@@ -125,12 +125,12 @@ func RenderAzureResource(properties datamodel.MongoDatabaseProperties) (renderer
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	cosmosMongoDBID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Azure Mongo DB resource type
 	err = cosmosMongoDBID.ValidateResourceType(AzureCosmosMongoResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure CosmosDB Mongo Database resource")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure CosmosDB Mongo Database resource")
 	}
 
 	computedValues := map[string]renderers.ComputedValueReference{

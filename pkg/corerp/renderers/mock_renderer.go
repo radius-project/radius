@@ -9,7 +9,7 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	conv "github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	resources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -37,7 +37,7 @@ func (m *MockRenderer) EXPECT() *MockRendererMockRecorder {
 }
 
 // GetDependencyIDs mocks base method.
-func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (m *MockRenderer) GetDependencyIDs(arg0 context.Context, arg1 v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetDependencyIDs", arg0, arg1)
 	ret0, _ := ret[0].([]resources.ID)
@@ -53,7 +53,7 @@ func (mr *MockRendererMockRecorder) GetDependencyIDs(arg0, arg1 interface{}) *go
 }
 
 // Render mocks base method.
-func (m *MockRenderer) Render(arg0 context.Context, arg1 conv.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
+func (m *MockRenderer) Render(arg0 context.Context, arg1 v1.DataModelInterface, arg2 RenderOptions) (RendererOutput, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Render", arg0, arg1, arg2)
 	ret0, _ := ret[0].(RendererOutput)

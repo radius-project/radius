@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -230,8 +229,8 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -260,8 +259,8 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must refer to an Azure Redis Cache", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure Redis Cache", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -289,6 +288,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	}
 	_, err := renderer.Render(ctx, &redisResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 }

@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // RedisCacheDataModelFromVersioned converts version agnostic RedisCache datamodel to versioned model.
-func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (conv.VersionedModelInterface, error) {
+func RedisCacheDataModelToVersioned(model *datamodel.RedisCache, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.RedisCacheResource{}
@@ -47,7 +46,7 @@ func RedisCacheDataModelFromVersioned(content []byte, version string) (*datamode
 	}
 }
 
-func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (conv.VersionedModelInterface, error) {
+func RedisCacheSecretsDataModelToVersioned(model *datamodel.RedisCacheSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.RedisCacheSecrets{}

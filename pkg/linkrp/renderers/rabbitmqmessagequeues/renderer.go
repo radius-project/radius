@@ -8,7 +8,7 @@ package rabbitmqmessagequeues
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
@@ -20,10 +20,10 @@ type Renderer struct {
 }
 
 // Render creates the output resource for the rabbitmqmessagequeues resource.
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.RabbitMQMessageQueue)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
@@ -33,13 +33,13 @@ func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, option
 		return renderers.RendererOutput{}, err
 	}
 	if properties.Secrets == (datamodel.RabbitMQSecrets{}) || properties.Secrets.ConnectionString == "" {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("secrets must be specified")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("secrets must be specified")
 	}
 
 	// queue name must be specified by the user
 	queueName := properties.Queue
 	if queueName == "" {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("queue name must be specified")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("queue name must be specified")
 	}
 	values := map[string]renderers.ComputedValueReference{
 		QueueNameKey: {

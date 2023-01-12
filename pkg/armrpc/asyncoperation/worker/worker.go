@@ -18,7 +18,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/google/uuid"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	manager "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
@@ -276,7 +275,7 @@ func (w *AsyncRequestProcessWorker) runOperation(ctx context.Context, message *q
 }
 
 func extractError(err error) v1.ErrorDetails {
-	if clientErr, ok := err.(*conv.ErrClientRP); ok {
+	if clientErr, ok := err.(*v1.ErrClientRP); ok {
 		return v1.ErrorDetails{Code: clientErr.Code, Message: clientErr.Message}
 	} else {
 		return v1.ErrorDetails{Code: v1.CodeInternal, Message: err.Error()}

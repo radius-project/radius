@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -99,8 +98,8 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to a Storage Table", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_UnsupportedMode(t *testing.T) {
@@ -125,8 +124,8 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedStateStoreModes)), err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("invalid state store mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedStateStoreModes)), err.(*v1.ErrClientRP).Message)
 }
 func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer := Renderer{}
@@ -149,8 +148,8 @@ func Test_Render_SpecifiesUmanagedWithoutResource(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, renderers.ErrResourceMissingForResource.Error(), err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_Success(t *testing.T) {
@@ -233,8 +232,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type state.zookeeper", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -262,8 +261,8 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -292,8 +291,8 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -318,8 +317,8 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer.StateStores = SupportedStateStoreModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_EmptyApplicationID(t *testing.T) {
