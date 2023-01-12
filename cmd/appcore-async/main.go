@@ -41,7 +41,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	logger, flush, err := ucplog.NewLoggerWithOpts("applications.core", &options.Config.Logging)
+	logger, flush, err := ucplog.NewLogger("applications.core", &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}

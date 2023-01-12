@@ -54,51 +54,6 @@ const (
 	DefaultLoggerProfile        = LoggerProfileDev
 )
 
-func initLoggingConfigOld() (*zap.Logger, error) {
-	var cfg zap.Config
-
-	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
-	profile := os.Getenv(LogProfile)
-	if profile == "" {
-		profile = DefaultLoggerProfile
-	}
-	if strings.EqualFold(profile, LoggerProfileDev) {
-		cfg = zap.NewDevelopmentConfig()
-	} else if strings.EqualFold(profile, LoggerProfileProd) {
-		cfg = zap.NewProductionConfig()
-	} else {
-		return nil, fmt.Errorf("invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
-	}
-
-	// Modify the default log level intialized by the profile preset if a custom value
-	// is specified by "RADIUS_LOG_LEVEL" env variable
-	radLogLevel := os.Getenv(LogLevel)
-	var logLevel int
-	if radLogLevel != "" {
-		if strings.EqualFold(VerbosityLevelDebug, radLogLevel) {
-			logLevel = int(zapcore.DebugLevel)
-		} else if strings.EqualFold(VerbosityLevelInfo, radLogLevel) {
-			logLevel = int(zapcore.InfoLevel)
-		} else if strings.EqualFold(VerbosityLevelWarn, radLogLevel) {
-			logLevel = int(zapcore.WarnLevel)
-		} else if strings.EqualFold(VerbosityLevelError, radLogLevel) {
-			logLevel = int(zapcore.ErrorLevel)
-		} else {
-			return nil, fmt.Errorf("invalid Radius Logger Level set. Valid options are: %s, %s, %s, %s", VerbosityLevelError, VerbosityLevelWarn, VerbosityLevelInfo, VerbosityLevelDebug)
-		}
-		cfg.Level = zap.NewAtomicLevelAt(zapcore.Level(logLevel))
-	}
-	cfg.EncoderConfig.CallerKey = zapcore.OmitKey
-	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	// Build the logger config based on profile and custom presets
-	logger, err := cfg.Build()
-	if err != nil {
-		return nil, fmt.Errorf("unable to initialize zap logger: %v", err)
-	}
-
-	return logger, nil
-}
-
 func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 	var cfg zap.Config
 	var loggerProfile, loggerLevel string
@@ -157,34 +112,12 @@ func initLoggingConfig(options *LoggingOptions) (*zap.Logger, error) {
 }
 
 // NewLogger creates a new logr.Logger with zap logger implementation
-func NewLoggerWithOpts(name string, options *LoggingOptions) (logr.Logger, func(), error) {
+func NewLogger(name string, options *LoggingOptions) (logr.Logger, func(), error) {
 	if name == "" {
 		name = DefaultLoggerName
 	}
 
 	zapLogger, err := initLoggingConfig(options)
-	if err != nil {
-		return logr.Discard(), nil, err
-	}
-	logger := zapr.NewLogger(zapLogger).WithName(name)
-
-	// The underlying zap logger needs to be flushed before server exits
-	flushLogs := func() {
-		err := zapLogger.Sync()
-		if err != nil {
-			logger.Error(err, "Unable to flush logs...")
-		}
-	}
-	return logger, flushLogs, nil
-}
-
-// NewLogger creates a new logr.Logger with zap logger implementation
-func NewLogger(name string) (logr.Logger, func(), error) {
-	if name == "" {
-		name = DefaultLoggerName
-	}
-
-	zapLogger, err := initLoggingConfigOld()
 	if err != nil {
 		return logr.Discard(), nil, err
 	}
