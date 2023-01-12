@@ -68,3 +68,9 @@ func FromContext(ctx context.Context) *UCPConfig {
 func WithContext(ctx context.Context, cfg *UCPConfig) context.Context {
 	return context.WithValue(ctx, v1.HostingConfigContextKey, cfg)
 }
+
+// LoggingOptions represents the logger.
+type LoggingOptions struct {
+	Json     bool   `yaml:"json"`
+	LogLevel string `yaml:"logLevel"`
+}

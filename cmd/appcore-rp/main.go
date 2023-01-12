@@ -72,7 +72,7 @@ func main() {
 	}
 	metricOptions := metricshostoptions.NewHostOptionsFromEnvironment(*options.Config)
 
-	logger, flush, err := ucplog.NewLogger("applications.core")
+	logger, flush, err := ucplog.NewLoggerWithOpts("applications.core", &options.Config.Logging)
 	if err != nil {
 		log.Fatal(err)
 	}

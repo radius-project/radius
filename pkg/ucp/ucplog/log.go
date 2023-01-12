@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/go-logr/zapr"
+	"github.com/project-radius/radius/pkg/ucp/hostoptions"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 	"go.uber.org/zap/zaptest"
@@ -23,8 +24,8 @@ import (
 // for a zap log sink
 const (
 	DefaultLoggerName string = "radius"
-	LogLevel          string = "RADIUS_LOG_LEVEL"   // Env variable that determines the log level
-	LogProfile        string = "RADIUS_LOG_PROFILE" // Env variable that determines the logger config presets
+	LogLevel          string = "RADIUS_LOGGING_LEVEL" // Env variable that determines the log level
+	LogProfile        string = "RADIUS_LOGGING_JSON"  // Env variable that determines the logger config presets
 )
 
 // Log levels
@@ -54,34 +55,48 @@ const (
 	DefaultLoggerProfile        = LoggerProfileDev
 )
 
-func initLoggingConfig() (*zap.Logger, error) {
-	var cfg zap.Config
+func getLoggerProfileAndLevel()
 
-	// Define the logger configuration based on the logger profile specified by RADIUS_PROFILE env variable
-	profile := os.Getenv(LogProfile)
-	if profile == "" {
-		profile = DefaultLoggerProfile
+func initLoggingConfig(options *hostoptions.LoggingOptions) (*zap.Logger, error) {
+	var cfg zap.Config
+	var loggerProfile, loggerLevel string
+
+	// Define the logger profile and level based on the logger profile specified by RADIUS_PROFILE env variable or config files.
+	// env variable takes precedence over config file settings.
+	if options.Json {
+		loggerProfile = LoggerProfileProd
+	} else {
+		loggerProfile = LoggerProfileDev
 	}
-	if strings.EqualFold(profile, LoggerProfileDev) {
+	loggerProfileFromEnv := os.Getenv(LogProfile)
+	if loggerProfileFromEnv != "" {
+		loggerProfile = loggerProfileFromEnv
+	}
+	if strings.EqualFold(loggerProfile, LoggerProfileDev) {
 		cfg = zap.NewDevelopmentConfig()
-	} else if strings.EqualFold(profile, LoggerProfileProd) {
+	} else if strings.EqualFold(loggerProfile, LoggerProfileProd) {
 		cfg = zap.NewProductionConfig()
 	} else {
 		return nil, fmt.Errorf("invalid Radius Logger Profile set. Valid options are: %s, %s", LoggerProfileDev, LoggerProfileProd)
 	}
 
 	// Modify the default log level intialized by the profile preset if a custom value
-	// is specified by "RADIUS_LOG_LEVEL" env variable
-	radLogLevel := os.Getenv(LogLevel)
+	// is specified by config file or the "RADIUS_LOG_LEVEL" env variable. env variable takes precedence over config file settings.
 	var logLevel int
-	if radLogLevel != "" {
-		if strings.EqualFold(VerbosityLevelDebug, radLogLevel) {
+	loggerLevel = options.LogLevel
+	logLevelFromEnv := os.Getenv(LogLevel)
+	if logLevelFromEnv != "" {
+		loggerLevel = logLevelFromEnv
+	}
+
+	if loggerLevel != "" {
+		if strings.EqualFold(VerbosityLevelDebug, loggerLevel) {
 			logLevel = int(zapcore.DebugLevel)
-		} else if strings.EqualFold(VerbosityLevelInfo, radLogLevel) {
+		} else if strings.EqualFold(VerbosityLevelInfo, loggerLevel) {
 			logLevel = int(zapcore.InfoLevel)
-		} else if strings.EqualFold(VerbosityLevelWarn, radLogLevel) {
+		} else if strings.EqualFold(VerbosityLevelWarn, loggerLevel) {
 			logLevel = int(zapcore.WarnLevel)
-		} else if strings.EqualFold(VerbosityLevelError, radLogLevel) {
+		} else if strings.EqualFold(VerbosityLevelError, loggerLevel) {
 			logLevel = int(zapcore.ErrorLevel)
 		} else {
 			return nil, fmt.Errorf("invalid Radius Logger Level set. Valid options are: %s, %s, %s, %s", VerbosityLevelError, VerbosityLevelWarn, VerbosityLevelInfo, VerbosityLevelDebug)
@@ -97,6 +112,28 @@ func initLoggingConfig() (*zap.Logger, error) {
 	}
 
 	return logger, nil
+}
+
+// NewLogger creates a new logr.Logger with zap logger implementation
+func NewLoggerWithOpts(name string, options *hostoptions.LoggingOptions) (logr.Logger, func(), error) {
+	if name == "" {
+		name = DefaultLoggerName
+	}
+
+	zapLogger, err := initLoggingConfig(options)
+	if err != nil {
+		return logr.Discard(), nil, err
+	}
+	logger := zapr.NewLogger(zapLogger).WithName(name)
+
+	// The underlying zap logger needs to be flushed before server exits
+	flushLogs := func() {
+		err := zapLogger.Sync()
+		if err != nil {
+			logger.Error(err, "Unable to flush logs...")
+		}
+	}
+	return logger, flushLogs, nil
 }
 
 // NewLogger creates a new logr.Logger with zap logger implementation
