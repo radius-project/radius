@@ -45,6 +45,11 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 	if versions, ok := l.supportedVersions[resourceType]; ok {
 		return versions
 	}
+
+	// using the openapi key here as all the link resource app models are defines as part of openapi.json.
+	if versions, ok := l.supportedVersions[getOpenapiKey(resourceType)]; ok {
+		return versions
+	}
 	return []string{}
 }
 
@@ -52,6 +57,12 @@ func (l *Loader) SupportedVersions(resourceType string) []string {
 func (l *Loader) GetValidator(resourceType, version string) (Validator, bool) {
 	// ARM types are compared case-insensitively
 	v, ok := l.validators[getValidatorKey(resourceType, version)]
+	if ok {
+		return &v, true
+	}
+
+	// using the openapi key here as all the link resource app models are defines as part of openapi.json.
+	v, ok = l.validators[getValidatorKey(getOpenapiKey(resourceType), version)]
 	if ok {
 		return &v, true
 	}
@@ -146,6 +157,12 @@ func LoadSpec(ctx context.Context, providerName string, specs fs.FS, rootScopePr
 
 func getValidatorKey(resourceType, version string) string {
 	return strings.ToLower(resourceType + "-" + version)
+}
+
+// getOpenapiKey returns Applications.Link/openapi or Applications.Core/openapi based on the resource type.
+func getOpenapiKey(resourceType string) string {
+	s := strings.Split(resourceType, "/")
+	return s[0] + "/openapi"
 }
 
 func parseSpecFilePath(path string) map[string]string {

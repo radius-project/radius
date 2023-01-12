@@ -302,7 +302,7 @@ func (client *RabbitMqMessageQueuesClient) listSecretsCreateRequest(ctx context.
 		return nil, errors.New("parameter rabbitMQMessageQueueName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{rabbitMQMessageQueueName}", url.PathEscape(rabbitMQMessageQueueName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}

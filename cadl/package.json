@@ -5,7 +5,7 @@
     "@azure-tools/cadl-azure-core": "^0.24.0",
     "@azure-tools/cadl-azure-resource-manager": "^0.24.0",
     "@azure-tools/cadl-providerhub": "^0.24.0",
-    "@cadl-lang/compiler": "^0.38.0",
+    "@cadl-lang/compiler": "^0.38.5",
     "@cadl-lang/openapi3": "^0.38.0",
     "@cadl-lang/rest": "^0.38.0",
     "@cadl-lang/versioning": "^0.38.0"

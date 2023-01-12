@@ -20,14 +20,14 @@ model BasicResourceProperties {
 model BasicDaprResourceProperties extends BasicResourceProperties{
   @doc("The name of the Dapr component object. Use this value in your code when interacting with the Dapr client to use the Dapr component.")
   @visibility("read")
-  componentName: string;
+  componentName?: string;
 }
 
 @doc("Status of a resource.")
 model ResourceStatus {
   @doc("Properties of an output resource")
   @extension("x-ms-identifiers", [])
-  outputResources: OutputResource[];
+  outputResources?: OutputResource[];
 }
 
 @doc("Properties of an output resource.")
@@ -52,7 +52,7 @@ model Recipe{
   @doc("The name of the recipe within the environment to use")
   name: string;
   @doc("Key/value parameters to pass into the recipe at deployment")
-  parameters: Parameters;
+  parameters?: Parameters;
 }
 @doc("Key/value parameters to pass into the recipe at deployment")
 model Parameters{}

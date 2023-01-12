@@ -300,7 +300,7 @@ func (client *MongoDatabasesClient) listSecretsCreateRequest(ctx context.Context
 		return nil, errors.New("parameter mongoDatabaseName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{mongoDatabaseName}", url.PathEscape(mongoDatabaseName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}

@@ -51,10 +51,10 @@
         ],
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "global.json#/parameters/RootScopeParameter"
+            "$ref": "openapi.json#/parameters/RootScopeParam"
           }
         ],
         "responses": {
@@ -67,7 +67,7 @@
           "default": {
             "description": "Error response describing the reason for operation failure",
             "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
         },
@@ -94,10 +94,10 @@
         ],
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "global.json#/parameters/RootScopeParameter"
+            "$ref": "openapi.json#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -113,7 +113,7 @@
           "default": {
             "description": "Error response describing the reason for operation failure",
             "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
         }
@@ -134,10 +134,10 @@
         ],
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "global.json#/parameters/RootScopeParameter"
+            "$ref": "openapi.json#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -168,7 +168,7 @@
           "default": {
             "description": "Error response describing the reason for operation failure",
             "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
         }
@@ -189,10 +189,10 @@
         ],
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "global.json#/parameters/RootScopeParameter"
+            "$ref": "openapi.json#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -211,7 +211,7 @@
           "default": {
             "description": "Error response describing the reason for operation failure",
             "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
         }
@@ -234,10 +234,10 @@
         ],
         "parameters": [
           {
-            "$ref": "../../../../../common-types/resource-management/v2/types.json#/parameters/ApiVersionParameter"
+            "$ref": "../../../../../common-types/resource-management/v3/types.json#/parameters/ApiVersionParameter"
           },
           {
-            "$ref": "global.json#/parameters/RootScopeParameter"
+            "$ref": "openapi.json#/parameters/RootScopeParam"
           },
           {
             "$ref": "#/parameters/ExtenderNameParameter"
@@ -253,7 +253,7 @@
           "default": {
             "description": "Error response describing the reason for operation failure",
             "schema": {
-              "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/ErrorResponse"
+              "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/ErrorResponse"
             }
           }
         }
@@ -283,7 +283,7 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
         }
       ],
       "required": [
@@ -291,7 +291,7 @@
       ],
       "properties": {
         "systemData": {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/systemData"
         },
         "properties": {
           "x-ms-client-flatten": true,
@@ -304,16 +304,13 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/TrackedResource"
+          "$ref": "../../../../../common-types/resource-management/v3/types.json#/definitions/TrackedResource"
         }
       ],
       "required": [
         "properties"
       ],
       "properties": {
-        "systemData": {
-          "$ref": "../../../../../common-types/resource-management/v2/types.json#/definitions/systemData"
-        },
         "properties": {
           "x-ms-client-flatten": true,
           "$ref": "#/definitions/ExtenderResponseProperties"
@@ -334,14 +331,14 @@
       "type": "object",
       "allOf": [
         {
-          "$ref": "global.json#/definitions/BasicResourceProperties"
+          "$ref": "openapi.json#/definitions/BasicResourceProperties"
         }
       ],
       "additionalProperties": true,
       "properties": {
         "provisioningState": {
           "readOnly": true,
-          "$ref": "global.json#/definitions/ProvisioningState",
+          "$ref": "openapi.json#/definitions/ProvisioningState",
           "description": "Provisioning state of the extender link at the time the operation was called"
         }
       },
