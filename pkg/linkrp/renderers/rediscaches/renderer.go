@@ -9,7 +9,7 @@ import (
 	"context"
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/redis/mgmt/redis"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -25,10 +25,10 @@ var _ renderers.Renderer = (*Renderer)(nil)
 type Renderer struct {
 }
 
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.RedisCache)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties
@@ -61,12 +61,12 @@ func renderAzureResource(properties datamodel.RedisCacheProperties, secretValues
 	// Validate fully qualified resource identifier of the source resource is supplied for this link
 	redisCacheID, err := resources.ParseResource(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	// Validate resource type matches the expected Redis Cache resource type
 	err = redisCacheID.ValidateResourceType(RedisResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to an Azure Redis Cache")
 	}
 
 	if _, ok := computedValues[renderers.Host]; !ok {

@@ -8,7 +8,7 @@ package volume
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 )
 
@@ -18,5 +18,5 @@ const (
 
 // VolumeRenderer is the interface representing Volume resource.
 type VolumeRenderer interface {
-	Render(context.Context, conv.DataModelInterface, *renderers.RenderOptions) (*renderers.RendererOutput, error)
+	Render(context.Context, v1.DataModelInterface, *renderers.RenderOptions) (*renderers.RendererOutput, error)
 }

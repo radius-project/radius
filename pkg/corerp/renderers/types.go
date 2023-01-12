@@ -8,7 +8,7 @@ package renderers
 import (
 	"context"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -26,8 +26,8 @@ const (
 
 //go:generate mockgen -destination=./mock_renderer.go -package=renderers github.com/project-radius/radius/pkg/corerp/renderers Renderer
 type Renderer interface {
-	GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
-	Render(ctx context.Context, resource conv.DataModelInterface, options RenderOptions) (RendererOutput, error)
+	GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error)
+	Render(ctx context.Context, resource v1.DataModelInterface, options RenderOptions) (RendererOutput, error)
 }
 
 type RenderOptions struct {
@@ -42,7 +42,7 @@ type RendererDependency struct {
 	ResourceID resources.ID
 
 	// Resource is the datamodel of depedency resource.
-	Resource conv.DataModelInterface
+	Resource v1.DataModelInterface
 
 	// ComputedValues is a map of the computed values and secrets of the dependency.
 	ComputedValues map[string]any
@@ -84,5 +84,5 @@ type RendererOutput struct {
 	SecretValues   map[string]rp.SecretValueReference
 
 	// RadiusResource is the original Radius resource model.
-	RadiusResource conv.DataModelInterface
+	RadiusResource v1.DataModelInterface
 }

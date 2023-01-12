@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -96,6 +95,6 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer := Renderer{}
 	_, err := renderer.Render(ctx, &resource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 }

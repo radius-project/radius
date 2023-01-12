@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	v20220315privatepreview "github.com/project-radius/radius/pkg/corerp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 )
 
 // HTTPRouteDataModelToVersioned converts version agnostic HTTPRoute datamodel to versioned model.
-func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (conv.VersionedModelInterface, error) {
+func HTTPRouteDataModelToVersioned(model *datamodel.HTTPRoute, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.HTTPRouteResource{}

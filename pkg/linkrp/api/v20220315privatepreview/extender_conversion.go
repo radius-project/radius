@@ -6,7 +6,6 @@
 package v20220315privatepreview
 
 import (
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -15,7 +14,7 @@ import (
 )
 
 // ConvertTo converts from the versioned Extender resource to version-agnostic datamodel.
-func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *ExtenderResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.Extender{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -43,10 +42,10 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Extender resource.
-func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *ExtenderResource) ConvertFrom(src v1.DataModelInterface) error {
 	extender, ok := src.(*datamodel.Extender)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(extender.ID)
