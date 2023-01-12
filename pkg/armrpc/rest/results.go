@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -248,14 +249,24 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 		return fmt.Errorf("error marshaling %T: %w", r.Body, err)
 	}
 
-	locationHeader := r.getAsyncLocationPath(req, "operationResults")
-	azureAsyncOpHeader := r.getAsyncLocationPath(req, "operationStatuses")
+	locationHeader, err := r.getAsyncLocationPath(req, "operationResults")
+	if err != nil {
+		return err
+	}
+	azureAsyncOpHeader, err := r.getAsyncLocationPath(req, "operationStatuses")
+	if err != nil {
+		return err
+	}
 
 	// Write Headers
+	logger := logr.FromContextOrDiscard(ctx)
 	w.Header().Add("Content-Type", "application/json")
 	w.Header().Add("Location", locationHeader)
+	logger.Info("Configured Location header: " + locationHeader)
 	w.Header().Add("Azure-AsyncOperation", azureAsyncOpHeader)
+	logger.Info("Configured AsyncOperation header: " + azureAsyncOpHeader)
 	w.Header().Add("Retry-After", v1.DefaultRetryAfter)
+	w.Header().Add("Referer", req.Header.Get("Referer"))
 
 	w.WriteHeader(r.Code)
 
@@ -268,23 +279,29 @@ func (r *AsyncOperationResponse) Apply(ctx context.Context, w http.ResponseWrite
 }
 
 // getAsyncLocationPath returns the async operation location path for the given resource type.
-func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) string {
+func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourceType string) (string, error) {
 	rootScope := r.RootScope
 	if rootScope == "" {
 		rootScope = r.ResourceID.PlaneScope()
 	}
+
+	referer, err := url.Parse(req.Header.Get(v1.RefererHeader))
+	if err != nil {
+		return "", err
+	}
+	baseIndex := 0
+	if referer.Path != "" {
+		baseIndex = getBaseIndex(referer.Path)
+	}
+	base := referer.Path[:baseIndex]
+
 	dest := url.URL{
-		Host:   req.Host,
-		Scheme: req.URL.Scheme,
-		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", r.PathBase, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		Host:     referer.Host,
+		Scheme:   referer.Scheme,
+		Path:     fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
+		RawQuery: referer.Query().Encode(),
 	}
-
-	query := url.Values{}
-	if r.APIVersion != "" {
-		query.Add("api-version", r.APIVersion)
-	}
-
-	dest.RawQuery = query.Encode()
+	fmt.Println(dest.String())
 
 	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get("X-Forwarded-Proto")
@@ -298,7 +315,21 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 		dest.Scheme = "http"
 	}
 
-	return dest.String()
+	return dest.String(), nil
+}
+
+func getBaseIndex(path string) int {
+	normalized := strings.ToLower(path)
+	idx := strings.Index(normalized, "/planes/")
+	if idx >= 0 {
+		return idx
+	}
+	idx = strings.Index(normalized, "/subscriptions/")
+	if idx >= 0 {
+		return idx
+	}
+	return 0
+
 }
 
 // NoContentResponse represents an HTTP 204.

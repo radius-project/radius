@@ -19,6 +19,9 @@ func LowercaseURLPath(next http.Handler) http.Handler {
 		// This is the fallback setting "Referer" header to save the original URL for UCP scenario.
 		// https://github.com/Azure/azure-resource-manager-rpc/blob/master/v1.0/common-api-details.md#proxy-request-header-modifications
 		if r.Header.Get(v1.RefererHeader) == "" {
+			if r.URL.Host == "" {
+				r.URL.Host = r.Host
+			}
 			r.Header.Set(v1.RefererHeader, r.URL.String())
 		}
 
