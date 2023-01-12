@@ -994,7 +994,7 @@
       }
     },
     "/{rootScope}/providers/Applications.Link/mongoDatabases/{mongoDatabaseName}/listSecrets": {
-      "get": {
+      "post": {
         "operationId": "MongoDatabases_ListSecrets",
         "description": "Lists secrets values for the specified MongoDatabase resource",
         "parameters": [
@@ -1214,7 +1214,7 @@
       }
     },
     "/{rootScope}/providers/Applications.Link/rabbitMQMessageQueues/{rabbitMQMessageQueueName}/listSecrets": {
-      "get": {
+      "post": {
         "operationId": "RabbitMqMessageQueues_ListSecrets",
         "description": "Lists secrets values for the specified RabbitMQMessageQueue resource",
         "parameters": [
@@ -1434,7 +1434,7 @@
       }
     },
     "/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets": {
-      "get": {
+      "post": {
         "operationId": "RedisCaches_ListSecrets",
         "description": "Lists secrets values for the specified RedisCache resource",
         "parameters": [
@@ -1703,9 +1703,6 @@
         }
       },
       "description": "Basic properties of a Dapr component object.",
-      "required": [
-        "componentName"
-      ],
       "allOf": [
         {
           "$ref": "#/definitions/BasicResourceProperties"
@@ -2248,8 +2245,7 @@
       },
       "description": "The recipe used to automatically deploy underlying infrastructure for a link",
       "required": [
-        "name",
-        "parameters"
+        "name"
       ]
     },
     "RecipeDaprPubSubProperties": {
@@ -2726,10 +2722,7 @@
           "description": "Properties of an output resource"
         }
       },
-      "description": "Status of a resource.",
-      "required": [
-        "outputResources"
-      ]
+      "description": "Status of a resource."
     },
     "SqlDatabaseProperties": {
       "type": "object",

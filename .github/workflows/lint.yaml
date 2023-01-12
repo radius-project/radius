@@ -36,12 +36,9 @@ jobs:
         with:
           node-version: '16'
       - name: Install cadl compiler
-        run: npm install -g @cadl-lang/compiler
-      - name: Install  cadl azure toolsets
         run: |
-          npm install -g @cadl-lang/rest @cadl-lang/openapi3 @azure-tools/cadl-azure-core @azure-tools/cadl-autorest
           pushd cadl
-          npm install
+          npm ci
           popd
       - name: Install autorest
         run: npm install -g autorest@3.6.1

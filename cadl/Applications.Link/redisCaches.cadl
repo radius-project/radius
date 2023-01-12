@@ -117,6 +117,7 @@ model RedisCacheProperties extends BasicResourceProperties {
 #suppress "@azure-tools/cadl-azure-resource-manager/arm-resource-operation-outside-interface" "This is an interface template"
 @doc("Lists secrets values for the specified RedisCache resource")
 @route("/{rootScope}/providers/Applications.Link/redisCaches/{redisCacheName}/listSecrets")
+@post
 op RedisCaches_listSecrets(
   ...ApiVersionParameter,
   ...RootScopeParam, 
