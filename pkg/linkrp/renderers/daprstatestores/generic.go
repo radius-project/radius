@@ -8,13 +8,14 @@ package daprstatestores
 import (
 	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/dapr"
 	"github.com/project-radius/radius/pkg/resourcekinds"
 	"github.com/project-radius/radius/pkg/resourcemodel"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error) {
+func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	properties := resource.Properties
 
 	daprGeneric := dapr.DaprGeneric{
@@ -23,7 +24,11 @@ func GetDaprStateStoreGeneric(resource datamodel.DaprStateStore, applicationName
 		Metadata: properties.Metadata,
 	}
 
-	return getDaprGeneric(daprGeneric, resource, applicationName, namespace)
+	outputResources, err := getDaprGeneric(daprGeneric, resource, applicationName, options.Namespace)
+
+	return renderers.RendererOutput{
+		Resources: outputResources,
+	}, err
 }
 
 func getDaprGeneric(daprGeneric dapr.DaprGeneric, dm conv.DataModelInterface, applicationName string, namespace string) ([]outputresource.OutputResource, error) {

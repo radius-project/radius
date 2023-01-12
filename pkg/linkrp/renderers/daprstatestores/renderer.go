@@ -16,14 +16,14 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (renderers.RendererOutput, error)
 
 var SupportedStateStoreModes = map[string]StateStoreFunc{
 	string(datamodel.LinkModeResource): GetDaprStateStoreAzureStorage,
 	string(datamodel.LinkModeValues):   GetDaprStateStoreGeneric,
+	string(datamodel.LinkModeRecipe):   GetDaprStateStoreRecipe,
 }
 
 var _ renderers.Renderer = (*Renderer)(nil)
@@ -57,7 +57,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 		applicationName = applicationID.Name()
 	}
 
-	resources, err := stateStoreFunc(*resource, applicationName, options.Namespace)
+	rendererOutput, err := stateStoreFunc(*resource, applicationName, options)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
@@ -69,11 +69,9 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 	}
 	secrets := map[string]rp.SecretValueReference{}
 
-	return renderers.RendererOutput{
-		Resources:      resources,
-		ComputedValues: values,
-		SecretValues:   secrets,
-	}, nil
+	rendererOutput.ComputedValues = values
+	rendererOutput.SecretValues = secrets
+	return rendererOutput, nil
 }
 
 func getAlphabeticallySortedKeys(store map[string]StateStoreFunc) []string {
