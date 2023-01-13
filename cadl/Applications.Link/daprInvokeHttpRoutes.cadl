@@ -48,7 +48,7 @@ model DaprInvokeHttpRouteProperties extends BasicResourceProperties {
 model DaprInvokeHttpRouteResource is TrackedResource<DaprInvokeHttpRouteProperties> {
   @doc("The name of the DaprInvokeHttpRoute link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("daprInvokeHttpRouteName")
   @path
   @segment("daprInvokeHttpRoutes")
