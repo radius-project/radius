@@ -8,6 +8,7 @@ package daprstatestores
 import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/go-autorest/autorest/to"
+	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
@@ -31,6 +32,7 @@ func GetDaprStateStoreRecipe(resource datamodel.DaprStateStore, applicationName 
 				Type:     resourcekinds.DaprStateStoreAzureStorage,
 				Provider: resourcemodel.ProviderAzure,
 			},
+			ProviderResourceType: azresources.StorageStorageAccounts,
 			Resource: map[string]string{
 				handlers.KubernetesNameKey:       resource.Name,
 				handlers.KubernetesNamespaceKey:  options.Namespace,
