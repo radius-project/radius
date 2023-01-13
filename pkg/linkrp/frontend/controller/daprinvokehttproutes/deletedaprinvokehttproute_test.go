@@ -17,6 +17,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -43,12 +44,11 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 			DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
 				return nil, &store.ErrNotFound{}
 			})
-
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewDeleteDaprInvokeHttpRoute(opts)
@@ -114,11 +114,11 @@ func TestDeleteDaprInvokeHttpRoute_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mStorageClient,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := fctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mStorageClient,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewDeleteDaprInvokeHttpRoute(opts)
