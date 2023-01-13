@@ -121,7 +121,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -160,7 +160,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -221,7 +221,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the DaprInvokeHttpRoute link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -306,7 +306,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -345,7 +345,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -406,7 +406,7 @@
             "in": "path",
             "required": true,
             "description": "DaprPubSubBroker name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -491,7 +491,7 @@
             "in": "path",
             "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -530,7 +530,7 @@
             "in": "path",
             "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -591,7 +591,7 @@
             "in": "path",
             "required": true,
             "description": "DaprSecretStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -676,7 +676,7 @@
             "in": "path",
             "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -715,7 +715,7 @@
             "in": "path",
             "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -776,7 +776,7 @@
             "in": "path",
             "required": true,
             "description": "DaprStateStore name",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -861,7 +861,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -900,7 +900,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -961,7 +961,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1009,7 +1009,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the MongoDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1084,7 +1084,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           }
@@ -1122,7 +1122,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           },
@@ -1182,7 +1182,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           }
@@ -1229,7 +1229,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RabbitMQMessageQueue link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1304,7 +1304,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           }
@@ -1342,7 +1342,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           },
@@ -1402,7 +1402,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "type": "string"
           }
@@ -1449,7 +1449,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the RedisCache link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1524,7 +1524,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1563,7 +1563,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"
@@ -1624,7 +1624,7 @@
             "in": "path",
             "required": true,
             "description": "The name of the SqlDatabase link resource",
-            "pattern": "^[a-z]([-a-z0-9]*[a-z0-9])?$",
+            "pattern": "^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$",
             "maxLength": 63,
             "x-ms-parameter-location": "method",
             "type": "string"

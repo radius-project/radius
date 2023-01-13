@@ -85,7 +85,7 @@ model SqlDatabaseProperties extends BasicResourceProperties {
 model SqlDatabaseResource is TrackedResource<SqlDatabaseProperties> {
   @doc("The name of the SqlDatabase link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("sqlDatabaseName")
   @path
   @segment("sqlDatabases")

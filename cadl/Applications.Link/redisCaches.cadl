@@ -36,7 +36,7 @@ model RedisCacheResource
   is TrackedResource<RedisCacheProperties> {
   @doc("The name of the RedisCache link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("redisCacheName")
   @path
   @segment("redisCaches")
@@ -123,7 +123,7 @@ op RedisCaches_listSecrets(
   ...RootScopeParam, 
   @doc("The name of the RedisCache link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @extension("x-ms-parameter-location", "method")
   @path redisCacheName: string): ArmResponse<RedisCacheListSecretsResult> | ErrorResponse;
