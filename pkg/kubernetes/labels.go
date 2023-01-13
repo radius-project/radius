@@ -57,7 +57,7 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 	return map[string]string{
 		LabelRadiusApplication:  NormalizeResourceName(application),
 		LabelRadiusResource:     NormalizeResourceName(resource),
-		LabelRadiusResourceType: NormalizeResourceName(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
 		LabelName:               NormalizeResourceName(resource),
 		LabelPartOf:             NormalizeResourceName(application),
 		LabelManagedBy:          LabelManagedByRadiusRP,
@@ -96,36 +96,21 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 	}
 }
 
-// MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
-// Kubernetes object.
-//
-// This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a Container.
-func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
-	if resourceType != "" && resource != "" {
-		return map[string]string{
-			LabelRadiusApplication:  NormalizeResourceName(application),
-			LabelRadiusResourceType: NormalizeResourceName(resourceType),
-			LabelRadiusResource:     NormalizeResourceName(resource),
-			LabelName:               NormalizeResourceName(resource),
-			LabelPartOf:             NormalizeResourceName(application),
-			LabelManagedBy:          LabelManagedByRadiusRP,
-		}
-	}
-
-	return map[string]string{
-		LabelRadiusApplication: NormalizeResourceName(application),
-		LabelName:              NormalizeResourceName(application),
-		LabelManagedBy:         LabelManagedByRadiusRP,
-	}
-}
-
 // NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
 // All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
 // Therefore, this function will lowercase the name without allowed character validation.
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 func NormalizeResourceName(name string) string {
-	return strings.ToLower(name)
+	normalized := strings.ToLower(name)
+	if normalized == "" {
+		return normalized
+	}
+
+	if !IsValidObjectName(normalized) {
+		// This should not happen.
+		panic(normalized + " is invalid name for Kuberentes")
+	}
+	return normalized
 }
 
 // ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it
