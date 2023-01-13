@@ -296,12 +296,18 @@ func (r *AsyncOperationResponse) getAsyncLocationPath(req *http.Request, resourc
 	base := referer.Path[:baseIndex]
 
 	dest := url.URL{
-		Host:     referer.Host,
-		Scheme:   referer.Scheme,
-		Path:     fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
-		RawQuery: referer.Query().Encode(),
+		Host:   referer.Host,
+		Scheme: referer.Scheme,
+		Path:   fmt.Sprintf("%s%s/providers/%s/locations/%s/%s/%s", base, rootScope, r.ResourceID.ProviderNamespace(), r.Location, resourceType, r.OperationID.String()),
 	}
 	fmt.Println(dest.String())
+
+	query := url.Values{}
+	if r.APIVersion != "" {
+		query.Add("api-version", r.APIVersion)
+	}
+
+	dest.RawQuery = query.Encode()
 
 	// In production this is the header we get from app service for the 'real' protocol
 	protocol := req.Header.Get("X-Forwarded-Proto")

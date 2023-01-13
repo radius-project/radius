@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/google/uuid"
@@ -160,14 +161,15 @@ func TestGetAsyncLocationPath(t *testing.T) {
 	operationID := uuid.New()
 
 	testCases := []struct {
-		desc string
-		base string
-		rID  string
-		loc  string
-		opID uuid.UUID
-		av   string
-		or   string
-		os   string
+		desc    string
+		base    string
+		rID     string
+		loc     string
+		opID    uuid.UUID
+		av      string
+		or      string
+		os      string
+		referer url.URL
 	}{
 		{
 			"ucp-test-headers",
@@ -178,6 +180,11 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"2022-03-15-privatepreview",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "https",
+				Host:   "ucp.dev",
+				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			},
 		},
 		{
 			"arm-test-headers",
@@ -188,6 +195,11 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"2022-03-15-privatepreview",
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/subscriptions/00000000-0000-0000-0000-000000000000/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "https",
+				Host:   "azure.dev",
+				Path:   "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			},
 		},
 		{
 			"ucp-test-headers",
@@ -198,6 +210,11 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			"",
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationResults/%s", operationID.String()),
 			fmt.Sprintf("/planes/radius/local/providers/Applications.Core/locations/global/operationStatuses/%s", operationID.String()),
+			url.URL{
+				Scheme: "https",
+				Host:   "ucp.dev",
+				Path:   "/planes/radius/local/resourceGroups/test-rg/providers/Applications.Core/containers/test-container-0",
+			},
 		},
 	}
 
@@ -210,6 +227,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
 
 			req := httptest.NewRequest("GET", tt.base, nil)
+			req.Header.Add("Referer", tt.referer.String())
 			w := httptest.NewRecorder()
 			err = r.Apply(context.Background(), w, req)
 			require.NoError(t, err)
