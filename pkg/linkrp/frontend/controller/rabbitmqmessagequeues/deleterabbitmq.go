@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteRabbitMQMessageQueue)(nil)
@@ -26,9 +25,7 @@ var _ ctrl.Controller = (*DeleteRabbitMQMessageQueue)(nil)
 // DeleteRabbitMQMessageQueue is the controller implementation to delete rabbitmq link resource.
 type DeleteRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
-
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteRabbitMQMessageQueue creates a new instance DeleteRabbitMQMessageQueue.
@@ -39,8 +36,7 @@ func NewDeleteRabbitMQMessageQueue(opts fctrl.Options) (ctrl.Controller, error) 
 				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

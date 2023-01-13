@@ -18,7 +18,6 @@ import (
 
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*ListSecretsMongoDatabase)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*ListSecretsMongoDatabase)(nil)
 type ListSecretsMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsMongoDatabase creates a new instance of ListSecretsMongoDatabase.
@@ -39,8 +37,7 @@ func NewListSecretsMongoDatabase(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

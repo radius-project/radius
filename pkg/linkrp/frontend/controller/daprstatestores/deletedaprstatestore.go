@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteDaprStateStore)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*DeleteDaprStateStore)(nil)
 type DeleteDaprStateStore struct {
 	ctrl.Operation[*datamodel.DaprStateStore, datamodel.DaprStateStore]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprStateStore creates a new instance DeleteDaprStateStore.
@@ -39,8 +37,7 @@ func NewDeleteDaprStateStore(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.DaprStateStoreDataModelFromVersioned,
 				ResponseConverter: converter.DaprStateStoreDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

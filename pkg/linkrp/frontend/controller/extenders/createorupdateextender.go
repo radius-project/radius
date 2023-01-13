@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateExtender)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*CreateOrUpdateExtender)(nil)
 type CreateOrUpdateExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateExtender creates a new instance of CreateOrUpdateExtender.
@@ -39,8 +37,7 @@ func NewCreateOrUpdateExtender(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

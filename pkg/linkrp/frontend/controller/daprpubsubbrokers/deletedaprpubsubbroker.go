@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteDaprPubSubBroker)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*DeleteDaprPubSubBroker)(nil)
 type DeleteDaprPubSubBroker struct {
 	ctrl.Operation[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker]
 
-	KubeClient runtimeclient.Client
-	de         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprPubSubBroker creates a new instance DeleteDaprPubSubBroker.
@@ -39,8 +37,7 @@ func NewDeleteDaprPubSubBroker(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
 				ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		de:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -59,7 +56,7 @@ func (d *DeleteDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter,
 		return r, err
 	}
 
-	err = d.de.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = d.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}

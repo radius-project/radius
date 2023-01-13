@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteSqlDatabase)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*DeleteSqlDatabase)(nil)
 type DeleteSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteSqlDatabase creates a new instance DeleteSqlDatabase.
@@ -39,8 +37,7 @@ func NewDeleteSqlDatabase(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

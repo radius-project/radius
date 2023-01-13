@@ -30,7 +30,7 @@ type CreateOrUpdateDaprInvokeHttpRoute struct {
 	ctrl.Operation[*datamodel.DaprInvokeHttpRoute, datamodel.DaprInvokeHttpRoute]
 
 	KubeClient runtimeclient.Client
-	de         deployment.DeploymentProcessor
+	dp         deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateDaprInvokeHttpRoute creates a new instance of CreateOrUpdateDaprInvokeHttpRoute.
@@ -42,7 +42,7 @@ func NewCreateOrUpdateDaprInvokeHttpRoute(opts fctrl.Options) (ctrl.Controller, 
 				ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
 			}),
 		KubeClient: opts.KubeClient,
-		de:         opts.DeployProcessor,
+		dp:         opts.DeployProcessor,
 	}, nil
 }
 
@@ -75,11 +75,11 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		return r, err
 	}
 
-	rendererOutput, err := daprHttpRoute.de.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := daprHttpRoute.dp.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := daprHttpRoute.de.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := daprHttpRoute.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -93,7 +93,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 
 	if old != nil {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = daprHttpRoute.de.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		err = daprHttpRoute.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
 		if err != nil {
 			return nil, err
 		}

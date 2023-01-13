@@ -20,7 +20,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
@@ -29,8 +28,7 @@ var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
 type CreateOrUpdateMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
@@ -41,8 +39,7 @@ func NewCreateOrUpdateMongoDatabase(opts fctrl.Options) (ctrl.Controller, error)
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

@@ -31,7 +31,7 @@ type CreateOrUpdateDaprPubSubBroker struct {
 	ctrl.Operation[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker]
 
 	KubeClient runtimeclient.Client
-	de         deployment.DeploymentProcessor
+	dp         deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateDaprPubSubBroker creates a new instance of CreateOrUpdateDaprPubSubBroker.
@@ -43,7 +43,7 @@ func NewCreateOrUpdateDaprPubSubBroker(opts fctrl.Options) (ctrl.Controller, err
 				ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
 			}),
 		KubeClient: opts.KubeClient,
-		de:         opts.DeployProcessor,
+		dp:         opts.DeployProcessor,
 	}, nil
 }
 
@@ -76,11 +76,11 @@ func (d *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w http.Respons
 		return r, err
 	}
 
-	rendererOutput, err := d.de.Render(ctx, serviceCtx.ResourceID, newResource)
+	rendererOutput, err := d.dp.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
 	}
-	deploymentOutput, err := d.de.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
+	deploymentOutput, err := d.dp.Deploy(ctx, serviceCtx.ResourceID, rendererOutput)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func (d *CreateOrUpdateDaprPubSubBroker) Run(ctx context.Context, w http.Respons
 
 	if old != nil {
 		diff := outputresource.GetGCOutputResources(newResource.Properties.Status.OutputResources, old.Properties.Status.OutputResources)
-		err = d.de.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
+		err = d.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: newResource, OutputResources: diff, ComputedValues: newResource.ComputedValues, SecretValues: newResource.SecretValues, RecipeData: newResource.RecipeData})
 		if err != nil {
 			return nil, err
 		}

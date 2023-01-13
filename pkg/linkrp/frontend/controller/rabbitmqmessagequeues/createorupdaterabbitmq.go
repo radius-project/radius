@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateRabbitMQMessageQueue)(nil)
@@ -28,8 +27,7 @@ var _ ctrl.Controller = (*CreateOrUpdateRabbitMQMessageQueue)(nil)
 type CreateOrUpdateRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateRabbitMQMessageQueue creates a new instance of CreateOrUpdateRabbitMQMessageQueue.
@@ -40,8 +38,7 @@ func NewCreateOrUpdateRabbitMQMessageQueue(opts fctrl.Options) (ctrl.Controller,
 				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

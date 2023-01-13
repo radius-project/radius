@@ -17,7 +17,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
@@ -26,8 +25,7 @@ var _ ctrl.Controller = (*ListSecretsRedisCache)(nil)
 type ListSecretsRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsRedisCache creates a new instance of ListSecretsRedisCache.
@@ -38,8 +36,7 @@ func NewListSecretsRedisCache(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

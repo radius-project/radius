@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteExtender)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*DeleteExtender)(nil)
 type DeleteExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteExtender creates a new instance DeleteExtender.
@@ -39,8 +37,7 @@ func NewDeleteExtender(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

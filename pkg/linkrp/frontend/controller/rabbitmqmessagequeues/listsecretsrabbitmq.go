@@ -17,7 +17,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*ListSecretsRabbitMQMessageQueue)(nil)
@@ -26,8 +25,7 @@ var _ ctrl.Controller = (*ListSecretsRabbitMQMessageQueue)(nil)
 type ListSecretsRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
@@ -38,8 +36,7 @@ func NewListSecretsRabbitMQMessageQueue(opts fctrl.Options) (ctrl.Controller, er
 				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

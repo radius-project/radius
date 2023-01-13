@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*ListSecretsExtender)(nil)
@@ -25,8 +24,7 @@ var _ ctrl.Controller = (*ListSecretsExtender)(nil)
 type ListSecretsExtender struct {
 	ctrl.Operation[*datamodel.Extender, datamodel.Extender]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewListSecretsExtender creates a new instance of ListSecretsExtender.
@@ -37,8 +35,7 @@ func NewListSecretsExtender(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.ExtenderDataModelFromVersioned,
 				ResponseConverter: converter.ExtenderDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

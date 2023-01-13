@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateSqlDatabase)(nil)
@@ -27,8 +26,7 @@ var _ ctrl.Controller = (*CreateOrUpdateSqlDatabase)(nil)
 type CreateOrUpdateSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
 
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateSqlDatabase creates a new instance of CreateOrUpdateSqlDatabase.
@@ -39,8 +37,7 @@ func NewCreateOrUpdateSqlDatabase(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
