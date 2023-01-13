@@ -37,7 +37,7 @@ func (r *SqlDatabase) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (sql SqlDatabase) ResourceTypeName() string {
+func (sql *SqlDatabase) ResourceTypeName() string {
 	return "Applications.Link/sqlDatabases"
 }
 

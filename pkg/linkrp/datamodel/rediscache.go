@@ -37,12 +37,12 @@ func (r *RedisCache) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (redis RedisCache) ResourceTypeName() string {
+func (redis *RedisCache) ResourceTypeName() string {
 	return "Applications.Link/redisCaches"
 }
 
-func (redisSecrets RedisCacheSecrets) IsEmpty() bool {
-	return redisSecrets == RedisCacheSecrets{}
+func (redisSecrets *RedisCacheSecrets) IsEmpty() bool {
+	return redisSecrets == nil || *redisSecrets == RedisCacheSecrets{}
 }
 
 type RedisValuesProperties struct {

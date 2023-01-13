@@ -37,7 +37,7 @@ func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
+func (rabbitmq *RabbitMQMessageQueue) ResourceTypeName() string {
 	return "Applications.Link/rabbitMQMessageQueues"
 }
 

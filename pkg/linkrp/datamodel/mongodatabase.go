@@ -59,11 +59,11 @@ func (r *MongoDatabase) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
+func (mongoSecrets *MongoDatabaseSecrets) ResourceTypeName() string {
 	return "Applications.Link/mongoDatabases"
 }
 
-func (mongo MongoDatabase) ResourceTypeName() string {
+func (mongo *MongoDatabase) ResourceTypeName() string {
 	return "Applications.Link/mongoDatabases"
 }
 

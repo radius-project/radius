@@ -37,7 +37,7 @@ func (r *Extender) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (extender Extender) ResourceTypeName() string {
+func (extender *Extender) ResourceTypeName() string {
 	return "Applications.Link/extenders"
 }
 

@@ -37,7 +37,7 @@ func (r *DaprSecretStore) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (daprSecretStore DaprSecretStore) ResourceTypeName() string {
+func (daprSecretStore *DaprSecretStore) ResourceTypeName() string {
 	return "Applications.Link/daprSecretStores"
 }
 

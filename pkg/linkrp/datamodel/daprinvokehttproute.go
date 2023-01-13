@@ -37,7 +37,7 @@ func (r *DaprInvokeHttpRoute) ResourceMetadata() *rp.BasicResourceProperties {
 	return &r.Properties.BasicResourceProperties
 }
 
-func (httpRoute DaprInvokeHttpRoute) ResourceTypeName() string {
+func (httpRoute *DaprInvokeHttpRoute) ResourceTypeName() string {
 	return "Applications.Link/daprInvokeHttpRoutes"
 }
 
