@@ -89,7 +89,7 @@ func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 			}
 		}
 	default:
-		return datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetMongoDatabaseProperties().Mode))
+		return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetMongoDatabaseProperties().Mode))
 	}
 	return converted, nil
 }

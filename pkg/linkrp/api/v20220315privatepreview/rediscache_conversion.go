@@ -86,7 +86,7 @@ func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 			}
 		}
 	default:
-		return datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
+		return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
 	}
 	return converted, nil
 }

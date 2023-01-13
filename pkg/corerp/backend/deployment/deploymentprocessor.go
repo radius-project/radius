@@ -78,7 +78,7 @@ type deploymentProcessor struct {
 
 type ResourceData struct {
 	ID              resources.ID // resource ID
-	Resource        v1.DataModelInterface
+	Resource        v1.ResourceDataModel
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
@@ -583,7 +583,7 @@ func (dp *deploymentProcessor) getResourceDataByID(ctx context.Context, resource
 	}
 }
 
-func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.DataModelInterface, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
+func (dp *deploymentProcessor) buildResourceDependency(resourceID resources.ID, applicationID string, resource v1.ResourceDataModel, outputResources []outputresource.OutputResource, computedValues map[string]any, secretValues map[string]rp.SecretValueReference, recipeData link_dm.RecipeData) (ResourceData, error) {
 	var appID *resources.ID
 	if applicationID != "" {
 		parsedID, err := resources.ParseResource(applicationID)

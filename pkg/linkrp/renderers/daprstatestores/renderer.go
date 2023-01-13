@@ -32,7 +32,7 @@ type Renderer struct {
 	StateStores map[string]StateStoreFunc
 }
 
-func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.DaprStateStore)
 	if !ok {
 		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
@@ -57,7 +57,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options
 		applicationName = applicationID.Name()
 	}
 
-	resources, err := stateStoreFunc(*resource, applicationName, options.Namespace)
+	resources, err := stateStoreFunc(resource, applicationName, options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}

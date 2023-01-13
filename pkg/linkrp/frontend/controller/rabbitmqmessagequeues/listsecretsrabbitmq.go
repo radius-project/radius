@@ -15,32 +15,44 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*ListSecretsRabbitMQMessageQueue)(nil)
 
 // ListSecretsRabbitMQMessageQueue is the controller implementation to list secrets for the to access the connected rabbitMQ resource resource id passed in the request body.
 type ListSecretsRabbitMQMessageQueue struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
+
+	KubeClient runtimeclient.Client
+	dp         deployment.DeploymentProcessor
 }
 
 // NewListSecretsRabbitMQMessageQueue creates a new instance of ListSecretsRabbitMQMessageQueue.
-func NewListSecretsRabbitMQMessageQueue(opts ctrl.Options) (ctrl.Controller, error) {
-	return &ListSecretsRabbitMQMessageQueue{ctrl.NewBaseController(opts)}, nil
+func NewListSecretsRabbitMQMessageQueue(opts fctrl.Options) (ctrl.Controller, error) {
+	return &ListSecretsRabbitMQMessageQueue{
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.RabbitMQMessageQueue]{
+				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
+				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
+			}),
+		KubeClient: opts.KubeClient,
+		dp:         opts.DeployProcessor,
+	}, nil
 }
 
 // Run returns secrets values for the specified RabbitMQMessageQueue resource
 func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
-	resource := &datamodel.RabbitMQMessageQueue{}
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
 	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Link/rabbitMQMessageQueues/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
-	_, err := ctrl.GetResource(ctx, parsedResourceID.String(), resource)
+	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNotFoundResponse(sCtx.ResourceID), nil
@@ -48,7 +60,7 @@ func (ctrl *ListSecretsRabbitMQMessageQueue) Run(ctx context.Context, w http.Res
 		return nil, err
 	}
 
-	secrets, err := ctrl.DeploymentProcessor().FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
+	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})
 	if err != nil {
 		return nil, err
 	}

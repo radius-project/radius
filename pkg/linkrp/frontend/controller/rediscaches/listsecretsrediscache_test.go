@@ -20,6 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 )
@@ -46,11 +47,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -82,11 +83,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			})
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -123,11 +124,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 			})
 		mDeploymentProcessor.EXPECT().FetchSecrets(gomock.Any(), gomock.Any()).Times(1).Return(expectedSecrets, nil)
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
@@ -156,11 +157,11 @@ func TestListSecrets_20220315PrivatePreview(t *testing.T) {
 				return nil, errors.New("failed to get the resource from data store")
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mStorageClient,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mStorageClient,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewListSecretsRedisCache(opts)
