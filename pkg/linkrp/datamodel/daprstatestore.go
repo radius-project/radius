@@ -45,11 +45,10 @@ func (daprStateStore *DaprStateStore) ResourceTypeName() string {
 type DaprStateStoreProperties struct {
 	rp.BasicResourceProperties
 	rp.BasicDaprResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Mode              LinkMode             `json:"mode,omitempty"`
-	Metadata          map[string]any       `json:"metadata,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-	Resource          string               `json:"resource,omitempty"`
-	Type              string               `json:"type,omitempty"`
-	Version           string               `json:"version,omitempty"`
+	Mode     LinkMode       `json:"mode,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
+	Recipe   LinkRecipe     `json:"recipe,omitempty"`
+	Resource string         `json:"resource,omitempty"`
+	Type     string         `json:"type,omitempty"`
+	Version  string         `json:"version,omitempty"`
 }
