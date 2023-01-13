@@ -9,7 +9,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
@@ -18,7 +17,7 @@ import (
 // GetResource is the controller implementation to get a resource.
 type GetResource[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any] struct {
 	ctrl.Operation[P, T]
 }
@@ -26,7 +25,7 @@ type GetResource[P interface {
 // NewGetResource creates a new GetResource controller instance.
 func NewGetResource[P interface {
 	*T
-	conv.ResourceDataModel
+	v1.ResourceDataModel
 }, T any](opts ctrl.Options, resourceOpts ctrl.ResourceOptions[T]) (ctrl.Controller, error) {
 	return &GetResource[P, T]{
 		ctrl.NewOperation[P](opts, resourceOpts),

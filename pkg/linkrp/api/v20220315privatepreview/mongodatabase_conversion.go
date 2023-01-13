@@ -8,7 +8,6 @@ package v20220315privatepreview
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -17,7 +16,7 @@ import (
 )
 
 // ConvertTo converts from the versioned MongoDatabase resource to version-agnostic datamodel.
-func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *MongoDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -42,7 +41,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceMongoDatabaseProperties:
 		if v.Resource == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
 		}
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Host = to.String(v.Host)
@@ -58,7 +57,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.Mode = datamodel.LinkModeResource
 	case *ValuesMongoDatabaseProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
 		}
 		converted.Properties.Host = to.String(v.Host)
 		converted.Properties.Port = to.Int32(v.Port)
@@ -73,7 +72,7 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.Mode = datamodel.LinkModeValues
 	case *RecipeMongoDatabaseProperties:
 		if v.Recipe == nil {
-			return &datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
+			return &datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
 		}
 		converted.Properties.MongoDatabaseRecipeProperties = datamodel.MongoDatabaseRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
@@ -90,16 +89,16 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 	default:
-		return datamodel.MongoDatabase{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetMongoDatabaseProperties().Mode))
+		return datamodel.MongoDatabase{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetMongoDatabaseProperties().Mode))
 	}
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabase resource.
-func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *MongoDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	mongo, ok := src.(*datamodel.MongoDatabase)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(mongo.ID)
@@ -162,10 +161,10 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned MongoDatabaseSecrets instance.
-func (dst *MongoDatabaseSecrets) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *MongoDatabaseSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	mongoSecrets, ok := src.(*datamodel.MongoDatabaseSecrets)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ConnectionString = to.StringPtr(mongoSecrets.ConnectionString)
@@ -176,7 +175,7 @@ func (dst *MongoDatabaseSecrets) ConvertFrom(src conv.DataModelInterface) error 
 }
 
 // ConvertTo converts from the versioned MongoDatabaseSecrets instance to version-agnostic datamodel.
-func (src *MongoDatabaseSecrets) ConvertTo() (conv.DataModelInterface, error) {
+func (src *MongoDatabaseSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.MongoDatabaseSecrets{
 		ConnectionString: to.String(src.ConnectionString),
 		Username:         to.String(src.Username),

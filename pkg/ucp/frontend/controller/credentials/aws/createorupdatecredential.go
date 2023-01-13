@@ -11,7 +11,6 @@ import (
 	"net/http"
 
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -48,8 +47,8 @@ func (p *CreateOrUpdateCredential) Run(ctx context.Context, w http.ResponseWrite
 	apiVersion := ctrl.GetAPIVersion(req)
 	newResource, err := converter.CredentialDataModelFromVersioned(body, apiVersion)
 	if errors.Is(err, v1.ErrUnsupportedAPIVersion) ||
-		errors.Is(err, conv.ErrInvalidModelConversion) ||
-		errors.Is(err, &conv.ErrModelConversion{}) {
+		errors.Is(err, v1.ErrInvalidModelConversion) ||
+		errors.Is(err, &v1.ErrModelConversion{}) {
 		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	} else if err != nil {
 		return nil, err

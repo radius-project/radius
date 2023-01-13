@@ -14,7 +14,6 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/gorilla/mux"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
@@ -152,14 +151,14 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 	// Try to use the ARM format to send back the error info
 	// if the error is due to api conversion failure return bad request
 	switch v := err.(type) {
-	case *conv.ErrModelConversion:
+	case *v1.ErrModelConversion:
 		response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
 			Error: v1.ErrorDetails{
 				Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,
 				Message: err.Error(),
 			},
 		})
-	case *conv.ErrClientRP:
+	case *v1.ErrClientRP:
 		response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
 			Error: v1.ErrorDetails{
 				Code:    v.Code,
@@ -167,7 +166,7 @@ func HandleError(ctx context.Context, w http.ResponseWriter, req *http.Request, 
 			},
 		})
 	default:
-		if err.Error() == conv.ErrInvalidModelConversion.Error() {
+		if err.Error() == v1.ErrInvalidModelConversion.Error() {
 			response = armrpc_rest.NewBadRequestARMResponse(v1.ErrorResponse{
 				Error: v1.ErrorDetails{
 					Code:    v1.CodeHTTPRequestPayloadAPISpecValidationFailed,

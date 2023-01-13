@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // MongoDatabaseDataModelFromVersioned converts version agnostic MongoDatabase datamodel to versioned model.
-func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (conv.VersionedModelInterface, error) {
+func MongoDatabaseDataModelToVersioned(model *datamodel.MongoDatabase, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.MongoDatabaseResource{}
@@ -43,7 +42,7 @@ func MongoDatabaseDataModelFromVersioned(content []byte, version string) (*datam
 }
 
 // MongoDatabaseSecretsDataModelFromVersioned converts version agnostic MongoDatabaseSecrets datamodel to versioned model.
-func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (conv.VersionedModelInterface, error) {
+func MongoDatabaseSecretsDataModelToVersioned(model *datamodel.MongoDatabaseSecrets, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.MongoDatabaseSecrets{}
