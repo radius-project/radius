@@ -63,9 +63,8 @@ type RedisCacheProperties struct {
 	RedisValuesProperties
 	RedisResourceProperties
 	RedisRecipeProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Secrets           RedisCacheSecrets    `json:"secrets,omitempty"`
-	Mode              LinkMode             `json:"mode"`
+	Secrets RedisCacheSecrets `json:"secrets,omitempty"`
+	Mode    LinkMode          `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

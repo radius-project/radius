@@ -19,7 +19,7 @@
             "foo": "bar"
         },
         "mode": "values",
-        "provisioningState": "Accepted",
+        "provisioningState": "Succeeded",
         "componentName": "test-app-test-secret-store"
     },
     "systemData": {

@@ -15,7 +15,7 @@
         "resource": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/testGroup/providers/Microsoft.ServiceBus/namespaces/radius-eastus-async",
         "kind": "pubsub.azure.servicebus",
         "mode": "resource",
-        "provisioningState": "Accepted",
+        "provisioningState": "Succeeded",
         "topic": "test-topic",
         "componentName": "test-app-test-pub-sub-topic"
     },
