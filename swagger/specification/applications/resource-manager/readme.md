@@ -58,15 +58,7 @@ These settings apply only when `--tag=package-link-2022-03-15-privatepreview` is
 
 ``` yaml $(tag) == 'package-link-2022-03-15-privatepreview'
 input-file:
-  - Applications.Link/preview/2022-03-15-privatepreview/global.json
-  - Applications.Link/preview/2022-03-15-privatepreview/mongoDatabases.json
-  - Applications.Link/preview/2022-03-15-privatepreview/daprPubSubBrokers.json
-  - Applications.Link/preview/2022-03-15-privatepreview/sqlDatabases.json
-  - Applications.Link/preview/2022-03-15-privatepreview/redisCaches.json
-  - Applications.Link/preview/2022-03-15-privatepreview/rabbitMQMessageQueues.json
-  - Applications.Link/preview/2022-03-15-privatepreview/daprSecretStores.json
-  - Applications.Link/preview/2022-03-15-privatepreview/daprInvokeHttpRoutes.json
-  - Applications.Link/preview/2022-03-15-privatepreview/daprStateStores.json
+  - Applications.Link/preview/2022-03-15-privatepreview/openapi.json
   - Applications.Link/preview/2022-03-15-privatepreview/extenders.json
 ```
 
