@@ -52,6 +52,10 @@ func (daprStateStore *DeleteDaprStateStore) Run(ctx context.Context, w http.Resp
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if etag == "" {
+		return rest.NewNoContentResponse(), nil
+	}
+
 	r, err := daprStateStore.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err

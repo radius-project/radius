@@ -52,6 +52,10 @@ func (mongoDatabase *DeleteMongoDatabase) Run(ctx context.Context, w http.Respon
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if etag == "" {
+		return rest.NewNoContentResponse(), nil
+	}
+
 	r, err := mongoDatabase.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err

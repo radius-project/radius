@@ -52,6 +52,10 @@ func (daprSecretStore *DeleteDaprSecretStore) Run(ctx context.Context, w http.Re
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if etag == "" {
+		return rest.NewNoContentResponse(), nil
+	}
+
 	r, err := daprSecretStore.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err

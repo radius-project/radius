@@ -10,7 +10,7 @@
         "application": "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/applications/testApplication",
         "mode": "values",
         "queue": "testQueue",
-        "provisioningState": "Succeeded"
+        "provisioningState": "Accepted"
     },
     "systemData": {
         "createdAt": "2022-03-22T18:54:52.6857175Z",

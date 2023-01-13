@@ -52,6 +52,10 @@ func (redisCache *DeleteRedisCache) Run(ctx context.Context, w http.ResponseWrit
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if etag == "" {
+		return rest.NewNoContentResponse(), nil
+	}
+
 	r, err := redisCache.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err

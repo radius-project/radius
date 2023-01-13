@@ -40,7 +40,7 @@ import (
 //go:generate mockgen -destination=./mock_deploymentprocessor.go -package=deployment -self_package github.com/project-radius/radius/pkg/linkrp/frontend/deployment github.com/project-radius/radius/pkg/linkrp/frontend/deployment DeploymentProcessor
 
 type DeploymentProcessor interface {
-	Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error)
+	Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error)
 	Deploy(ctx context.Context, id resources.ID, rendererOutput renderers.RendererOutput) (DeploymentOutput, error)
 	Delete(ctx context.Context, resource ResourceData) error
 	FetchSecrets(ctx context.Context, resource ResourceData) (map[string]any, error)
@@ -68,7 +68,7 @@ type DeploymentOutput struct {
 
 type ResourceData struct {
 	ID              resources.ID
-	Resource        v1.DataModelInterface
+	Resource        v1.ResourceDataModel
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference
@@ -82,7 +82,7 @@ type EnvironmentMetadata struct {
 	Providers          coreDatamodel.Providers
 }
 
-func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.DataModelInterface) (renderers.RendererOutput, error) {
+func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, resource v1.ResourceDataModel) (renderers.RendererOutput, error) {
 	logger := logr.FromContextOrDiscard(ctx).WithValues(logging.LogFieldResourceID, id.String())
 	logger.Info("Rendering resource")
 

@@ -51,10 +51,9 @@ func (s *Service) Run(ctx context.Context) error {
 		SecretClient:  s.SecretClient,
 		KubeClient:    s.KubeClient,
 		StatusManager: s.OperationStatusManager,
-		GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-			return deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
-		},
 	}
+
+	deploymentProcessor := deployment.NewDeploymentProcessor(linkAppModel, s.StorageProvider, s.SecretClient, s.KubeClient)
 
 	address := fmt.Sprintf("%s:%d", s.Options.Config.Server.Host, s.Options.Config.Server.Port)
 	err = s.Start(ctx, server.Options{
@@ -66,7 +65,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ArmCertMgr:    s.ARMCertManager,
 		EnableArmAuth: s.Options.Config.Server.EnableArmAuth, // when enabled the client cert validation will be done
 		Configure: func(router *mux.Router) error {
-			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts)
+			err := handler.AddRoutes(ctx, router, s.Options.Config.Server.PathBase, !hostoptions.IsSelfHosted(), opts, deploymentProcessor)
 			if err != nil {
 				return err
 			}

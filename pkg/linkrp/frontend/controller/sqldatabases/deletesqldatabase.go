@@ -52,6 +52,10 @@ func (sqlDatabase *DeleteSqlDatabase) Run(ctx context.Context, w http.ResponseWr
 		return rest.NewNoContentResponse(), nil
 	}
 
+	if etag == "" {
+		return rest.NewNoContentResponse(), nil
+	}
+
 	r, err := sqlDatabase.PrepareResource(ctx, req, nil, old, etag)
 	if r != nil || err != nil {
 		return r, err

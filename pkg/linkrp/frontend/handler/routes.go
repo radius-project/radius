@@ -18,6 +18,7 @@ import (
 
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	link_frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	daprHttpRoute_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprinvokehttproutes"
 	daprPubSub_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprpubsubbrokers"
 	daprSecretStore_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprsecretstores"
@@ -27,13 +28,14 @@ import (
 	rabbitmq_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rabbitmqmessagequeues"
 	redis_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/rediscaches"
 	sql_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller/sqldatabases"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 const (
 	ProviderNamespaceName = "Applications.Link"
 )
 
-func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options) error {
+func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM bool, ctrlOpts frontend_ctrl.Options, dp deployment.DeploymentProcessor) error {
 	if isARM {
 		pathBase += "/subscriptions/{subscriptionID}"
 	} else {
@@ -108,28 +110,36 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   mongoResourceRouter,
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: mongo_ctrl.NewCreateOrUpdateMongoDatabase,
+			ParentRouter: mongoResourceRouter,
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return mongo_ctrl.NewCreateOrUpdateMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   mongoResourceRouter,
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: mongo_ctrl.NewCreateOrUpdateMongoDatabase,
+			ParentRouter: mongoResourceRouter,
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return mongo_ctrl.NewCreateOrUpdateMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   mongoResourceRouter,
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: mongo_ctrl.NewDeleteMongoDatabase,
+			ParentRouter: mongoResourceRouter,
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return mongo_ctrl.NewDeleteMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   mongo_ctrl.ResourceTypeName,
-			Method:         mongo_ctrl.OperationListSecret,
-			HandlerFactory: mongo_ctrl.NewListSecretsMongoDatabase,
+			ParentRouter: mongoResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: mongo_ctrl.ResourceTypeName,
+			Method:       mongo_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return mongo_ctrl.NewListSecretsMongoDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: daprHttpRouteRTSubrouter,
@@ -156,23 +166,27 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   daprHttpRouteResourceRouter,
-			ResourceType:   daprHttpRoute_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute,
+			ParentRouter: daprHttpRouteResourceRouter,
+			ResourceType: daprHttpRoute_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprHttpRouteResourceRouter,
-			ResourceType:   daprHttpRoute_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute,
-		},
+			ParentRouter: daprHttpRouteResourceRouter,
+			ResourceType: daprHttpRoute_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprHttpRoute_ctrl.NewCreateOrUpdateDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			}},
 		{
-			ParentRouter:   daprHttpRouteResourceRouter,
-			ResourceType:   daprHttpRoute_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute,
-		},
+			ParentRouter: daprHttpRouteResourceRouter,
+			ResourceType: daprHttpRoute_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprHttpRoute_ctrl.NewDeleteDaprInvokeHttpRoute(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			}},
 		{
 			ParentRouter: daprPubSubRTSubrouter,
 			ResourceType: daprPubSub_ctrl.ResourceTypeName,
@@ -198,22 +212,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   daprPubSubResourceRouter,
-			ResourceType:   daprPubSub_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker,
+			ParentRouter: daprPubSubResourceRouter,
+			ResourceType: daprPubSub_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprPubSubResourceRouter,
-			ResourceType:   daprPubSub_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker,
+			ParentRouter: daprPubSubResourceRouter,
+			ResourceType: daprPubSub_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprPubSub_ctrl.NewCreateOrUpdateDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprPubSubResourceRouter,
-			ResourceType:   daprPubSub_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: daprPubSub_ctrl.NewDeleteDaprPubSubBroker,
+			ParentRouter: daprPubSubResourceRouter,
+			ResourceType: daprPubSub_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprPubSub_ctrl.NewDeleteDaprPubSubBroker(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: daprSecretStoreRTSubrouter,
@@ -240,22 +260,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   daprSecretStoreResourceRouter,
-			ResourceType:   daprSecretStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore,
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: daprSecretStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprSecretStoreResourceRouter,
-			ResourceType:   daprSecretStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore,
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: daprSecretStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprSecretStore_ctrl.NewCreateOrUpdateDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprSecretStoreResourceRouter,
-			ResourceType:   daprSecretStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: daprSecretStore_ctrl.NewDeleteDaprSecretStore,
+			ParentRouter: daprSecretStoreResourceRouter,
+			ResourceType: daprSecretStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprSecretStore_ctrl.NewDeleteDaprSecretStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: daprStateStoreRTSubrouter,
@@ -282,22 +308,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   daprStateStoreResourceRouter,
-			ResourceType:   daprStateStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore,
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: daprStateStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprStateStoreResourceRouter,
-			ResourceType:   daprStateStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore,
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: daprStateStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprStateStore_ctrl.NewCreateOrUpdateDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   daprStateStoreResourceRouter,
-			ResourceType:   daprStateStore_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: daprStateStore_ctrl.NewDeleteDaprStateStore,
+			ParentRouter: daprStateStoreResourceRouter,
+			ResourceType: daprStateStore_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return daprStateStore_ctrl.NewDeleteDaprStateStore(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: redisRTSubrouter,
@@ -324,28 +356,36 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return redis_ctrl.NewCreateOrUpdateRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: redis_ctrl.NewCreateOrUpdateRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return redis_ctrl.NewCreateOrUpdateRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter,
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: redis_ctrl.NewDeleteRedisCache,
+			ParentRouter: redisResourceRouter,
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return redis_ctrl.NewDeleteRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   redis_ctrl.ResourceTypeName,
-			Method:         redis_ctrl.OperationListSecret,
-			HandlerFactory: redis_ctrl.NewListSecretsRedisCache,
+			ParentRouter: redisResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: redis_ctrl.ResourceTypeName,
+			Method:       redis_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return redis_ctrl.NewListSecretsRedisCache(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: rabbitmqRTSubrouter,
@@ -372,28 +412,36 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter,
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue,
+			ParentRouter: rabbitmqResourceRouter,
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter,
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue,
+			ParentRouter: rabbitmqResourceRouter,
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rabbitmq_ctrl.NewCreateOrUpdateRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter,
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue,
+			ParentRouter: rabbitmqResourceRouter,
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rabbitmq_ctrl.NewDeleteRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   rabbitmqResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   rabbitmq_ctrl.ResourceTypeName,
-			Method:         rabbitmq_ctrl.OperationListSecret,
-			HandlerFactory: rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue,
+			ParentRouter: rabbitmqResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: rabbitmq_ctrl.ResourceTypeName,
+			Method:       rabbitmq_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return rabbitmq_ctrl.NewListSecretsRabbitMQMessageQueue(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		}, {
 			ParentRouter: sqlRTSubrouter,
 			ResourceType: sql_ctrl.ResourceTypeName,
@@ -419,22 +467,28 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   sqlResourceRouter,
-			ResourceType:   sql_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: sql_ctrl.NewCreateOrUpdateSqlDatabase,
+			ParentRouter: sqlResourceRouter,
+			ResourceType: sql_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return sql_ctrl.NewCreateOrUpdateSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   sqlResourceRouter,
-			ResourceType:   sql_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: sql_ctrl.NewCreateOrUpdateSqlDatabase,
+			ParentRouter: sqlResourceRouter,
+			ResourceType: sql_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return sql_ctrl.NewCreateOrUpdateSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   sqlResourceRouter,
-			ResourceType:   sql_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: sql_ctrl.NewDeleteSqlDatabase,
+			ParentRouter: sqlResourceRouter,
+			ResourceType: sql_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return sql_ctrl.NewDeleteSqlDatabase(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
 			ParentRouter: extenderRTSubrouter,
@@ -461,28 +515,36 @@ func AddRoutes(ctx context.Context, router *mux.Router, pathBase string, isARM b
 			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         v1.OperationPut,
-			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       v1.OperationPut,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         v1.OperationPatch,
-			HandlerFactory: extender_ctrl.NewCreateOrUpdateExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       v1.OperationPatch,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return extender_ctrl.NewCreateOrUpdateExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter,
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         v1.OperationDelete,
-			HandlerFactory: extender_ctrl.NewDeleteExtender,
+			ParentRouter: extenderResourceRouter,
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       v1.OperationDelete,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return extender_ctrl.NewDeleteExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 		{
-			ParentRouter:   extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
-			ResourceType:   extender_ctrl.ResourceTypeName,
-			Method:         extender_ctrl.OperationListSecret,
-			HandlerFactory: extender_ctrl.NewListSecretsExtender,
+			ParentRouter: extenderResourceRouter.PathPrefix("/listsecrets").Subrouter(),
+			ResourceType: extender_ctrl.ResourceTypeName,
+			Method:       extender_ctrl.OperationListSecret,
+			HandlerFactory: func(opt frontend_ctrl.Options) (frontend_ctrl.Controller, error) {
+				return extender_ctrl.NewListSecretsExtender(link_frontend_ctrl.Options{Options: opt, DeployProcessor: dp})
+			},
 		},
 	}
 
