@@ -27,7 +27,6 @@ var _ ctrl.Controller = (*CreateOrUpdateDaprInvokeHttpRoute)(nil)
 // CreateOrUpdateDaprInvokeHttpRoute is the controller implementation to create or update DaprInvokeHttpRoute link resource.
 type CreateOrUpdateDaprInvokeHttpRoute struct {
 	ctrl.Operation[*datamodel.DaprInvokeHttpRoute, datamodel.DaprInvokeHttpRoute]
-
 	KubeClient kube.Client
 	dp         deployment.DeploymentProcessor
 }

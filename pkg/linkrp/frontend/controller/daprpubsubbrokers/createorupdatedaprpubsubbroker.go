@@ -28,7 +28,6 @@ var _ ctrl.Controller = (*CreateOrUpdateDaprPubSubBroker)(nil)
 // CreateOrUpdateDaprPubSubBroker is the controller implementation to create or update DaprPubSubBroker link resource.
 type CreateOrUpdateDaprPubSubBroker struct {
 	ctrl.Operation[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker]
-
 	KubeClient kube.Client
 	dp         deployment.DeploymentProcessor
 }

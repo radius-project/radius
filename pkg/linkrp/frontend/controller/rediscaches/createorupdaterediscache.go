@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
@@ -29,9 +28,7 @@ var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
 // CreateOrUpdateRedisCache is the controller implementation to create or update RedisCache link resource.
 type CreateOrUpdateRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
-
-	KubeClient kube.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateRedisCache creates a new instance of CreateOrUpdateRedisCache.
@@ -42,20 +39,13 @@ func NewCreateOrUpdateRedisCache(opts frontend_ctrl.Options) (ctrl.Controller, e
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
 // Run executes CreateOrUpdateRedisCache operation.
 func (redisCache *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	isSupported, err := datamodel.IsDaprInstalled(ctx, redisCache.KubeClient)
-	if err != nil {
-		return nil, err
-	} else if !isSupported {
-		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
-	}
 
 	newResource, err := redisCache.GetResourceFromRequest(ctx, req)
 	if err != nil {

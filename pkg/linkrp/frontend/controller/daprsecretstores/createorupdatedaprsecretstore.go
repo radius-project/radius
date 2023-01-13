@@ -27,7 +27,6 @@ var _ ctrl.Controller = (*CreateOrUpdateDaprSecretStore)(nil)
 // CreateOrUpdateDaprSecretStore is the controller implementation to create or update DaprSecretStore link resource.
 type CreateOrUpdateDaprSecretStore struct {
 	ctrl.Operation[*datamodel.DaprSecretStore, datamodel.DaprSecretStore]
-
 	KubeClient kube.Client
 	dp         deployment.DeploymentProcessor
 }

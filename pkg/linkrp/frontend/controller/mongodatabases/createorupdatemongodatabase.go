@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
@@ -27,9 +26,7 @@ var _ ctrl.Controller = (*CreateOrUpdateMongoDatabase)(nil)
 // CreateOrUpdateMongoDatabase is the controller implementation to create or update MongoDatabase link resource.
 type CreateOrUpdateMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
-
-	KubeClient kube.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateMongoDatabase creates a new instance of CreateOrUpdateMongoDatabase.
@@ -40,20 +37,13 @@ func NewCreateOrUpdateMongoDatabase(opts frontend_ctrl.Options) (ctrl.Controller
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
 // Run executes CreateOrUpdateMongoDatabase operation.
 func (mongoDatabase *CreateOrUpdateMongoDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	isSupported, err := datamodel.IsDaprInstalled(ctx, mongoDatabase.KubeClient)
-	if err != nil {
-		return nil, err
-	} else if !isSupported {
-		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
-	}
 
 	newResource, err := mongoDatabase.GetResourceFromRequest(ctx, req)
 	if err != nil {

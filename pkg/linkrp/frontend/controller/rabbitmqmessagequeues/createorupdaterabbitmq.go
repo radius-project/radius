@@ -19,7 +19,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers/rabbitmqmessagequeues"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateRabbitMQMessageQueue)(nil)
@@ -27,9 +26,7 @@ var _ ctrl.Controller = (*CreateOrUpdateRabbitMQMessageQueue)(nil)
 // CreateOrUpdateRabbitMQMessageQueue is the controller implementation to create or update RabbitMQMessageQueue link resource.
 type CreateOrUpdateRabbitMQMessageQueue struct {
 	ctrl.Operation[*datamodel.RabbitMQMessageQueue, datamodel.RabbitMQMessageQueue]
-
-	KubeClient kube.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateRabbitMQMessageQueue creates a new instance of CreateOrUpdateRabbitMQMessageQueue.
@@ -40,20 +37,13 @@ func NewCreateOrUpdateRabbitMQMessageQueue(opts frontend_ctrl.Options) (ctrl.Con
 				RequestConverter:  converter.RabbitMQMessageQueueDataModelFromVersioned,
 				ResponseConverter: converter.RabbitMQMessageQueueDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
 // Run executes CreateOrUpdateRabbitMQMessageQueue operation.
 func (rabbitmq *CreateOrUpdateRabbitMQMessageQueue) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	isSupported, err := datamodel.IsDaprInstalled(ctx, rabbitmq.KubeClient)
-	if err != nil {
-		return nil, err
-	} else if !isSupported {
-		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
-	}
 
 	newResource, err := rabbitmq.GetResourceFromRequest(ctx, req)
 	if err != nil {

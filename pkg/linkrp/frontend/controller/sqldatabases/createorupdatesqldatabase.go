@@ -18,7 +18,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	kube "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateSqlDatabase)(nil)
@@ -26,9 +25,7 @@ var _ ctrl.Controller = (*CreateOrUpdateSqlDatabase)(nil)
 // CreateOrUpdateSqlDatabase is the controller implementation to create or update SqlDatabase link resource.
 type CreateOrUpdateSqlDatabase struct {
 	ctrl.Operation[*datamodel.SqlDatabase, datamodel.SqlDatabase]
-
-	KubeClient kube.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateSqlDatabase creates a new instance of CreateOrUpdateSqlDatabase.
@@ -39,20 +36,13 @@ func NewCreateOrUpdateSqlDatabase(opts frontend_ctrl.Options) (ctrl.Controller, 
 				RequestConverter:  converter.SqlDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.SqlDatabaseDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
 // Run executes CreateOrUpdateSqlDatabase operation.
 func (sqlDatabase *CreateOrUpdateSqlDatabase) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-	isSupported, err := datamodel.IsDaprInstalled(ctx, sqlDatabase.KubeClient)
-	if err != nil {
-		return nil, err
-	} else if !isSupported {
-		return rest.NewBadRequestResponse(datamodel.DaprMissingError), nil
-	}
 
 	newResource, err := sqlDatabase.GetResourceFromRequest(ctx, req)
 	if err != nil {
