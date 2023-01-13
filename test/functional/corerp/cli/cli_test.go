@@ -406,8 +406,8 @@ func Test_CLI_JSON(t *testing.T) {
 			K8sObjects: &validation.K8sObjectSet{
 				Namespaces: map[string][]validation.K8sObject{
 					"default-kubernetes-cli-json": {
-						validation.NewK8sPodForResource(name, "containerA-json"),
-						validation.NewK8sPodForResource(name, "containerB-json"),
+						validation.NewK8sPodForResource(name, "containera-json"),
+						validation.NewK8sPodForResource(name, "containerb-json"),
 					},
 				},
 			},
