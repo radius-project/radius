@@ -12,6 +12,7 @@ import (
 	"net/url"
 
 	"github.com/go-logr/logr"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_controller "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
@@ -25,7 +26,6 @@ import (
 
 const (
 	PlanesPath = "/planes"
-	RefererKey = "Referer"
 )
 
 var _ armrpc_controller.Controller = (*ProxyPlane)(nil)
@@ -182,7 +182,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		Path:     p.Options.BasePath + newURL.Path,
 		RawQuery: uri.RawQuery,
 	}
-	req.Header.Set(RefererKey, refererURL.String())
+	req.Header.Set(v1.RefererHeader, refererURL.String())
 	fmt.Printf("###### Referer in UCP : %s", refererURL.String())
 
 	ctx = context.WithValue(ctx, proxy.UCPRequestInfoField, requestInfo)
