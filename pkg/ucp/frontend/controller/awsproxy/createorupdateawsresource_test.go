@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -20,6 +21,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
 
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/to"
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/util/testcontext"
@@ -61,8 +63,16 @@ func Test_CreateAWSResource(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	referer := url.URL{
+		Scheme: "http",
+		Host:   "localhost:5000",
+		Path:   "/planes/aws/aws/accounts/1234567/regions/us-west-2/providers/AWS.Kinesis/Stream/85075c00-988e-40c2-9eca-f0e3f787a86b",
+	}
+
 	request, err := http.NewRequest(http.MethodPut, testResource.SingleResourcePath, bytes.NewBuffer(requestBodyBytes))
 	request.Host = testHost
+
+	request.Header.Add(v1.RefererHeader, referer.String())
 	require.NoError(t, err)
 
 	actualResponse, err := awsController.Run(ctx, nil, request)
