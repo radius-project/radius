@@ -198,7 +198,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.ParseResource(kubernetes.NormalizeResourceName(provides))
+			resourceId, err := resources.ParseResource(strings.ToLower(provides))
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
