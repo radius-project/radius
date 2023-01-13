@@ -52,7 +52,7 @@ func GetDaprPubSubAzureServiceBus(resource datamodel.DaprPubSubBroker, applicati
 			Provider: resourcemodel.ProviderAzure,
 		},
 		Resource: map[string]string{
-			handlers.ResourceName:            resource.Name,
+			handlers.ResourceName:            kubernetes.NormalizeResourceName(resource.Name),
 			handlers.KubernetesNamespaceKey:  namespace,
 			handlers.ApplicationName:         applicationName,
 			handlers.KubernetesAPIVersionKey: "dapr.io/v1alpha1",

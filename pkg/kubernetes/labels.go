@@ -55,11 +55,11 @@ const (
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveLabels(application string, resource string, resourceType string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication:  application,
-		LabelRadiusResource:     resource,
-		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
-		LabelName:               resource,
-		LabelPartOf:             application,
+		LabelRadiusApplication:  NormalizeResourceName(application),
+		LabelRadiusResource:     NormalizeResourceName(resource),
+		LabelRadiusResourceType: NormalizeResourceName(ConvertResourceTypeToLabelValue(resourceType)),
+		LabelName:               NormalizeResourceName(resource),
+		LabelPartOf:             NormalizeResourceName(application),
 		LabelManagedBy:          LabelManagedByRadiusRP,
 	}
 }
@@ -72,8 +72,8 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 func MakeSelectorLabels(application string, resource string) map[string]string {
 	if resource != "" {
 		return map[string]string{
-			LabelRadiusApplication: application,
-			LabelRadiusResource:    resource,
+			LabelRadiusApplication: NormalizeResourceName(application),
+			LabelRadiusResource:    NormalizeResourceName(resource),
 		}
 	}
 	return map[string]string{
@@ -88,11 +88,11 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 // an HttpRoute and the Deployment created by a Container.
 func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication: application,
+		LabelRadiusApplication: NormalizeResourceName(application),
 
 		// NOTE: pods can serve multiple routes of different types. Therefore we need to encode the
 		// the route's type and name in the *key* to support multiple matches.
-		fmt.Sprintf(LabelRadiusRouteFmt, strings.ToLower(strings.TrimSuffix(resourceType, "Route")), strings.ToLower(route)): "true",
+		fmt.Sprintf(LabelRadiusRouteFmt, NormalizeResourceName(strings.TrimSuffix(resourceType, "Route")), NormalizeResourceName(route)): "true",
 	}
 }
 
@@ -104,18 +104,18 @@ func MakeRouteSelectorLabels(application string, resourceType string, route stri
 func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
 	if resourceType != "" && resource != "" {
 		return map[string]string{
-			LabelRadiusApplication:  application,
-			LabelRadiusResourceType: resourceType,
-			LabelRadiusResource:     resource,
-			LabelName:               resource,
-			LabelPartOf:             application,
+			LabelRadiusApplication:  NormalizeResourceName(application),
+			LabelRadiusResourceType: NormalizeResourceName(resourceType),
+			LabelRadiusResource:     NormalizeResourceName(resource),
+			LabelName:               NormalizeResourceName(resource),
+			LabelPartOf:             NormalizeResourceName(application),
 			LabelManagedBy:          LabelManagedByRadiusRP,
 		}
 	}
 
 	return map[string]string{
-		LabelRadiusApplication: application,
-		LabelName:              application,
+		LabelRadiusApplication: NormalizeResourceName(application),
+		LabelName:              NormalizeResourceName(application),
 		LabelManagedBy:         LabelManagedByRadiusRP,
 	}
 }

@@ -198,7 +198,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.ParseResource(provides)
+			resourceId, err := resources.ParseResource(kubernetes.NormalizeResourceName(provides))
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
@@ -230,7 +230,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	}
 
 	container := corev1.Container{
-		Name:  resource.Name,
+		Name:  kubernetes.NormalizeResourceName(resource.Name),
 		Image: cc.Container.Image,
 		// TODO: use better policies than this when we have a good versioning story
 		ImagePullPolicy: corev1.PullPolicy("Always"),
