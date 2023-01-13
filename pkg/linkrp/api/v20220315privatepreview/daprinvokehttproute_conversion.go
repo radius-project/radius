@@ -26,7 +26,8 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.DaprInvokeHttpRouteProperties{
@@ -34,8 +35,7 @@ func (src *DaprInvokeHTTPRouteResource) ConvertTo() (conv.DataModelInterface, er
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
-			AppId:             to.String(src.Properties.AppID),
+			AppId: to.String(src.Properties.AppID),
 		},
 	}
 
@@ -63,7 +63,7 @@ func (dst *DaprInvokeHTTPRouteResource) ConvertFrom(src conv.DataModelInterface)
 		Status: &ResourceStatus{
 			OutputResources: rp.BuildExternalOutputResources(daprHttpRoute.Properties.Status.OutputResources),
 		},
-		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.Properties.ProvisioningState),
+		ProvisioningState: fromProvisioningStateDataModel(daprHttpRoute.InternalMetadata.AsyncProvisioningState),
 		Environment:       to.StringPtr(daprHttpRoute.Properties.Environment),
 		Application:       to.StringPtr(daprHttpRoute.Properties.Application),
 		AppID:             to.StringPtr(daprHttpRoute.Properties.AppId),

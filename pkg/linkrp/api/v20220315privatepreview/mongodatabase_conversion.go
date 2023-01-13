@@ -28,7 +28,8 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseProperties().ProvisioningState),
 			},
 		},
 		Properties: datamodel.MongoDatabaseProperties{
@@ -36,7 +37,6 @@ func (src *MongoDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 				Environment: to.String(src.Properties.GetMongoDatabaseProperties().Environment),
 				Application: to.String(src.Properties.GetMongoDatabaseProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetMongoDatabaseProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -121,7 +121,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
@@ -135,7 +135,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}
@@ -150,7 +150,7 @@ func (dst *MongoDatabaseResource) ConvertFrom(src conv.DataModelInterface) error
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(mongo.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(mongo.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(mongo.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(mongo.Properties.Environment),
 			Application:       to.StringPtr(mongo.Properties.Application),
 		}

@@ -28,10 +28,10 @@ func (sql SqlDatabase) ResourceTypeName() string {
 // SqlDatabaseProperties represents the properties of SqlDatabase resource.
 type SqlDatabaseProperties struct {
 	rp.BasicResourceProperties
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Recipe            LinkRecipe           `json:"recipe,omitempty"`
-	Resource          string               `json:"resource,omitempty"`
-	Database          string               `json:"database,omitempty"`
-	Server            string               `json:"server,omitempty"`
-	Mode              LinkMode             `json:"mode,omitempty"`
+
+	Recipe   LinkRecipe `json:"recipe,omitempty"`
+	Resource string     `json:"resource,omitempty"`
+	Database string     `json:"database,omitempty"`
+	Server   string     `json:"server,omitempty"`
+	Mode     LinkMode   `json:"mode,omitempty"`
 }

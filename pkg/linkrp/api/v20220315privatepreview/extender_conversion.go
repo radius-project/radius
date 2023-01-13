@@ -26,7 +26,8 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 				Tags:     to.StringMap(src.Tags),
 			},
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			},
 		},
 		Properties: datamodel.ExtenderProperties{
@@ -34,7 +35,6 @@ func (src *ExtenderResource) ConvertTo() (conv.DataModelInterface, error) {
 				Environment: to.String(src.Properties.Environment),
 				Application: to.String(src.Properties.Application),
 			},
-			ProvisioningState:    toProvisioningStateDataModel(src.Properties.ProvisioningState),
 			AdditionalProperties: src.Properties.AdditionalProperties,
 			Secrets:              src.Properties.Secrets,
 		},
@@ -59,7 +59,7 @@ func (dst *ExtenderResource) ConvertFrom(src conv.DataModelInterface) error {
 		Status: &ResourceStatus{
 			OutputResources: rp.BuildExternalOutputResources(extender.Properties.Status.OutputResources),
 		},
-		ProvisioningState:    fromProvisioningStateDataModel(extender.Properties.ProvisioningState),
+		ProvisioningState:    fromProvisioningStateDataModel(extender.InternalMetadata.AsyncProvisioningState),
 		Environment:          to.StringPtr(extender.Properties.Environment),
 		Application:          to.StringPtr(extender.Properties.Application),
 		AdditionalProperties: extender.Properties.AdditionalProperties,

@@ -27,9 +27,9 @@ type MongoDatabaseProperties struct {
 	MongoDatabaseResourceProperties
 	MongoDatabaseRecipeProperties
 	MongoDatabaseValuesProperties
-	Secrets           MongoDatabaseSecrets `json:"secrets,omitempty"`
-	ProvisioningState v1.ProvisioningState `json:"provisioningState,omitempty"`
-	Mode              LinkMode             `json:"mode"`
+
+	Secrets MongoDatabaseSecrets `json:"secrets,omitempty"`
+	Mode    LinkMode             `json:"mode"`
 }
 
 // Secrets values consisting of secrets provided for the resource

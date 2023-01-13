@@ -21,7 +21,8 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	converted := &datamodel.RedisCache{
 		BaseResource: v1.BaseResource{
 			InternalMetadata: v1.InternalMetadata{
-				UpdatedAPIVersion: Version,
+				UpdatedAPIVersion:      Version,
+				AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
 			},
 			TrackedResource: v1.TrackedResource{
 				ID:       to.String(src.ID),
@@ -36,7 +37,6 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 				Environment: to.String(src.Properties.GetRedisCacheProperties().Environment),
 				Application: to.String(src.Properties.GetRedisCacheProperties().Application),
 			},
-			ProvisioningState: toProvisioningStateDataModel(src.Properties.GetRedisCacheProperties().ProvisioningState),
 		},
 	}
 	switch v := src.Properties.(type) {
@@ -117,7 +117,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
@@ -131,7 +131,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
@@ -146,7 +146,7 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(redis.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(redis.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(redis.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(redis.Properties.Environment),
 			Application:       to.StringPtr(redis.Properties.Application),
 		}

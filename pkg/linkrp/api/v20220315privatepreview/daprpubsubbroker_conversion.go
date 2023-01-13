@@ -23,8 +23,7 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 			Environment: to.String(src.Properties.GetDaprPubSubBrokerProperties().Environment),
 			Application: to.String(src.Properties.GetDaprPubSubBrokerProperties().Application),
 		},
-		ProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
-		Topic:             to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
+		Topic: to.String(src.Properties.GetDaprPubSubBrokerProperties().Topic),
 	}
 
 	trackedResource := v1.TrackedResource{
@@ -35,7 +34,8 @@ func (src *DaprPubSubBrokerResource) ConvertTo() (conv.DataModelInterface, error
 		Tags:     to.StringMap(src.Tags),
 	}
 	internalMetadata := v1.InternalMetadata{
-		UpdatedAPIVersion: Version,
+		UpdatedAPIVersion:      Version,
+		AsyncProvisioningState: toProvisioningStateDataModel(src.Properties.GetDaprPubSubBrokerProperties().ProvisioningState),
 	}
 	converted := &datamodel.DaprPubSubBroker{}
 	converted.TrackedResource = trackedResource
@@ -96,7 +96,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
@@ -113,7 +113,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
@@ -128,7 +128,7 @@ func (dst *DaprPubSubBrokerResource) ConvertFrom(src conv.DataModelInterface) er
 			Status: &ResourceStatus{
 				OutputResources: rp.BuildExternalOutputResources(daprPubSub.Properties.Status.OutputResources),
 			},
-			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.Properties.ProvisioningState),
+			ProvisioningState: fromProvisioningStateDataModel(daprPubSub.InternalMetadata.AsyncProvisioningState),
 			Environment:       to.StringPtr(daprPubSub.Properties.Environment),
 			Application:       to.StringPtr(daprPubSub.Properties.Application),
 			ComponentName:     to.StringPtr(daprPubSub.Properties.ComponentName),
