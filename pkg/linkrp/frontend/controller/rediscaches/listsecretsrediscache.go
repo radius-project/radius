@@ -44,7 +44,6 @@ func NewListSecretsRedisCache(opts fctrl.Options) (ctrl.Controller, error) {
 func (ctrl *ListSecretsRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	sCtx := v1.ARMRequestContextFromContext(ctx)
 
-	resource := &datamodel.RedisCache{}
 	// Request route for listsecrets has name of the operation as suffix which should be removed to get the resource id.
 	// route id format: subscriptions/<subscription_id>/resourceGroups/<resource_group>/providers/Applications.Link/redisCaches/<resource_name>/listsecrets
 	parsedResourceID := sCtx.ResourceID.Truncate()
