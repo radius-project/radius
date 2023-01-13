@@ -15,6 +15,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 )
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
@@ -30,9 +31,9 @@ type DeleteMongoDatabase struct {
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
-func NewDeleteMongoDatabase(opts ctrl.Options) (ctrl.Controller, error) {
+func NewDeleteMongoDatabase(opts fctrl.Options) (ctrl.Controller, error) {
 	return &DeleteMongoDatabase{
-		ctrl.NewOperation(opts, ctrl.ResourceOptions[datamodel.MongoDatabase]{
+		ctrl.NewOperation(opts.Options, ctrl.ResourceOptions[datamodel.MongoDatabase]{
 			RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 			ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 		}),
@@ -59,6 +60,8 @@ func (mongo *DeleteMongoDatabase) Run(ctx context.Context, w http.ResponseWriter
 	if r, err := mongo.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
 		return r, err
 	}
+
+	// Why not call deployment processor?
 
 	if r, err := mongo.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteMongoDatabaseOperationTimeout, &etag); r != nil || err != nil {
 		return r, err

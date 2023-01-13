@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // MongoDatabase represents MongoDatabase link resource.
@@ -39,15 +40,30 @@ type MongoDatabaseSecrets struct {
 	ConnectionString string `json:"connectionString"`
 }
 
-func (mongoSecrets MongoDatabaseSecrets) IsEmpty() bool {
-	return mongoSecrets == MongoDatabaseSecrets{}
+func (m *MongoDatabaseSecrets) IsEmpty() bool {
+	return m == nil || *m == MongoDatabaseSecrets{}
 }
 
-func (mongoSecrets MongoDatabaseSecrets) ResourceTypeName() string {
+func (m *MongoDatabaseSecrets) ResourceTypeName() string {
 	return "Applications.Link/mongoDatabases"
 }
 
-func (mongo MongoDatabase) ResourceTypeName() string {
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (r *MongoDatabase) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	r.Properties.Status.OutputResources = do.DeployedOutputResources
+}
+
+// OutputResources returns the output resources array.
+func (r *MongoDatabase) OutputResources() []outputresource.OutputResource {
+	return r.Properties.Status.OutputResources
+}
+
+// ResourceMetadata returns the application resource metadata.
+func (r *MongoDatabase) ResourceMetadata() *rp.BasicResourceProperties {
+	return &r.Properties.BasicResourceProperties
+}
+
+func (r *MongoDatabase) ResourceTypeName() string {
 	return "Applications.Link/mongoDatabases"
 }
 

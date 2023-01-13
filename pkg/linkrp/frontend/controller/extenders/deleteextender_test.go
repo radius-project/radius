@@ -18,6 +18,7 @@ import (
 	"github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
 	"github.com/stretchr/testify/require"
@@ -50,12 +51,12 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 				return nil, &store.ErrNotFound{}
 			})
 
-		opts := ctrl.Options{
-			StorageClient: mds,
-			StatusManager: msm,
-			GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-				return mDeploymentProcessor
+		opts := fctrl.Options{
+			Options: ctrl.Options{
+				StorageClient: mds,
+				StatusManager: msm,
 			},
+			DeployProcessor: mDeploymentProcessor,
 		}
 
 		ctl, err := NewDeleteExtender(opts)
@@ -123,12 +124,12 @@ func TestDeleteExtender_20220315PrivatePreview(t *testing.T) {
 					})
 			}
 
-			opts := ctrl.Options{
-				StorageClient: mds,
-				StatusManager: msm,
-				GetDeploymentProcessor: func() deployment.DeploymentProcessor {
-					return mDeploymentProcessor
+			opts := fctrl.Options{
+				Options: ctrl.Options{
+					StorageClient: mds,
+					StatusManager: msm,
 				},
+				DeployProcessor: mDeploymentProcessor,
 			}
 
 			ctl, err := NewDeleteExtender(opts)

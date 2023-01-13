@@ -14,50 +14,57 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteDaprPubSubBroker)(nil)
 
 // DeleteDaprPubSubBroker is the controller implementation to delete daprPubSubBroker link resource.
 type DeleteDaprPubSubBroker struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.DaprPubSubBroker, datamodel.DaprPubSubBroker]
+
+	KubeClient runtimeclient.Client
+	de         deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprPubSubBroker creates a new instance DeleteDaprPubSubBroker.
-func NewDeleteDaprPubSubBroker(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteDaprPubSubBroker{ctrl.NewBaseController(opts)}, nil
+func NewDeleteDaprPubSubBroker(opts fctrl.Options) (ctrl.Controller, error) {
+	return &DeleteDaprPubSubBroker{
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.DaprPubSubBroker]{
+				RequestConverter:  converter.DaprPubSubBrokerDataModelFromVersioned,
+				ResponseConverter: converter.DaprPubSubBrokerDataModelToVersioned,
+			}),
+		KubeClient: opts.KubeClient,
+		de:         opts.DeployProcessor,
+	}, nil
 }
 
-func (daprPubSub *DeleteDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
+func (d *DeleteDaprPubSubBroker) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	// Read resource metadata from the storage
-	existingResource := &datamodel.DaprPubSubBroker{}
-	etag, err := daprPubSub.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old, etag, err := d.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
 		return nil, err
 	}
 
-	if etag == "" {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	if r, err := d.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = daprPubSub.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: existingResource, OutputResources: existingResource.Properties.Status.OutputResources, ComputedValues: existingResource.ComputedValues, SecretValues: existingResource.SecretValues, RecipeData: existingResource.RecipeData})
+	err = d.de.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}
-	err = daprPubSub.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
-	if err != nil {
+
+	if err := d.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}

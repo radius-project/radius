@@ -17,6 +17,7 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/linkrp/renderers/daprinvokehttproutes"
+	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -70,6 +71,10 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		return r, err
 	}
 
+	if r, err := rp_frontend.PrepareRadiusResource(ctx, newResource, old, daprHttpRoute.Options()); r != nil || err != nil {
+		return r, err
+	}
+
 	rendererOutput, err := daprHttpRoute.de.Render(ctx, serviceCtx.ResourceID, newResource)
 	if err != nil {
 		return nil, err
@@ -79,7 +84,7 @@ func (daprHttpRoute *CreateOrUpdateDaprInvokeHttpRoute) Run(ctx context.Context,
 		return nil, err
 	}
 
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 	if appId, ok := deploymentOutput.ComputedValues[daprinvokehttproutes.AppIDKey].(string); ok {

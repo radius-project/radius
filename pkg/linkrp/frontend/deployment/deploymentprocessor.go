@@ -68,7 +68,7 @@ type DeploymentOutput struct {
 
 type ResourceData struct {
 	ID              resources.ID
-	Resource        v1.DataModelInterface
+	Resource        v1.ResourceDataModel
 	OutputResources []outputresource.OutputResource
 	ComputedValues  map[string]any
 	SecretValues    map[string]rp.SecretValueReference

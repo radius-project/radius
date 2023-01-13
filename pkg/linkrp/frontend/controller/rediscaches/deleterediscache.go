@@ -14,51 +14,57 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
 	"github.com/project-radius/radius/pkg/armrpc/rest"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
+	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
+	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteRedisCache)(nil)
 
 // DeleteRedisCache is the controller implementation to delete rediscache link resource.
 type DeleteRedisCache struct {
-	ctrl.BaseController
+	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
+
+	KubeClient runtimeclient.Client
+	dp         deployment.DeploymentProcessor
 }
 
 // NewDeleteRedisCache creates a new instance DeleteRedisCache.
-func NewDeleteRedisCache(opts ctrl.Options) (ctrl.Controller, error) {
-	return &DeleteRedisCache{ctrl.NewBaseController(opts)}, nil
+func NewDeleteRedisCache(opts fctrl.Options) (ctrl.Controller, error) {
+	return &DeleteRedisCache{
+		Operation: ctrl.NewOperation(opts.Options,
+			ctrl.ResourceOptions[datamodel.RedisCache]{
+				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
+				ResponseConverter: converter.RedisCacheDataModelToVersioned,
+			}),
+		KubeClient: opts.KubeClient,
+		dp:         opts.DeployProcessor,
+	}, nil
 }
 
 func (redis *DeleteRedisCache) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (rest.Response, error) {
 	serviceCtx := v1.ARMRequestContextFromContext(ctx)
-
-	// Read resource metadata from the storage
-	existingResource := &datamodel.RedisCache{}
-	etag, err := redis.GetResource(ctx, serviceCtx.ResourceID.String(), existingResource)
+	old, etag, err := redis.GetResource(ctx, serviceCtx.ResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
 		return nil, err
 	}
 
-	if etag == "" {
+	if old == nil {
 		return rest.NewNoContentResponse(), nil
 	}
 
-	err = ctrl.ValidateETag(*serviceCtx, etag)
-	if err != nil {
-		return rest.NewPreconditionFailedResponse(serviceCtx.ResourceID.String(), err.Error()), nil
+	if r, err := redis.PrepareResource(ctx, req, nil, old, etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = redis.DeploymentProcessor().Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: existingResource, OutputResources: existingResource.Properties.Status.OutputResources, ComputedValues: existingResource.ComputedValues, SecretValues: existingResource.SecretValues, RecipeData: existingResource.RecipeData})
+	err = redis.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}
 
-	err = redis.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
-	if err != nil {
+	if err := redis.StorageClient().Delete(ctx, serviceCtx.ResourceID.String()); err != nil {
 		if errors.Is(&store.ErrNotFound{}, err) {
 			return rest.NewNoContentResponse(), nil
 		}
