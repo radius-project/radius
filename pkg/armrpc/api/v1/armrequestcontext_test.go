@@ -10,29 +10,61 @@ import (
 	"encoding/json"
 	"net/http"
 	"os"
+	"strings"
 	"testing"
 
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 )
 
 func TestFromARMRequest(t *testing.T) {
-	req, err := getTestHTTPRequest()
-	require.NoError(t, err)
+	headerTests := []struct {
+		desc       string
+		refererUrl string
+		resourceID string
+	}{
+		{
+			"With referer header",
+			"https://radius.dev/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0?api-version=2022-03-15-privatepreview",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-RG/providers/Applications.Core/environments/Env0",
+		},
+		{
+			"Without referer header",
+			"",
+			"/subscriptions/00000000-0000-0000-0000-000000000000/resourcegroups/radius-test-rg/providers/applications.core/environments/env0",
+		},
+	}
 
-	serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
-	require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
-	require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
-	require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
-	require.Equal(t, "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/radius-test-rg/providers/Applications.Core/environments/env0", serviceCtx.ResourceID.String())
-	require.Equal(t, "00000000-0000-0000-0000-000000000000", serviceCtx.ResourceID.ScopeSegments()[0].Name)
-	require.Equal(t, "radius-test-rg", serviceCtx.ResourceID.ScopeSegments()[1].Name)
-	require.Equal(t, "Applications.Core/environments", serviceCtx.ResourceID.Type())
-	require.Equal(t, "env0", serviceCtx.ResourceID.Name())
-	require.True(t, len(serviceCtx.OperationID) > 0)
+	for _, tt := range headerTests {
+		t.Run(tt.desc, func(t *testing.T) {
+			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
+			require.NoError(t, err)
+
+			if tt.refererUrl == "" {
+				req.Header.Del(RefererHeader)
+			} else {
+				req.Header.Set(RefererHeader, tt.refererUrl)
+			}
+
+			rid, err := resources.ParseResource(tt.resourceID)
+			require.NoError(t, err)
+
+			serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
+			require.Equal(t, "2022-03-15-privatepreview", serviceCtx.APIVersion)
+			require.Equal(t, "00000000-0000-0000-0000-000000000001", serviceCtx.ClientTenantID)
+			require.Equal(t, "00000000-0000-0000-0000-000000000002", serviceCtx.HomeTenantID)
+			require.Equal(t, tt.resourceID, serviceCtx.ResourceID.String())
+			require.Equal(t, rid.ScopeSegments()[0].Name, serviceCtx.ResourceID.ScopeSegments()[0].Name)
+			require.Equal(t, rid.ScopeSegments()[1].Name, serviceCtx.ResourceID.ScopeSegments()[1].Name)
+			require.Equal(t, rid.Type(), serviceCtx.ResourceID.Type())
+			require.Equal(t, rid.Name(), serviceCtx.ResourceID.Name())
+			require.True(t, len(serviceCtx.OperationID) > 0)
+		})
+	}
 }
 
 func TestSystemData(t *testing.T) {
-	req, err := getTestHTTPRequest()
+	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
 	require.NoError(t, err)
 	serviceCtx, _ := FromARMRequest(req, "", LocationGlobal)
 
@@ -47,7 +79,7 @@ func TestSystemData(t *testing.T) {
 }
 
 func TestFromContext(t *testing.T) {
-	req, err := getTestHTTPRequest()
+	req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
 	require.NoError(t, err)
 	serviceCtx, err := FromARMRequest(req, "", LocationGlobal)
 	require.NoError(t, err)
@@ -75,7 +107,7 @@ func TestTopQueryParam(t *testing.T) {
 
 	for _, tt := range topQueryParamCases {
 		t.Run(tt.desc, func(t *testing.T) {
-			req, err := getTestHTTPRequest()
+			req, err := getTestHTTPRequest("./testdata/armrpcheaders.json")
 
 			q := req.URL.Query()
 			q.Add(tt.qpKey, tt.qpValue)
@@ -96,8 +128,8 @@ func TestTopQueryParam(t *testing.T) {
 	}
 }
 
-func getTestHTTPRequest() (*http.Request, error) {
-	jsonData, err := os.ReadFile("./testdata/armrpcheaders.json")
+func getTestHTTPRequest(headerFile string) (*http.Request, error) {
+	jsonData, err := os.ReadFile(headerFile)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +139,7 @@ func getTestHTTPRequest() (*http.Request, error) {
 		return nil, err
 	}
 
-	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, parsed["Referer"], nil)
+	req, _ := http.NewRequestWithContext(context.Background(), http.MethodPut, strings.ToLower(parsed["Referer"]), nil)
 	for k, v := range parsed {
 		req.Header.Add(k, v)
 	}

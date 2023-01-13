@@ -9,7 +9,6 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
@@ -22,7 +21,7 @@ const (
 )
 
 // ConvertTo converts from the versioned Credential resource to version-agnostic datamodel.
-func (cr *CredentialResource) ConvertTo() (conv.DataModelInterface, error) {
+func (cr *CredentialResource) ConvertTo() (v1.DataModelInterface, error) {
 	crendentialProperties, err := cr.getDataModelCredentialProperties()
 	if err != nil {
 		return nil, err
@@ -50,17 +49,17 @@ func (cr *CredentialResource) ConvertTo() (conv.DataModelInterface, error) {
 
 func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.CredentialResourceProperties, error) {
 	if cr.Properties == nil {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties", ValidValue: "not nil"}
 	}
 	crendentialProperties := cr.Properties.GetCredentialResourceProperties()
 
 	if crendentialProperties.Storage == nil {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage", ValidValue: "not nil"}
 	}
 
 	storageProperties := crendentialProperties.Storage.GetCredentialStorageProperties()
 	if storageProperties.GetCredentialStorageProperties().Kind == nil {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: "not nil"}
 	}
 	// Check for storage type value
 	var found bool
@@ -71,7 +70,7 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 		}
 	}
 	if !found {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.storage.kind", ValidValue: fmt.Sprintf("one of %s", PossibleCredentialStorageKindValues())}
 	}
 	storage, err := cr.getCredentialStorageProperties()
 	if err != nil {
@@ -98,7 +97,7 @@ func (cr *CredentialResource) getDataModelCredentialProperties() (*datamodel.Cre
 			Storage: storage,
 		}, nil
 	default:
-		return nil, conv.ErrInvalidModelConversion
+		return nil, v1.ErrInvalidModelConversion
 	}
 }
 
@@ -120,10 +119,10 @@ func (cr *CredentialResource) getCredentialStorageProperties() (*datamodel.Crede
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Credential resource.
-func (dst *CredentialResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *CredentialResource) ConvertFrom(src v1.DataModelInterface) error {
 	credential, ok := src.(*datamodel.Credential)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = &credential.ID

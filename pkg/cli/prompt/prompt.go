@@ -183,7 +183,6 @@ func (i *Impl) GetTextInput(promptMsg string, defaultPlaceHolder string) (string
 	if !ok {
 		return "", &ErrUnsupportedModel{}
 	}
-	fmt.Println("Entered value:", tm.GetValue())
 
 	return tm.GetValue(), nil
 }

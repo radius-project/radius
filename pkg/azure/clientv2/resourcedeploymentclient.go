@@ -82,16 +82,16 @@ type ProviderConfig struct {
 	Deployments *Deployments `json:"deployments,omitempty"`
 }
 
-// DeploymentsClient is a deployments client for Azure Resource Manager.
+// ResourceDeploymentClient is a deployment client for Azure Resource Manager.
 // It is used by both Azure and UCP clients.
-type DeploymentsClient struct {
+type ResourceDeploymentClient struct {
 	client   *armresources.DeploymentsClient
 	pipeline *runtime.Pipeline
 	baseURI  string
 }
 
-// NewDeploymentsClient creates an instance of the DeploymentsClient.
-func NewDeploymentsClient(subscriptionID string, options *Options) (*DeploymentsClient, error) {
+// NewResourceDeploymentClient creates an instance of the ResourceDeploymentClient.
+func NewResourceDeploymentClient(subscriptionID string, options *Options) (*ResourceDeploymentClient, error) {
 	baseURI := DefaultBaseURI
 	if options.BaseURI != "" {
 		baseURI = options.BaseURI
@@ -107,7 +107,7 @@ func NewDeploymentsClient(subscriptionID string, options *Options) (*Deployments
 		return nil, err
 	}
 
-	return &DeploymentsClient{
+	return &ResourceDeploymentClient{
 		client:   client,
 		pipeline: &pipeline,
 		baseURI:  baseURI,
@@ -120,7 +120,7 @@ type ClientCreateOrUpdateResponse struct {
 }
 
 // CreateOrUpdate creates a deployment or updates the existing deployment.
-func (client *DeploymentsClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
+func (client *ResourceDeploymentClient) CreateOrUpdate(ctx context.Context, parameters Deployment, resourceID, apiVersion string) (*runtime.Poller[ClientCreateOrUpdateResponse], error) {
 	if !strings.HasPrefix(resourceID, "/") {
 		return nil, fmt.Errorf("error creating or updating a deployment: resourceID must start with a slash")
 	}
@@ -147,7 +147,7 @@ func (client *DeploymentsClient) CreateOrUpdate(ctx context.Context, parameters 
 }
 
 // createOrUpdateCreateRequest creates the CreateOrUpdate request.
-func (client *DeploymentsClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
+func (client *ResourceDeploymentClient) createOrUpdateCreateRequest(ctx context.Context, resourceID, apiVersion string, parameters Deployment) (*policy.Request, error) {
 	if resourceID == "" {
 		return nil, errors.New("resourceID cannot be empty")
 	}

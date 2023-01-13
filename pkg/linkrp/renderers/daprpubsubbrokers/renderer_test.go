@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/kubernetes"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
@@ -119,8 +118,8 @@ func Test_Render_Generic_MissingMetadata(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No metadata specified for Dapr component of type pubsub.kafka", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingType(t *testing.T) {
@@ -148,8 +147,8 @@ func Test_Render_Generic_MissingType(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No type specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No type specified for generic Dapr component", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Generic_MissingVersion(t *testing.T) {
@@ -177,8 +176,8 @@ func Test_Render_Generic_MissingVersion(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "No Dapr component version specified for generic Dapr component", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_ConstructDaprPubSubGeneric(t *testing.T) {
@@ -335,8 +334,8 @@ func Test_Render_DaprPubSubAzureServiceBus_InvalidResourceType(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to a ServiceBus Namespace", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_UnsupportedMode(t *testing.T) {
@@ -361,8 +360,8 @@ func Test_Render_UnsupportedMode(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedPubSubModes)), err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, fmt.Sprintf("invalid pub sub broker mode, Supported mode values: %s", getAlphabeticallySortedKeys(SupportedPubSubModes)), err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -391,8 +390,8 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 	renderer.PubSubs = SupportedPubSubModes
 	_, err := renderer.Render(context.Background(), &resource, renderers.RenderOptions{Namespace: "radius-test"})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_EmptyApplicationID(t *testing.T) {

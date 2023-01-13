@@ -9,7 +9,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
@@ -34,15 +34,15 @@ func NewRenderer(armConfig *armauth.ArmConfig) renderers.Renderer {
 }
 
 // GetDependencyIDs fetches the dependent resources of the volume resource.
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	return nil, nil, nil
 }
 
 // Render renders volume resources to the target platform resource.
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	resource, ok := dm.(*datamodel.VolumeResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	properties := resource.Properties

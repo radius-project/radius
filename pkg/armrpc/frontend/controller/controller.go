@@ -9,7 +9,6 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	sm "github.com/project-radius/radius/pkg/armrpc/asyncoperation/statusmanager"
 	"github.com/project-radius/radius/pkg/armrpc/hostoptions"
@@ -49,10 +48,10 @@ type Options struct {
 // ResourceOptions represents the options and filters for resource.
 type ResourceOptions[T any] struct {
 	// RequestConverter is the request converter.
-	RequestConverter conv.ConvertToDataModel[T]
+	RequestConverter v1.ConvertToDataModel[T]
 
 	// ResponseConverter is the response converter.
-	ResponseConverter conv.ConvertToAPIModel[T]
+	ResponseConverter v1.ConvertToAPIModel[T]
 
 	// DeleteFilters is a slice of filters that execute prior to deleting a resource.
 	DeleteFilters []DeleteFilter[T]

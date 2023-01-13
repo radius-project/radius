@@ -40,9 +40,9 @@ func NewProxyPlane(opts ctrl.Options) (armrpc_controller.Controller, error) {
 func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.Request) (armrpc_rest.Response, error) {
 	logger := logr.FromContextOrDiscard(ctx)
 
-	logger.Info("starting proxy request", "url", req.URL.String(), "method", req.Method)
+	logger.Info("starting proxy request")
 	for key, value := range req.Header {
-		logger.V(4).Info("incoming request header", "key", key, "value", value)
+		logger.V(ucplog.Debug).Info("incoming request header", "key", key, "value", value)
 	}
 
 	req.URL.Path = p.GetRelativePath(req.URL.Path)
@@ -50,7 +50,6 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	// Make a copy of the incoming URL and trim the base path
 	newURL := *req.URL
 	newURL.Path = p.GetRelativePath(req.URL.Path)
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldRequestPath, newURL)
 	planeType, name, _, err := resources.ExtractPlanesPrefixFromURLPath(newURL.Path)
 	if err != nil {
 		return nil, err
@@ -67,14 +66,11 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	_, err = p.GetResource(ctx, planeID.String(), &plane)
 	if err != nil {
 		if errors.Is(err, &store.ErrNotFound{}) {
+			logger.Error(err, "plane %q does not exist", planeID.String())
 			return armrpc_rest.NewNotFoundResponse(planeID), nil
 		}
 		return nil, err
 	}
-
-	ctx = ucplog.WrapLogContext(ctx,
-		ucplog.LogFieldPlaneID, planeID,
-		ucplog.LogFieldPlaneKind, plane.Properties.Kind)
 
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		// Check if the resource group exists
@@ -92,6 +88,7 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 		_, err = p.GetResource(ctx, rgID.String(), &existingRG)
 		if err != nil {
 			if errors.Is(err, &store.ErrNotFound{}) {
+				logger.Error(err, "resource group %q does not exist", rgID.String())
 				return armrpc_rest.NewNotFoundResponse(rgID), nil
 			}
 			return nil, err
@@ -103,11 +100,15 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if err != nil {
 		return nil, err
 	}
+	ctx = ucplog.WrapLogContext(ctx,
+		ucplog.LogFieldResourceID, resourceID)
+	logger = logr.FromContextOrDiscard(ctx)
 
 	// We expect either a resource or resource collection.
 	if resourceID.ProviderNamespace() == "" {
-		err = fmt.Errorf("Invalid resourceID specified with no provider")
-		return armrpc_rest.NewBadRequestResponse(err.Error()), err
+		err = fmt.Errorf("invalid resourceID specified with no provider")
+		logger.Error(err, "resourceID %q does not have provider", resourceID.String())
+		return armrpc_rest.NewBadRequestResponse(err.Error()), nil
 	}
 
 	// Lookup the resource providers configured to determine the URL to proxy to
@@ -119,12 +120,11 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	if plane.Properties.Kind == rest.PlaneKindUCPNative {
 		proxyURL = plane.LookupResourceProvider(resourceID.ProviderNamespace())
 		if proxyURL == "" {
-			err = fmt.Errorf("Provider %s not configured", resourceID.ProviderNamespace())
+			err = fmt.Errorf("provider %s not configured", resourceID.ProviderNamespace())
 			return nil, err
 		}
 		ctx = ucplog.WrapLogContext(ctx,
-			ucplog.LogFieldPlaneURL, proxyURL,
-			ucplog.LogFieldProvider, resourceID.ProviderNamespace())
+			ucplog.LogFieldPlaneURL, proxyURL)
 	} else {
 		// For a non UCP-native plane, the configuration should have a URL to which
 		// all the requests will be forwarded
@@ -176,9 +176,8 @@ func (p *ProxyPlane) Run(ctx context.Context, w http.ResponseWriter, req *http.R
 	sender := proxy.NewARMProxy(options, downstream, nil)
 
 	logger = logr.FromContextOrDiscard(ctx)
-	logger.Info(fmt.Sprintf("Proxying request to target %s", proxyURL))
+	logger.Info(fmt.Sprintf("proxying request target: %s", proxyURL))
 	sender.ServeHTTP(w, req.WithContext(ctx))
-
 	// The upstream response has already been sent at this point. Therefore, return nil response here
 	return nil, nil
 }

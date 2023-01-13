@@ -116,7 +116,7 @@ func SelectEnvironmentName(cmd *cobra.Command, defaultVal string, interactive bo
 			return "", err
 		}
 		if envStr == "" {
-			return "", fmt.Errorf("environmentName cannot be empty")
+			return defaultVal, nil
 		}
 	} else {
 		if envStr == "" {
@@ -142,7 +142,7 @@ func SelectNamespace(cmd *cobra.Command, defaultVal string, interactive bool, pr
 			return "", err
 		}
 		if val == "" {
-			return "", fmt.Errorf("Namespace cannot be empty")
+			return defaultVal, nil
 		}
 	} else {
 		val, _ = cmd.Flags().GetString("namespace")

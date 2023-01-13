@@ -16,7 +16,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/go-logr/logr"
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -481,8 +480,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "invalid-id is not a valid resource id for Applications.Core/environments.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "invalid-id is not a valid resource id for Applications.Core/environments.", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("verify render error", func(t *testing.T) {
@@ -544,8 +543,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &resource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "linked \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env\" has invalid Applications.Core/environments resource type.", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "linked \"/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/env/test-env\" has invalid Applications.Core/environments resource type.", err.(*v1.ErrClientRP).Message)
 
 	})
 
@@ -557,8 +556,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "linked resource /subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0 does not exist", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "linked resource /subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0 does not exist", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Missing output resource provider", func(t *testing.T) {
@@ -599,8 +598,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := dp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "provider unknown is not configured. Cannot support resource type azure.cosmosdb.account", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Azure provider unsupported", func(t *testing.T) {
@@ -633,8 +632,8 @@ func Test_Render(t *testing.T) {
 
 		_, err := mockdp.Render(ctx, mongoLinkResourceID, &testResource)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "provider azure is not configured. Cannot support resource type azure.cosmosdb.account", err.(*v1.ErrClientRP).Message)
 	})
 }
 
@@ -690,13 +689,13 @@ func Test_Deploy(t *testing.T) {
 	})
 
 	t.Run("Verify deploy failure - invalid request", func(t *testing.T) {
-		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, conv.NewClientErrInvalidRequest("failed to access connected Azure resource"))
+		mocks.resourceHandler.EXPECT().Put(gomock.Any(), gomock.Any()).Times(1).Return(resourcemodel.ResourceIdentity{}, map[string]string{}, v1.NewClientErrInvalidRequest("failed to access connected Azure resource"))
 
 		testRendererOutput := buildRendererOutputMongo(modeResource)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)
-		require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-		require.Equal(t, "failed to access connected Azure resource", err.(*conv.ErrClientRP).Message)
+		require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+		require.Equal(t, "failed to access connected Azure resource", err.(*v1.ErrClientRP).Message)
 	})
 
 	t.Run("Output resource dependency missing local ID", func(t *testing.T) {
@@ -732,7 +731,7 @@ func Test_Deploy(t *testing.T) {
 		resources := []string{"invalid-id"}
 		mocks.recipeHandler.EXPECT().DeployRecipe(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(resources, nil)
 
-		expectedErr := conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
+		expectedErr := v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to parse id \"%s\" of the resource deployed by recipe \"testRecipe\" for resource \"%s\": 'invalid-id' is not a valid resource id", resources[0], mongoLinkResourceID))
 		testRendererOutput := buildRendererOutputMongo(modeRecipe)
 		_, err := dp.Deploy(ctx, mongoLinkResourceID, testRendererOutput)
 		require.Error(t, err)

@@ -13,7 +13,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/kubernetes"
@@ -28,18 +28,18 @@ type Renderer struct {
 }
 
 // GetDependencyIDs fetches all the httproutes used by the gateway
-func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
+func (r Renderer) GetDependencyIDs(ctx context.Context, dm v1.DataModelInterface) (radiusResourceIDs []resources.ID, azureResourceIDs []resources.ID, err error) {
 	// Need all httproutes that are used by this gateway
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
-		return nil, nil, conv.ErrInvalidModelConversion
+		return nil, nil, v1.ErrInvalidModelConversion
 	}
 	gtwyProperties := gateway.Properties
 	// Get all httproutes that are used by this gateway
 	for _, httpRoute := range gtwyProperties.Routes {
 		resourceID, err := resources.ParseResource(httpRoute.Destination)
 		if err != nil {
-			return nil, nil, conv.NewClientErrInvalidRequest(err.Error())
+			return nil, nil, v1.NewClientErrInvalidRequest(err.Error())
 		}
 
 		radiusResourceIDs = append(radiusResourceIDs, resourceID)
@@ -49,15 +49,15 @@ func (r Renderer) GetDependencyIDs(ctx context.Context, dm conv.DataModelInterfa
 }
 
 // Render creates the kubernetes output resource for the gateway and its dependency - httproute
-func (r Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	outputResources := []outputresource.OutputResource{}
 	gateway, ok := dm.(*datamodel.Gateway)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 	appId, err := resources.ParseResource(gateway.Properties.Application)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid application id: %s. id: %s", err.Error(), gateway.Properties.Application))
 	}
 	applicationName := appId.Name()
 	gatewayName := kubernetes.NormalizeResourceName(gateway.Name)
@@ -103,25 +103,25 @@ func MakeGateway(options renderers.RenderOptions, gateway *datamodel.Gateway, re
 	sslPassthrough := false
 
 	if len(gateway.Properties.Routes) < 1 {
-		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
+		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("must have at least one route when declaring a Gateway resource")
 	}
 
 	if gateway.Properties.TLS != nil {
 		if !gateway.Properties.TLS.SSLPassthrough {
-			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
+			return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("only sslPassthrough is supported for TLS currently")
 		} else {
 			sslPassthrough = true
 		}
 	}
 
 	if sslPassthrough && len(gateway.Properties.Routes) > 1 {
-		return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
+		return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support multiple routes with sslPassthrough set to true")
 	}
 
 	var route datamodel.GatewayRoute //route will hold the one sslPassthrough route, if sslPassthrough is true
 	for _, route = range gateway.Properties.Routes {
 		if sslPassthrough && (route.Path != "" || route.ReplacePrefix != "") {
-			return outputresource.OutputResource{}, conv.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
+			return outputresource.OutputResource{}, v1.NewClientErrInvalidRequest("cannot support `path` or `replacePrefix` in routes with sslPassthrough set to true")
 		}
 		routeName, err := getRouteName(&route)
 		if err != nil {
@@ -300,7 +300,7 @@ func MakeHttpRoutes(options renderers.RenderOptions, resource datamodel.Gateway,
 func getRouteName(route *datamodel.GatewayRoute) (string, error) {
 	resourceID, err := resources.ParseResource(route.Destination)
 	if err != nil {
-		return "", conv.NewClientErrInvalidRequest(err.Error())
+		return "", v1.NewClientErrInvalidRequest(err.Error())
 	}
 
 	return resourceID.Name(), nil

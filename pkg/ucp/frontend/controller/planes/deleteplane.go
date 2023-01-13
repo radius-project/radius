@@ -18,7 +18,6 @@ import (
 	ctrl "github.com/project-radius/radius/pkg/ucp/frontend/controller"
 	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	"github.com/project-radius/radius/pkg/ucp/ucplog"
 )
 
 var _ armrpc_controller.Controller = (*DeletePlane)(nil)
@@ -53,7 +52,6 @@ func (p *DeletePlane) Run(ctx context.Context, w http.ResponseWriter, req *http.
 	if err != nil {
 		return nil, err
 	}
-	ctx = ucplog.WrapLogContext(ctx, ucplog.LogFieldPlaneKind, existingPlane.Properties.Kind)
 	logger := logr.FromContextOrDiscard(ctx)
 	restResponse := armrpc_rest.NewNoContentResponse()
 	logger.Info(fmt.Sprintf("Successfully deleted plane %s", resourceId))

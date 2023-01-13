@@ -8,7 +8,6 @@ package v20220315privatepreview
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -17,7 +16,7 @@ import (
 )
 
 // ConvertTo converts from the versioned RedisCache resource to version-agnostic datamodel.
-func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *RedisCacheResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RedisCache{
 		BaseResource: v1.BaseResource{
 			InternalMetadata: v1.InternalMetadata{
@@ -42,7 +41,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceRedisCacheProperties:
 		if v.Resource == nil {
-			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("resource is a required property for mode %q", datamodel.LinkModeResource))
 		}
 		converted.Properties.Mode = datamodel.LinkModeResource
 		converted.Properties.Resource = to.String(v.Resource)
@@ -57,7 +56,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	case *RecipeRedisCacheProperties:
 		if v.Recipe == nil {
-			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("recipe is a required property for mode %q", datamodel.LinkModeRecipe))
 		}
 		converted.Properties.RedisRecipeProperties = datamodel.RedisRecipeProperties{
 			Recipe: toRecipeDataModel(v.Recipe),
@@ -74,7 +73,7 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	case *ValuesRedisCacheProperties:
 		if v.Host == nil || v.Port == nil {
-			return &datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
+			return &datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("host and port are required properties for mode %q", datamodel.LinkModeValues))
 		}
 		converted.Properties.Mode = datamodel.LinkModeValues
 		converted.Properties.Host = to.String(v.Host)
@@ -87,16 +86,16 @@ func (src *RedisCacheResource) ConvertTo() (conv.DataModelInterface, error) {
 			}
 		}
 	default:
-		return datamodel.RedisCache{}, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
+		return datamodel.RedisCache{}, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetRedisCacheProperties().Mode))
 	}
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned RedisCache resource.
-func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *RedisCacheResource) ConvertFrom(src v1.DataModelInterface) error {
 	redis, ok := src.(*datamodel.RedisCache)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(redis.ID)
@@ -151,16 +150,16 @@ func (dst *RedisCacheResource) ConvertFrom(src conv.DataModelInterface) error {
 			Application:       to.StringPtr(redis.Properties.Application),
 		}
 	default:
-		return conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", redis.Properties.Mode))
+		return v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", redis.Properties.Mode))
 	}
 	return nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned RedisCacheSecrets instance.
-func (dst *RedisCacheSecrets) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *RedisCacheSecrets) ConvertFrom(src v1.DataModelInterface) error {
 	redisSecrets, ok := src.(*datamodel.RedisCacheSecrets)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ConnectionString = to.StringPtr(redisSecrets.ConnectionString)
@@ -170,7 +169,7 @@ func (dst *RedisCacheSecrets) ConvertFrom(src conv.DataModelInterface) error {
 }
 
 // ConvertTo converts from the versioned RedisCacheSecrets instance to version-agnostic datamodel.
-func (src *RedisCacheSecrets) ConvertTo() (conv.DataModelInterface, error) {
+func (src *RedisCacheSecrets) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.RedisCacheSecrets{
 		ConnectionString: to.String(src.ConnectionString),
 		Password:         to.String(src.Password),

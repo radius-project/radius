@@ -13,11 +13,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/resources/mgmt/resources"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/resources/armresources"
 	"github.com/go-logr/logr"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/armauth"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	coreDatamodel "github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/logging"
@@ -53,7 +54,7 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
 	if envProviders == (coreDatamodel.Providers{}) {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to deploy recipe %q. Environment provider scope is required to deploy link recipes.", recipe.Name))
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to deploy recipe %q. Environment provider scope is required to deploy link recipes.", recipe.Name))
 	}
 	subscriptionID, resourceGroup, err := parseAzureProvider(&envProviders)
 	if err != nil {
@@ -76,12 +77,12 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 
 	digest, err := getDigestFromManifest(ctx, repo, tag)
 	if err != nil {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
 
 	recipeBytes, err := getRecipeBytes(ctx, repo, digest)
 	if err != nil {
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("failed to fetch template from the path %q for recipe %q: %s", recipe.TemplatePath, recipe.Name, err.Error()))
 	}
 
 	recipeData := make(map[string]any)
@@ -103,41 +104,39 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 		}
 	}
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
-	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
+	client, err := clientv2.NewDeploymentsClient(subscriptionID, &handler.arm.ClientOptions)
+	if err != nil {
+		return nil, err
+	}
+
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
-	dplResp, err := dClient.CreateOrUpdate(
+	poller, err := client.BeginCreateOrUpdate(
 		ctx,
 		resourceGroup,
 		deploymentName,
-		resources.Deployment{
-			Properties: &resources.DeploymentProperties{
+		armresources.Deployment{
+			Properties: &armresources.DeploymentProperties{
 				Template:   recipeData,
 				Parameters: parameters,
-				Mode:       resources.DeploymentModeIncremental,
+				Mode:       to.Ptr(armresources.DeploymentModeIncremental),
 			},
 		},
+		&armresources.DeploymentsClientBeginCreateOrUpdateOptions{},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	err = dplResp.WaitForCompletionRef(ctx, dClient.BaseClient.Client)
+	resp, err := poller.PollUntilDone(ctx, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := dplResp.Result(dClient)
-	if err != nil {
-		return nil, err
-	}
-
-	// return error if the Provisioning is not success
-	if resp.Properties.ProvisioningState != resources.ProvisioningStateSucceeded {
+	if *resp.Properties.ProvisioningState != armresources.ProvisioningStateSucceeded {
 		return nil, fmt.Errorf("failed to deploy the recipe %q, template path: %q, deployment: %q", recipe.Name, recipe.TemplatePath, deploymentName)
 	}
 
-	// Get list of output resources deployed
-	for _, id := range *resp.Properties.OutputResources {
+	for _, id := range resp.Properties.OutputResources {
 		deployedResources = append(deployedResources, *id.ID)
 	}
 
@@ -202,17 +201,17 @@ func getRecipeBytes(ctx context.Context, repo *remote.Repository, layerDigest st
 // parseAzureProvider parses the scope to get the subscriptionID and resourceGroup
 func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID string, resourceGroup string, err error) {
 	if providers.Azure == (coreDatamodel.ProvidersAzure{}) {
-		return "", "", conv.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
+		return "", "", v1.NewClientErrInvalidRequest("environment does not contain Azure provider scope required to deploy recipes on Azure")
 	}
 	// valid scope: "/subscriptions/test-sub/resourceGroups/test-group"
 	scope := strings.Split(providers.Azure.Scope, "/")
 	if len(scope) != 5 {
-		return "", "", conv.NewClientErrInvalidRequest(fmt.Sprintf("invalid azure scope. Valid scope eg: %q", "/subscriptions/<subscriptionID>/resourceGroups/<resourceGroup>"))
+		return "", "", v1.NewClientErrInvalidRequest(fmt.Sprintf("invalid azure scope. Valid scope eg: %q", "/subscriptions/<subscriptionID>/resourceGroups/<resourceGroup>"))
 	}
 	subscriptionID = scope[2]
 	resourceGroup = scope[4]
 	if subscriptionID == "" || resourceGroup == "" {
-		return "", "", conv.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
+		return "", "", v1.NewClientErrInvalidRequest("subscriptionID and resourceGroup must be provided to deploy link recipes to Azure")
 	}
 	return
 }

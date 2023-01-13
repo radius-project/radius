@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/api/v20220315privatepreview"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 )
 
 // DaprPubSubBrokerDataModelFromVersioned converts version agnostic DaprPubSubBroker datamodel to versioned model.
-func DaprPubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version string) (conv.VersionedModelInterface, error) {
+func DaprPubSubBrokerDataModelToVersioned(model *datamodel.DaprPubSubBroker, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220315privatepreview.Version:
 		versioned := &v20220315privatepreview.DaprPubSubBrokerResource{}

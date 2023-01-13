@@ -11,7 +11,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/azure/azresources"
 	"github.com/project-radius/radius/pkg/azure/clients"
@@ -208,8 +207,8 @@ func Test_Render_InvalidSourceResourceIdentifier(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must be a valid resource id", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidResourceType(t *testing.T) {
@@ -238,8 +237,8 @@ func Test_Render_InvalidResourceType(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "the 'resource' field must refer to an Azure CosmosDB Mongo Database resource", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "the 'resource' field must refer to an Azure CosmosDB Mongo Database resource", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_InvalidApplicationID(t *testing.T) {
@@ -268,8 +267,8 @@ func Test_Render_InvalidApplicationID(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "failed to parse application from the property: 'invalid-app-id' is not a valid resource id", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_NoResourceSpecified(t *testing.T) {
@@ -292,7 +291,7 @@ func Test_Render_NoResourceSpecified(t *testing.T) {
 			Mode: datamodel.LinkModeResource,
 		},
 	}
-	expectedErr := &conv.ErrClientRP{
+	expectedErr := &v1.ErrClientRP{
 		Code:    "BadRequest",
 		Message: "the 'resource' field must be a valid resource id",
 	}
@@ -327,8 +326,8 @@ func Test_Render_InvalidMode(t *testing.T) {
 
 	_, err := renderer.Render(ctx, &mongoDBResource, renderers.RenderOptions{})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "unsupported mode abcd", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "unsupported mode abcd", err.(*v1.ErrClientRP).Message)
 }
 
 func Test_Render_Recipe_Success(t *testing.T) {
@@ -449,6 +448,6 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			LinkType:     "Applications.Link/redisCaches",
 		}})
 	require.Error(t, err)
-	require.Equal(t, v1.CodeInvalid, err.(*conv.ErrClientRP).Code)
-	require.Equal(t, "link type \"Applications.Link/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Link/mongoDatabases\" resource type. Recipe link type must match link resource type.", err.(*conv.ErrClientRP).Message)
+	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)
+	require.Equal(t, "link type \"Applications.Link/redisCaches\" of provided recipe \"mongodb\" is incompatible with \"Applications.Link/mongoDatabases\" resource type. Recipe link type must match link resource type.", err.(*v1.ErrClientRP).Message)
 }
