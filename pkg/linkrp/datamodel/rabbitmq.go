@@ -8,6 +8,7 @@ package datamodel
 import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
+	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
 // RabbitMQMessageQueue represents RabbitMQMessageQueue link resource.
@@ -19,6 +20,21 @@ type RabbitMQMessageQueue struct {
 
 	// LinkMetadata represents internal DataModel properties common to all link types.
 	LinkMetadata
+}
+
+// ApplyDeploymentOutput applies the properties changes based on the deployment output.
+func (r *RabbitMQMessageQueue) ApplyDeploymentOutput(do rp.DeploymentOutput) {
+	r.Properties.Status.OutputResources = do.DeployedOutputResources
+}
+
+// OutputResources returns the output resources array.
+func (r *RabbitMQMessageQueue) OutputResources() []outputresource.OutputResource {
+	return r.Properties.Status.OutputResources
+}
+
+// ResourceMetadata returns the application resource metadata.
+func (r *RabbitMQMessageQueue) ResourceMetadata() *rp.BasicResourceProperties {
+	return &r.Properties.BasicResourceProperties
 }
 
 func (rabbitmq RabbitMQMessageQueue) ResourceTypeName() string {
