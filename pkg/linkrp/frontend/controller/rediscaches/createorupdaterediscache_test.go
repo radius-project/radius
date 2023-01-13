@@ -85,8 +85,9 @@ func getDeploymentProcessorOutputs(buildComputedValueReferences bool) (renderers
 			},
 		},
 		ComputedValues: map[string]any{
-			renderers.Host: "myrediscache.redis.cache.windows.net",
-			renderers.Port: portValue,
+			renderers.Host:                "myrediscache.redis.cache.windows.net",
+			renderers.Port:                portValue,
+			renderers.UsernameStringValue: "redisusername",
 		},
 	}
 

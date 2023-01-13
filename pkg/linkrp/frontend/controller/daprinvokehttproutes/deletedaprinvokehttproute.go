@@ -26,19 +26,18 @@ var _ ctrl.Controller = (*DeleteDaprInvokeHttpRoute)(nil)
 type DeleteDaprInvokeHttpRoute struct {
 	ctrl.Operation[*datamodel.DaprInvokeHttpRoute, datamodel.DaprInvokeHttpRoute]
 
-	de deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteDaprInvokeHttpRoute creates a new instance DeleteDaprInvokeHttpRoute.
 func NewDeleteDaprInvokeHttpRoute(opts fctrl.Options) (ctrl.Controller, error) {
-	return &CreateOrUpdateDaprInvokeHttpRoute{
+	return &DeleteDaprInvokeHttpRoute{
 		Operation: ctrl.NewOperation(opts.Options,
 			ctrl.ResourceOptions[datamodel.DaprInvokeHttpRoute]{
 				RequestConverter:  converter.DaprInvokeHttpRouteDataModelFromVersioned,
 				ResponseConverter: converter.DaprInvokeHttpRouteDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		de:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -58,7 +57,7 @@ func (daprHttpRoute *DeleteDaprInvokeHttpRoute) Run(ctx context.Context, w http.
 		return r, err
 	}
 
-	err = daprHttpRoute.de.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
+	err = daprHttpRoute.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
 	if err != nil {
 		return nil, err
 	}

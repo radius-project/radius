@@ -21,7 +21,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
 	rp_frontend "github.com/project-radius/radius/pkg/rp/frontend"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
@@ -29,9 +28,7 @@ var _ ctrl.Controller = (*CreateOrUpdateRedisCache)(nil)
 // CreateOrUpdateRedisCache is the controller implementation to create or update RedisCache link resource.
 type CreateOrUpdateRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
-
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewCreateOrUpdateRedisCache creates a new instance of CreateOrUpdateRedisCache.
@@ -42,8 +39,7 @@ func NewCreateOrUpdateRedisCache(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 
@@ -78,7 +74,7 @@ func (rc *CreateOrUpdateRedisCache) Run(ctx context.Context, w http.ResponseWrit
 		return nil, err
 	}
 
-	newResource.Properties.BasicResourceProperties.Status.OutputResources = deploymentOutput.Resources
+	newResource.Properties.Status.OutputResources = deploymentOutput.Resources
 	newResource.ComputedValues = deploymentOutput.ComputedValues
 	newResource.SecretValues = deploymentOutput.SecretValues
 

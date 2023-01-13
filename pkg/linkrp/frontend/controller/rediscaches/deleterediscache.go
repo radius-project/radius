@@ -18,7 +18,6 @@ import (
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/store"
-	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 var _ ctrl.Controller = (*DeleteRedisCache)(nil)
@@ -26,9 +25,7 @@ var _ ctrl.Controller = (*DeleteRedisCache)(nil)
 // DeleteRedisCache is the controller implementation to delete rediscache link resource.
 type DeleteRedisCache struct {
 	ctrl.Operation[*datamodel.RedisCache, datamodel.RedisCache]
-
-	KubeClient runtimeclient.Client
-	dp         deployment.DeploymentProcessor
+	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteRedisCache creates a new instance DeleteRedisCache.
@@ -39,8 +36,7 @@ func NewDeleteRedisCache(opts fctrl.Options) (ctrl.Controller, error) {
 				RequestConverter:  converter.RedisCacheDataModelFromVersioned,
 				ResponseConverter: converter.RedisCacheDataModelToVersioned,
 			}),
-		KubeClient: opts.KubeClient,
-		dp:         opts.DeployProcessor,
+		dp: opts.DeployProcessor,
 	}, nil
 }
 

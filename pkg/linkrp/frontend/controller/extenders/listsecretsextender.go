@@ -7,7 +7,6 @@ package extenders
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
@@ -17,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	fctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/store"
 	runtimeclient "sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -53,10 +51,11 @@ func (ctrl *ListSecretsExtender) Run(ctx context.Context, w http.ResponseWriter,
 	parsedResourceID := sCtx.ResourceID.Truncate()
 	resource, _, err := ctrl.GetResource(ctx, parsedResourceID)
 	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNotFoundResponse(sCtx.ResourceID), nil
-		}
 		return nil, err
+	}
+
+	if resource == nil {
+		return rest.NewNotFoundResponse(sCtx.ResourceID), nil
 	}
 
 	secrets, err := ctrl.dp.FetchSecrets(ctx, deployment.ResourceData{ID: sCtx.ResourceID, Resource: resource, OutputResources: resource.Properties.Status.OutputResources, ComputedValues: resource.ComputedValues, SecretValues: resource.SecretValues})

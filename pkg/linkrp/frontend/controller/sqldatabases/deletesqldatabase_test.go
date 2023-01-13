@@ -99,6 +99,9 @@ func TestDeleteSqlDatabase_20220315PrivatePreview(t *testing.T) {
 				EXPECT().
 				Get(gomock.Any(), gomock.Any()).
 				DoAndReturn(func(ctx context.Context, id string, _ ...store.GetOptions) (*store.Object, error) {
+					if testcase.expectedStatusCode == http.StatusNoContent {
+						return nil, &store.ErrNotFound{}
+					}
 					return &store.Object{
 						Metadata: store.Metadata{ID: id, ETag: testcase.resourceETag},
 						Data:     sqlDataModel,
