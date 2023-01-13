@@ -373,7 +373,7 @@
         "recipes": {
           "additionalProperties": {
             "$ref": "#/definitions/EnvironmentRecipeProperties",
-            "description": "Specifies Recipe linked to the Environment."
+            "description": "Specifies recipe linked to the environment."
           },
           "type": "object"
         },
@@ -405,7 +405,7 @@
       "description": "Properties of a Recipe linked to an Environment.",
       "properties": {
         "linkType": {
-          "description": "Type of the link this recipe can be consumed by. For example: 'Applications.Link/mongoDatabases'",
+          "description": "Type of the link this recipe can be consumed by. For example:'Applications.Link/mongoDatabases'",
           "type": "string"
         },
         "templatePath": {
@@ -413,7 +413,7 @@
           "type": "string"
         },
         "parameters": {
-          "description": "Key/value parameters to pass into the recipe template at deployment",
+          "description": "Key/Value parameters to pass into the recipe template at deployment",
           "type": "object",
           "example": [
             {
