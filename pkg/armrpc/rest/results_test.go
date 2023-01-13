@@ -227,7 +227,7 @@ func TestGetAsyncLocationPath(t *testing.T) {
 			r := NewAsyncOperationResponse(body, tt.loc, http.StatusAccepted, resourceID, tt.opID, tt.av, "", "")
 
 			req := httptest.NewRequest("GET", tt.base, nil)
-			req.Header.Add("Referer", tt.referer.String())
+			req.Header.Add(v1.RefererHeader, tt.referer.String())
 			w := httptest.NewRecorder()
 			err = r.Apply(context.Background(), w, req)
 			require.NoError(t, err)
