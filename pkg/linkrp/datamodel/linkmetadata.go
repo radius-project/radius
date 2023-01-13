@@ -36,8 +36,9 @@ type RecipeData struct {
 
 type RecipeProperties struct {
 	LinkRecipe
-	LinkType     string
-	TemplatePath string
+	LinkType      string
+	TemplatePath  string
+	EnvParameters map[string]any
 }
 
 // LinkRecipe is the recipe details used to automatically deploy underlying infrastructure for a link

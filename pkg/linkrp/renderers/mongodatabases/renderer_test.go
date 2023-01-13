@@ -351,6 +351,9 @@ func Test_Render_Recipe_Success(t *testing.T) {
 			MongoDatabaseRecipeProperties: datamodel.MongoDatabaseRecipeProperties{
 				Recipe: datamodel.LinkRecipe{
 					Name: "mongodb",
+					Parameters: map[string]any{
+						"throughput": 400,
+					},
 				},
 			},
 		},
@@ -389,13 +392,20 @@ func Test_Render_Recipe_Success(t *testing.T) {
 		RecipeProperties: datamodel.RecipeProperties{
 			LinkRecipe: datamodel.LinkRecipe{
 				Name: "mongodb",
+				Parameters: map[string]any{
+					"throughput": 400,
+				},
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			LinkType:     ResourceType,
+			EnvParameters: map[string]any{
+				"name": "account-mongo-db",
+			},
 		}})
 	require.NoError(t, err)
 	// Recipe properties
 	require.Equal(t, mongoDBResource.Properties.Recipe.Name, output.RecipeData.Name)
+	require.Equal(t, mongoDBResource.Properties.Recipe.Parameters, output.RecipeData.Parameters)
 	require.Equal(t, "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1", output.RecipeData.TemplatePath)
 	require.Equal(t, clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()), output.RecipeData.APIVersion)
 
@@ -446,6 +456,9 @@ func Test_Render_Recipe_InvalidLinkType(t *testing.T) {
 			},
 			TemplatePath: "testpublicrecipe.azurecr.io/bicep/modules/mongodatabases:v1",
 			LinkType:     "Applications.Link/redisCaches",
+			EnvParameters: map[string]any{
+				"name": "account-mongo-db",
+			},
 		}})
 	require.Error(t, err)
 	require.Equal(t, v1.CodeInvalid, err.(*v1.ErrClientRP).Code)

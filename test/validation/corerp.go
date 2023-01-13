@@ -51,6 +51,7 @@ type CoreRPResource struct {
 type OutputResourceResponse struct {
 	LocalID  string
 	Provider string
+	Identity any
 }
 
 type CoreRPResourceSet struct {
@@ -84,7 +85,7 @@ func DeleteCoreRPResource(ctx context.Context, t *testing.T, cli *radcli.CLI, cl
 	return nil
 }
 
-func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, client clients.ApplicationsManagementClient) {
+func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRPResourceSet, verifyRecipeResource bool, client clients.ApplicationsManagementClient) {
 	for _, expectedResource := range expected.Resources {
 		if expectedResource.Type == EnvironmentsResource {
 			envs, err := client.ListEnvironmentsInResourceGroup(ctx)
@@ -138,6 +139,14 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 					for _, actualOutputResource := range outputResources {
 						if expectedOutputResource.LocalID == actualOutputResource.LocalID && expectedOutputResource.Provider == actualOutputResource.Provider {
 							found = true
+							if verifyRecipeResource {
+								identity := actualOutputResource.Identity.(map[string]interface{})
+								actualID := identity["id"].(string)
+								actualResourceName := strings.Split(actualID, "/")[len(strings.Split(actualID, "/"))-1]
+								if expectedOutputResource.Identity != actualResourceName {
+									found = false
+								}
+							}
 							break
 						}
 					}
