@@ -6,10 +6,9 @@
 package daprstatestores
 
 import (
-	"github.com/Azure/azure-sdk-for-go/profiles/latest/cosmos-db/mgmt/documentdb"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/project-radius/radius/pkg/azure/azresources"
-	"github.com/project-radius/radius/pkg/azure/clients"
+	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -22,7 +21,7 @@ func GetDaprStateStoreRecipe(resource datamodel.DaprStateStore, applicationName 
 	recipeData := datamodel.RecipeData{
 		Provider:         resourcemodel.ProviderAzure,
 		RecipeProperties: options.RecipeProperties,
-		APIVersion:       clients.GetAPIVersionFromUserAgent(documentdb.UserAgent()),
+		APIVersion:       clientv2.AccountsClientAPIVersion,
 	}
 
 	outputResources := []outputresource.OutputResource{

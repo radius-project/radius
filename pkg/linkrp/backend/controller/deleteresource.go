@@ -13,6 +13,7 @@ import (
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
+	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/daprstatestores"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/controller/mongodatabases"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 	"github.com/project-radius/radius/pkg/ucp/resources"
@@ -65,6 +66,12 @@ func getResourceData(id resources.ID, obj *store.Object) (deployment.ResourceDat
 	switch resourceType {
 	case strings.ToLower(mongodatabases.ResourceTypeName):
 		d := &datamodel.MongoDatabase{}
+		if err := obj.As(d); err != nil {
+			return deployment.ResourceData{}, err
+		}
+		return deployment.ResourceData{ID: id, Resource: d, OutputResources: d.Properties.Status.OutputResources, ComputedValues: d.ComputedValues, SecretValues: d.SecretValues, RecipeData: d.RecipeData}, nil
+	case strings.ToLower(daprstatestores.ResourceTypeName):
+		d := &datamodel.DaprStateStore{}
 		if err := obj.As(d); err != nil {
 			return deployment.ResourceData{}, err
 		}

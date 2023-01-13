@@ -103,9 +103,7 @@ func (handler *daprStateStoreAzureStorageHandler) Put(ctx context.Context, resou
 }
 
 func (handler *daprStateStoreAzureStorageHandler) Delete(ctx context.Context, resource *outputresource.OutputResource) error {
-	properties := resource.Resource.(map[string]any)
-
-	err := handler.deleteDaprStateStore(ctx, properties)
+	err := handler.deleteDaprStateStore(ctx, resource)
 	if err != nil {
 		return err
 	}
@@ -193,7 +191,8 @@ func (handler *daprStateStoreAzureStorageHandler) findStorageKey(ctx context.Con
 	return nil, fmt.Errorf("listkeys contained keys, but none of them have full access")
 }
 
-func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, properties map[string]any) error {
+func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx context.Context, resource *outputresource.OutputResource) error {
+	properties := resource.Resource.(map[string]any)
 	item := unstructured.Unstructured{
 		Object: map[string]any{
 			"apiVersion": properties[KubernetesAPIVersionKey],
@@ -204,8 +203,12 @@ func (handler *daprStateStoreAzureStorageHandler) deleteDaprStateStore(ctx conte
 			},
 		},
 	}
-
-	err := client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
+	armHandler := NewARMHandler(handler.arm)
+	err := armHandler.Delete(ctx, resource)
+	if err != nil {
+		return fmt.Errorf("failed to delete Azure table storage account")
+	}
+	err = client.IgnoreNotFound(handler.k8s.Delete(ctx, &item))
 	if err != nil {
 		return fmt.Errorf("failed to delete Dapr state store: %w", err)
 	}

@@ -25,6 +25,7 @@ var (
 	// We use this array to generate generic backend controller for each resource.
 	ResourceTypeNames = []string{
 		"Applications.Link/mongoDatabases",
+		"Applications.Link/daprStateStores",
 	}
 )
 
