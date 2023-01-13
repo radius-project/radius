@@ -37,7 +37,7 @@ model RabbitMQMessageQueueResource
   is TrackedResource<RabbitMQMessageQueueProperties> {
   @doc("The name of the RabbitMQMessageQueue link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("rabbitMQMessageQueueName")
   @path
   @segment("rabbitMQMessageQueues")
@@ -98,7 +98,7 @@ op RabbitMQMessageQueues_listSecrets(
   ...RootScopeParam,
   @doc("The name of the RabbitMQMessageQueue link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @extension("x-ms-parameter-location", "method")
   rabbitMQMessageQueueName: string

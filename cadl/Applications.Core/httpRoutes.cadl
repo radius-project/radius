@@ -57,7 +57,7 @@ model HttpRouteProperties extends BasicResourceProperties {
 model HttpRouteResource is TrackedResource<HttpRouteProperties> {
   @doc("HttpRoute name")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("httpRouteName")
   @path
   @segment("httpRoute")

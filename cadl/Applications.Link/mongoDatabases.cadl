@@ -35,7 +35,7 @@ namespace Applications.Link;
 model MongoDatabaseResource is TrackedResource<MongoDatabaseProperties> {
   @doc("The name of the MongoDatabase link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @segment("mongoDatabases")
   @key("mongoDatabaseName")
@@ -128,7 +128,7 @@ op MongoDatabases_listSecrets(...ApiVersionParameter,
   ...RootScopeParam,
   @doc("The name of the MongoDatabase link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @extension("x-ms-parameter-location", "method")
   mongoDatabaseName: string): ArmResponse<MongoDatabaseListSecretsResult>

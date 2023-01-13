@@ -329,7 +329,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
 						},
 					},
 				},
@@ -352,7 +352,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
 						},
 					},
 				},
@@ -375,7 +375,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
 						},
 					},
 				},
@@ -398,7 +398,7 @@ func runTest(t *testing.T, resourceIDUrl string) {
 					Details: []v1.ErrorDetails{
 						{
 							Code:    "InvalidRequestContent",
-							Message: "environmentName in path should match '^[a-z]([-a-z0-9]*[a-z0-9])?$'",
+							Message: "environmentName in path should match '^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$'",
 						},
 					},
 				},

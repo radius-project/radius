@@ -35,7 +35,7 @@ namespace Applications.Link;
 model ExtenderResource is TrackedResource<ExtenderProperties> {
   @doc("Extender name")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @key("extenderName")
   @path
   @segment("extenders")
@@ -67,7 +67,7 @@ op Extenders_listSecrets(
   ...RootScopeParam,
   @doc("The name of the Extender link resource")
   @maxLength(63)
-  @pattern("^[a-z]([-a-z0-9]*[a-z0-9])?$")
+  @pattern("^[A-Za-z]([-A-Za-z0-9]*[A-Za-z0-9])?$")
   @path
   @extension("x-ms-parameter-location", "method")
   extenderName: string): ArmResponse<ExtenderListSecretsResult> | ErrorResponse;
