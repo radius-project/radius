@@ -19,7 +19,7 @@ import (
 	"github.com/project-radius/radius/pkg/rp/outputresource"
 )
 
-type StateStoreFunc = func(resource datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
+type StateStoreFunc = func(resource *datamodel.DaprStateStore, applicationName string, namespace string) ([]outputresource.OutputResource, error)
 
 var SupportedStateStoreModes = map[string]StateStoreFunc{
 	string(datamodel.LinkModeResource): GetDaprStateStoreAzureStorage,
@@ -57,7 +57,7 @@ func (r *Renderer) Render(ctx context.Context, dm v1.ResourceDataModel, options 
 		applicationName = applicationID.Name()
 	}
 
-	resources, err := stateStoreFunc(*resource, applicationName, options.Namespace)
+	resources, err := stateStoreFunc(resource, applicationName, options.Namespace)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
