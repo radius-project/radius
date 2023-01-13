@@ -409,7 +409,7 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-		testRendererOutput.ContextMeta = datamodel.ContextMeta{
+		testRendererOutput.RecipeContextMetaData = datamodel.RecipeContextMetaData{
 			LinkID:               mongoLinkResourceID,
 			ApplicationID:        testResource.Properties.Application,
 			EnvironmentID:        testResource.Properties.Environment,
@@ -426,7 +426,7 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
-		require.Equal(t, testRendererOutput.ContextMeta, rendererOutput.ContextMeta)
+		require.Equal(t, testRendererOutput.RecipeContextMetaData, rendererOutput.RecipeContextMetaData)
 	})
 
 	t.Run("verify render success with recipe", func(t *testing.T) {
@@ -445,7 +445,6 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
 		require.Equal(t, testRendererOutput.RecipeData, rendererOutput.RecipeData)
 		require.Equal(t, testRendererOutput.EnvironmentProviders, rendererOutput.EnvironmentProviders)
-
 	})
 
 	t.Run("verify render success with mixedcase resourcetype", func(t *testing.T) {

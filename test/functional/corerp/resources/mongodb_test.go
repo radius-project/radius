@@ -211,3 +211,62 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 	test.Test(t)
 }
+
+// Test_MongoDB_Recipe_ContextParameter validates:
+// the creation of a mongoDB from recipe using the context parameter set by linkRP dynamically
+// container using the mongoDB link to connect to the mongoDB resource
+func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
+	template := "testdata/corerp-resources-mongodb-recipe-context.bicep"
+	name := "corerp-resources-mongodb-recipe-context"
+	appNamespace := "corerp-resources-mongodb-recipe-context-app"
+
+	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
+		{
+			Executor: step.NewDeployExecutor(template, functional.GetMagpieImage()),
+			CoreRPResources: &validation.CoreRPResourceSet{
+				Resources: []validation.CoreRPResource{
+					{
+						Name: "corerp-resources-environment-recipes-context-env",
+						Type: validation.EnvironmentsResource,
+					},
+					{
+						Name: "corerp-resources-mongodb-recipe-context",
+						Type: validation.ApplicationsResource,
+						App:  name,
+					},
+					{
+						Name: "mongodb-recipe-context-app-ctnr",
+						Type: validation.ContainersResource,
+						App:  name,
+					},
+					{
+						Name: "mongo-recipe-context-db1",
+						Type: validation.MongoDatabasesResource,
+						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+								Identity: "account-mongo-recipe-context-db1",
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+								Identity: "mongodb-mongo-recipe-context-db1",
+							},
+						},
+					},
+				},
+			},
+			K8sObjects: &validation.K8sObjectSet{
+				Namespaces: map[string][]validation.K8sObject{
+					appNamespace: {
+						validation.NewK8sPodForResource(name, "mongodb-recipe-context-app-ctnr"),
+					},
+				},
+			},
+		},
+	})
+	test.VerifyRecipeResource = true
+	test.Test(t)
+}

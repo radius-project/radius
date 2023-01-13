@@ -52,13 +52,14 @@ type LinkRecipe struct {
 type LinkMode string
 
 const (
-	LinkModeRecipe   LinkMode = "recipe"
-	LinkModeResource LinkMode = "resource"
-	LinkModeValues   LinkMode = "values"
+	LinkModeRecipe         LinkMode = "recipe"
+	LinkModeResource       LinkMode = "resource"
+	LinkModeValues         LinkMode = "values"
+	RecipeContextParameter string   = "context"
 )
 
-// ContextMeta is used to create the context in the recipe-handler if the recipe uses a context parameter
-type ContextMeta struct {
+// ContextMetaData is used to create the context in the recipe-handler if the recipe uses a context parameter
+type RecipeContextMetaData struct {
 	ApplicationID        string
 	EnvironmentID        string
 	LinkID               resources.ID
@@ -66,28 +67,25 @@ type ContextMeta struct {
 	ApplicationNamespace string
 }
 
-// Context is used to have the link,environment and application information to be used by recipe
-type Context struct {
-	Link        Link        `json:"link:omitempty"`
-	Application Application `json:"application,omitempty"`
-	Environment Environment `json:"environment,omitempty"`
-	Timestamp   string      `json:"timestamp,omitempty"`
-	Runtime     Runtime     `json:"runtime,omitempty"`
+// RecipeContext is used to have the link, environment, application and runtime information to be used by recipe
+// Recipe template authors can leverage the RecipeContext parameter to access properties to help them name/configure their infrastructure
+// This allows the recipe template to generate names & properties that are unique and repeatable for the Link calling the recipe
+type RecipeContext struct {
+	Link        Link         `json:"link,omitempty"`
+	Application ResourceInfo `json:"application,omitempty"`
+	Environment ResourceInfo `json:"environment,omitempty"`
+	Timestamp   string       `json:"timestamp,omitempty"`
+	Runtime     Runtime      `json:"runtime,omitempty"`
 }
 type Link struct {
-	Name string `json:"name:omitempty"`
-	ID   string `json:"id:omitempty"`
-	Type string `json:"type:omitempty"`
+	Name string `json:"name,omitempty"`
+	ID   string `json:"id,omitempty"`
+	Type string `json:"type,omitempty"`
 }
 
-type Application struct {
-	Name string `json:"name:omitempty"`
-	ID   string `json:"id:omitempty"`
-}
-
-type Environment struct {
-	Name string `json:"name:omitempty"`
-	ID   string `json:"id:omitempty"`
+type ResourceInfo struct {
+	Name string `json:"name,omitempty"`
+	ID   string `json:"id,omitempty"`
 }
 
 type Runtime struct {

@@ -32,7 +32,7 @@ const deploymentPrefix = "recipe"
 //
 //go:generate mockgen -destination=./mock_recipe_handler.go -package=handlers -self_package github.com/project-radius/radius/pkg/linkrp/handlers github.com/project-radius/radius/pkg/linkrp/handlers RecipeHandler
 type RecipeHandler interface {
-	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.ContextMeta) ([]string, error)
+	DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.RecipeContextMetaData) ([]string, error)
 }
 
 func NewRecipeHandler(arm *armauth.ArmConfig) RecipeHandler {
@@ -48,7 +48,7 @@ type azureRecipeHandler struct {
 // DeployRecipe deploys the recipe template fetched from the provided recipe TemplatePath using the providers scope.
 // Currently the implementation assumes TemplatePath is location of an ARM JSON template in Azure Container Registry.
 // Returns resource IDs of the resources deployed by the template
-func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.ContextMeta) (deployedResources []string, err error) {
+func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe datamodel.RecipeProperties, envProviders coreDatamodel.Providers, contextMeta datamodel.RecipeContextMetaData) (deployedResources []string, err error) {
 	if recipe.TemplatePath == "" {
 		return nil, fmt.Errorf("recipe template path cannot be empty")
 	}
@@ -92,15 +92,16 @@ func (handler *azureRecipeHandler) DeployRecipe(ctx context.Context, recipe data
 
 	// if the recipe template has the context parameter defined then add it to the parameter for deployment
 	parameters := map[string]interface{}{}
-	_, isContextParamterDefined := recipeData["parameters"].(map[string]interface{})["context"]
-	if isContextParamterDefined {
+	_, isContextParameterDefined := recipeData["parameters"].(map[string]interface{})[datamodel.RecipeContextParameter]
+	if isContextParameterDefined {
 		linkContext, err := createContextParameter(&contextMeta)
 		if err != nil {
 			return nil, err
 		}
-		parameters["context"] = *linkContext
+		parameters["context"] = map[string]interface{}{
+			"value": *linkContext,
+		}
 	}
-
 	// Using ARM deployment client to deploy ARM JSON template fetched from ACR
 	dClient := clients.NewDeploymentsClient(subscriptionID, handler.arm.Auth)
 	deploymentName := deploymentPrefix + strconv.FormatInt(time.Now().UnixNano(), 10)
@@ -217,8 +218,8 @@ func parseAzureProvider(providers *coreDatamodel.Providers) (subscriptionID stri
 }
 
 // createContextParameter creates the context parameter for the recipe with the link, environment and application info
-func createContextParameter(contextMeta *datamodel.ContextMeta) (*datamodel.Context, error) {
-	linkContext := datamodel.Context{}
+func createContextParameter(contextMeta *datamodel.RecipeContextMetaData) (*datamodel.RecipeContext, error) {
+	linkContext := datamodel.RecipeContext{}
 	linkContext.Link.ID = contextMeta.LinkID.String()
 	linkContext.Link.Name = contextMeta.LinkID.Name()
 	linkContext.Link.Type = strings.ToLower(contextMeta.LinkID.Type())

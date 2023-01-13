@@ -92,37 +92,36 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 	}
 
 	// fetch the environment ID and recipe name from the resource
-	basicResource, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
+	linkProperties, recipe, err := dp.getMetadataFromResource(ctx, id, resource)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
 	// Fetch the environment namespace, recipe link type and recipe template path by doing a db lookup
-	envMetadata, err := dp.getEnvironmentMetadata(ctx, basicResource.Environment, recipe.Name)
+	envMetadata, err := dp.getEnvironmentMetadata(ctx, linkProperties.Environment, recipe.Name)
 	if err != nil {
 		return renderers.RendererOutput{}, err
 	}
 
-	kubeNamespace := envMetadata.Namespace
-
 	// create the context object to be passed to the recipe deployment
-	var contextMeta datamodel.ContextMeta
-	contextMeta.LinkID = id
-	contextMeta.EnvironmentID = basicResource.Environment
-	contextMeta.EnvironmentNamespace = kubeNamespace
+	var contextMetaData datamodel.RecipeContextMetaData
+	contextMetaData.LinkID = id
+	contextMetaData.EnvironmentID = linkProperties.Environment
+	contextMetaData.EnvironmentNamespace = envMetadata.Namespace
 
+	kubeNamespace := envMetadata.Namespace
 	// Override environment-scope namespace with application-scope kubernetes namespace.
-	if basicResource.Application != "" {
+	if linkProperties.Application != "" {
 		app := &coreDatamodel.Application{}
-		if err := rp_util.FetchScopeResource(ctx, dp.sp, basicResource.Application, app); err != nil {
+		if err := rp_util.FetchScopeResource(ctx, dp.sp, linkProperties.Application, app); err != nil {
 			return renderers.RendererOutput{}, err
 		}
 		// set the application info in the context object
-		contextMeta.ApplicationID = basicResource.Application
+		contextMetaData.ApplicationID = linkProperties.Application
 		c := app.Properties.Status.Compute
 		if c != nil && c.Kind == rp.KubernetesComputeKind {
 			kubeNamespace = c.KubernetesCompute.Namespace
-			contextMeta.ApplicationNamespace = kubeNamespace
+			contextMetaData.ApplicationNamespace = kubeNamespace
 		}
 	}
 
@@ -139,7 +138,7 @@ func (dp *deploymentProcessor) Render(ctx context.Context, id resources.ID, reso
 		return renderers.RendererOutput{}, err
 	}
 
-	rendererOutput.ContextMeta = contextMeta
+	rendererOutput.RecipeContextMetaData = contextMetaData
 	// Check if the output resources have the corresponding provider supported in Radius
 	for _, or := range rendererOutput.Resources {
 		if or.ResourceType.Provider == "" {
@@ -173,7 +172,7 @@ func (dp *deploymentProcessor) Deploy(ctx context.Context, resourceID resources.
 
 	// Deploy recipe
 	if rendererOutput.RecipeData.Name != "" {
-		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.ContextMeta)
+		deployedRecipeResourceIDs, err := dp.appmodel.GetRecipeModel().RecipeHandler.DeployRecipe(ctx, rendererOutput.RecipeData.RecipeProperties, rendererOutput.EnvironmentProviders, rendererOutput.RecipeContextMetaData)
 		if err != nil {
 			return DeploymentOutput{}, err
 		}

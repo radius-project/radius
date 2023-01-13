@@ -19,24 +19,24 @@ import (
 func Test_ContextParameter(t *testing.T) {
 	linkID, err := resources.ParseResource("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0")
 	require.NoError(t, err)
-	contextMeta := datamodel.ContextMeta{
+	contextMeta := datamodel.RecipeContextMetaData{
 		LinkID:               linkID,
 		EnvironmentID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		ApplicationID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 		EnvironmentNamespace: "radius-test-env",
 		ApplicationNamespace: "radius-test-app",
 	}
-	expectedLinkContext := datamodel.Context{
+	expectedLinkContext := datamodel.RecipeContext{
 		Link: datamodel.Link{
 			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
 			Name: "mongo0",
 			Type: "applications.link/mongodatabases",
 		},
-		Application: datamodel.Application{
+		Application: datamodel.ResourceInfo{
 			Name: "testApplication",
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
 		},
-		Environment: datamodel.Environment{
+		Environment: datamodel.ResourceInfo{
 			Name: "env0",
 			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
 		},
@@ -56,7 +56,7 @@ func Test_ContextParameter(t *testing.T) {
 func Test_ContextParameterError(t *testing.T) {
 	linkID, err := resources.ParseResource("/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0")
 	require.NoError(t, err)
-	contextMeta := datamodel.ContextMeta{
+	contextMeta := datamodel.RecipeContextMetaData{
 		LinkID:               linkID,
 		EnvironmentID:        "error-env",
 		ApplicationID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
