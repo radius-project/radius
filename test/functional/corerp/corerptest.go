@@ -79,8 +79,11 @@ type CoreRPTest struct {
 	// for this test to run.
 	RequiredFeatures []RequiredFeature
 
-	// VerifyRecipeResource specifies to validate the azure resource from the output response to have
-	// the context param values
+	// VerifyRecipeResource flag is set if an azure resource got deployed using the context parameter needs validation.
+	// For our test the recipe is using the context.link.name to create the azure resources.
+	// After the resource is deployed we fetch the resource name from the output resource that got deployed with the context.link.name.
+	//
+	// for eg. in the recipe bicep the cosmos account name is "account-{context.link.name}" and in the test we pass the expected name.
 	VerifyRecipeResource bool
 }
 

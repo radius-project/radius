@@ -7,7 +7,6 @@ package datamodel
 
 import (
 	"github.com/project-radius/radius/pkg/rp"
-	"github.com/project-radius/radius/pkg/ucp/resources"
 )
 
 // LinkMetadata represents internal DataModel properties common to all link types.
@@ -49,23 +48,15 @@ type LinkRecipe struct {
 	Parameters map[string]any `json:"parameters,omitempty"`
 }
 
+// LinkMode specifies the mode used to deploy a link
 type LinkMode string
 
 const (
-	LinkModeRecipe         LinkMode = "recipe"
-	LinkModeResource       LinkMode = "resource"
-	LinkModeValues         LinkMode = "values"
-	RecipeContextParameter string   = "context"
+	LinkModeRecipe         LinkMode = "recipe"   // mode recipe for link deployment
+	LinkModeResource       LinkMode = "resource" // mode resource for link deployment
+	LinkModeValues         LinkMode = "values"   // mode values for link deployment
+	RecipeContextParameter string   = "context"  // parameter context for recipe deployment
 )
-
-// ContextMetaData is used to create the context in the recipe-handler if the recipe uses a context parameter
-type RecipeContextMetaData struct {
-	ApplicationID        string
-	EnvironmentID        string
-	LinkID               resources.ID
-	EnvironmentNamespace string
-	ApplicationNamespace string
-}
 
 // RecipeContext is used to have the link, environment, application and runtime information to be used by recipe
 // Recipe template authors can leverage the RecipeContext parameter to access properties to help them name/configure their infrastructure

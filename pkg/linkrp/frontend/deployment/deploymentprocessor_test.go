@@ -246,7 +246,7 @@ func buildOutputResourcesDapr(mode string) []outputresource.OutputResource {
 
 func buildApplicationResource(namespace string) *store.Object {
 	if namespace == "" {
-		namespace = "radius-test"
+		namespace = "radius-test-app"
 	}
 
 	app := corerpDatamodel.Application{
@@ -287,7 +287,7 @@ func buildEnvironmentResource(recipeName string, providers *corerpDatamodel.Prov
 		Properties: corerpDatamodel.EnvironmentProperties{
 			Compute: rp.EnvironmentCompute{
 				KubernetesCompute: rp.KubernetesComputeProperties{
-					Namespace: "radius-test",
+					Namespace: "radius-test-env",
 				},
 			},
 		},
@@ -408,12 +408,30 @@ func Test_Render(t *testing.T) {
 	t.Run("verify render success", func(t *testing.T) {
 		testResource := buildInputResourceMongo(modeResource)
 		testRendererOutput := buildRendererOutputMongo(modeResource)
-		testRendererOutput.RecipeContextMetaData = datamodel.RecipeContextMetaData{
-			LinkID:               mongoLinkResourceID,
-			ApplicationID:        testResource.Properties.Application,
-			EnvironmentID:        testResource.Properties.Environment,
-			EnvironmentNamespace: "radius-test",
-			ApplicationNamespace: "radius-test",
+		app, _ := resources.ParseResource(testResource.Properties.Application)
+		appName := app.Name()
+		env, _ := resources.ParseResource(testResource.Properties.Environment)
+		envName := env.Name()
+		testRendererOutput.RecipeContext = datamodel.RecipeContext{
+			Link: datamodel.Link{
+				ID:   mongoLinkResourceID.String(),
+				Name: mongoLinkResourceID.Name(),
+				Type: mongoLinkResourceID.Type(),
+			},
+			Application: datamodel.ResourceInfo{
+				ID:   testResource.Properties.Application,
+				Name: appName,
+			},
+			Environment: datamodel.ResourceInfo{
+				ID:   testResource.Properties.Environment,
+				Name: envName,
+			},
+			Runtime: datamodel.Runtime{
+				Kubernetes: datamodel.Kubernetes{
+					EnvironmentNamespace: "radius-test-env",
+					ApplicationNamespace: "radius-test-app",
+				},
+			},
 		}
 		mocks.renderer.EXPECT().Render(gomock.Any(), gomock.Any(), gomock.Any()).Times(1).Return(testRendererOutput, nil)
 		mocks.dbProvider.EXPECT().GetStorageClient(gomock.Any(), gomock.Any()).Times(2).Return(mocks.db, nil)
@@ -425,7 +443,10 @@ func Test_Render(t *testing.T) {
 		require.Equal(t, len(testRendererOutput.Resources), len(rendererOutput.Resources))
 		require.Equal(t, testRendererOutput.ComputedValues, rendererOutput.ComputedValues)
 		require.Equal(t, testRendererOutput.SecretValues, rendererOutput.SecretValues)
-		require.Equal(t, testRendererOutput.RecipeContextMetaData, rendererOutput.RecipeContextMetaData)
+		require.Equal(t, testRendererOutput.RecipeContext.Link, rendererOutput.RecipeContext.Link)
+		require.Equal(t, testRendererOutput.RecipeContext.Application, rendererOutput.RecipeContext.Application)
+		require.Equal(t, testRendererOutput.RecipeContext.Environment, rendererOutput.RecipeContext.Environment)
+		require.Equal(t, testRendererOutput.RecipeContext.Runtime, rendererOutput.RecipeContext.Runtime)
 	})
 
 	t.Run("verify render success with recipe", func(t *testing.T) {
@@ -1094,4 +1115,56 @@ func Test_GetEnvironmentMetadata(t *testing.T) {
 		require.Error(t, err)
 		require.Equal(t, fmt.Sprintf("recipe with name %q does not exist in the environment %s", recipeName, env), err.Error())
 	})
+}
+
+func Test_ContextParameter(t *testing.T) {
+	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
+	contextMeta := RecipeContextMetadata{
+		LinkID:               linkID,
+		EnvironmentID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		ApplicationID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		EnvironmentNamespace: "radius-test-env",
+		ApplicationNamespace: "radius-test-app",
+	}
+	expectedLinkContext := datamodel.RecipeContext{
+		Link: datamodel.Link{
+			ID:   "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0",
+			Name: "mongo0",
+			Type: "applications.link/mongodatabases",
+		},
+		Application: datamodel.ResourceInfo{
+			Name: "testApplication",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		},
+		Environment: datamodel.ResourceInfo{
+			Name: "env0",
+			ID:   "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/environments/env0",
+		},
+		Runtime: datamodel.Runtime{
+			Kubernetes: datamodel.Kubernetes{
+				ApplicationNamespace: "radius-test-app",
+				EnvironmentNamespace: "radius-test-env",
+			},
+		},
+	}
+	expectedLinkContext.Timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+	linkContext, err := createContextParameter(&contextMeta)
+	require.NoError(t, err)
+	require.Equal(t, expectedLinkContext, *linkContext)
+}
+
+func Test_ContextParameterError(t *testing.T) {
+	linkID := "/subscriptions/testSub/resourceGroups/testGroup/providers/applications.link/mongodatabases/mongo0"
+	contextMeta := RecipeContextMetadata{
+		LinkID:               linkID,
+		EnvironmentID:        "error-env",
+		ApplicationID:        "/subscriptions/test-sub/resourceGroups/test-group/providers/Applications.Core/applications/testApplication",
+		EnvironmentNamespace: "radius-test-env",
+		ApplicationNamespace: "radius-test-app",
+	}
+
+	linkContext, err := createContextParameter(&contextMeta)
+	require.Error(t, err)
+	require.Equal(t, fmt.Errorf("failed to parse EnvironmentID : %q while building the context parameter", contextMeta.EnvironmentID), err)
+	require.Nil(t, linkContext)
 }

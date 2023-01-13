@@ -15,6 +15,7 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/output"
+	"github.com/project-radius/radius/pkg/ucp/resources"
 	"github.com/stretchr/testify/require"
 
 	"github.com/project-radius/radius/test/radcli"
@@ -142,8 +143,12 @@ func ValidateCoreRPResources(ctx context.Context, t *testing.T, expected *CoreRP
 							if verifyRecipeResource {
 								identity := actualOutputResource.Identity.(map[string]interface{})
 								actualID := identity["id"].(string)
-								actualResourceName := strings.Split(actualID, "/")[len(strings.Split(actualID, "/"))-1]
-								if expectedOutputResource.Identity != actualResourceName {
+								actualResource, err := resources.ParseResource(actualID)
+								if err != nil {
+									found = false
+									break
+								}
+								if expectedOutputResource.Identity != actualResource.Name() {
 									found = false
 								}
 							}

@@ -240,19 +240,19 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 						App:  name,
 					},
 					{
-						Name: "mongo-recipe-context-db1",
+						Name: "mongo-recipe-context-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
 						OutputResources: []validation.OutputResourceResponse{
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosAccount,
-								Identity: "account-mongo-recipe-context-db1",
+								Identity: "account-mongo-recipe-context-db",
 							},
 							{
 								Provider: resourcemodel.ProviderAzure,
 								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
-								Identity: "mongodb-mongo-recipe-context-db1",
+								Identity: "mongodb-mongo-recipe-context-db",
 							},
 						},
 					},
@@ -267,6 +267,7 @@ func Test_MongoDB_Recipe_ContextParameter(t *testing.T) {
 			},
 		},
 	})
+
 	test.VerifyRecipeResource = true
 	test.Test(t)
 }
