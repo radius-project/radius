@@ -7,8 +7,8 @@ package mongodatabases
 
 import (
 	"context"
-	"errors"
 	"net/http"
+	"time"
 
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/frontend/controller"
@@ -17,10 +17,14 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
 	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
-	"github.com/project-radius/radius/pkg/ucp/store"
 )
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
+
+var (
+	// AsyncDeleteMongoDatabaseOperationTimeout is the default timeout duration of async delete container operation.
+	AsyncDeleteMongoDatabaseOperationTimeout = time.Duration(300) * time.Second
+)
 
 // DeleteMongoDatabase is the controller implementation to delete mongoDatabase link resource.
 type DeleteMongoDatabase struct {
@@ -61,18 +65,9 @@ func (mongoDatabase *DeleteMongoDatabase) Run(ctx context.Context, w http.Respon
 		return r, err
 	}
 
-	err = mongoDatabase.dp.Delete(ctx, deployment.ResourceData{ID: serviceCtx.ResourceID, Resource: old, OutputResources: old.Properties.Status.OutputResources, ComputedValues: old.ComputedValues, SecretValues: old.SecretValues, RecipeData: old.RecipeData})
-	if err != nil {
-		return nil, err
+	if r, err := mongoDatabase.PrepareAsyncOperation(ctx, old, v1.ProvisioningStateAccepted, AsyncDeleteMongoDatabaseOperationTimeout, &etag); r != nil || err != nil {
+		return r, err
 	}
 
-	err = mongoDatabase.StorageClient().Delete(ctx, serviceCtx.ResourceID.String())
-	if err != nil {
-		if errors.Is(&store.ErrNotFound{}, err) {
-			return rest.NewNoContentResponse(), nil
-		}
-		return nil, err
-	}
-
-	return rest.NewOKResponse(nil), nil
+	return mongoDatabase.ConstructAsyncResponse(ctx, req.Method, etag, old)
 }
