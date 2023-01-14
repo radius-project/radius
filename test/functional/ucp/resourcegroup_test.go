@@ -40,7 +40,7 @@ func Test_ResourceGroup_Operations(t *testing.T) {
 		rgs := listResourceGroups(t, roundTripper, listRGsURL)
 		require.GreaterOrEqual(t, len(rgs.Value), 1)
 
-		// Get Resource Group by lowercasing resource name.
+		// Get Resource Group by calling lower case URL.
 		rg, statusCode := getResourceGroup(t, roundTripper, strings.ToLower(rgURL))
 		expectedResourceGroup := v20220901privatepreview.ResourceGroupResource{
 			ID:       to.Ptr(rgID),
