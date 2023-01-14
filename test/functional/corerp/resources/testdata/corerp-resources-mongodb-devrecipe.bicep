@@ -45,13 +45,13 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
     application: app.id
     connections: {
       mongodb: {
-        source: recipedb.id
+        source: devrecipedb.id
       }
     }
     container: {
       image: magpieimage
       env: {
-        DBCONNECTION: recipedb.connectionString()
+        DBCONNECTION: devrecipedb.connectionString()
       }
       readinessProbe:{
         kind:'httpGet'
