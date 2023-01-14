@@ -113,7 +113,7 @@ func Test_MongoDBUserSecrets(t *testing.T) {
 func Test_MongoDB_Recipe(t *testing.T) {
 	template := "testdata/corerp-resources-mongodb-recipe.bicep"
 	name := "corerp-resources-mongodb-recipe"
-	appNamespace := "corerp-resources-mongodb-recipe-app"
+	appNamespace := "default-corerp-resources-mongodb-recipe-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -171,7 +171,7 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 
 	template := "testdata/corerp-resources-mongodb-devrecipe.bicep"
 	name := "corerp-resources-mongodb-devrecipe"
-	appNamespace := "corerp-resources-mongodb-devrecipe-app"
+	appNamespace := "default-corerp-resources-mongodb-devrecipe-app"
 
 	test := corerp.NewCoreRPTest(t, name, []corerp.TestStep{
 		{
@@ -196,6 +196,16 @@ func Test_MongoDB_DevRecipe(t *testing.T) {
 						Name: "mongo-devrecipe-db",
 						Type: validation.MongoDatabasesResource,
 						App:  name,
+						OutputResources: []validation.OutputResourceResponse{
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosAccount,
+							},
+							{
+								Provider: resourcemodel.ProviderAzure,
+								LocalID:  outputresource.LocalIDAzureCosmosDBMongo,
+							},
+						},
 					},
 				},
 			},

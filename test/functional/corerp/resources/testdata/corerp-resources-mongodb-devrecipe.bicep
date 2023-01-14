@@ -62,7 +62,7 @@ resource webapp 'Applications.Core/containers@2022-03-15-privatepreview' = {
   }
 }
 
-resource recipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
+resource devrecipedb 'Applications.Link/mongoDatabases@2022-03-15-privatepreview' = {
   name: 'mongo-devrecipe-db'
   location: 'global'
   properties: {
