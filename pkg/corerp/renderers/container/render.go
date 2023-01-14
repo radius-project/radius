@@ -198,16 +198,16 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	ports := []corev1.ContainerPort{}
 	for _, port := range cc.Container.Ports {
 		if provides := port.Provides; provides != "" {
-			resourceId, err := resources.ParseResource(strings.ToLower(provides))
+			resourceId, err := resources.ParseResource(provides)
 			if err != nil {
 				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
-			routeName := resourceId.Name()
+			routeName := kubernetes.NormalizeResourceName(resourceId.Name())
 			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
 			routeTypeParts := strings.Split(routeType, "/")
 
-			routeTypeSuffix := routeTypeParts[len(routeTypeParts)-1]
+			routeTypeSuffix := kubernetes.NormalizeResourceName(routeTypeParts[len(routeTypeParts)-1])
 
 			routes = append(routes, struct {
 				Name string
