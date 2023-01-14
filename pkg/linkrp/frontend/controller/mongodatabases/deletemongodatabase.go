@@ -16,7 +16,6 @@ import (
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel/converter"
 	frontend_ctrl "github.com/project-radius/radius/pkg/linkrp/frontend/controller"
-	"github.com/project-radius/radius/pkg/linkrp/frontend/deployment"
 )
 
 var _ ctrl.Controller = (*DeleteMongoDatabase)(nil)
@@ -29,7 +28,6 @@ var (
 // DeleteMongoDatabase is the controller implementation to delete mongoDatabase link resource.
 type DeleteMongoDatabase struct {
 	ctrl.Operation[*datamodel.MongoDatabase, datamodel.MongoDatabase]
-	dp deployment.DeploymentProcessor
 }
 
 // NewDeleteMongoDatabase creates a new instance DeleteMongoDatabase.
