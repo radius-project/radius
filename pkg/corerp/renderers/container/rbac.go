@@ -24,7 +24,7 @@ func makeRBACRole(appName, name, namespace string, resource *datamodel.Container
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      kubernetes.NormalizeResourceName(name),
 			Namespace: namespace,
 			Labels:    labels,
 		},
@@ -56,13 +56,13 @@ func makeRBACRoleBinding(appName, name, saName, namespace string, resource *data
 			APIVersion: "rbac.authorization.k8s.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      kubernetes.NormalizeResourceName(name),
 			Namespace: namespace,
 			Labels:    labels,
 		},
 		RoleRef: rbacv1.RoleRef{
 			Kind:     "Role",
-			Name:     name,
+			Name:     kubernetes.NormalizeResourceName(name),
 			APIGroup: "rbac.authorization.k8s.io",
 		},
 		Subjects: []rbacv1.Subject{

@@ -21,7 +21,7 @@ resource parametersApp 'Applications.Core/applications@2022-03-15-privatepreview
 }
 
 resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerc'
+  name: 'containerC'
   location: location
   properties: {
     application: parametersApp.id
@@ -32,7 +32,7 @@ resource containerc 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource containerd 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerd'
+  name: 'containerD'
   location: location
   properties: {
     application: parametersApp.id

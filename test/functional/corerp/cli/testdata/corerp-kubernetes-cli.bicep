@@ -18,7 +18,7 @@ resource app 'Applications.Core/applications@2022-03-15-privatepreview' = {
 }
 
 resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containera'
+  name: 'containerA'
   location: location
   properties: {
     application: app.id
@@ -29,7 +29,7 @@ resource containera 'Applications.Core/containers@2022-03-15-privatepreview' = {
 }
 
 resource containerb 'Applications.Core/containers@2022-03-15-privatepreview' = {
-  name: 'containerb'
+  name: 'containerB'
   location: location
   properties: {
     application: app.id

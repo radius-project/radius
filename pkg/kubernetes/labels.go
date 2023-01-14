@@ -55,11 +55,11 @@ const (
 // The descriptive labels are a superset of the selector labels.
 func MakeDescriptiveLabels(application string, resource string, resourceType string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication:  application,
-		LabelRadiusResource:     resource,
+		LabelRadiusApplication:  NormalizeResourceName(application),
+		LabelRadiusResource:     NormalizeResourceName(resource),
 		LabelRadiusResourceType: strings.ToLower(ConvertResourceTypeToLabelValue(resourceType)),
-		LabelName:               resource,
-		LabelPartOf:             application,
+		LabelName:               NormalizeResourceName(resource),
+		LabelPartOf:             NormalizeResourceName(application),
 		LabelManagedBy:          LabelManagedByRadiusRP,
 	}
 }
@@ -72,8 +72,8 @@ func MakeDescriptiveLabels(application string, resource string, resourceType str
 func MakeSelectorLabels(application string, resource string) map[string]string {
 	if resource != "" {
 		return map[string]string{
-			LabelRadiusApplication: application,
-			LabelRadiusResource:    resource,
+			LabelRadiusApplication: NormalizeResourceName(application),
+			LabelRadiusResource:    NormalizeResourceName(resource),
 		}
 	}
 	return map[string]string{
@@ -88,49 +88,29 @@ func MakeSelectorLabels(application string, resource string) map[string]string {
 // an HttpRoute and the Deployment created by a Container.
 func MakeRouteSelectorLabels(application string, resourceType string, route string) map[string]string {
 	return map[string]string{
-		LabelRadiusApplication: application,
+		LabelRadiusApplication: NormalizeResourceName(application),
 
 		// NOTE: pods can serve multiple routes of different types. Therefore we need to encode the
 		// the route's type and name in the *key* to support multiple matches.
-		fmt.Sprintf(LabelRadiusRouteFmt, strings.ToLower(strings.TrimSuffix(resourceType, "Route")), strings.ToLower(route)): "true",
-	}
-}
-
-// MakeRouteSelectorLabels returns a map of labels suitable for a Kubernetes selector to identify a labeled Radius-managed
-// Kubernetes object.
-//
-// This function differs from MakeSelectorLablels in that it's intended to *cross* resources. eg: The Service created by
-// an HttpRoute and the Deployment created by a Container.
-func MakeResourceCRDLabels(application string, resourceType string, resource string) map[string]string {
-	if resourceType != "" && resource != "" {
-		return map[string]string{
-			LabelRadiusApplication:  application,
-			LabelRadiusResourceType: resourceType,
-			LabelRadiusResource:     resource,
-			LabelName:               resource,
-			LabelPartOf:             application,
-			LabelManagedBy:          LabelManagedByRadiusRP,
-		}
-	}
-
-	return map[string]string{
-		LabelRadiusApplication: application,
-		LabelName:              application,
-		LabelManagedBy:         LabelManagedByRadiusRP,
+		fmt.Sprintf(LabelRadiusRouteFmt, NormalizeResourceName(strings.TrimSuffix(resourceType, "Route")), NormalizeResourceName(route)): "true",
 	}
 }
 
 // NormalizeResourceName normalizes resource name used for kubernetes resource name scoped in namespace.
 // All name will be validated by swagger validaiton so that it does not get non-RFC1035 compliant characters.
 // Therefore, this function will lowercase the name without allowed character validation.
-// If name is empty, it will panic.
 // https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#rfc-1035-label-names
 func NormalizeResourceName(name string) string {
-	if name == "" {
-		// This should not happen.
-		panic("resource name is empty")
+	normalized := strings.ToLower(name)
+	if normalized == "" {
+		return normalized
 	}
-	return strings.ToLower(name)
+
+	if !IsValidObjectName(normalized) {
+		// This should not happen.
+		panic(normalized + " is an invalid name.")
+	}
+	return normalized
 }
 
 // ConvertResourceTypeToLabelValue function gets a Radius Resource type and converts it

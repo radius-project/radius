@@ -165,7 +165,7 @@ func MakeFederatedIdentitySA(appName, name, namespace string, resource *datamode
 			APIVersion: "v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      name,
+			Name:      kubernetes.NormalizeResourceName(name),
 			Namespace: namespace,
 			Labels:    labels,
 			Annotations: map[string]string{

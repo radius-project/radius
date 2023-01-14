@@ -203,11 +203,11 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 				return []outputresource.OutputResource{}, nil, v1.NewClientErrInvalidRequest(err.Error())
 			}
 
-			routeName := resourceId.Name()
+			routeName := kubernetes.NormalizeResourceName(resourceId.Name())
 			routeType := resourceId.TypeSegments()[len(resourceId.TypeSegments())-1].Type
 			routeTypeParts := strings.Split(routeType, "/")
 
-			routeTypeSuffix := routeTypeParts[len(routeTypeParts)-1]
+			routeTypeSuffix := kubernetes.NormalizeResourceName(routeTypeParts[len(routeTypeParts)-1])
 
 			routes = append(routes, struct {
 				Name string
@@ -230,7 +230,7 @@ func (r Renderer) makeDeployment(ctx context.Context, applicationName string, op
 	}
 
 	container := corev1.Container{
-		Name:  resource.Name,
+		Name:  kubernetes.NormalizeResourceName(resource.Name),
 		Image: cc.Container.Image,
 		// TODO: use better policies than this when we have a good versioning story
 		ImagePullPolicy: corev1.PullPolicy("Always"),

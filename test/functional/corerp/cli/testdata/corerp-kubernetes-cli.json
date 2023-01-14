@@ -53,7 +53,7 @@
       "import": "radius",
       "type": "Applications.Core/containers@2022-03-15-privatepreview",
       "properties": {
-        "name": "containera-json",
+        "name": "containerA-json",
         "location": "[parameters('location')]",
         "properties": {
           "application": "[reference('app').id]",
@@ -70,7 +70,7 @@
       "import": "radius",
       "type": "Applications.Core/containers@2022-03-15-privatepreview",
       "properties": {
-        "name": "containerb-json",
+        "name": "containerB-json",
         "location": "[parameters('location')]",
         "properties": {
           "application": "[reference('app').id]",
