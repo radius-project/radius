@@ -40,7 +40,6 @@ func NewDeleteMongoDatabase(opts frontend_ctrl.Options) (ctrl.Controller, error)
 				RequestConverter:  converter.MongoDatabaseDataModelFromVersioned,
 				ResponseConverter: converter.MongoDatabaseDataModelToVersioned,
 			}),
-		dp: opts.DeployProcessor,
 	}, nil
 }
 
