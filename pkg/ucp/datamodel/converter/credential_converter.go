@@ -8,14 +8,13 @@ package converter
 import (
 	"encoding/json"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
 // CredentialDataModelToVersioned converts version agnostic credential datamodel to versioned model.
-func CredentialDataModelToVersioned(model *datamodel.Credential, version string) (conv.VersionedModelInterface, error) {
+func CredentialDataModelToVersioned(model *datamodel.Credential, version string) (v1.VersionedModelInterface, error) {
 	switch version {
 	case v20220901privatepreview.Version:
 		versioned := &v20220901privatepreview.CredentialResource{}

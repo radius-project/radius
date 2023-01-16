@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -193,11 +192,11 @@ func TestConvertVersionedToDataModel(t *testing.T) {
 		},
 		{
 			filename: "environmentresource-invalid-missing-namespace.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
 		{
 			filename: "environmentresource-invalid-namespace.json",
-			err:      &conv.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
+			err:      &v1.ErrModelConversion{PropertyName: "$.properties.compute.namespace", ValidValue: "63 characters or less"},
 		},
 	}
 
@@ -328,11 +327,11 @@ func (f *fakeResource) UpdateMetadata(ctx *v1.ARMRequestContext) {
 
 func TestConvertFromValidation(t *testing.T) {
 	validationTests := []struct {
-		src conv.DataModelInterface
+		src v1.DataModelInterface
 		err error
 	}{
-		{&fakeResource{}, conv.ErrInvalidModelConversion},
-		{nil, conv.ErrInvalidModelConversion},
+		{&fakeResource{}, v1.ErrInvalidModelConversion},
+		{nil, v1.ErrInvalidModelConversion},
 	}
 
 	for _, tc := range validationTests {
@@ -349,7 +348,7 @@ func TestToEnvironmentComputeKindDataModel(t *testing.T) {
 		err       error
 	}{
 		{EnvironmentComputeKindKubernetes, rp.KubernetesComputeKind, nil},
-		{"", rp.UnknownComputeKind, &conv.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
+		{"", rp.UnknownComputeKind, &v1.ErrModelConversion{PropertyName: "$.properties.compute.kind", ValidValue: "[kubernetes]"}},
 	}
 
 	for _, tt := range kindTests {

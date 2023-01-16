@@ -8,7 +8,6 @@ package v20220315privatepreview
 import (
 	"fmt"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/rp"
@@ -17,7 +16,7 @@ import (
 )
 
 // ConvertTo converts from the versioned SqlDatabase resource to version-agnostic datamodel.
-func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *SQLDatabaseResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &datamodel.SqlDatabase{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -43,7 +42,7 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 	switch v := src.Properties.(type) {
 	case *ResourceSQLDatabaseProperties:
 		if v.Resource == nil {
-			return nil, conv.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
+			return nil, v1.NewClientErrInvalidRequest("resource is a required property for mode 'resource'")
 		}
 		converted.Properties.Resource = to.String(v.Resource)
 		converted.Properties.Database = to.String(v.Database)
@@ -51,30 +50,30 @@ func (src *SQLDatabaseResource) ConvertTo() (conv.DataModelInterface, error) {
 		converted.Properties.Mode = datamodel.LinkModeResource
 	case *ValuesSQLDatabaseProperties:
 		if v.Database == nil || v.Server == nil {
-			return nil, conv.NewClientErrInvalidRequest("database/server are required properties for mode 'values'")
+			return nil, v1.NewClientErrInvalidRequest("database/server are required properties for mode 'values'")
 		}
 		converted.Properties.Database = to.String(v.Database)
 		converted.Properties.Server = to.String(v.Server)
 		converted.Properties.Mode = datamodel.LinkModeValues
 	case *RecipeSQLDatabaseProperties:
 		if v.Recipe == nil {
-			return nil, conv.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
+			return nil, v1.NewClientErrInvalidRequest("recipe is a required property for mode 'recipe'")
 		}
 		converted.Properties.Recipe = toRecipeDataModel(v.Recipe)
 		converted.Properties.Database = to.String(v.Database)
 		converted.Properties.Server = to.String(v.Server)
 		converted.Properties.Mode = datamodel.LinkModeRecipe
 	default:
-		return nil, conv.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetSQLDatabaseProperties().Mode))
+		return nil, v1.NewClientErrInvalidRequest(fmt.Sprintf("Unsupported mode %s", *src.Properties.GetSQLDatabaseProperties().Mode))
 	}
 	return converted, nil
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned SqlDatabase resource.
-func (dst *SQLDatabaseResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *SQLDatabaseResource) ConvertFrom(src v1.DataModelInterface) error {
 	sql, ok := src.(*datamodel.SqlDatabase)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(sql.ID)

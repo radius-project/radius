@@ -9,7 +9,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/renderers"
 	"github.com/project-radius/radius/pkg/resourcemodel"
@@ -24,13 +24,13 @@ type Renderer struct {
 }
 
 // GetDependencyIDs returns dependencies for the container/other datamodel passed in
-func (r *Renderer) GetDependencyIDs(ctx context.Context, resource conv.DataModelInterface) ([]resources.ID, []resources.ID, error) {
+func (r *Renderer) GetDependencyIDs(ctx context.Context, resource v1.DataModelInterface) ([]resources.ID, []resources.ID, error) {
 	// Let the inner renderer do its work
 	return r.Inner.GetDependencyIDs(ctx, resource)
 }
 
 // Render augments the container's kubernetes output resource with value for manualscale replica if applicable.
-func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
+func (r *Renderer) Render(ctx context.Context, dm v1.DataModelInterface, options renderers.RenderOptions) (renderers.RendererOutput, error) {
 	// Let the inner renderer do its work
 	output, err := r.Inner.Render(ctx, dm, options)
 	if err != nil {
@@ -39,7 +39,7 @@ func (r *Renderer) Render(ctx context.Context, dm conv.DataModelInterface, optio
 
 	resource, ok := dm.(*datamodel.ContainerResource)
 	if !ok {
-		return renderers.RendererOutput{}, conv.ErrInvalidModelConversion
+		return renderers.RendererOutput{}, v1.ErrInvalidModelConversion
 	}
 
 	extensions := resource.Properties.Extensions

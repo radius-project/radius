@@ -8,14 +8,11 @@ package setup
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/cli"
-	"github.com/project-radius/radius/pkg/cli/kubernetes"
-	"github.com/project-radius/radius/pkg/cli/workspaces"
+	"github.com/project-radius/radius/pkg/sdk"
 	"github.com/project-radius/radius/pkg/ucp/api/v20220901privatepreview"
 )
 
@@ -38,7 +35,7 @@ func (e *ErrUCPResourceGroupCreationFailed) Is(target error) bool {
 }
 
 // TODO remove this when envInit is removed. DO NOT add new uses of this function. Use the generated client.
-func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Connection, name string) (string, error) {
+func CreateWorkspaceResourceGroup(ctx context.Context, connection sdk.Connection, name string) (string, error) {
 	id, err := createUCPResourceGroup(ctx, connection, name, "/planes/radius/local")
 	if err != nil {
 		return "", err
@@ -54,20 +51,10 @@ func CreateWorkspaceResourceGroup(ctx context.Context, connection workspaces.Con
 	return id, nil
 }
 
-func createUCPResourceGroup(ctx context.Context, connection workspaces.Connection, resourceGroupName string, plane string) (string, error) {
-	kc, ok := connection.(*workspaces.KubernetesConnection)
-	if !ok {
-		return "", errors.New("only kubernetes connections are supported right now")
-	}
-
-	baseUrl, rt, err := kubernetes.GetBaseUrlAndRoundTripper(kc.Overrides.UCP, kubernetes.UCPType, kc.Context)
-	if err != nil {
-		return "", &cli.ClusterUnreachableError{Err: err}
-	}
-
+func createUCPResourceGroup(ctx context.Context, connection sdk.Connection, resourceGroupName string, plane string) (string, error) {
 	createRgRequest, err := http.NewRequest(
 		http.MethodPut,
-		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", baseUrl, plane, resourceGroupName, v20220901privatepreview.Version),
+		fmt.Sprintf("%s%s/resourceGroups/%s?api-version=%s", connection.Endpoint(), plane, resourceGroupName, v20220901privatepreview.Version),
 		strings.NewReader(`{
 			"location": "global"
 		}`))
@@ -77,7 +64,7 @@ func createUCPResourceGroup(ctx context.Context, connection workspaces.Connectio
 	}
 	createRgRequest = createRgRequest.WithContext(ctx)
 
-	resp, err := rt.RoundTrip(createRgRequest)
+	resp, err := connection.Client().Do(createRgRequest)
 	if err != nil || (resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK) {
 		return "", &ErrUCPResourceGroupCreationFailed{resp, err}
 	}

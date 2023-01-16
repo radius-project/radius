@@ -13,7 +13,6 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/golang/mock/gomock"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	armrpc_rest "github.com/project-radius/radius/pkg/armrpc/rest"
 	radiustesting "github.com/project-radius/radius/pkg/corerp/testing"
@@ -151,7 +150,7 @@ func getAzureCredentialResponse() armrpc_rest.Response {
 }
 
 func getInvalidRequestResponse() armrpc_rest.Response {
-	err := conv.ErrModelConversion{
+	err := v1.ErrModelConversion{
 		PropertyName: "$.properties",
 		ValidValue:   "not nil",
 	}

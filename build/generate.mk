@@ -11,15 +11,13 @@ generate: generate-genericcliclient generate-rad-corerp-client generate-rad-link
 .PHONY: generate-cadl-installed
 generate-cadl-installed:
 	@echo "$(ARROW) Detecting cadl..."
-	@which cadl > /dev/null || { echo "cadl is a required dependency"; exit 1; }
+	cd cadl/Applications.Link && npx -q cadl --help > /dev/null || { echo "cadl is a required dependency"; exit 1; }
 	@echo "$(ARROW) OK"
 
 .PHONY: generate-openapi-spec
-generate-openapi-spec: generate-cadl-installed
+generate-openapi-spec:
 	@echo  "Generating openapi specs for link resources from cadl models."
-	cd cadl/Applications.Link/
-	cadl compile cadl/Applications.Link/ --emit @azure-tools/cadl-autorest --option @azure-tools/cadl-autorest.emitter-output-dir={cwd}/swagger/specification/applications/resource-manager/Applications.Link.Cadl/preview/2022-03-15-privatepreview/
-
+	cd cadl/Applications.Link && npx cadl compile .
 .PHONY: generate-node-installed
 generate-node-installed:
 	@echo "$(ARROW) Detecting node..."

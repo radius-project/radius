@@ -299,7 +299,7 @@ func (client *RedisCachesClient) listSecretsCreateRequest(ctx context.Context, r
 		return nil, errors.New("parameter redisCacheName cannot be empty")
 	}
 	urlPath = strings.ReplaceAll(urlPath, "{redisCacheName}", url.PathEscape(redisCacheName))
-	req, err := runtime.NewRequest(ctx, http.MethodGet, runtime.JoinPaths(client.host, urlPath))
+	req, err := runtime.NewRequest(ctx, http.MethodPost, runtime.JoinPaths(client.host, urlPath))
 	if err != nil {
 		return nil, err
 	}

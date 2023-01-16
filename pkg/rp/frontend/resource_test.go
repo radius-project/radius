@@ -7,7 +7,6 @@ package frontend
 
 import (
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/rp"
 	"github.com/project-radius/radius/pkg/rp/outputresource"
@@ -79,7 +78,7 @@ type ResourceStatus struct {
 	OutputResources []map[string]any `json:"outputResources,omitempty"`
 }
 
-func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *TestResource) ConvertTo() (v1.DataModelInterface, error) {
 	converted := &TestResourceDataModel{
 		BaseResource: v1.BaseResource{
 			TrackedResource: v1.TrackedResource{
@@ -106,10 +105,10 @@ func (src *TestResource) ConvertTo() (conv.DataModelInterface, error) {
 	return converted, nil
 }
 
-func (dst *TestResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *TestResource) ConvertFrom(src v1.DataModelInterface) error {
 	dm, ok := src.(*TestResourceDataModel)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = to.StringPtr(dm.ID)

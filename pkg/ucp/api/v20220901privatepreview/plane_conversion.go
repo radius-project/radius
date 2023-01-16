@@ -9,17 +9,16 @@ import (
 	"fmt"
 
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/ucp/datamodel"
 )
 
 // ConvertTo converts from the versioned Plane resource to version-agnostic datamodel.
-func (src *PlaneResource) ConvertTo() (conv.DataModelInterface, error) {
+func (src *PlaneResource) ConvertTo() (v1.DataModelInterface, error) {
 	// Note: SystemData conversion isn't required since this property comes ARM and datastore.
 
 	if src.Properties.Kind == nil {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "not nil"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: "not nil"}
 	}
 
 	var found bool
@@ -30,14 +29,14 @@ func (src *PlaneResource) ConvertTo() (conv.DataModelInterface, error) {
 		}
 	}
 	if !found {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: fmt.Sprintf("one of %s", PossiblePlaneKindValues())}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.kind", ValidValue: fmt.Sprintf("one of %s", PossiblePlaneKindValues())}
 	}
 
 	// Plane validation
 	if *src.Properties.Kind == PlaneKindUCPNative && (src.Properties.ResourceProviders == nil || len(src.Properties.ResourceProviders) == 0) {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.resourceProviders", ValidValue: "at least one provided"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.resourceProviders", ValidValue: "at least one provided"}
 	} else if *src.Properties.Kind == PlaneKindAzure && (src.Properties.URL == nil || *src.Properties.URL == "") {
-		return nil, &conv.ErrModelConversion{PropertyName: "$.properties.URL", ValidValue: "non-empty string"}
+		return nil, &v1.ErrModelConversion{PropertyName: "$.properties.URL", ValidValue: "non-empty string"}
 	}
 	// No validation for AWS plane.
 
@@ -58,10 +57,10 @@ func (src *PlaneResource) ConvertTo() (conv.DataModelInterface, error) {
 }
 
 // ConvertFrom converts from version-agnostic datamodel to the versioned Plane resource.
-func (dst *PlaneResource) ConvertFrom(src conv.DataModelInterface) error {
+func (dst *PlaneResource) ConvertFrom(src v1.DataModelInterface) error {
 	plane, ok := src.(*datamodel.Plane)
 	if !ok {
-		return conv.ErrInvalidModelConversion
+		return v1.ErrInvalidModelConversion
 	}
 
 	dst.ID = &plane.TrackedResource.ID

@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	apiv1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
 	"github.com/project-radius/radius/pkg/corerp/handlers"
@@ -216,8 +215,8 @@ func Test_GetDependencyIDs_InvalidAzureResourceId(t *testing.T) {
 	renderer := Renderer{}
 	ids, azureIDs, err := renderer.GetDependencyIDs(createContext(t), resource)
 	require.Error(t, err)
-	require.Equal(t, err.(*conv.ErrClientRP).Code, apiv1.CodeInvalid)
-	require.Equal(t, err.(*conv.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
+	require.Equal(t, err.(*apiv1.ErrClientRP).Code, apiv1.CodeInvalid)
+	require.Equal(t, err.(*apiv1.ErrClientRP).Message, "'/subscriptions/test-sub-id/providers/Microsoft.ServiceBus/namespaces/testNamespace' is not a valid resource id")
 	require.Empty(t, ids)
 	require.Empty(t, azureIDs)
 }

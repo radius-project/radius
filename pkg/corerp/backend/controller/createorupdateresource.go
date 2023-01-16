@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
 	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	ctrl "github.com/project-radius/radius/pkg/armrpc/asyncoperation/controller"
 	"github.com/project-radius/radius/pkg/corerp/datamodel"
@@ -38,7 +37,7 @@ func NewCreateOrUpdateResource(opts ctrl.Options) (ctrl.Controller, error) {
 	return &CreateOrUpdateResource{ctrl.NewBaseAsyncController(opts)}, nil
 }
 
-func getDataModel(id resources.ID) (conv.DataModelInterface, error) {
+func getDataModel(id resources.ID) (v1.DataModelInterface, error) {
 	resourceType := strings.ToLower(id.Type())
 	switch resourceType {
 	case strings.ToLower(container.ResourceType):

@@ -7,7 +7,7 @@ package daprstatestores
 
 import (
 	"github.com/Azure/go-autorest/autorest/to"
-	"github.com/project-radius/radius/pkg/armrpc/api/conv"
+	v1 "github.com/project-radius/radius/pkg/armrpc/api/v1"
 	"github.com/project-radius/radius/pkg/linkrp/datamodel"
 	"github.com/project-radius/radius/pkg/linkrp/handlers"
 	"github.com/project-radius/radius/pkg/linkrp/renderers"
@@ -20,16 +20,16 @@ import (
 func GetDaprStateStoreAzureStorage(resource datamodel.DaprStateStore, applicationName string, options renderers.RenderOptions) (rendererOutput renderers.RendererOutput, err error) {
 	properties := resource.Properties
 	if properties.Resource == "" {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest(renderers.ErrResourceMissingForResource.Error())
 	}
 	var azuretableStorageID resources.ID
 	azuretableStorageID, err = resources.ParseResource(properties.Resource)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must be a valid resource id")
 	}
 	err = azuretableStorageID.ValidateResourceType(StorageAccountResourceType)
 	if err != nil {
-		return renderers.RendererOutput{}, conv.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")
+		return renderers.RendererOutput{}, v1.NewClientErrInvalidRequest("the 'resource' field must refer to a Storage Table")
 	}
 	// generate data we can use to connect to a Storage Account
 	outputResources := []outputresource.OutputResource{
