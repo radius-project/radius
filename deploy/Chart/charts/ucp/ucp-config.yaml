@@ -55,4 +55,4 @@ metricsProvider:
  # Logging configuration   
 logging:
   logLevel: "info"
-  json: "true"
+  json: true

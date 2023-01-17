@@ -21,4 +21,4 @@ server:
  # Logging configuration   
 logging:
   logLevel: "info"
-  json: "true"
+  json: true
