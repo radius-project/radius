@@ -65,7 +65,6 @@ type RecipeContext struct {
 	Link        Link         `json:"link,omitempty"`
 	Application ResourceInfo `json:"application,omitempty"`
 	Environment ResourceInfo `json:"environment,omitempty"`
-	Timestamp   string       `json:"timestamp,omitempty"`
 	Runtime     Runtime      `json:"runtime,omitempty"`
 }
 type Link struct {

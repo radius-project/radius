@@ -9,9 +9,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/go-openapi/jsonpointer"
@@ -512,6 +510,6 @@ func createContextParameter(contextMeta *RecipeContextMetadata) (*datamodel.Reci
 	}
 	linkContext.Environment.Name = parsedEnv.Name()
 	linkContext.Runtime.Kubernetes.EnvironmentNamespace = contextMeta.EnvironmentNamespace
-	linkContext.Timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+
 	return &linkContext, nil
 }

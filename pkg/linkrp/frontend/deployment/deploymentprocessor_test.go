@@ -1147,7 +1147,7 @@ func Test_ContextParameter(t *testing.T) {
 			},
 		},
 	}
-	expectedLinkContext.Timestamp = strconv.FormatInt(time.Now().UnixMilli(), 10)
+
 	linkContext, err := createContextParameter(&contextMeta)
 	require.NoError(t, err)
 	require.Equal(t, expectedLinkContext, *linkContext)
