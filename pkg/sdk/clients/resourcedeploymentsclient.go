@@ -3,7 +3,7 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package clientv2
+package clients
 
 import (
 	"context"
@@ -92,17 +92,16 @@ type ResourceDeploymentsClient struct {
 
 // NewDeploymentsClient creates an instance of the ResourceDeploymentClient.
 func NewResourceDeploymentsClient(subscriptionID string, options *Options) (*ResourceDeploymentsClient, error) {
-	baseURI := DefaultBaseURI
-	if options.BaseURI != "" {
-		baseURI = options.BaseURI
+	if options.BaseURI == "" {
+		return nil, errors.New("baseURI cannot be empty")
 	}
 
-	client, err := armresources.NewClient(subscriptionID, options.Cred, defaultClientOptions)
+	client, err := armresources.NewClient(subscriptionID, options.Cred, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +109,7 @@ func NewResourceDeploymentsClient(subscriptionID string, options *Options) (*Res
 	return &ResourceDeploymentsClient{
 		client:   client,
 		pipeline: &pipeline,
-		baseURI:  baseURI,
+		baseURI:  options.BaseURI,
 	}, nil
 }
 
@@ -152,8 +151,7 @@ func (client *ResourceDeploymentsClient) createOrUpdateCreateRequest(ctx context
 		return nil, errors.New("resourceID cannot be empty")
 	}
 
-	urlPath := runtime.JoinPaths(strings.TrimSuffix(client.baseURI, "/"),
-		url.PathEscape(strings.TrimPrefix(resourceID, "/")))
+	urlPath := runtime.JoinPaths(client.baseURI, url.PathEscape(strings.TrimPrefix(resourceID, "/")))
 	req, err := runtime.NewRequest(ctx, http.MethodPut, urlPath)
 	if err != nil {
 		return nil, err

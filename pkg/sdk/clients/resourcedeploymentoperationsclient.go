@@ -3,10 +3,11 @@
 // Licensed under the MIT License.
 // ------------------------------------------------------------
 
-package clientv2
+package clients
 
 import (
 	"context"
+	"errors"
 
 	armruntime "github.com/Azure/azure-sdk-for-go/sdk/azcore/arm/runtime"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
@@ -24,17 +25,16 @@ type ResourceDeploymentOperationsClient struct {
 
 // NewResourceDeploymentOperationsClient creates an instance of the DeploymentsClient.
 func NewResourceDeploymentOperationsClient(subscriptionID string, options *Options) (*ResourceDeploymentOperationsClient, error) {
-	baseURI := DefaultBaseURI
-	if options.BaseURI != "" {
-		baseURI = options.BaseURI
+	if options.BaseURI == "" {
+		return nil, errors.New("baseURI cannot be empty")
 	}
 
-	client, err := armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, defaultClientOptions)
+	client, err := armresources.NewDeploymentOperationsClient(subscriptionID, options.Cred, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
 
-	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, defaultClientOptions)
+	pipeline, err := armruntime.NewPipeline(ModuleName, ModuleVersion, options.Cred, runtime.PipelineOptions{}, options.ARMClientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func NewResourceDeploymentOperationsClient(subscriptionID string, options *Optio
 	return &ResourceDeploymentOperationsClient{
 		client:   client,
 		pipeline: &pipeline,
-		baseURI:  baseURI,
+		baseURI:  options.BaseURI,
 	}, nil
 }
 

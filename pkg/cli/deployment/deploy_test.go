@@ -8,30 +8,30 @@ package deployment
 import (
 	"testing"
 
-	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_GetProviderConfigs(t *testing.T) {
 	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
-		// DeploymentsClient:          *armresources.DeploymentsClient,
-		// DeploymentOperationsClient: *armresources.DeploymentOperationsClient,
-		AzProvider: &workspaces.AzureProvider{},
+		Client:              &sdkclients.ResourceDeploymentsClient{},
+		OperationsClient:    &sdkclients.ResourceDeploymentOperationsClient{},
+		AzProvider:          &workspaces.AzureProvider{},
 	}
 
-	var expectedConfig clientv2.ProviderConfig
+	var expectedConfig sdkclients.ProviderConfig
 
-	expectedConfig.Radius = &clientv2.Radius{
+	expectedConfig.Radius = &sdkclients.Radius{
 		Type: "Radius",
-		Value: clientv2.Value{
+		Value: sdkclients.Value{
 			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
-	expectedConfig.Deployments = &clientv2.Deployments{
+	expectedConfig.Deployments = &sdkclients.Deployments{
 		Type: "Microsoft.Resources",
-		Value: clientv2.Value{
+		Value: sdkclients.Value{
 			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
 		},
 	}
@@ -43,32 +43,32 @@ func Test_GetProviderConfigs(t *testing.T) {
 func Test_GetProviderConfigsWithAzProvider(t *testing.T) {
 	resourceDeploymentClient := ResourceDeploymentClient{
 		RadiusResourceGroup: "testrg",
-		// DeploymentsClient:          *armresources.DeploymentsClient,
-		// DeploymentOperationsClient: *armresources.DeploymentOperationsClient,
+		Client:              &sdkclients.ResourceDeploymentsClient{},
+		OperationsClient:    &sdkclients.ResourceDeploymentOperationsClient{},
 		AzProvider: &workspaces.AzureProvider{
 			SubscriptionID: "dummy",
 			ResourceGroup:  "azrg",
 		},
 	}
 
-	var expectedConfig clientv2.ProviderConfig
+	var expectedConfig sdkclients.ProviderConfig
 
-	expectedConfig.Az = &clientv2.Az{
+	expectedConfig.Az = &sdkclients.Az{
 		Type: "AzureResourceManager",
-		Value: clientv2.Value{
+		Value: sdkclients.Value{
 			Scope: "/subscriptions/dummy/resourceGroups/" + "azrg",
 		},
 	}
 
-	expectedConfig.Radius = &clientv2.Radius{
+	expectedConfig.Radius = &sdkclients.Radius{
 		Type: "Radius",
-		Value: clientv2.Value{
+		Value: sdkclients.Value{
 			Scope: "/planes/radius/local/resourceGroups/" + "testrg",
 		},
 	}
-	expectedConfig.Deployments = &clientv2.Deployments{
+	expectedConfig.Deployments = &sdkclients.Deployments{
 		Type: "Microsoft.Resources",
-		Value: clientv2.Value{
+		Value: sdkclients.Value{
 			Scope: "/planes/deployments/local/resourceGroups/" + "testrg",
 		},
 	}

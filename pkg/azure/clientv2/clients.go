@@ -33,6 +33,8 @@ type Options struct {
 	Cred azcore.TokenCredential
 
 	BaseURI string
+
+	ARMClientOptions *arm.ClientOptions
 }
 
 // NewFederatedIdentityClient creates new federated identity client.

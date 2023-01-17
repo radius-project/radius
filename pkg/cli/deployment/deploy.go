@@ -20,6 +20,7 @@ import (
 	"github.com/project-radius/radius/pkg/azure/clientv2"
 	"github.com/project-radius/radius/pkg/cli/clients"
 	"github.com/project-radius/radius/pkg/cli/workspaces"
+	sdkclients "github.com/project-radius/radius/pkg/sdk/clients"
 	ucpresources "github.com/project-radius/radius/pkg/ucp/resources"
 )
 
@@ -31,12 +32,12 @@ const (
 )
 
 type ResourceDeploymentClient struct {
-	RadiusResourceGroup                string
-	ResourceDeploymentsClient          *clientv2.ResourceDeploymentsClient
-	ResourceDeploymentOperationsClient *clientv2.ResourceDeploymentOperationsClient
-	Tags                               map[string]*string
-	AzProvider                         *workspaces.AzureProvider
-	AWSProvider                        *workspaces.AWSProvider
+	RadiusResourceGroup string
+	Client              *sdkclients.ResourceDeploymentsClient
+	OperationsClient    *sdkclients.ResourceDeploymentOperationsClient
+	Tags                map[string]*string
+	AzProvider          *workspaces.AzureProvider
+	AWSProvider         *workspaces.AWSProvider
 }
 
 var _ clients.DeploymentClient = (*ResourceDeploymentClient)(nil)
@@ -78,7 +79,7 @@ func (dc *ResourceDeploymentClient) Deploy(ctx context.Context, options clients.
 	return summary, nil
 }
 
-func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*runtime.Poller[clientv2.ClientCreateOrUpdateResponse], error) {
+func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name string, options clients.DeploymentOptions) (*runtime.Poller[sdkclients.ClientCreateOrUpdateResponse], error) {
 	var resourceId string
 	scopes := []ucpresources.ScopeSegment{
 		{
@@ -100,9 +101,9 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	resourceId = ucpresources.MakeUCPID(scopes, types...)
 	providerConfig := dc.GetProviderConfigs()
 
-	poller, err := dc.ResourceDeploymentsClient.CreateOrUpdate(ctx,
-		clientv2.Deployment{
-			Properties: &clientv2.DeploymentProperties{
+	poller, err := dc.Client.CreateOrUpdate(ctx,
+		sdkclients.Deployment{
+			Properties: &sdkclients.DeploymentProperties{
 				Template:       options.Template,
 				Parameters:     options.Parameters,
 				ProviderConfig: providerConfig,
@@ -118,14 +119,14 @@ func (dc *ResourceDeploymentClient) startDeployment(ctx context.Context, name st
 	return poller, nil
 }
 
-func (dc *ResourceDeploymentClient) GetProviderConfigs() clientv2.ProviderConfig {
-	var providerConfigs clientv2.ProviderConfig
+func (dc *ResourceDeploymentClient) GetProviderConfigs() sdkclients.ProviderConfig {
+	var providerConfigs sdkclients.ProviderConfig
 	if dc.AzProvider != nil {
 		if dc.AzProvider.SubscriptionID != "" && dc.AzProvider.ResourceGroup != "" {
 			scope := "/subscriptions/" + dc.AzProvider.SubscriptionID + "/resourceGroups/" + dc.AzProvider.ResourceGroup
-			providerConfigs.Az = &clientv2.Az{
+			providerConfigs.Az = &sdkclients.Az{
 				Type: "AzureResourceManager",
-				Value: clientv2.Value{
+				Value: sdkclients.Value{
 					Scope: scope,
 				},
 			}
@@ -134,9 +135,9 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() clientv2.ProviderConfig
 
 	if dc.AWSProvider != nil {
 		scope := "/planes/aws/aws/accounts/" + dc.AWSProvider.AccountId + "/regions/" + dc.AWSProvider.Region
-		providerConfigs.AWS = &clientv2.AWS{
+		providerConfigs.AWS = &sdkclients.AWS{
 			Type: "AWS",
-			Value: clientv2.Value{
+			Value: sdkclients.Value{
 				Scope: scope,
 			},
 		}
@@ -144,17 +145,17 @@ func (dc *ResourceDeploymentClient) GetProviderConfigs() clientv2.ProviderConfig
 
 	if dc.RadiusResourceGroup != "" {
 		scope := "/planes/radius/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Radius = &clientv2.Radius{
+		providerConfigs.Radius = &sdkclients.Radius{
 			Type: "Radius",
-			Value: clientv2.Value{
+			Value: sdkclients.Value{
 				Scope: scope,
 			},
 		}
 
 		scope = "/planes/deployments/local/resourceGroups/" + dc.RadiusResourceGroup
-		providerConfigs.Deployments = &clientv2.Deployments{
+		providerConfigs.Deployments = &sdkclients.Deployments{
 			Type: "Microsoft.Resources",
-			Value: clientv2.Value{
+			Value: sdkclients.Value{
 				Scope: scope,
 			},
 		}
@@ -197,7 +198,7 @@ func (dc *ResourceDeploymentClient) createSummary(deployment *armresources.Deplo
 	return clients.DeploymentResult{Resources: resources, Outputs: outputs}, nil
 }
 
-func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller *runtime.Poller[clientv2.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
+func (dc *ResourceDeploymentClient) waitForCompletion(ctx context.Context, poller *runtime.Poller[sdkclients.ClientCreateOrUpdateResponse]) (clients.DeploymentResult, error) {
 	resp, err := poller.PollUntilDone(ctx, &runtime.PollUntilDoneOptions{})
 	if err != nil {
 		return clients.DeploymentResult{}, err
@@ -297,7 +298,7 @@ func (dc *ResourceDeploymentClient) listOperations(ctx context.Context, name str
 
 	resourceId = ucpresources.MakeUCPID(scopes, types)
 
-	ops, err := dc.ResourceDeploymentOperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, nil)
+	ops, err := dc.OperationsClient.List(ctx, dc.RadiusResourceGroup, name, resourceId, nil)
 	if err != nil {
 		return nil, err
 	}
